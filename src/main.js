@@ -176,7 +176,7 @@ const state = {
 const navItems = [
   ["home", "Home", "home"],
   ["live", "Live", "navigation"],
-  ["guide", "Guide", "spark"],
+  ["guide", "Ask", "spark"],
   ["trip", "Trip", "calendar"],
   ["search", "Search", "search"],
   ["map", "Map", "map"],
@@ -240,7 +240,7 @@ function renderSidebar() {
         ${navItems
           .map(
             ([id, label, icon]) => `
-              <button class="nav-item ${state.activeView === id ? "is-active" : ""}" data-view="${id}">
+              <button class="nav-item ${id === "search" ? "nav-search" : ""} ${state.activeView === id ? "is-active" : ""}" data-view="${id}">
                 <span class="nav-icon">${renderIcon(icon)}</span><em>${label}</em>
               </button>`
           )
@@ -707,7 +707,7 @@ function renderProfile() {
 function renderMobileNav() {
   return `
     <nav class="mobile-nav" aria-label="Mobile primary">
-      ${navItems.map(([id, label, icon]) => `<button class="${state.activeView === id ? "is-active" : ""}" data-view="${id}"><span class="nav-icon">${renderIcon(icon)}</span><em>${label}</em></button>`).join("")}
+      ${navItems.map(([id, label, icon]) => `<button class="${id === "search" ? "nav-search" : ""} ${state.activeView === id ? "is-active" : ""}" data-view="${id}"><span class="nav-icon">${renderIcon(icon)}</span><em>${label}</em></button>`).join("")}
     </nav>
   `;
 }
@@ -1018,11 +1018,24 @@ function bindEvents() {
   }
 }
 
-if ("serviceWorker" in navigator) {
+if ("serviceWorker" in navigator && import.meta.env.PROD) {
   window.addEventListener("load", () => {
     navigator.serviceWorker.register("/sw.js").catch(() => {
       // Local preview can block service workers depending on origin.
     });
+  });
+}
+
+if ("serviceWorker" in navigator && import.meta.env.DEV) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.getRegistrations().then((registrations) => {
+      registrations.forEach((registration) => registration.unregister());
+    });
+    if (window.caches) {
+      caches.keys().then((keys) => {
+        keys.filter((key) => key.startsWith("trip-")).forEach((key) => caches.delete(key));
+      });
+    }
   });
 }
 

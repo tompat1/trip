@@ -215,6 +215,64 @@ button {
   transform: translateY(-1px);
 }
 
+.nav-item.nav-search {
+  position: relative;
+  min-height: 58px;
+  margin: 12px -4px;
+  padding: 0 14px;
+  border: 1px solid rgba(217, 74, 58, .26);
+  background:
+    linear-gradient(135deg, rgba(217, 74, 58, .12), rgba(233, 199, 107, .16)),
+    var(--white);
+  box-shadow: 0 14px 30px rgba(54, 48, 38, .14);
+}
+
+.nav-item.nav-search::before,
+.nav-item.nav-search::after {
+  content: "";
+  position: absolute;
+  left: 22px;
+  width: 1px;
+  height: 12px;
+  background: var(--line);
+}
+
+.nav-item.nav-search::before {
+  top: -13px;
+}
+
+.nav-item.nav-search::after {
+  bottom: -13px;
+}
+
+.nav-item.nav-search .nav-icon {
+  width: 40px;
+  height: 40px;
+  border-color: var(--red);
+  color: var(--white);
+  background: var(--red);
+  box-shadow: 0 10px 24px rgba(217, 74, 58, .24);
+}
+
+.nav-item.nav-search .app-icon {
+  width: 21px;
+  height: 21px;
+  stroke-width: 2.1;
+}
+
+.nav-item.nav-search em {
+  font-weight: 900;
+}
+
+.nav-item.nav-search:hover,
+.nav-item.nav-search.is-active {
+  color: var(--ink);
+  border-color: rgba(217, 74, 58, .42);
+  background:
+    linear-gradient(135deg, rgba(217, 74, 58, .18), rgba(233, 199, 107, .22)),
+    var(--white);
+}
+
 .profile-chip {
   display: flex;
   align-items: center;
@@ -1619,6 +1677,17 @@ button:focus-visible {
     padding: 0;
   }
 
+  .nav-item.nav-search {
+    min-height: 64px;
+    margin: 14px -2px;
+    padding: 0;
+  }
+
+  .nav-item.nav-search::before,
+  .nav-item.nav-search::after {
+    left: 50%;
+  }
+
   .home-grid,
   .live-page,
   .guide-page,
@@ -1768,9 +1837,9 @@ button:focus-visible {
     bottom: 10px;
     z-index: 10;
     display: flex;
-    gap: 4px;
+    gap: 3px;
     overflow-x: auto;
-    padding: 7px;
+    padding: 7px 8px 8px;
     border: 1px solid var(--line);
     border-radius: 18px;
     background: rgba(255, 253, 248, .92);
@@ -1790,6 +1859,38 @@ button:focus-visible {
     place-items: center;
     border-radius: 12px;
     font-size: 12px;
+  }
+
+  .mobile-nav .nav-search {
+    position: sticky;
+    left: 50%;
+    z-index: 2;
+    flex-basis: 86px;
+    min-height: 64px;
+    margin: -20px 2px 0;
+    border: 1px solid rgba(217, 74, 58, .34);
+    color: var(--ink);
+    background:
+      linear-gradient(135deg, rgba(217, 74, 58, .14), rgba(233, 199, 107, .24)),
+      var(--white);
+    box-shadow: 0 16px 34px rgba(54, 48, 38, .22);
+  }
+
+  .mobile-nav .nav-search .nav-icon {
+    width: 42px;
+    height: 42px;
+    border-color: var(--red);
+    color: var(--white);
+    background: var(--red);
+  }
+
+  .mobile-nav .nav-search .app-icon {
+    width: 21px;
+    height: 21px;
+  }
+
+  .mobile-nav .nav-search em {
+    font-weight: 900;
   }
 
   .mobile-nav span {
