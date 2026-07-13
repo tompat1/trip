@@ -11,6 +11,10 @@ const state = {
   offlineReady: true,
   mediaOrganized: false,
   storyDrafted: false,
+  guideQuery: "What should I do if rain starts after lunch?",
+  guideWeatherMode: "mixed",
+  routeOptimized: false,
+  acknowledgedAlerts: new Set(),
   trip: {
     destination: "Paris, France",
     dates: "3 - 9 Oct 2026",
@@ -123,6 +127,40 @@ const state = {
     { title: "6 videos", bucket: "Seine crossings", status: "Ready for story draft" },
     { title: "3 notes", bucket: "Food finds", status: "Pinned to places" },
   ],
+  guideSources: [
+    { name: "Official Paris tourism", type: "Destination", freshness: "Updated weekly", status: "Connected" },
+    { name: "Museum calendars", type: "Events", freshness: "Daily sync", status: "Connected" },
+    { name: "Neighborhood food notes", type: "Personal", freshness: "From your saves", status: "Learning" },
+    { name: "Weather and transit", type: "Live context", freshness: "15 min", status: "Connected" },
+  ],
+  guidePicks: [
+    { title: "Musee d'Orsay", score: "96%", reason: "Strong fit for rain, art preference, and your Left Bank route.", source: "Museum calendars", weather: "rain" },
+    { title: "Sainte-Chapelle", score: "91%", reason: "Best on a bright morning; move it before the cloud cover.", source: "Official Paris tourism", weather: "sun" },
+    { title: "Cafe de Flore", score: "88%", reason: "Matches your coffee saves and sits between two planned stops.", source: "Neighborhood food notes", weather: "mixed" },
+  ],
+  guideSummaries: [
+    {
+      title: "Left Bank culture block",
+      text: "Group Sainte-Chapelle, Shakespeare and Company, and Musee d'Orsay into one half-day route. The museum is the best weather fallback; the chapel is the best light-sensitive stop.",
+      citations: ["Official Paris tourism", "Museum calendars"],
+    },
+    {
+      title: "Personal fit",
+      text: "Your saved cafes and photography moments suggest slower transitions, fewer landmark hops, and one protected reset window after lunch.",
+      citations: ["Neighborhood food notes", "Trip memory"],
+    },
+  ],
+  guideRoute: [
+    { time: "10:00", stop: "Sainte-Chapelle", note: "Go early for glass and softer crowds." },
+    { time: "11:20", stop: "Shakespeare and Company", note: "Short browse before the lunch window." },
+    { time: "13:00", stop: "Cafe de Flore", note: "Protected reset block." },
+    { time: "15:00", stop: "Musee d'Orsay", note: "Rain-safe afternoon anchor." },
+  ],
+  guideAlerts: [
+    { id: "orsay-late", title: "Orsay late opening", detail: "Thursday evening hours make it a better backup if rain shifts later.", level: "Event" },
+    { id: "metro-works", title: "Metro works near Concorde", detail: "Route around Line 1 after 18:00 and favor walking between river stops.", level: "Transit" },
+    { id: "rain-window", title: "Rain window: 14:00-16:00", detail: "Move outdoor wandering earlier and keep museum time in the afternoon.", level: "Weather" },
+  ],
   moments: [
     { title: "Montmartre rain walk", type: "Video", date: "4 Oct", length: "0:52", tone: "street" },
     { title: "Cafe de Flore table", type: "Photo", date: "4 Oct", length: "12 photos", tone: "coffee" },
@@ -138,6 +176,7 @@ const state = {
 const navItems = [
   ["home", "Home", "home"],
   ["live", "Live", "navigation"],
+  ["guide", "Guide", "spark"],
   ["trip", "Trip", "calendar"],
   ["search", "Search", "search"],
   ["map", "Map", "map"],
@@ -151,6 +190,7 @@ const dayLabels = ["Sat 3", "Sun 4", "Mon 5", "Tue 6", "Wed 7", "Thu 8", "Fri 9"
 const icons = {
   home: `<path d="M3.5 11.2 12 4l8.5 7.2"/><path d="M5.8 10.2v8.3h4.1v-5h4.2v5h4.1v-8.3"/>`,
   navigation: `<path d="M12 3.8 20 20.2l-8-3.6-8 3.6L12 3.8Z"/><path d="M12 3.8v12.8"/>`,
+  spark: `<path d="M12 3.8 13.9 9l5.3 1.8-5.3 1.9L12 18l-1.9-5.3-5.3-1.9L10.1 9 12 3.8Z"/><path d="M18.5 15.5 20 19.2"/><path d="M5.5 15.5 4 19.2"/>`,
   calendar: `<path d="M5 6.5h14v13H5z"/><path d="M8 4v5"/><path d="M16 4v5"/><path d="M5 10h14"/><path d="M8.3 14h3.2"/><path d="M8.3 17h5.8"/>`,
   search: `<circle cx="10.5" cy="10.5" r="5.8"/><path d="m15 15 4.5 4.5"/>`,
   map: `<path d="m4.5 6.5 5-2 5 2 5-2v13l-5 2-5-2-5 2v-13Z"/><path d="M9.5 4.5v13"/><path d="M14.5 6.5v13"/>`,
@@ -218,7 +258,7 @@ function renderHeader() {
   return `
     <header class="topbar">
       <div>
-        <p class="eyebrow">${state.tripMode ? "MVP 2 · Live journey" : "MVP 1 · Plan and remember"}</p>
+        <p class="eyebrow">${state.activeView === "guide" ? "MVP 3 · Intelligent guide" : state.tripMode ? "MVP 2 · Live journey" : "MVP 1 · Plan and remember"}</p>
         <h1>${state.trip.destination}</h1>
         <span>${state.trip.dates}</span>
       </div>
@@ -235,6 +275,7 @@ function renderView() {
   const views = {
     home: renderHome,
     live: renderLive,
+    guide: renderGuide,
     trip: renderTrip,
     search: renderSearch,
     map: renderMap,
@@ -243,6 +284,89 @@ function renderView() {
     profile: renderProfile,
   };
   return `<section class="view-panel">${views[state.activeView]()}</section>`;
+}
+
+function renderGuide() {
+  const visibleAlerts = state.guideAlerts.filter((alert) => !state.acknowledgedAlerts.has(alert.id));
+  const route = state.guideRoute;
+  const weatherHint = {
+    mixed: "Balanced for changing skies: one outdoor window, one indoor anchor, one cafe reset.",
+    rain: "Rain-aware mode favors museums, covered passages, and short walks between saved stops.",
+    sun: "Sun-aware mode pulls stained glass, gardens, and riverside photos earlier in the day.",
+  }[state.guideWeatherMode];
+
+  return `
+    <div class="guide-page">
+      <section class="guide-hero">
+        <div>
+          <p class="eyebrow">Intelligent guide · Paris context graph</p>
+          <h2>Ask the trip, not the internet.</h2>
+          <p>TRIP combines destination guides, event calendars, live weather, saved places, and your travel style into cited, route-aware answers.</p>
+        </div>
+        <form class="guide-search" data-guide-search>
+          <label>
+            Conversational search
+            <div>
+              ${renderIcon("spark")}
+              <input name="guideQuery" value="${state.guideQuery}" aria-label="Ask the intelligent guide"/>
+            </div>
+          </label>
+          <button class="primary-button">Ask guide</button>
+        </form>
+      </section>
+      <section class="source-panel">
+        <div class="section-head"><h2>Sources</h2><button data-sync-sources>Sync</button></div>
+        <div class="source-grid">
+          ${state.guideSources.map(renderGuideSource).join("")}
+        </div>
+      </section>
+      <section class="answer-panel">
+        <div class="section-head"><h2>Guide answer</h2><button data-view="search">Open search</button></div>
+        <p>${renderGuideAnswer()}</p>
+        <div class="citation-row">
+          ${["Official Paris tourism", "Museum calendars", "Weather and transit"].map((source) => `<span>${source}</span>`).join("")}
+        </div>
+      </section>
+      <section class="personalized-panel">
+        <div class="section-head"><h2>Personalized recommendations</h2><button data-weather-mode>${state.guideWeatherMode}</button></div>
+        <p class="guide-hint">${weatherHint}</p>
+        <div class="guide-pick-list">
+          ${getWeatherPicks().map(renderGuidePick).join("")}
+        </div>
+      </section>
+      <section class="summary-panel">
+        <h2>Cited guide summaries</h2>
+        <div class="summary-list">
+          ${state.guideSummaries.map(renderGuideSummary).join("")}
+        </div>
+      </section>
+      <section class="route-panel">
+        <div class="section-head"><h2>Optimized route</h2><button data-optimize-route>${state.routeOptimized ? "Optimized" : "Optimize"}</button></div>
+        <div class="route-metrics">
+          <span><strong>${state.routeOptimized ? "31" : "44"}</strong> min walking</span>
+          <span><strong>${state.routeOptimized ? "3" : "5"}</strong> backtracks</span>
+          <span><strong>${state.routeOptimized ? "92" : "74"}</strong> fit score</span>
+        </div>
+        <div class="optimized-route">
+          ${route.map(renderRouteStop).join("")}
+        </div>
+      </section>
+      <section class="alert-panel">
+        <div class="section-head"><h2>Event alerts</h2><button data-reset-alerts>Reset</button></div>
+        <div class="alert-list">
+          ${visibleAlerts.length ? visibleAlerts.map(renderGuideAlert).join("") : `<p class="empty-state">All alerts acknowledged. You are weirdly calm and I respect it.</p>`}
+        </div>
+      </section>
+      <section class="weather-aware-panel">
+        <h2>Weather-aware suggestions</h2>
+        <div class="weather-advice">
+          <article><strong>Rain 14:00</strong><span>Move Orsay to mid-afternoon and keep the cafe block.</span></article>
+          <article><strong>Clear morning</strong><span>Prioritize Sainte-Chapelle before the clouds flatten the light.</span></article>
+          <article><strong>Wind after 18:00</strong><span>Shorten river linger and add an indoor dinner buffer.</span></article>
+        </div>
+      </section>
+    </div>
+  `;
 }
 
 function renderHome() {
@@ -356,6 +480,87 @@ function renderLive() {
         </div>
       </section>
     </div>
+  `;
+}
+
+function getWeatherPicks() {
+  if (state.guideWeatherMode === "mixed") return state.guidePicks;
+  return [
+    ...state.guidePicks.filter((pick) => pick.weather === state.guideWeatherMode),
+    ...state.guidePicks.filter((pick) => pick.weather !== state.guideWeatherMode),
+  ];
+}
+
+function renderGuideAnswer() {
+  const query = state.guideQuery.toLowerCase();
+  if (query.includes("rain") || state.guideWeatherMode === "rain") {
+    return "If rain starts after lunch, protect Cafe de Flore as your reset block, move Musee d'Orsay to 15:00, and keep Sainte-Chapelle in the morning while the light is better.";
+  }
+  if (query.includes("event") || query.includes("tonight")) {
+    return "Tonight is better for museum hours than outdoor wandering. Orsay has the strongest event/calendar fit, and transit alerts make a compact Left Bank route safer.";
+  }
+  return "The best next move is a compact Left Bank loop: Sainte-Chapelle, Shakespeare and Company, Cafe de Flore, then Musee d'Orsay. It matches your saved cafes, photos, and lower backtracking route.";
+}
+
+function renderGuideSource(source) {
+  return `
+    <article class="source-card">
+      <span>${source.type}</span>
+      <h3>${source.name}</h3>
+      <p>${source.freshness}</p>
+      <strong>${source.status}</strong>
+    </article>
+  `;
+}
+
+function renderGuidePick(pick) {
+  return `
+    <article class="guide-pick">
+      <div>
+        <span>${pick.score}</span>
+        <h3>${pick.title}</h3>
+        <p>${pick.reason}</p>
+      </div>
+      <small>${pick.source}</small>
+    </article>
+  `;
+}
+
+function renderGuideSummary(summary) {
+  return `
+    <article class="summary-card">
+      <h3>${summary.title}</h3>
+      <p>${summary.text}</p>
+      <div class="citation-row">
+        ${summary.citations.map((citation) => `<span>${citation}</span>`).join("")}
+      </div>
+    </article>
+  `;
+}
+
+function renderRouteStop(stop, index) {
+  return `
+    <article class="route-stop">
+      <time>${stop.time}</time>
+      <span>${index + 1}</span>
+      <div>
+        <h3>${stop.stop}</h3>
+        <p>${state.routeOptimized ? stop.note.replace("Short", "Efficient") : stop.note}</p>
+      </div>
+    </article>
+  `;
+}
+
+function renderGuideAlert(alert) {
+  return `
+    <article class="guide-alert">
+      <span>${alert.level}</span>
+      <div>
+        <h3>${alert.title}</h3>
+        <p>${alert.detail}</p>
+      </div>
+      <button class="icon-button" data-ack-alert="${alert.id}" aria-label="Acknowledge ${alert.title}">×</button>
+    </article>
   `;
 }
 
@@ -725,6 +930,59 @@ function bindEvents() {
       if (!state.collaborators.some((person) => person.initials === "JS")) {
         state.collaborators.push({ initials: "JS", name: "Jamie", status: "Invited" });
       }
+      render();
+    });
+  });
+
+  document.querySelectorAll("[data-guide-search]").forEach((form) => {
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const data = new FormData(form);
+      state.guideQuery = data.get("guideQuery") || state.guideQuery;
+      if (state.guideQuery.toLowerCase().includes("rain")) state.guideWeatherMode = "rain";
+      render();
+    });
+  });
+
+  document.querySelectorAll("[data-sync-sources]").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.guideSources = state.guideSources.map((source) => ({ ...source, status: "Synced" }));
+      render();
+    });
+  });
+
+  document.querySelectorAll("[data-weather-mode]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const modes = ["mixed", "rain", "sun"];
+      const nextIndex = (modes.indexOf(state.guideWeatherMode) + 1) % modes.length;
+      state.guideWeatherMode = modes[nextIndex];
+      render();
+    });
+  });
+
+  document.querySelectorAll("[data-optimize-route]").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.routeOptimized = true;
+      state.guideRoute = [
+        { time: "10:00", stop: "Sainte-Chapelle", note: "Best light first, before the chapel queue grows." },
+        { time: "11:10", stop: "Shakespeare and Company", note: "Eight-minute walk with a short browse window." },
+        { time: "12:30", stop: "Cafe de Flore", note: "Reset block before indoor museum time." },
+        { time: "14:30", stop: "Musee d'Orsay", note: "Rain-safe anchor with no route backtracking." },
+      ];
+      render();
+    });
+  });
+
+  document.querySelectorAll("[data-ack-alert]").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.acknowledgedAlerts.add(button.dataset.ackAlert);
+      render();
+    });
+  });
+
+  document.querySelectorAll("[data-reset-alerts]").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.acknowledgedAlerts.clear();
       render();
     });
   });
