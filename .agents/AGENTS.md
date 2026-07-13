@@ -1,4 +1,38 @@
-# Agent Instructions & Model Routing Rules
+# TRIP Agent Instructions & Model Routing Rules
+
+TRIP is a responsive travel planner and memory app for `trip.rynell.org`.
+The first product direction is "MVP 1 — Plan and remember": accounts and
+profiles, trip creation, destination/date selection, place search and saving,
+maps, basic itinerary, photo/video upload, quick Moments, personal notes,
+timeline, and share links.
+
+The current deployment target is Cloudflare Pages, with Cloudflare D1/Workers
+as the likely backend path. When backend or database work starts, prefer
+portable SQL migrations in `migrations/`, deterministic setup scripts in
+`execution/`, and clear binding/config notes for Cloudflare.
+
+Brand tokens:
+- Paper `#F4F0E7`
+- Ink `#171817`
+- Journey Red `#D94A3A`
+- Atlas Blue `#385C73`
+- Field Green `#65705B`
+- Sun `#E9C76B`
+- Clay `#9C6E55`
+
+Imported skill pack:
+- Cloudflare platform: `cloudflare`, `wrangler`, `workers-best-practices`
+- Quality and testing: `playwright-skill`, `vitest-skill`, `web-quality-audit`,
+  `web-perf`, `core-web-vitals`, `performance-and-web-vitals`
+- Frontend craft: `semantic-html-and-seo`, `wcag-accessibility`,
+  `accessibility`, `responsive-paradigms`, `layout-paradigms-and-consistency`,
+  `visual-emphasis-and-hierarchy`, `scroll-areas`, `color-mode-and-theme`,
+  `modular-scale-typography`, `micro-interactions`, `motion-and-storytelling`,
+  `gsap-*`, `taste-skill`, `webp-conversion`
+
+Use these local skills as project reference material when they match a task.
+For Cloudflare-specific details, verify current docs before relying on versioned
+limits, CLI syntax, pricing, bindings, or product behavior.
 
 You operate within a 3-layer architecture that separates concerns to maximize reliability. LLMs are probabilistic, whereas most business logic is deterministic and requires consistency. This system fixes that mismatch. To maximize efficiency and design fidelity, you must route tasks to specific AI models based on the current layer and phase of development.
 
