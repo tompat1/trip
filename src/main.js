@@ -4,8 +4,13 @@ const state = {
   activeView: "home",
   activeDay: 0,
   savedIds: new Set(["eiffel", "louvre", "calabra"]),
+  confirmedIds: new Set(["louvre"]),
   filters: "All",
   shareEnabled: false,
+  tripMode: true,
+  offlineReady: true,
+  mediaOrganized: false,
+  storyDrafted: false,
   trip: {
     destination: "Paris, France",
     dates: "3 - 9 Oct 2026",
@@ -13,6 +18,18 @@ const state = {
     handle: "@thomas",
     link: "trip.rynell.org/s/paris-october",
   },
+  live: {
+    location: "Saint-Germain-des-Pres",
+    lastSync: "2 min ago",
+    nextStop: "Sainte-Chapelle",
+    walkingTime: "13 min",
+    battery: "82%",
+  },
+  collaborators: [
+    { initials: "TR", name: "Thomas", status: "Live" },
+    { initials: "MR", name: "Maya", status: "Editing" },
+    { initials: "AL", name: "Alex", status: "Offline" },
+  ],
   places: [
     {
       id: "eiffel",
@@ -69,6 +86,42 @@ const state = {
       day: 4,
       color: "clay",
     },
+    {
+      id: "orsay",
+      title: "Musee d'Orsay",
+      area: "Left Bank",
+      category: "Museum",
+      rating: "4.8",
+      note: "Close to your current route, strongest if the weather turns.",
+      time: "16:30",
+      day: 4,
+      color: "green",
+      nearby: true,
+      distance: "900 m",
+    },
+    {
+      id: "shakespeare",
+      title: "Shakespeare and Company",
+      area: "Latin Quarter",
+      category: "Hidden gems",
+      rating: "4.6",
+      note: "A compact bookshop stop before crossing back toward the Seine.",
+      time: "15:10",
+      day: 4,
+      color: "sun",
+      nearby: true,
+      distance: "650 m",
+    },
+  ],
+  recommendations: [
+    { title: "Cafe de Flore", reason: "8 min walk, saved cafe energy", tag: "Coffee", distance: "550 m" },
+    { title: "Luxembourg Gardens", reason: "Good light now, quiet route", tag: "Reset", distance: "1.1 km" },
+    { title: "Pont Neuf", reason: "On the way to the next stop", tag: "Photo", distance: "700 m" },
+  ],
+  mediaQueue: [
+    { title: "34 photos", bucket: "Saint-Germain walk", status: "Matched to 14:00 route" },
+    { title: "6 videos", bucket: "Seine crossings", status: "Ready for story draft" },
+    { title: "3 notes", bucket: "Food finds", status: "Pinned to places" },
   ],
   moments: [
     { title: "Montmartre rain walk", type: "Video", date: "4 Oct", length: "0:52", tone: "street" },
@@ -83,16 +136,40 @@ const state = {
 };
 
 const navItems = [
-  ["home", "Home", "⌂"],
-  ["trip", "Trip", "▣"],
-  ["search", "Search", "⌕"],
-  ["map", "Map", "◇"],
-  ["timeline", "Timeline", "◷"],
-  ["moments", "Moments", "◉"],
-  ["profile", "Profile", "☉"],
+  ["home", "Home", "home"],
+  ["live", "Live", "navigation"],
+  ["trip", "Trip", "calendar"],
+  ["search", "Search", "search"],
+  ["map", "Map", "map"],
+  ["timeline", "Timeline", "timeline"],
+  ["moments", "Moments", "camera"],
+  ["profile", "Profile", "user"],
 ];
 
 const dayLabels = ["Sat 3", "Sun 4", "Mon 5", "Tue 6", "Wed 7", "Thu 8", "Fri 9"];
+
+const icons = {
+  home: `<path d="M3.5 11.2 12 4l8.5 7.2"/><path d="M5.8 10.2v8.3h4.1v-5h4.2v5h4.1v-8.3"/>`,
+  navigation: `<path d="M12 3.8 20 20.2l-8-3.6-8 3.6L12 3.8Z"/><path d="M12 3.8v12.8"/>`,
+  calendar: `<path d="M5 6.5h14v13H5z"/><path d="M8 4v5"/><path d="M16 4v5"/><path d="M5 10h14"/><path d="M8.3 14h3.2"/><path d="M8.3 17h5.8"/>`,
+  search: `<circle cx="10.5" cy="10.5" r="5.8"/><path d="m15 15 4.5 4.5"/>`,
+  map: `<path d="m4.5 6.5 5-2 5 2 5-2v13l-5 2-5-2-5 2v-13Z"/><path d="M9.5 4.5v13"/><path d="M14.5 6.5v13"/>`,
+  timeline: `<path d="M5 6h5"/><path d="M14 6h5"/><path d="M5 12h14"/><path d="M5 18h5"/><path d="M14 18h5"/><circle cx="12" cy="6" r="2"/><circle cx="12" cy="18" r="2"/>`,
+  camera: `<path d="M4.5 8.5h4l1.4-2h4.2l1.4 2h4v10h-15z"/><circle cx="12" cy="13.5" r="3.2"/><path d="M17 11h.1"/>`,
+  user: `<circle cx="12" cy="8.2" r="3.5"/><path d="M5.5 20c1.2-3.4 3.4-5.1 6.5-5.1s5.3 1.7 6.5 5.1"/>`,
+  photo: `<path d="M4.5 6.5h15v11h-15z"/><circle cx="9" cy="10" r="1.5"/><path d="m6.8 16 4.1-4 2.6 2.5 1.5-1.5 2.5 3"/>`,
+  video: `<path d="M4.5 7.5h10v9h-10z"/><path d="m14.5 10.5 5-2.8v8.6l-5-2.8z"/>`,
+  note: `<path d="M6.5 4.8h9.2l2.8 2.8v11.6h-12z"/><path d="M15.5 4.8v3h3"/><path d="M9 11.5h6"/><path d="M9 15h4"/>`,
+  moment: `<circle cx="12" cy="12" r="7.5"/><path d="M12 7.5v4.8l3.5 2.1"/><path d="M5.8 5.8 4.2 4.2"/><path d="m19.8 4.2-1.6 1.6"/>`,
+};
+
+function renderIcon(name) {
+  return `
+    <svg class="app-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      ${icons[name] || icons.home}
+    </svg>
+  `;
+}
 
 function render() {
   const app = document.querySelector("#app");
@@ -124,7 +201,7 @@ function renderSidebar() {
           .map(
             ([id, label, icon]) => `
               <button class="nav-item ${state.activeView === id ? "is-active" : ""}" data-view="${id}">
-                <span>${icon}</span><em>${label}</em>
+                <span class="nav-icon">${renderIcon(icon)}</span><em>${label}</em>
               </button>`
           )
           .join("")}
@@ -141,11 +218,12 @@ function renderHeader() {
   return `
     <header class="topbar">
       <div>
-        <p class="eyebrow">MVP 1 · Plan and remember</p>
+        <p class="eyebrow">${state.tripMode ? "MVP 2 · Live journey" : "MVP 1 · Plan and remember"}</p>
         <h1>${state.trip.destination}</h1>
         <span>${state.trip.dates}</span>
       </div>
       <div class="top-actions">
+        <button class="mode-button ${state.tripMode ? "is-active" : ""}" data-toggle-trip-mode>${state.tripMode ? "Trip Mode on" : "Trip Mode off"}</button>
         <button class="ghost-button" data-copy-share>Share link</button>
         <button class="primary-button" data-open-create>+ Create trip</button>
       </div>
@@ -156,6 +234,7 @@ function renderHeader() {
 function renderView() {
   const views = {
     home: renderHome,
+    live: renderLive,
     trip: renderTrip,
     search: renderSearch,
     map: renderMap,
@@ -196,6 +275,15 @@ function renderHome() {
         <span>Partly cloudy</span>
         <div class="weather-row"><span>Mon 21°</span><span>Tue 19°</span><span>Wed 20°</span></div>
       </section>
+      <section class="live-summary-card">
+        <div class="section-head"><h3>Trip Mode</h3><button data-view="live">Open live</button></div>
+        <strong>${state.live.location}</strong>
+        <p>${state.live.nextStop} is ${state.live.walkingTime} away. ${state.offlineReady ? "Itinerary and map are cached." : "Offline pack pending."}</p>
+        <div class="status-row">
+          <span>${state.confirmedIds.size} confirmed</span>
+          <span>${state.collaborators.length} collaborators</span>
+        </div>
+      </section>
       <section class="ideas-card">
         <div class="section-head"><h3>Ideas for your trip</h3><button data-view="search">See all</button></div>
         <div class="place-strip">
@@ -204,10 +292,68 @@ function renderHome() {
       </section>
       <section class="quick-card">
         <h3>Quick capture</h3>
-        <button data-action="photo">▧ Photo</button>
-        <button data-action="video">▻ Video</button>
-        <button data-action="note">✎ Note</button>
-        <button data-action="moment">◉ Moment</button>
+        <button data-action="photo">${renderIcon("photo")} Photo</button>
+        <button data-action="video">${renderIcon("video")} Video</button>
+        <button data-action="note">${renderIcon("note")} Note</button>
+        <button data-action="moment">${renderIcon("moment")} Moment</button>
+      </section>
+    </div>
+  `;
+}
+
+function renderLive() {
+  const nearbySaved = state.places.filter((place) => state.savedIds.has(place.id) || place.nearby).slice(0, 5);
+  return `
+    <div class="live-page">
+      <section class="live-hero">
+        <div>
+          <p class="eyebrow">Trip Mode · ${state.live.lastSync}</p>
+          <h2>${state.live.location}</h2>
+          <p>Live routing, visit confirmations, saved places, media, and collaborators stay together while you move.</p>
+        </div>
+        <div class="live-meter" aria-label="Live trip status">
+          <span>${state.live.battery}</span>
+          <small>offline pack ready</small>
+        </div>
+      </section>
+      <section class="live-map-card">
+        ${renderLiveMap(nearbySaved)}
+      </section>
+      <section class="recommendation-panel">
+        <div class="section-head"><h2>Near you now</h2><button data-refresh-location>Refresh</button></div>
+        <div class="recommendation-list">
+          ${state.recommendations.map(renderRecommendation).join("")}
+        </div>
+      </section>
+      <section class="confirmation-panel">
+        <div class="section-head"><h2>Visit confirmation</h2><button data-confirm-next>Confirm next</button></div>
+        <div class="visit-list">
+          ${state.places.filter((place) => state.savedIds.has(place.id)).map(renderVisitRow).join("")}
+        </div>
+      </section>
+      <section class="nearby-panel">
+        <h2>Nearby saved places</h2>
+        ${nearbySaved.map(renderNearbyPlace).join("")}
+      </section>
+      <section class="media-panel">
+        <div class="section-head"><h2>Media organizer</h2><button data-organize-media>${state.mediaOrganized ? "Organized" : "Organize"}</button></div>
+        <div class="media-stack">
+          ${state.mediaQueue.map((item) => `<article><strong>${item.title}</strong><span>${item.bucket}</span><small>${state.mediaOrganized ? item.status : "Waiting for automatic sorting"}</small></article>`).join("")}
+        </div>
+      </section>
+      <section class="story-panel">
+        <div class="section-head"><h2>Daily story draft</h2><button data-draft-story>${state.storyDrafted ? "Draft ready" : "Draft today"}</button></div>
+        <p>${state.storyDrafted ? "Draft: coffee in Saint-Germain, a quiet museum block, blue-hour Seine clips, and the bookshop stop near the Latin Quarter." : "Pulls confirmed visits, uploaded media, and notes into a private story draft at the end of the day."}</p>
+      </section>
+      <section class="offline-panel">
+        <div class="section-head"><h2>Offline access</h2><button data-toggle-offline>${state.offlineReady ? "Cached" : "Cache now"}</button></div>
+        <p>${state.offlineReady ? "Saved itinerary, map shell, and trip notes are available without a connection." : "Prepare the saved itinerary and map shell for unreliable signal."}</p>
+      </section>
+      <section class="collab-panel">
+        <div class="section-head"><h2>Collaborative trip</h2><button data-invite-collab>Invite</button></div>
+        <div class="collab-list">
+          ${state.collaborators.map((person) => `<article><span class="avatar">${person.initials}</span><div><strong>${person.name}</strong><small>${person.status}</small></div></article>`).join("")}
+        </div>
       </section>
     </div>
   `;
@@ -356,7 +502,7 @@ function renderProfile() {
 function renderMobileNav() {
   return `
     <nav class="mobile-nav" aria-label="Mobile primary">
-      ${navItems.map(([id, label, icon]) => `<button class="${state.activeView === id ? "is-active" : ""}" data-view="${id}"><span>${icon}</span><em>${label}</em></button>`).join("")}
+      ${navItems.map(([id, label, icon]) => `<button class="${state.activeView === id ? "is-active" : ""}" data-view="${id}"><span class="nav-icon">${renderIcon(icon)}</span><em>${label}</em></button>`).join("")}
     </nav>
   `;
 }
@@ -387,12 +533,63 @@ function renderPlaceResult(place) {
   `;
 }
 
+function renderRecommendation(item) {
+  return `
+    <article class="recommendation-card">
+      <span>${item.tag}</span>
+      <div>
+        <h3>${item.title}</h3>
+        <p>${item.reason}</p>
+      </div>
+      <strong>${item.distance}</strong>
+    </article>
+  `;
+}
+
+function renderVisitRow(place) {
+  const confirmed = state.confirmedIds.has(place.id);
+  return `
+    <article class="visit-row">
+      <div>
+        <h3>${place.title}</h3>
+        <p>${place.time} · ${place.area}</p>
+      </div>
+      <button class="save-button ${confirmed ? "is-saved" : ""}" data-confirm-visit="${place.id}">${confirmed ? "Visited" : "Confirm"}</button>
+    </article>
+  `;
+}
+
+function renderNearbyPlace(place) {
+  const distance = place.distance || `${Math.max(4, 14 - place.day * 2)} min`;
+  return `
+    <article class="nearby-place">
+      <span class="nearby-dot ${place.color}"></span>
+      <div>
+        <h3>${place.title}</h3>
+        <p>${place.category} · ${distance}</p>
+      </div>
+      <button class="icon-button" data-place="${place.id}" aria-label="Focus ${place.title}">⌖</button>
+    </article>
+  `;
+}
+
 function renderSavedPlace(place) {
   return `
     <article class="saved-place">
       <div><h3>${place.title}</h3><p>${place.time} · ${place.category}</p></div>
       <button class="icon-button" data-save="${place.id}" aria-label="Remove ${place.title}">×</button>
     </article>
+  `;
+}
+
+function renderLiveMap(places) {
+  return `
+    <div class="live-map" aria-label="Live map with current location and saved places">
+      <span class="route-line"></span>
+      <span class="current-location" aria-label="Current location"></span>
+      <span class="walk-bubble">${state.live.walkingTime}</span>
+      ${places.map((place, index) => `<button class="map-pin pin-${index + 1}" data-place="${place.id}" aria-label="${place.title}">⌖</button>`).join("")}
+    </div>
   `;
 }
 
@@ -439,6 +636,14 @@ function renderMoment(moment) {
 }
 
 function bindEvents() {
+  document.querySelectorAll("[data-toggle-trip-mode]").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.tripMode = !state.tripMode;
+      state.activeView = state.tripMode ? "live" : "home";
+      render();
+    });
+  });
+
   document.querySelectorAll("[data-view]").forEach((button) => {
     button.addEventListener("click", () => {
       state.activeView = button.dataset.view;
@@ -464,6 +669,62 @@ function bindEvents() {
     button.addEventListener("click", () => {
       const id = button.dataset.save;
       state.savedIds.has(id) ? state.savedIds.delete(id) : state.savedIds.add(id);
+      render();
+    });
+  });
+
+  document.querySelectorAll("[data-confirm-visit]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const id = button.dataset.confirmVisit;
+      state.confirmedIds.has(id) ? state.confirmedIds.delete(id) : state.confirmedIds.add(id);
+      render();
+    });
+  });
+
+  document.querySelectorAll("[data-confirm-next]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const nextSaved = state.places.find((place) => state.savedIds.has(place.id) && !state.confirmedIds.has(place.id));
+      if (nextSaved) state.confirmedIds.add(nextSaved.id);
+      render();
+    });
+  });
+
+  document.querySelectorAll("[data-refresh-location]").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.live.location = state.live.location === "Saint-Germain-des-Pres" ? "Latin Quarter" : "Saint-Germain-des-Pres";
+      state.live.lastSync = "just now";
+      state.recommendations = [...state.recommendations].reverse();
+      render();
+    });
+  });
+
+  document.querySelectorAll("[data-organize-media]").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.mediaOrganized = true;
+      state.moments.unshift({ title: "Auto-sorted live journey media", type: "Moment", date: "Today", length: "43 items", tone: "river" });
+      render();
+    });
+  });
+
+  document.querySelectorAll("[data-draft-story]").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.storyDrafted = true;
+      render();
+    });
+  });
+
+  document.querySelectorAll("[data-toggle-offline]").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.offlineReady = true;
+      render();
+    });
+  });
+
+  document.querySelectorAll("[data-invite-collab]").forEach((button) => {
+    button.addEventListener("click", () => {
+      if (!state.collaborators.some((person) => person.initials === "JS")) {
+        state.collaborators.push({ initials: "JS", name: "Jamie", status: "Invited" });
+      }
       render();
     });
   });
@@ -497,6 +758,14 @@ function bindEvents() {
       render();
     });
   }
+}
+
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js").catch(() => {
+      // Local preview can block service workers depending on origin.
+    });
+  });
 }
 
 render();
