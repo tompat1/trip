@@ -1,3 +1,27 @@
+# TRIP
+
+Travel Planner Deluxe for `trip.rynell.org`.
+
+## Cloudflare Deployment
+
+Preferred Cloudflare Pages settings for the current Vite MVP:
+
+- Framework preset: `Vite`
+- Build command: `npm run build`
+- Build output directory: `dist`
+- Root directory: `/`
+
+If deploying through Wrangler/Workers static assets instead, use:
+
+```bash
+npm run deploy
+```
+
+The repository includes `wrangler.jsonc` with `assets.directory` set to
+`./dist` and SPA fallback enabled.
+
+---
+
 # Agentic Workspace Boilerplate
 
 This repository serves as a template for setting up a structured pair-programming workspace optimized for agentic coding models (like Claude, Gemini, etc.) using the **3-Layer Architecture** and a **Multi-Model Routing Strategy**.
