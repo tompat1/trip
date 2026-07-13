@@ -156,11 +156,42 @@ button {
   text-align: left;
 }
 
-.nav-item span,
-.mobile-nav span {
-  width: 20px;
-  text-align: center;
+.nav-icon {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid rgba(56, 92, 115, .18);
+  border-radius: 8px;
   color: var(--blue);
+  background: rgba(255, 253, 248, .64);
+  transition:
+    color .2s var(--ease),
+    border-color .2s var(--ease),
+    background .2s var(--ease),
+    transform .2s var(--ease);
+}
+
+.app-icon {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.mobile-nav .nav-icon {
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+}
+
+.mobile-nav .app-icon {
+  width: 17px;
+  height: 17px;
 }
 
 .nav-item em,
@@ -173,6 +204,15 @@ button {
 .mobile-nav .is-active {
   background: rgba(217, 74, 58, .1);
   color: var(--red);
+}
+
+.nav-item:hover .nav-icon,
+.nav-item.is-active .nav-icon,
+.mobile-nav .is-active .nav-icon {
+  color: var(--white);
+  border-color: var(--red);
+  background: var(--red);
+  transform: translateY(-1px);
 }
 
 .profile-chip {
@@ -621,12 +661,19 @@ h3 {
 .quick-card button {
   display: flex;
   align-items: center;
+  gap: 10px;
   min-height: 44px;
   padding: 0 12px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: var(--white);
   font-weight: 700;
+}
+
+.quick-card .app-icon {
+  width: 19px;
+  height: 19px;
+  color: var(--blue);
 }
 
 .trip-layout,
@@ -1307,6 +1354,7 @@ button:focus-visible {
 
   .nav-item {
     justify-content: center;
+    padding: 0;
   }
 
   .home-grid,
