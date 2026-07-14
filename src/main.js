@@ -1,7 +1,7 @@
 import "./styles.css";
 
 const state = {
-  activeView: "home",
+  activeView: "search",
   activeDay: 0,
   savedIds: new Set(["eiffel", "louvre", "calabra"]),
   confirmedIds: new Set(["louvre"]),
@@ -817,11 +817,15 @@ function renderProfile() {
 }
 
 function renderMobileNav() {
+  const firstItems = navItems.slice(0, 2);
+  const lastItems = navItems.slice(2);
   return `
     <div class="mobile-nav-shell">
       ${renderSearchAction("mobile-search")}
       <nav class="mobile-nav" aria-label="Mobile primary">
-        ${navItems.map(([id, label, icon]) => `<button class="${state.activeView === id ? "is-active" : ""}" data-view="${id}"><span class="nav-icon">${renderIcon(icon)}</span><em>${label}</em></button>`).join("")}
+        ${firstItems.map(([id, label, icon]) => `<button class="${state.activeView === id ? "is-active" : ""}" data-view="${id}"><span class="nav-icon">${renderIcon(icon)}</span><em>${label}</em></button>`).join("")}
+        <span class="mobile-nav-spacer" aria-hidden="true"></span>
+        ${lastItems.map(([id, label, icon]) => `<button class="${state.activeView === id ? "is-active" : ""}" data-view="${id}"><span class="nav-icon">${renderIcon(icon)}</span><em>${label}</em></button>`).join("")}
       </nav>
     </div>
   `;
