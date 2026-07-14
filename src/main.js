@@ -161,6 +161,37 @@ const state = {
     { id: "metro-works", title: "Metro works near Concorde", detail: "Route around Line 1 after 18:00 and favor walking between river stops.", level: "Transit" },
     { id: "rain-window", title: "Rain window: 14:00-16:00", detail: "Move outdoor wandering earlier and keep museum time in the afternoon.", level: "Weather" },
   ],
+  visualGuide: {
+    id: "crete-amoudara-10-days",
+    title: "Crete 10-Day Visual Guide",
+    base: "Ammoudara",
+    purpose: [
+      "What is worth seeing?",
+      "How can I reach it comfortably?",
+      "Does it suit my interests, time, transport options and comfort level?",
+    ],
+    modules: ["Beaches", "Spectacular views", "Hidden gems", "Food", "Transport", "Driving comfort", "Flexible alternatives"],
+    day: {
+      day: 5,
+      title: "Matala and Kommos",
+      summary: "The most spectacular beach and landscape day.",
+      image: "image4.jpg",
+      transport: ["rental car", "organised excursion"],
+      drivingLevel: "easy-moderate",
+      ratings: { beach: 5, views: 5, sunset: 5 },
+      places: ["Matala", "Matala Caves", "Kommos Beach"],
+      safetyNotes: ["Check heat exposure", "Avoid rough sea at Kommos", "Keep flexible return timing"],
+    },
+    endpoints: [
+      "GET /api/guides",
+      "GET /api/guides/crete-amoudara-10-days",
+      "GET /api/guides/crete-amoudara-10-days/days/5",
+      "GET /api/search?beach=5&driving=easy",
+      "POST /api/guides/crete-amoudara-10-days/personalise",
+    ],
+    personalization: ["7 days instead of 10", "public transport only", "beaches and architecture", "no mountain driving", "family-friendly", "accessible walking distances", "Polish, English or Swedish", "rainy-day alternatives", "low-budget or premium", "start from another hotel"],
+    stack: ["Sanity or database", "Image CDN", "Mapbox or Google Maps", "Local transport sources", "Weather provider", "OpenAI API", "Backend API", "React / Next / mobile app"],
+  },
   moments: [
     { title: "Montmartre rain walk", type: "Video", date: "4 Oct", length: "0:52", tone: "street" },
     { title: "Cafe de Flore table", type: "Photo", date: "4 Oct", length: "12 photos", tone: "coffee" },
@@ -299,13 +330,16 @@ function renderGuide() {
     <div class="guide-page">
       <section class="guide-hero">
         <div>
-          <p class="eyebrow">Intelligent guide · Paris context graph</p>
-          <h2>Ask the trip, not the internet.</h2>
-          <p>TRIP combines destination guides, event calendars, live weather, saved places, and your travel style into cited, route-aware answers.</p>
+          <p class="eyebrow">Visual guide · Structured travel research</p>
+          <h2>Calm, practical guides from real destination research.</h2>
+          <p>TRIP turns visual travel guides into modular day-by-day data: inspiring places, comfort-aware transport, ratings, safety notes, flexible alternatives, and personalized versions.</p>
+          <div class="guide-purpose-list">
+            ${state.visualGuide.purpose.map((item) => `<span>${item}</span>`).join("")}
+          </div>
         </div>
         <form class="guide-search" data-guide-search>
           <label>
-            Conversational search
+            Personalize this guide
             <div>
               ${renderIcon("spark")}
               <input name="guideQuery" value="${state.guideQuery}" aria-label="Ask the intelligent guide"/>
@@ -313,6 +347,16 @@ function renderGuide() {
           </label>
           <button class="primary-button">Ask guide</button>
         </form>
+      </section>
+      <section class="visual-guide-panel">
+        <div class="section-head"><h2>${state.visualGuide.title}</h2><button>${state.visualGuide.base}</button></div>
+        <p>Stored as guide, day, place, rating, transport, driving-comfort, image, and safety-note data instead of only as a PDF.</p>
+        <div class="module-chip-row">
+          ${state.visualGuide.modules.map((module) => `<span>${module}</span>`).join("")}
+        </div>
+      </section>
+      <section class="day-module-panel">
+        ${renderVisualGuideDay(state.visualGuide.day)}
       </section>
       <section class="source-panel">
         <div class="section-head"><h2>Sources</h2><button data-sync-sources>Sync</button></div>
@@ -340,6 +384,18 @@ function renderGuide() {
           ${state.guideSummaries.map(renderGuideSummary).join("")}
         </div>
       </section>
+      <section class="api-panel">
+        <h2>Guide API shape</h2>
+        <div class="endpoint-list">
+          ${state.visualGuide.endpoints.map((endpoint) => `<code>${endpoint}</code>`).join("")}
+        </div>
+      </section>
+      <section class="personalise-panel">
+        <h2>AI personalization paths</h2>
+        <div class="personalise-grid">
+          ${state.visualGuide.personalization.map((option) => `<span>${option}</span>`).join("")}
+        </div>
+      </section>
       <section class="route-panel">
         <div class="section-head"><h2>Optimized route</h2><button data-optimize-route>${state.routeOptimized ? "Optimized" : "Optimize"}</button></div>
         <div class="route-metrics">
@@ -358,11 +414,9 @@ function renderGuide() {
         </div>
       </section>
       <section class="weather-aware-panel">
-        <h2>Weather-aware suggestions</h2>
+        <h2>Production guide stack</h2>
         <div class="weather-advice">
-          <article><strong>Rain 14:00</strong><span>Move Orsay to mid-afternoon and keep the cafe block.</span></article>
-          <article><strong>Clear morning</strong><span>Prioritize Sainte-Chapelle before the clouds flatten the light.</span></article>
-          <article><strong>Wind after 18:00</strong><span>Shorten river linger and add an indoor dinner buffer.</span></article>
+          ${state.visualGuide.stack.map((item) => `<article><strong>${item}</strong><span>${renderStackNote(item)}</span></article>`).join("")}
         </div>
       </section>
     </div>
@@ -493,13 +547,57 @@ function getWeatherPicks() {
 
 function renderGuideAnswer() {
   const query = state.guideQuery.toLowerCase();
+  if (query.includes("mountain") || query.includes("driving") || query.includes("comfort")) {
+    return "Use the visual guide as structured data: filter for easy or easy-moderate driving, keep Matala and Kommos as a rental-car or organised-excursion day, and hide alternatives with steep mountain roads.";
+  }
+  if (query.includes("crete") || query.includes("beach") || query.includes("family")) {
+    return "For Crete, the guide should rank beach, views, sunset, driving comfort, transport options, and safety notes together. Day 5 works as a high-impact beach day with Matala, the caves, and Kommos.";
+  }
   if (query.includes("rain") || state.guideWeatherMode === "rain") {
-    return "If rain starts after lunch, protect Cafe de Flore as your reset block, move Musee d'Orsay to 15:00, and keep Sainte-Chapelle in the morning while the light is better.";
+    return "If weather changes, generate a rainy-day guide variant: preserve the traveller's interests, reduce exposed beach or viewpoint time, and suggest nearby indoor food, culture, or transport-safe alternatives.";
   }
   if (query.includes("event") || query.includes("tonight")) {
     return "Tonight is better for museum hours than outdoor wandering. Orsay has the strongest event/calendar fit, and transit alerts make a compact Left Bank route safer.";
   }
   return "The best next move is a compact Left Bank loop: Sainte-Chapelle, Shakespeare and Company, Cafe de Flore, then Musee d'Orsay. It matches your saved cafes, photos, and lower backtracking route.";
+}
+
+function renderVisualGuideDay(day) {
+  return `
+    <article class="visual-day-card">
+      <div class="visual-day-image" aria-label="${day.title} visual guide image preview">
+        <span>Day ${day.day}</span>
+      </div>
+      <div>
+        <p class="eyebrow">Day module · ${day.drivingLevel}</p>
+        <h2>${day.title}</h2>
+        <p>${day.summary}</p>
+        <div class="rating-grid">
+          ${Object.entries(day.ratings).map(([label, value]) => `<span><strong>${value}/5</strong>${label}</span>`).join("")}
+        </div>
+        <div class="module-chip-row">
+          ${day.transport.map((item) => `<span>${item}</span>`).join("")}
+        </div>
+        <ul class="place-list">
+          ${day.places.map((place) => `<li>${place}</li>`).join("")}
+        </ul>
+      </div>
+    </article>
+  `;
+}
+
+function renderStackNote(item) {
+  const notes = {
+    "Sanity or database": "Editorial guide content and structured day data.",
+    "Image CDN": "Licensed destination photography.",
+    "Mapbox or Google Maps": "Coordinates, maps, routing, and driving context.",
+    "Local transport sources": "Current schedules and practical alternatives.",
+    "Weather provider": "Live conditions and rainy-day variants.",
+    "OpenAI API": "Personalization, translation, and structured itinerary variants.",
+    "Backend API": "Security, orchestration, and environment-held API keys.",
+    "React / Next / mobile app": "Traveller-facing guide experience.",
+  };
+  return notes[item] || "Production integration point.";
 }
 
 function renderGuideSource(source) {
