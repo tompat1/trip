@@ -207,14 +207,12 @@ const state = {
 const navItems = [
   ["home", "Home", "home"],
   ["live", "Live", "navigation"],
-  ["guide", "Ask", "spark"],
   ["trip", "Trip", "calendar"],
-  ["search", "Search", "search"],
   ["map", "Map", "map"],
-  ["timeline", "Timeline", "timeline"],
-  ["moments", "Moments", "camera"],
   ["profile", "Profile", "user"],
 ];
+
+const searchNavItem = ["search", "Search", "search"];
 
 const dayLabels = ["Sat 3", "Sun 4", "Mon 5", "Tue 6", "Wed 7", "Thu 8", "Fri 9"];
 
@@ -267,11 +265,12 @@ function renderSidebar() {
           <small>Travel Planner Deluxe</small>
         </span>
       </button>
+      ${renderSearchAction("sidebar-search")}
       <nav class="nav-list">
         ${navItems
           .map(
             ([id, label, icon]) => `
-              <button class="nav-item ${id === "search" ? "nav-search" : ""} ${state.activeView === id ? "is-active" : ""}" data-view="${id}">
+              <button class="nav-item ${state.activeView === id ? "is-active" : ""}" data-view="${id}">
                 <span class="nav-icon">${renderIcon(icon)}</span><em>${label}</em>
               </button>`
           )
@@ -804,9 +803,22 @@ function renderProfile() {
 
 function renderMobileNav() {
   return `
-    <nav class="mobile-nav" aria-label="Mobile primary">
-      ${navItems.map(([id, label, icon]) => `<button class="${id === "search" ? "nav-search" : ""} ${state.activeView === id ? "is-active" : ""}" data-view="${id}"><span class="nav-icon">${renderIcon(icon)}</span><em>${label}</em></button>`).join("")}
-    </nav>
+    <div class="mobile-nav-shell">
+      ${renderSearchAction("mobile-search")}
+      <nav class="mobile-nav" aria-label="Mobile primary">
+        ${navItems.map(([id, label, icon]) => `<button class="${state.activeView === id ? "is-active" : ""}" data-view="${id}"><span class="nav-icon">${renderIcon(icon)}</span><em>${label}</em></button>`).join("")}
+      </nav>
+    </div>
+  `;
+}
+
+function renderSearchAction(extraClass = "") {
+  const [id, label, icon] = searchNavItem;
+  return `
+    <button class="nav-search ${extraClass} ${state.activeView === id ? "is-active" : ""}" data-view="${id}" aria-label="Open trip search">
+      <span class="nav-icon">${renderIcon(icon)}</span>
+      <em>${label}</em>
+    </button>
   `;
 }
 
