@@ -375,7 +375,8 @@ h3 {
 
 .primary-button,
 .ghost-button,
-.mode-button {
+.mode-button,
+.icon-action {
   min-height: 36px;
   padding: 0 13px;
   border-radius: var(--radius);
@@ -383,6 +384,9 @@ h3 {
 }
 
 .primary-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   border: 1px solid var(--red);
   color: var(--white);
   background: var(--red);
@@ -390,9 +394,26 @@ h3 {
 }
 
 .ghost-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   border: 1px solid rgba(23, 24, 23, .18);
   color: var(--ink);
   background: rgba(255, 253, 248, .62);
+}
+
+.icon-action {
+  display: grid;
+  width: 44px;
+  padding: 0;
+  place-items: center;
+  border: 1px solid rgba(23, 24, 23, .16);
+  background: rgba(255, 253, 248, .72);
+}
+
+.top-actions .app-icon {
+  width: 18px;
+  height: 18px;
 }
 
 .mode-button {
@@ -1511,14 +1532,19 @@ button:focus-visible {
   line-height: 1.4;
 }
 
-.search-layout {
-  display: grid;
-  grid-template-columns: minmax(360px, .85fr) minmax(0, 1.15fr);
-  min-height: 610px;
+.search-page {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  background: rgba(255, 253, 248, .78);
+  box-shadow: var(--shadow);
 }
 
 .search-panel {
-  border-radius: var(--radius) 0 0 var(--radius);
+  padding: 22px 24px 18px;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
   box-shadow: none;
 }
 
@@ -1536,32 +1562,71 @@ button:focus-visible {
 .search-box {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 14px;
-  padding: 0 12px;
+  flex: 1;
+  gap: 12px;
+  margin-bottom: 0;
+  min-height: 58px;
+  padding: 0 20px;
   border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: var(--white);
-  color: var(--blue);
+  border-radius: 999px;
+  background: rgba(255, 253, 248, .88);
+  color: var(--ink);
+  box-shadow: inset 0 2px 12px rgba(54, 48, 38, .04);
 }
 
 .search-box input {
   border: 0;
   padding: 0;
+  background: transparent;
+  font-size: 16px;
+}
+
+.search-box .app-icon {
+  width: 22px;
+  height: 22px;
+}
+
+.search-command-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.filter-button {
+  display: grid;
+  width: 58px;
+  height: 58px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  color: var(--white);
+  background: var(--ink);
+  box-shadow: 0 14px 28px rgba(23, 24, 23, .24);
+}
+
+.filter-button .app-icon {
+  width: 20px;
+  height: 20px;
 }
 
 .result-list {
   display: grid;
-  gap: 12px;
-  margin-top: 18px;
+  gap: 0;
+  margin-top: 0;
+}
+
+.search-results-panel {
+  padding: 0;
 }
 
 .place-result {
   display: grid;
-  grid-template-columns: 84px minmax(0, 1fr) auto;
-  gap: 12px;
-  align-items: start;
-  padding-bottom: 12px;
+  grid-template-columns: 120px minmax(0, 1fr) auto;
+  gap: 24px;
+  align-items: center;
+  min-height: 168px;
+  padding: 26px 30px;
   border-bottom: 1px solid var(--line);
 }
 
@@ -1572,9 +1637,9 @@ button:focus-visible {
 
 .place-result span {
   display: block;
-  margin-bottom: 6px;
+  margin: 10px 0 8px;
   color: var(--clay);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 800;
 }
 
@@ -1584,22 +1649,94 @@ button:focus-visible {
 }
 
 .place-photo {
-  min-height: 64px;
+  width: 100%;
+  min-height: 112px;
+  border-radius: 14px;
+  background-size: cover;
+  background-position: center;
 }
 
 .save-button {
   min-width: 68px;
-  min-height: 30px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: var(--white);
+  min-height: 34px;
+  border: 0;
+  border-radius: 999px;
+  color: var(--green);
+  background: rgba(101, 112, 91, .1);
   font-weight: 800;
 }
 
 .save-button.is-saved {
-  border-color: var(--green);
-  color: var(--white);
-  background: var(--green);
+  color: var(--green);
+  background: rgba(101, 112, 91, .12);
+}
+
+.place-actions {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.bookmark-button {
+  display: grid;
+  width: 34px;
+  height: 44px;
+  place-items: center;
+  border: 0;
+  color: var(--ink);
+  background: transparent;
+}
+
+.bookmark-button .app-icon {
+  width: 22px;
+  height: 22px;
+}
+
+.vibe-card {
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr) auto;
+  grid-template-areas:
+    "icon title chevron"
+    "icon text chevron";
+  gap: 2px 16px;
+  align-items: center;
+  width: calc(100% - 48px);
+  min-height: 90px;
+  margin: 22px 24px 24px;
+  padding: 12px 18px 12px 12px;
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  color: var(--ink);
+  background: rgba(255, 253, 248, .86);
+  text-align: left;
+}
+
+.vibe-card > span {
+  grid-area: icon;
+  display: grid;
+  width: 52px;
+  height: 52px;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  color: var(--red);
+  background: var(--white);
+}
+
+.vibe-card strong {
+  grid-area: title;
+  font-size: 16px;
+}
+
+.vibe-card small {
+  grid-area: text;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.vibe-card em {
+  grid-area: chevron;
+  color: var(--ink);
 }
 
 .map-canvas {

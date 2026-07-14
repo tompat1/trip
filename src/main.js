@@ -207,8 +207,7 @@ const state = {
 const navItems = [
   ["home", "Home", "home"],
   ["live", "Live", "navigation"],
-  ["trip", "Trip", "calendar"],
-  ["map", "Map", "map"],
+  ["trip", "Trips", "calendar"],
   ["profile", "Profile", "user"],
 ];
 
@@ -223,6 +222,11 @@ const icons = {
   calendar: `<path d="M5 6.5h14v13H5z"/><path d="M8 4v5"/><path d="M16 4v5"/><path d="M5 10h14"/><path d="M8.3 14h3.2"/><path d="M8.3 17h5.8"/>`,
   search: `<circle cx="10.5" cy="10.5" r="5.8"/><path d="m15 15 4.5 4.5"/>`,
   map: `<path d="m4.5 6.5 5-2 5 2 5-2v13l-5 2-5-2-5 2v-13Z"/><path d="M9.5 4.5v13"/><path d="M14.5 6.5v13"/>`,
+  share: `<path d="M12 4v10"/><path d="m8.5 7.5 3.5-3.5 3.5 3.5"/><path d="M6 12.5v6h12v-6"/>`,
+  plus: `<path d="M12 5v14"/><path d="M5 12h14"/>`,
+  filter: `<path d="M5 6h14l-5.2 6v4.4l-3.6 1.8V12L5 6Z"/>`,
+  bookmark: `<path d="M7 4.8h10v15l-5-3.1-5 3.1v-15Z"/>`,
+  chevron: `<path d="m9 5 7 7-7 7"/>`,
   timeline: `<path d="M5 6h5"/><path d="M14 6h5"/><path d="M5 12h14"/><path d="M5 18h5"/><path d="M14 18h5"/><circle cx="12" cy="6" r="2"/><circle cx="12" cy="18" r="2"/>`,
   camera: `<path d="M4.5 8.5h4l1.4-2h4.2l1.4 2h4v10h-15z"/><circle cx="12" cy="13.5" r="3.2"/><path d="M17 11h.1"/>`,
   user: `<circle cx="12" cy="8.2" r="3.5"/><path d="M5.5 20c1.2-3.4 3.4-5.1 6.5-5.1s5.3 1.7 6.5 5.1"/>`,
@@ -293,9 +297,9 @@ function renderHeader() {
         <span>${state.trip.dates}</span>
       </div>
       <div class="top-actions">
-        <button class="mode-button ${state.tripMode ? "is-active" : ""}" data-toggle-trip-mode>${state.tripMode ? "Trip Mode on" : "Trip Mode off"}</button>
-        <button class="ghost-button" data-copy-share>Share link</button>
-        <button class="primary-button" data-open-create>+ Create trip</button>
+        <button class="icon-action" data-view="map" aria-label="Open map">${renderIcon("map")}</button>
+        <button class="ghost-button" data-copy-share>${renderIcon("share")} Share</button>
+        <button class="primary-button" data-open-create>${renderIcon("plus")} New trip</button>
       </div>
     </header>
   `;
@@ -695,20 +699,31 @@ function renderTrip() {
 
 function renderSearch() {
   const categories = ["All", "Cafe", "Museum", "Landmark", "Hidden gems", "Neighborhood"];
-  const places = state.filters === "All" ? state.places : state.places.filter((place) => place.category === state.filters);
+  const places = state.filters === "All" ? state.places.slice(0, 4) : state.places.filter((place) => place.category === state.filters);
   return `
-    <div class="search-layout">
+    <div class="search-page">
       <section class="search-panel">
-        <label class="search-box">⌕ <input value="Best coffee shops and landmarks" aria-label="Search places"/></label>
+        <div class="search-command-row">
+          <label class="search-box">
+            ${renderIcon("search")}
+            <input placeholder="Search places, cafes, museums, neighborhoods..." aria-label="Search places"/>
+          </label>
+          <button class="filter-button" aria-label="Filter places">${renderIcon("filter")}</button>
+        </div>
         <div class="filter-row">
           ${categories.map((category) => `<button class="${state.filters === category ? "is-active" : ""}" data-filter="${category}">${category}</button>`).join("")}
         </div>
+      </section>
+      <section class="search-results-panel">
         <div class="result-list">
           ${places.map(renderPlaceResult).join("")}
         </div>
-      </section>
-      <section class="map-panel">
-        ${renderMapCanvas()}
+        <button class="vibe-card" data-view="guide">
+          <span>${renderIcon("spark")}</span>
+          <strong>Find places that fit your vibe</strong>
+          <small>Try “quiet coffee shops in Le Marais”</small>
+          <em>${renderIcon("chevron")}</em>
+        </button>
       </section>
     </div>
   `;
@@ -837,13 +852,16 @@ function renderPlaceResult(place) {
   return `
     <article class="place-result">
       <div class="place-photo ${place.color}"></div>
-      <div>
+      <div class="place-copy">
         <h3>${place.title}</h3>
         <p>${place.area}</p>
         <span>★ ${place.rating} · ${place.category}</span>
         <small>${place.note}</small>
       </div>
-      <button class="save-button ${saved ? "is-saved" : ""}" data-save="${place.id}">${saved ? "Saved" : "Save"}</button>
+      <div class="place-actions">
+        <button class="save-button ${saved ? "is-saved" : ""}" data-save="${place.id}">${saved ? "Saved" : "Save"}</button>
+        <button class="bookmark-button ${saved ? "is-saved" : ""}" data-save="${place.id}" aria-label="${saved ? "Remove" : "Save"} ${place.title}">${renderIcon("bookmark")}</button>
+      </div>
     </article>
   `;
 }
