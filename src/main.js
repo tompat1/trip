@@ -1,4 +1,16 @@
+import * as L from "leaflet";
+import "leaflet/dist/leaflet.css";
 import "./styles.css";
+
+const placeColors = {
+  blue: "#385c73",
+  green: "#65705b",
+  sun: "#e9c76b",
+  red: "#d94a3a",
+  clay: "#9c6e55",
+};
+
+let leafletMaps = [];
 
 const state = {
   activeView: "search",
@@ -45,6 +57,7 @@ const state = {
       time: "18:00",
       day: 0,
       color: "blue",
+      coordinates: [48.8584, 2.2945],
     },
     {
       id: "louvre",
@@ -56,6 +69,7 @@ const state = {
       time: "11:30",
       day: 1,
       color: "green",
+      coordinates: [48.8606, 2.3376],
     },
     {
       id: "calabra",
@@ -67,6 +81,7 @@ const state = {
       time: "09:00",
       day: 2,
       color: "sun",
+      coordinates: [55.6994, 12.5442],
     },
     {
       id: "marais",
@@ -78,6 +93,7 @@ const state = {
       time: "14:00",
       day: 3,
       color: "red",
+      coordinates: [48.8589, 2.3629],
     },
     {
       id: "chapelle",
@@ -89,6 +105,7 @@ const state = {
       time: "10:00",
       day: 4,
       color: "clay",
+      coordinates: [48.8554, 2.345],
     },
     {
       id: "orsay",
@@ -102,6 +119,7 @@ const state = {
       color: "green",
       nearby: true,
       distance: "900 m",
+      coordinates: [48.86, 2.3266],
     },
     {
       id: "shakespeare",
@@ -115,6 +133,7 @@ const state = {
       color: "sun",
       nearby: true,
       distance: "650 m",
+      coordinates: [48.8526, 2.3471],
     },
   ],
   recommendations: [
@@ -245,6 +264,7 @@ function renderIcon(name) {
 }
 
 function render() {
+  destroyLeafletMaps();
   const app = document.querySelector("#app");
   app.innerHTML = `
     <div class="app-shell">
@@ -257,6 +277,7 @@ function render() {
     </div>
   `;
   bindEvents();
+  initLeafletMaps();
 }
 
 function renderSidebar() {
@@ -921,12 +942,7 @@ function renderSavedPlace(place) {
 
 function renderLiveMap(places) {
   return `
-    <div class="live-map" aria-label="Live map with current location and saved places">
-      <span class="route-line"></span>
-      <span class="current-location" aria-label="Current location"></span>
-      <span class="walk-bubble">${state.live.walkingTime}</span>
-      ${places.map((place, index) => `<button class="map-pin pin-${index + 1}" data-place="${place.id}" aria-label="${place.title}">⌖</button>`).join("")}
-    </div>
+    <div id="live-map" class="leaflet-map leaflet-live-map" role="img" aria-label="Live OpenStreetMap view with current location and saved places"></div>
   `;
 }
 
@@ -948,15 +964,7 @@ function renderAgendaItems(dayIndex) {
 
 function renderMapCanvas() {
   return `
-    <div class="map-canvas" aria-label="Stylized trip map">
-      <span class="river"></span>
-      <span class="road road-a"></span>
-      <span class="road road-b"></span>
-      <span class="district district-a">Montmartre</span>
-      <span class="district district-b">Le Marais</span>
-      <span class="district district-c">Saint-Germain</span>
-      ${state.places.map((place, index) => `<button class="map-pin pin-${index + 1}" data-place="${place.id}" aria-label="${place.title}">⌖</button>`).join("")}
-    </div>
+    <div id="trip-map" class="leaflet-map leaflet-trip-map" role="img" aria-label="OpenStreetMap view of trip places"></div>
   `;
 }
 
@@ -1148,6 +1156,108 @@ function bindEvents() {
       render();
     });
   }
+}
+
+function initLeafletMaps() {
+  const destinationPlaces = state.places.filter(isInCurrentDestination);
+  const tripMap = document.querySelector("#trip-map");
+  if (tripMap) {
+    createLeafletMap(tripMap, destinationPlaces, {
+      routePlaces: destinationPlaces.filter((place) => state.savedIds.has(place.id)),
+      selectedPlaces: destinationPlaces.filter((place) => state.savedIds.has(place.id)),
+    });
+  }
+
+  const liveMap = document.querySelector("#live-map");
+  if (liveMap) {
+    const nearbyPlaces = destinationPlaces.filter((place) => state.savedIds.has(place.id) || place.nearby).slice(0, 5);
+    createLeafletMap(liveMap, nearbyPlaces, {
+      currentLocation: [48.8539, 2.3332],
+      currentLabel: state.live.location,
+      routePlaces: nearbyPlaces,
+      selectedPlaces: nearbyPlaces,
+      zoom: 14,
+    });
+  }
+}
+
+function isInCurrentDestination(place) {
+  if (!place.coordinates) return false;
+  if (!state.trip.destination.toLowerCase().includes("paris")) return true;
+
+  const [lat, lng] = place.coordinates;
+  return lat > 48 && lat < 49 && lng > 2 && lng < 3;
+}
+
+function createLeafletMap(container, places, options = {}) {
+  const map = L.map(container, {
+    scrollWheelZoom: false,
+    zoomControl: true,
+  });
+
+  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 19,
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+  }).addTo(map);
+
+  const validPlaces = places.filter((place) => place.coordinates);
+  const selectedIds = new Set((options.selectedPlaces || validPlaces).map((place) => place.id));
+  const bounds = [];
+
+  validPlaces.forEach((place) => {
+    const marker = L.circleMarker(place.coordinates, {
+      radius: selectedIds.has(place.id) ? 9 : 7,
+      color: "#fffdf8",
+      weight: 3,
+      fillColor: placeColors[place.color] || placeColors.red,
+      fillOpacity: 0.94,
+    }).addTo(map);
+
+    marker.bindPopup(`
+      <strong>${place.title}</strong><br/>
+      ${place.time} · ${place.category}<br/>
+      ${place.area}
+    `);
+    bounds.push(place.coordinates);
+  });
+
+  const routeCoordinates = (options.routePlaces || []).filter((place) => place.coordinates).map((place) => place.coordinates);
+  if (routeCoordinates.length > 1) {
+    L.polyline(routeCoordinates, {
+      color: "#d94a3a",
+      opacity: 0.74,
+      weight: 4,
+    }).addTo(map);
+  }
+
+  if (options.currentLocation) {
+    L.circleMarker(options.currentLocation, {
+      radius: 11,
+      color: "#171817",
+      weight: 3,
+      fillColor: "#fffdf8",
+      fillOpacity: 1,
+    })
+      .addTo(map)
+      .bindPopup(`<strong>${options.currentLabel || "Current location"}</strong>`);
+    bounds.push(options.currentLocation);
+  }
+
+  if (bounds.length > 1) {
+    map.fitBounds(bounds, { padding: [28, 28], maxZoom: options.zoom || 13 });
+  } else if (bounds.length === 1) {
+    map.setView(bounds[0], options.zoom || 13);
+  } else {
+    map.setView([48.8566, 2.3522], options.zoom || 12);
+  }
+
+  leafletMaps.push(map);
+  requestAnimationFrame(() => map.invalidateSize());
+}
+
+function destroyLeafletMaps() {
+  leafletMaps.forEach((map) => map.remove());
+  leafletMaps = [];
 }
 
 if ("serviceWorker" in navigator && import.meta.env.PROD) {

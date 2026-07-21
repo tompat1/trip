@@ -1791,6 +1791,46 @@ button:focus-visible {
   min-height: 540px;
 }
 
+.leaflet-map {
+  position: relative;
+  z-index: 0;
+  min-height: 420px;
+  width: 100%;
+  overflow: hidden;
+  background: #e9e0cf;
+  font: inherit;
+}
+
+.leaflet-trip-map {
+  min-height: 540px;
+}
+
+.leaflet-live-map {
+  min-height: 520px;
+}
+
+.leaflet-container {
+  color: var(--ink);
+  font: inherit;
+}
+
+.leaflet-control-attribution {
+  font-size: 11px;
+}
+
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+  border-radius: var(--radius);
+  background: var(--white);
+  color: var(--ink);
+  box-shadow: 0 14px 34px rgba(23, 24, 23, .2);
+}
+
+.leaflet-popup-content {
+  margin: 10px 12px;
+  line-height: 1.45;
+}
+
 .river,
 .road,
 .district {
@@ -2263,7 +2303,10 @@ button:focus-visible {
   }
 
   .map-canvas,
-  .map-page .map-canvas {
+  .map-page .map-canvas,
+  .leaflet-map,
+  .leaflet-trip-map,
+  .leaflet-live-map {
     min-height: 360px;
   }
 
