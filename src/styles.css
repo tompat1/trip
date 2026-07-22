@@ -504,6 +504,7 @@ h3 {
 .quick-card,
 .live-hero,
 .live-map-card,
+.known-place-panel,
 .guide-hero,
 .visual-guide-panel,
 .day-module-panel,
@@ -824,6 +825,98 @@ h3 {
 
 .home-nearby-panel {
   align-self: start;
+}
+
+.known-place-panel {
+  padding: 18px;
+}
+
+.known-place-form,
+.known-place-edit {
+  display: grid;
+  grid-template-columns: minmax(140px, 1.15fr) minmax(120px, .72fr) minmax(100px, .6fr) minmax(100px, .6fr) auto;
+  gap: 10px;
+  align-items: end;
+}
+
+.known-place-form label,
+.known-place-edit label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.known-place-form input,
+.known-place-form select,
+.known-place-form textarea,
+.known-place-edit input,
+.known-place-edit select,
+.known-place-edit textarea {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 253, 248, .95);
+  color: var(--ink);
+  font: inherit;
+}
+
+.known-place-form input,
+.known-place-form select,
+.known-place-edit input,
+.known-place-edit select {
+  min-height: 42px;
+  padding: 0 10px;
+}
+
+.known-place-form textarea,
+.known-place-edit textarea {
+  min-height: 42px;
+  padding: 10px;
+  resize: vertical;
+}
+
+.wide-field {
+  grid-column: span 2;
+}
+
+.known-place-edit .wide-field {
+  grid-column: auto;
+}
+
+.known-place-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.known-place-edit {
+  grid-template-columns: auto minmax(130px, 1fr) 130px 100px 100px minmax(180px, 1.2fr) auto;
+  align-items: end;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--white);
+}
+
+.known-place-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.known-place-actions .ghost-button,
+.known-place-actions button {
+  min-height: 38px;
+  padding: 0 11px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--ink);
+  background: rgba(255, 253, 248, .86);
+  font-weight: 900;
+  text-decoration: none;
 }
 
 .hero-panel::after {
@@ -1755,17 +1848,33 @@ h3 {
   transform: translateY(-1px);
 }
 
-.recommendation-card span,
+.category-badge,
 .nearby-dot {
   display: grid;
-  min-width: 58px;
-  height: 34px;
+  width: 42px;
+  height: 42px;
   place-items: center;
-  border-radius: 999px;
+  border-radius: 14px;
   color: var(--white);
   background: var(--red);
-  font-size: 12px;
-  font-weight: 900;
+  box-shadow: inset 0 0 0 1px rgba(255, 253, 248, .32);
+}
+
+.category-badge .app-icon {
+  width: 24px;
+  height: 24px;
+}
+
+.category-badge.coffee { background: linear-gradient(145deg, #e9c76b, #9c6e55); }
+.category-badge.restaurant { background: linear-gradient(145deg, #d94a3a, #9c6e55); }
+.category-badge.walk { background: linear-gradient(145deg, #65705b, #385c73); }
+.category-badge.saved { background: linear-gradient(145deg, #d94a3a, #171817); }
+
+.nearby-dot {
+  width: 34px;
+  height: 34px;
+  min-width: 34px;
+  border-radius: 999px;
 }
 
 .recommendation-card h3,
@@ -2779,6 +2888,27 @@ button:focus-visible {
   .guide-alert > span {
     grid-column: 1 / -1;
     width: max-content;
+  }
+
+  .recommendation-card .category-badge {
+    width: 42px;
+    height: 42px;
+  }
+
+  .known-place-form,
+  .known-place-edit {
+    grid-template-columns: 1fr;
+  }
+
+  .known-place-edit .category-badge,
+  .wide-field,
+  .known-place-edit .wide-field {
+    grid-column: auto;
+  }
+
+  .known-place-actions {
+    justify-content: flex-start;
+    flex-wrap: wrap;
   }
 
   .route-stop {

@@ -24,6 +24,8 @@ const NEARBY_DISCOVERY_CACHE_MAX_AGE = 1000 * 60 * 30;
 const OPEN_METEO_API = "https://api.open-meteo.com/v1/forecast";
 const WEATHER_CACHE_KEY = "trip-weather-context-v1";
 const WEATHER_CACHE_MAX_AGE = 1000 * 60 * 20;
+const USER_PLACES_STORAGE_KEY = "trip-user-nearby-places-v1";
+const HERAKLION_CENTER = [35.3391, 25.132];
 
 let leafletMaps = new Map();
 let leafletInitFrame = null;
@@ -82,6 +84,7 @@ const state = {
     error: "",
     current: null,
   },
+  userPlaces: readStoredUserPlaces(),
   trip: {
     destination: "Heraklion, Crete",
     dates: "17 - 24 Jul 2026",
@@ -309,6 +312,10 @@ const icons = {
   plus: `<path d="M12 5v14"/><path d="M5 12h14"/>`,
   filter: `<path d="M5 6h14l-5.2 6v4.4l-3.6 1.8V12L5 6Z"/>`,
   bookmark: `<path d="M7 4.8h10v15l-5-3.1-5 3.1v-15Z"/>`,
+  coffee: `<path d="M6 8h9.5v5.2a4.2 4.2 0 0 1-4.2 4.2H9.2A4.2 4.2 0 0 1 5 13.2V8Z"/><path d="M15.5 9.2h1.2a2.1 2.1 0 0 1 0 4.2h-1.2"/><path d="M8 4.8c.8.7.8 1.4 0 2.1"/><path d="M11 4.5c.8.7.8 1.5 0 2.2"/><path d="M5 20h12"/>`,
+  restaurant: `<path d="M7 4.5v6.2"/><path d="M4.8 4.5v6.2"/><path d="M9.2 4.5v6.2"/><path d="M4.8 10.7h4.4"/><path d="M7 10.7v8.8"/><path d="M16.5 4.8c-1.6 1.3-2.3 3-2.2 5.1.1 1.6.8 2.7 2.2 3.2v6.4"/><path d="M18.8 4.8v14.7"/>`,
+  walk: `<circle cx="12" cy="5.4" r="2"/><path d="m10.6 8.8-1.8 4 3.3 2.2 2.2 4.5"/><path d="m12.5 9 2.1 2.6 3 .7"/><path d="m9.4 14.1-2.3 5.1"/><path d="m12.1 15 2.7-2.1"/>`,
+  saved: `<path d="M12 20.2s-7-4.3-7-10.1A4 4 0 0 1 12 7.4a4 4 0 0 1 7 2.7c0 5.8-7 10.1-7 10.1Z"/><path d="m9.7 12.1 1.5 1.5 3.4-3.7"/>`,
   chevron: `<path d="m9 5 7 7-7 7"/>`,
   timeline: `<path d="M5 6h5"/><path d="M14 6h5"/><path d="M5 12h14"/><path d="M5 18h5"/><path d="M14 18h5"/><circle cx="12" cy="6" r="2"/><circle cx="12" cy="18" r="2"/>`,
   camera: `<path d="M4.5 8.5h4l1.4-2h4.2l1.4 2h4v10h-15z"/><circle cx="12" cy="13.5" r="3.2"/><path d="M17 11h.1"/>`,
@@ -710,6 +717,9 @@ function renderLive() {
       <section class="live-map-card">
         ${renderLiveMap(nearbySaved)}
       </section>
+      <section class="known-place-panel">
+        ${renderKnownPlaceManager()}
+      </section>
       <section class="recommendation-panel">
         <div class="section-head"><h2>Near you now</h2><button data-refresh-nearby>${state.nearbyDiscovery.status === "loading" ? "Scanning" : "Scan"}</button></div>
         <p class="panel-note">${renderNearbyDiscoveryStatus()}</p>
@@ -742,6 +752,59 @@ function renderLive() {
         </div>
       </section>
     </div>
+  `;
+}
+
+function renderKnownPlaceManager() {
+  const [defaultLat, defaultLng] = state.locationContext.coordinates || HERAKLION_CENTER;
+  return `
+    <div class="section-head">
+      <div>
+        <h2>Add cool place</h2>
+        <p class="panel-note">Saved locally as JSON for now. Later this can move to the database without changing the shape.</p>
+      </div>
+    </div>
+    <form class="known-place-form" data-known-place-form>
+      <label>Name<input name="title" required placeholder="Great coffee, view, restaurant..." /></label>
+      <label>Type
+        <select name="category">
+          <option>Coffee</option>
+          <option>Restaurant</option>
+          <option>Walk</option>
+          <option>Saved</option>
+        </select>
+      </label>
+      <label>Latitude<input name="lat" type="number" step="any" required value="${escapeHtml(defaultLat)}" /></label>
+      <label>Longitude<input name="lng" type="number" step="any" required value="${escapeHtml(defaultLng)}" /></label>
+      <label class="wide-field">Short description<textarea name="description" rows="2" placeholder="Why it is worth knowing about"></textarea></label>
+      <button class="primary-button" type="submit">${renderIcon("plus")} Add to Near you now</button>
+    </form>
+    <div class="known-place-list">
+      ${state.userPlaces.length ? state.userPlaces.map(renderUserPlaceEditor).join("") : `<p class="empty-state">No custom places yet. Add the cafe, restaurant, walk, or saved spot you just found.</p>`}
+    </div>
+  `;
+}
+
+function renderUserPlaceEditor(place) {
+  const [lat, lng] = place.coordinates || HERAKLION_CENTER;
+  return `
+    <form class="known-place-edit" data-user-place-edit="${escapeHtml(place.id)}">
+      <span class="category-badge ${getPlaceIconName(place)}" aria-hidden="true">${renderIcon(getPlaceIconName(place))}</span>
+      <label>Name<input name="title" required value="${escapeHtml(place.title)}" /></label>
+      <label>Type
+        <select name="category">
+          ${["Coffee", "Restaurant", "Walk", "Saved"].map((category) => `<option ${place.category === category ? "selected" : ""}>${category}</option>`).join("")}
+        </select>
+      </label>
+      <label>Lat<input name="lat" type="number" step="any" required value="${escapeHtml(lat)}" /></label>
+      <label>Lng<input name="lng" type="number" step="any" required value="${escapeHtml(lng)}" /></label>
+      <label class="wide-field">Description<textarea name="description" rows="2">${escapeHtml(place.description || place.reason || "")}</textarea></label>
+      <div class="known-place-actions">
+        <a class="ghost-button" href="${escapeHtml(getExternalMapUrl(place))}" target="_blank" rel="noreferrer">Open map</a>
+        <button type="submit">Save</button>
+        <button type="button" data-delete-user-place="${escapeHtml(place.id)}">Delete</button>
+      </div>
+    </form>
   `;
 }
 
@@ -1146,9 +1209,10 @@ function renderRecommendation(item) {
   const translation = item.englishTitle && item.englishTitle !== item.title ? `<small>English: ${escapeHtml(item.englishTitle)}</small>` : "";
   const source = item.source ? `<small>${escapeHtml(item.source)}</small>` : "";
   const href = getExternalMapUrl(item);
+  const iconName = getPlaceIconName(item);
   return `
     <a class="recommendation-card" href="${escapeHtml(href)}" target="_blank" rel="noreferrer" aria-label="Open ${escapeHtml(item.title)} in OpenStreetMap">
-      <span>${item.tag}</span>
+      <span class="category-badge ${iconName}" title="${escapeHtml(item.tag || item.category || "Nearby")}">${renderIcon(iconName)}</span>
       <div>
         <h3>${escapeHtml(item.title)}</h3>
         ${translation}
@@ -1167,6 +1231,15 @@ function getExternalMapUrl(place) {
     return `https://www.openstreetmap.org/?mlat=${encodeURIComponent(lat)}&mlon=${encodeURIComponent(lng)}#map=18/${encodeURIComponent(lat)}/${encodeURIComponent(lng)}`;
   }
   return "https://www.openstreetmap.org/search?query=" + encodeURIComponent(place?.title || "nearby places");
+}
+
+function getPlaceIconName(place = {}) {
+  const key = `${place.tag || place.category || ""}`.toLowerCase();
+  if (key.includes("coffee") || key.includes("cafe")) return "coffee";
+  if (key.includes("restaurant") || key.includes("food") || key.includes("drink")) return "restaurant";
+  if (key.includes("walk") || key.includes("sight") || key.includes("reset") || key.includes("culture")) return "walk";
+  if (key.includes("saved") || place.saved) return "saved";
+  return "walk";
 }
 
 function renderPlaceIntelTabs() {
@@ -1343,6 +1416,34 @@ function bindEvents() {
     });
   });
 
+  document.querySelectorAll("[data-known-place-form]").forEach((form) => {
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const place = buildUserPlaceFromForm(new FormData(form));
+      state.userPlaces = [place, ...state.userPlaces];
+      writeStoredUserPlaces(state.userPlaces);
+      render();
+    });
+  });
+
+  document.querySelectorAll("[data-user-place-edit]").forEach((form) => {
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const id = form.dataset.userPlaceEdit;
+      state.userPlaces = state.userPlaces.map((place) => (place.id === id ? buildUserPlaceFromForm(new FormData(form), place) : place));
+      writeStoredUserPlaces(state.userPlaces);
+      render();
+    });
+  });
+
+  document.querySelectorAll("[data-delete-user-place]").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.userPlaces = state.userPlaces.filter((place) => place.id !== button.dataset.deleteUserPlace);
+      writeStoredUserPlaces(state.userPlaces);
+      render();
+    });
+  });
+
   document.querySelectorAll("[data-confirm-visit]").forEach((button) => {
     button.addEventListener("click", () => {
       const id = button.dataset.confirmVisit;
@@ -1515,12 +1616,14 @@ function bindEvents() {
 }
 
 function getNearYouNowPlaces() {
+  const origin = state.locationContext.coordinates || HERAKLION_CENTER;
+  const hasLivePosition = Boolean(state.locationContext.coordinates);
+  const userNearby = getUserNearbyPlaces(origin, hasLivePosition);
+
   if (state.nearbyDiscovery.places.length) {
-    return state.nearbyDiscovery.places.slice(0, 6);
+    return mergeNearbyPlaces([...userNearby, ...state.nearbyDiscovery.places]).slice(0, 6);
   }
 
-  const origin = state.locationContext.coordinates || [35.3391, 25.132];
-  const hasLivePosition = Boolean(state.locationContext.coordinates);
   const candidates = state.places
     .filter((place) => isInCurrentDestination(place) && place.coordinates)
     .map((place) => {
@@ -1544,7 +1647,72 @@ function getNearYouNowPlaces() {
       };
     });
 
-  return candidates.sort((a, b) => a.score - b.score).slice(0, 4);
+  return mergeNearbyPlaces([...userNearby, ...candidates.sort((a, b) => a.score - b.score)]).slice(0, 6);
+}
+
+function getUserNearbyPlaces(origin, hasLivePosition) {
+  return state.userPlaces
+    .filter((place) => Array.isArray(place.coordinates))
+    .map((place) => {
+      const meters = getDistanceMeters(origin, place.coordinates);
+      return {
+        ...place,
+        tag: place.category,
+        distance: meters < 1000 ? `${Math.round(meters / 10) * 10} m` : `${(meters / 1000).toFixed(1)} km`,
+        reason: place.description || (hasLivePosition ? `${place.category} added by you near your live position.` : `${place.category} added by you near Heraklion.`),
+        source: "Your JSON place",
+        score: Math.max(1, meters * 0.55),
+        saved: place.saved,
+        color: getCategoryColor(place.category),
+      };
+    })
+    .sort((a, b) => a.score - b.score);
+}
+
+function mergeNearbyPlaces(places) {
+  const seen = new Set();
+  return places.filter((place) => {
+    const key = place.id || `${place.title}-${place.coordinates?.join(",")}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function buildUserPlaceFromForm(formData, existing = {}) {
+  const category = normalizeUserCategory(formData.get("category"));
+  const lat = Number(formData.get("lat"));
+  const lng = Number(formData.get("lng"));
+  const coordinates = Number.isFinite(lat) && Number.isFinite(lng) ? [lat, lng] : state.locationContext.coordinates || HERAKLION_CENTER;
+  return {
+    id: existing.id || `user-${Date.now()}`,
+    title: String(formData.get("title") || existing.title || "Untitled place").trim(),
+    category,
+    tag: category,
+    description: String(formData.get("description") || "").trim(),
+    reason: String(formData.get("description") || "").trim(),
+    source: "Your JSON place",
+    coordinates,
+    color: getCategoryColor(category),
+    saved: category === "Saved",
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+function normalizeUserCategory(category) {
+  const value = String(category || "").toLowerCase();
+  if (value.includes("coffee") || value.includes("cafe")) return "Coffee";
+  if (value.includes("restaurant") || value.includes("food")) return "Restaurant";
+  if (value.includes("saved")) return "Saved";
+  return "Walk";
+}
+
+function getCategoryColor(category = "") {
+  const key = category.toLowerCase();
+  if (key.includes("coffee")) return "sun";
+  if (key.includes("restaurant")) return "clay";
+  if (key.includes("saved")) return "red";
+  return "green";
 }
 
 function renderNearbyDiscoveryStatus() {
@@ -2415,6 +2583,52 @@ function writeCachedNearbyDiscoveries(nearby) {
   }
 }
 
+function readStoredUserPlaces() {
+  try {
+    const places = JSON.parse(localStorage.getItem(USER_PLACES_STORAGE_KEY) || "[]");
+    if (!Array.isArray(places)) return [];
+    return places
+      .map((place) => ({
+        ...place,
+        title: String(place.title || "").trim(),
+        category: normalizeUserCategory(place.category),
+        tag: normalizeUserCategory(place.category),
+        description: String(place.description || place.reason || "").trim(),
+        reason: String(place.description || place.reason || "").trim(),
+        source: "Your JSON place",
+        coordinates: Array.isArray(place.coordinates) && place.coordinates.length === 2 ? place.coordinates.map(Number) : null,
+        color: getCategoryColor(place.category),
+        saved: Boolean(place.saved || normalizeUserCategory(place.category) === "Saved"),
+      }))
+      .filter((place) => place.id && place.title && place.coordinates?.every(Number.isFinite));
+  } catch {
+    return [];
+  }
+}
+
+function writeStoredUserPlaces(places) {
+  try {
+    localStorage.setItem(
+      USER_PLACES_STORAGE_KEY,
+      JSON.stringify(
+        places.map((place) => ({
+          id: place.id,
+          title: place.title,
+          category: place.category,
+          description: place.description || place.reason || "",
+          coordinates: place.coordinates,
+          saved: Boolean(place.saved),
+          updatedAt: place.updatedAt,
+        })),
+        null,
+        2
+      )
+    );
+  } catch {
+    // The in-memory list still updates if browser storage is unavailable.
+  }
+}
+
 function readCachedWeatherContext() {
   try {
     const cached = JSON.parse(localStorage.getItem(WEATHER_CACHE_KEY) || "null");
@@ -2493,8 +2707,9 @@ function scheduleLeafletMaps() {
 }
 
 function initLeafletMaps() {
-  const destinationPlaces = state.places.filter(isInCurrentDestination);
-  const currentLocation = state.locationContext.coordinates || [48.8539, 2.3332];
+  const userPlaces = getMapReadyUserPlaces();
+  const destinationPlaces = [...state.places.filter(isInCurrentDestination), ...userPlaces];
+  const currentLocation = state.locationContext.coordinates || HERAKLION_CENTER;
   const currentLabel = state.locationContext.area?.city || state.live.location;
   const tripMap = document.querySelector("#trip-map");
   if (tripMap) {
@@ -2508,9 +2723,7 @@ function initLeafletMaps() {
 
   const homeMap = document.querySelector("#home-map");
   if (homeMap) {
-    const homePlaces = state.nearbyDiscovery.places.length
-      ? state.nearbyDiscovery.places.slice(0, 8)
-      : destinationPlaces.filter((place) => state.savedIds.has(place.id) || place.nearby).slice(0, 5);
+    const homePlaces = getNearYouNowPlaces().slice(0, 8);
     createLeafletMap(homeMap, homePlaces, {
       currentLocation,
       currentLabel,
@@ -2523,8 +2736,7 @@ function initLeafletMaps() {
 
   const liveMap = document.querySelector("#live-map");
   if (liveMap) {
-    const discoveredPlaces = state.nearbyDiscovery.places.length ? state.nearbyDiscovery.places.slice(0, 8) : [];
-    const nearbyPlaces = discoveredPlaces.length ? discoveredPlaces : destinationPlaces.filter((place) => state.savedIds.has(place.id) || place.nearby).slice(0, 5);
+    const nearbyPlaces = getNearYouNowPlaces().slice(0, 8);
     createLeafletMap(liveMap, nearbyPlaces, {
       currentLocation,
       currentLabel,
@@ -2587,7 +2799,7 @@ function createLeafletMap(container, places, options = {}, retry = true) {
     const popupLines = [
       place.englishTitle && place.englishTitle !== place.title ? `English: ${escapeHtml(place.englishTitle)}` : "",
       [place.time, place.category].filter(Boolean).join(" · "),
-      place.area || place.reason || "",
+      place.description || place.area || place.reason || "",
     ].filter(Boolean);
 
     marker.bindPopup(`
@@ -2618,7 +2830,7 @@ function createLeafletMap(container, places, options = {}, retry = true) {
   } else if (bounds.length === 1) {
     map.setView(bounds[0], options.zoom || 13);
   } else {
-    map.setView([48.8566, 2.3522], options.zoom || 12);
+    map.setView(HERAKLION_CENTER, options.zoom || 12);
   }
 
   leafletMaps.set(container.id, map);
@@ -2629,6 +2841,18 @@ function createLeafletMap(container, places, options = {}, retry = true) {
   });
 
   return map;
+}
+
+function getMapReadyUserPlaces() {
+  return state.userPlaces
+    .filter((place) => Array.isArray(place.coordinates))
+    .map((place) => ({
+      ...place,
+      reason: place.description || place.reason || `${place.category} added by you.`,
+      source: "Your JSON place",
+      tag: place.category,
+      color: getCategoryColor(place.category),
+    }));
 }
 
 function destroyLeafletMaps() {
