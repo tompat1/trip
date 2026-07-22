@@ -33,10 +33,10 @@ let isRendering = false;
 let pendingRender = false;
 
 const state = {
-  activeView: "search",
+  activeView: "home",
   activeDay: 0,
-  savedIds: new Set(["eiffel", "louvre", "calabra"]),
-  confirmedIds: new Set(["louvre"]),
+  savedIds: new Set(["koules", "knossos", "museum"]),
+  confirmedIds: new Set(["koules"]),
   filters: "All",
   shareEnabled: false,
   tripMode: true,
@@ -83,16 +83,16 @@ const state = {
     current: null,
   },
   trip: {
-    destination: "Paris, France",
-    dates: "3 - 9 Oct 2026",
+    destination: "Heraklion, Crete",
+    dates: "17 - 24 Jul 2026",
     profile: "Thomas R.",
     handle: "@thomas",
-    link: "trip.rynell.org/s/paris-october",
+    link: "trip.rynell.org/s/heraklion-july",
   },
   live: {
-    location: "Saint-Germain-des-Pres",
+    location: "Heraklion",
     lastSync: "2 min ago",
-    nextStop: "Sainte-Chapelle",
+    nextStop: "Knossos Palace",
     walkingTime: "13 min",
     battery: "82%",
     connection: navigator.onLine ? "Online" : "Offline",
@@ -104,120 +104,128 @@ const state = {
   ],
   places: [
     {
-      id: "eiffel",
-      title: "Eiffel Tower",
-      area: "7th Arrondissement",
-      category: "Landmark",
+      id: "koules",
+      title: "Koules Fortress",
+      area: "Old Harbor",
+      category: "Sight",
       rating: "4.7",
-      note: "Golden hour views and a classic first-night anchor.",
-      time: "18:00",
+      note: "Walk the Venetian sea fort and pair it with the harbor wall at golden hour.",
+      time: "18:30",
       day: 0,
       color: "blue",
-      coordinates: [48.8584, 2.2945],
+      nearby: true,
+      distance: "1.0 km",
+      coordinates: [35.3447, 25.1367],
     },
     {
-      id: "louvre",
-      title: "Louvre Museum",
-      area: "1st Arrondissement",
+      id: "museum",
+      title: "Heraklion Archaeological Museum",
+      area: "City center",
       category: "Museum",
       rating: "4.8",
-      note: "Book the 11:30 timed slot and leave space for the Tuileries.",
-      time: "11:30",
+      note: "The best primer for Minoan Crete before or after Knossos.",
+      time: "10:30",
       day: 1,
       color: "green",
-      coordinates: [48.8606, 2.3376],
+      nearby: true,
+      distance: "700 m",
+      coordinates: [35.3397, 25.1389],
     },
     {
-      id: "calabra",
-      title: "La Calabra",
-      area: "Norrebro, Copenhagen",
-      category: "Cafe",
-      rating: "4.7",
-      note: "Specialty coffee, quiet corners, excellent pastries.",
+      id: "lions-square",
+      title: "Lions Square",
+      area: "Morosini Fountain",
+      category: "Coffee",
+      rating: "4.6",
+      note: "Central meeting point for coffee, bougatsa, shade, and people-watching.",
       time: "09:00",
-      day: 2,
+      day: 0,
       color: "sun",
-      coordinates: [55.6994, 12.5442],
+      nearby: true,
+      distance: "350 m",
+      coordinates: [35.3391, 25.132],
     },
     {
-      id: "marais",
-      title: "Le Marais",
-      area: "3rd Arrondissement",
-      category: "Neighborhood",
-      rating: "4.5",
-      note: "Boutiques, galleries, falafel, and late afternoon wandering.",
-      time: "14:00",
-      day: 3,
-      color: "red",
-      coordinates: [48.8589, 2.3629],
-    },
-    {
-      id: "chapelle",
-      title: "Sainte-Chapelle",
-      area: "Ile de la Cite",
-      category: "Hidden gems",
-      rating: "4.7",
-      note: "Stained glass jewel. Pair with a Seine walk.",
-      time: "10:00",
-      day: 4,
-      color: "clay",
-      coordinates: [48.8554, 2.345],
-    },
-    {
-      id: "orsay",
-      title: "Musee d'Orsay",
-      area: "Left Bank",
-      category: "Museum",
+      id: "knossos",
+      title: "Knossos Palace",
+      area: "Knossos",
+      category: "Archaeology",
       rating: "4.8",
-      note: "Close to your current route, strongest if the weather turns.",
-      time: "16:30",
-      day: 4,
+      note: "Go early for shade and space around the palace complex.",
+      time: "11:00",
+      day: 1,
+      color: "red",
+      coordinates: [35.2986, 25.1631],
+    },
+    {
+      id: "peskesi",
+      title: "Peskesi",
+      area: "Old town",
+      category: "Restaurant",
+      rating: "4.7",
+      note: "Cretan ingredients and a good dinner anchor in the old town.",
+      time: "20:00",
+      day: 2,
+      color: "clay",
+      nearby: true,
+      distance: "450 m",
+      coordinates: [35.3393, 25.1319],
+    },
+    {
+      id: "venetian-walls",
+      title: "Venetian Walls",
+      area: "Old city edge",
+      category: "Walk",
+      rating: "4.5",
+      note: "A breezy walk with city views and context for Heraklion's layered history.",
+      time: "17:00",
+      day: 2,
       color: "green",
       nearby: true,
-      distance: "900 m",
-      coordinates: [48.86, 2.3266],
+      distance: "800 m",
+      coordinates: [35.3375, 25.1262],
     },
     {
-      id: "shakespeare",
-      title: "Shakespeare and Company",
-      area: "Latin Quarter",
-      category: "Hidden gems",
-      rating: "4.6",
-      note: "A compact bookshop stop before crossing back toward the Seine.",
-      time: "15:10",
-      day: 4,
+      id: "ammoudara",
+      title: "Ammoudara Beach",
+      area: "West of Heraklion",
+      category: "Beach",
+      rating: "4.5",
+      note: "Easy sandy beach break when the city gets hot.",
+      time: "15:30",
+      day: 3,
       color: "sun",
       nearby: true,
-      distance: "650 m",
-      coordinates: [48.8526, 2.3471],
+      distance: "6.5 km",
+      coordinates: [35.3354, 25.0746],
     },
   ],
   recommendations: [
-    { title: "Cafe de Flore", reason: "8 min walk, saved cafe energy", tag: "Coffee", distance: "550 m" },
-    { title: "Luxembourg Gardens", reason: "Good light now, quiet route", tag: "Reset", distance: "1.1 km" },
-    { title: "Pont Neuf", reason: "On the way to the next stop", tag: "Photo", distance: "700 m" },
+    { title: "Lions Square", reason: "Coffee, shade, and an easy city-center meeting point", tag: "Coffee", distance: "350 m", coordinates: [35.3391, 25.132] },
+    { title: "Koules Fortress", reason: "Harbor walk and sunset-friendly photos", tag: "Sight", distance: "1.0 km", coordinates: [35.3447, 25.1367] },
+    { title: "Peskesi", reason: "Cretan dinner anchor close to the old town", tag: "Food", distance: "450 m", coordinates: [35.3393, 25.1319] },
   ],
   mediaQueue: [
-    { title: "34 photos", bucket: "Saint-Germain walk", status: "Matched to 14:00 route" },
-    { title: "6 videos", bucket: "Seine crossings", status: "Ready for story draft" },
-    { title: "3 notes", bucket: "Food finds", status: "Pinned to places" },
+    { title: "34 photos", bucket: "Heraklion harbor", status: "Ready to pin to Koules" },
+    { title: "6 videos", bucket: "Old town walk", status: "Ready for story draft" },
+    { title: "3 notes", bucket: "Cretan food finds", status: "Pinned to places" },
   ],
   guideSources: [
-    { name: "Official Paris tourism", type: "Destination", freshness: "Updated weekly", status: "Connected" },
-    { name: "Museum calendars", type: "Events", freshness: "Daily sync", status: "Connected" },
-    { name: "Neighborhood food notes", type: "Personal", freshness: "From your saves", status: "Learning" },
+    { name: "Visit Heraklion", type: "Destination", freshness: "Source hook", status: "Planned" },
+    { name: "Incredible Crete", type: "Region", freshness: "Source hook", status: "Planned" },
+    { name: "OpenStreetMap nearby", type: "Places", freshness: "Live scan", status: "Connected" },
     { name: "Weather and transit", type: "Live context", freshness: "15 min", status: "Connected" },
   ],
   guidePicks: [
-    { title: "Musee d'Orsay", score: "96%", reason: "Strong fit for rain, art preference, and your Left Bank route.", source: "Museum calendars", weather: "rain" },
-    { title: "Sainte-Chapelle", score: "91%", reason: "Best on a bright morning; move it before the cloud cover.", source: "Official Paris tourism", weather: "sun" },
-    { title: "Cafe de Flore", score: "88%", reason: "Matches your coffee saves and sits between two planned stops.", source: "Neighborhood food notes", weather: "mixed" },
+    { title: "Heraklion Archaeological Museum", score: "96%", reason: "Strong indoor anchor and the cleanest context before Knossos.", source: "Museum and destination hooks", weather: "rain" },
+    { title: "Koules Fortress", score: "91%", reason: "Best late afternoon when the harbor light softens.", source: "Visit Heraklion hook", weather: "sun" },
+    { title: "Lions Square", score: "88%", reason: "Matches coffee, old town wandering, and short transition time.", source: "OpenStreetMap nearby", weather: "mixed" },
   ],
   guideSummaries: [
     {
-      title: "Left Bank culture block",
-      text: "Group Sainte-Chapelle, Shakespeare and Company, and Musee d'Orsay into one half-day route. The museum is the best weather fallback; the chapel is the best light-sensitive stop.",
-      citations: ["Official Paris tourism", "Museum calendars"],
+      title: "Heraklion city block",
+      text: "Group Lions Square, the Archaeological Museum, Koules Fortress, and the old harbor into one city day. Keep Knossos as an early-start half day.",
+      citations: ["Visit Heraklion", "OpenStreetMap"],
     },
     {
       title: "Personal fit",
@@ -226,15 +234,15 @@ const state = {
     },
   ],
   guideRoute: [
-    { time: "10:00", stop: "Sainte-Chapelle", note: "Go early for glass and softer crowds." },
-    { time: "11:20", stop: "Shakespeare and Company", note: "Short browse before the lunch window." },
-    { time: "13:00", stop: "Cafe de Flore", note: "Protected reset block." },
-    { time: "15:00", stop: "Musee d'Orsay", note: "Rain-safe afternoon anchor." },
+    { time: "09:30", stop: "Lions Square", note: "Coffee and an easy city-center start." },
+    { time: "10:30", stop: "Heraklion Archaeological Museum", note: "Minoan context before the heat peaks." },
+    { time: "13:00", stop: "Old town lunch", note: "Stay close to shade and short walks." },
+    { time: "18:30", stop: "Koules Fortress", note: "Harbor light and a cooler walk." },
   ],
   guideAlerts: [
-    { id: "orsay-late", title: "Orsay late opening", detail: "Thursday evening hours make it a better backup if rain shifts later.", level: "Event" },
-    { id: "metro-works", title: "Metro works near Concorde", detail: "Route around Line 1 after 18:00 and favor walking between river stops.", level: "Transit" },
-    { id: "rain-window", title: "Rain window: 14:00-16:00", detail: "Move outdoor wandering earlier and keep museum time in the afternoon.", level: "Weather" },
+    { id: "museum-window", title: "Museum first", detail: "Use the Archaeological Museum as a heat or rain-safe morning anchor.", level: "Guide" },
+    { id: "harbor-light", title: "Harbor light", detail: "Favor Koules and the old harbor later in the day when the walk is cooler.", level: "Photo" },
+    { id: "knossos-heat", title: "Knossos heat", detail: "Start early, carry water, and keep the palace visit flexible on hot days.", level: "Weather" },
   ],
   visualGuide: {
     id: "crete-amoudara-10-days",
@@ -265,16 +273,16 @@ const state = {
       "POST /api/guides/crete-amoudara-10-days/personalise",
     ],
     personalization: ["7 days instead of 10", "public transport only", "beaches and architecture", "no mountain driving", "family-friendly", "accessible walking distances", "Polish, English or Swedish", "rainy-day alternatives", "low-budget or premium", "start from another hotel"],
-    stack: ["Sanity or database", "Image CDN", "Mapbox or Google Maps", "Local transport sources", "Weather provider", "OpenAI API", "Backend API", "React / Next / mobile app"],
+    stack: ["Sanity or database", "Image CDN", "Leaflet and OpenStreetMap", "Local transport sources", "Weather provider", "OpenAI API", "Backend API", "React / Next / mobile app"],
   },
   moments: [
-    { title: "Montmartre rain walk", type: "Video", date: "4 Oct", length: "0:52", tone: "street" },
-    { title: "Cafe de Flore table", type: "Photo", date: "4 Oct", length: "12 photos", tone: "coffee" },
-    { title: "Seine at blue hour", type: "Moment", date: "5 Oct", length: "0:39", tone: "river" },
+    { title: "Old town evening walk", type: "Video", date: "18 Jul", length: "0:52", tone: "street" },
+    { title: "Lions Square coffee", type: "Photo", date: "18 Jul", length: "12 photos", tone: "coffee" },
+    { title: "Koules at blue hour", type: "Moment", date: "19 Jul", length: "0:39", tone: "river" },
   ],
   notes: [
-    "Pack the small umbrella and the 35mm lens.",
-    "Try to keep one unscheduled block every day.",
+    "Carry water and keep Knossos early if the day is hot.",
+    "Try to keep one unscheduled beach or coffee block every day.",
     "Share link should hide private notes before sending.",
   ],
 };
@@ -473,7 +481,7 @@ function renderGuide() {
         <div class="section-head"><h2>Guide answer</h2><button data-view="search">Open search</button></div>
         <p>${renderGuideAnswer()}</p>
         <div class="citation-row">
-          ${["Official Paris tourism", "Museum calendars", "Weather and transit"].map((source) => `<span>${source}</span>`).join("")}
+          ${["Visit Heraklion", "OpenStreetMap", "Weather and transit"].map((source) => `<span>${source}</span>`).join("")}
         </div>
       </section>
       <section class="personalized-panel">
@@ -542,6 +550,7 @@ function renderHome() {
           <p class="eyebrow">Live journey</p>
           <h2>${escapeHtml(weatherPlace)}</h2>
           <span>${escapeHtml(localTime)}</span>
+          <small class="currency-chip">EUR (€)</small>
         </div>
         <div class="top-actions">
           <button class="icon-action" data-view="map" aria-label="Open map">${renderIcon("map")}</button>
@@ -550,6 +559,8 @@ function renderHome() {
           <button class="mode-button is-active">Trip Mode</button>
         </div>
       </section>
+
+      ${renderDestinationStoryPanel()}
 
       <section class="home-greeting-panel">
         <p class="eyebrow">Good ${getDayPeriod()}</p>
@@ -581,15 +592,7 @@ function renderHome() {
       </section>
 
       <section class="weather-card">
-        <h3>${escapeHtml(weatherPlace)} weather</h3>
-        <strong>${weather ? `${Math.round(weather.temperature)}°C` : "—"}</strong>
-        <span>${weather ? escapeHtml(weather.label) : "Open Live to check"}</span>
-        <div class="weather-row"><span>Open-Meteo</span><span>${weather ? `${Math.round(weather.windSpeed)} km/h wind` : "Location needed"}</span></div>
-      </section>
-
-      <section class="local-facts-panel">
-        <article><span>Local time</span><strong>${new Intl.DateTimeFormat([], { hour: "2-digit", minute: "2-digit" }).format(new Date())}</strong><small>Europe/Athens when destination timezone is resolved</small></article>
-        <article><span>Currency</span><strong>EUR (€)</strong><small>Browser currency formatter</small></article>
+        ${renderCompactWeatherCard(weather, weatherPlace)}
       </section>
 
       <section class="home-ideas-panel">
@@ -625,6 +628,66 @@ function renderHome() {
       </section>
     </div>
   `;
+}
+
+function renderDestinationStoryPanel() {
+  const title = state.locationContext.area?.city || "Heraklion";
+  const region = state.locationContext.area?.region || "Crete";
+  return `
+    <section class="destination-story-panel" aria-labelledby="destination-story-title">
+      <div class="story-copy">
+        <p class="eyebrow">First read</p>
+        <h2 id="destination-story-title">${escapeHtml(title)}, ${escapeHtml(region)}</h2>
+        <p>Heraklion is Crete's busy capital and old harbor city, a practical base for Knossos, the Archaeological Museum, Venetian walls, Koules Fortress, market streets, coffee stops, and beach breaks west of town.</p>
+        <div class="story-facts">
+          <span>Capital of Crete</span>
+          <span>Knossos gateway</span>
+          <span>Old harbor walks</span>
+          <span>EUR (€)</span>
+        </div>
+      </div>
+      <div class="story-image-grid" aria-label="Heraklion and Crete visual highlights">
+        ${renderStoryImage("Koules Fortress", "https://commons.wikimedia.org/wiki/Special:FilePath/Heraklion%20Koules%20fortress.jpg")}
+        ${renderStoryImage("Knossos Palace", "https://commons.wikimedia.org/wiki/Special:FilePath/Knossos%20Palace%20North%20Entrance.jpg")}
+        ${renderStoryImage("Heraklion Museum", "https://commons.wikimedia.org/wiki/Special:FilePath/Heraklion%20Archaeological%20Museum.jpg")}
+      </div>
+    </section>
+  `;
+}
+
+function renderStoryImage(label, imageUrl) {
+  return `
+    <figure class="story-image" style="background-image: linear-gradient(180deg, transparent 38%, rgba(23,24,23,.76)), url('${escapeHtml(imageUrl)}');">
+      <figcaption>${escapeHtml(label)}</figcaption>
+    </figure>
+  `;
+}
+
+function renderCompactWeatherCard(weather, weatherPlace) {
+  const forecast = weather?.forecast?.length ? weather.forecast : buildFallbackForecast(weather);
+  return `
+    <div class="weather-card-head">
+      <div>
+        <h3>${escapeHtml(weatherPlace)} weather</h3>
+        <span>${weather ? escapeHtml(weather.label) : "Open-Meteo waiting for location"}</span>
+      </div>
+      <strong>${weather ? `${Math.round(weather.temperature)}°C` : "—"}</strong>
+    </div>
+    <div class="weather-row">
+      ${forecast.map((day) => `<span><em>${escapeHtml(day.day)}</em><strong>${escapeHtml(day.temp)}</strong><small>${escapeHtml(day.label)}</small></span>`).join("")}
+    </div>
+    <small class="weather-source">${weather ? `${Math.round(weather.windSpeed)} km/h wind · Open-Meteo` : "Allow location to load the forecast"}</small>
+  `;
+}
+
+function buildFallbackForecast(weather) {
+  const temp = weather ? Math.round(weather.temperature) : 28;
+  const label = weather?.label || "Sunny";
+  return ["Today", "Thu", "Fri", "Sat"].map((day, index) => ({
+    day,
+    temp: `${temp - Math.min(index, 2)}°`,
+    label,
+  }));
 }
 
 function renderLive() {
@@ -666,7 +729,7 @@ function renderLive() {
       </section>
       <section class="story-panel">
         <div class="section-head"><h2>Daily story draft</h2><button data-draft-story>${state.storyDrafted ? "Draft ready" : "Draft today"}</button></div>
-        <p>${state.storyDrafted ? "Draft: coffee in Saint-Germain, a quiet museum block, blue-hour Seine clips, and the bookshop stop near the Latin Quarter." : "Pulls confirmed visits, uploaded media, and notes into a private story draft at the end of the day."}</p>
+        <p>${state.storyDrafted ? "Draft: coffee near Lions Square, a Minoan museum block, blue-hour harbor clips, and Koules Fortress at sunset." : "Pulls confirmed visits, uploaded media, and notes into a private story draft at the end of the day."}</p>
       </section>
       <section class="offline-panel">
         <div class="section-head"><h2>Offline access</h2><button data-toggle-offline>${state.offlineReady ? "Cached" : "Cache now"}</button></div>
@@ -702,9 +765,9 @@ function renderGuideAnswer() {
     return "If weather changes, generate a rainy-day guide variant: preserve the traveller's interests, reduce exposed beach or viewpoint time, and suggest nearby indoor food, culture, or transport-safe alternatives.";
   }
   if (query.includes("event") || query.includes("tonight")) {
-    return "Tonight is better for museum hours than outdoor wandering. Orsay has the strongest event/calendar fit, and transit alerts make a compact Left Bank route safer.";
+    return "Tonight is better for the old harbor, Koules Fortress, or a short old-town food walk. Use official event hooks before showing a dated event.";
   }
-  return "The best next move is a compact Left Bank loop: Sainte-Chapelle, Shakespeare and Company, Cafe de Flore, then Musee d'Orsay. It matches your saved cafes, photos, and lower backtracking route.";
+  return "The best next move is a compact Heraklion loop: Lions Square, the Archaeological Museum, old-town lunch, then Koules Fortress and the harbor. It matches coffee, culture, photos, and lower backtracking.";
 }
 
 function renderVisualGuideDay(day) {
@@ -735,7 +798,7 @@ function renderStackNote(item) {
   const notes = {
     "Sanity or database": "Editorial guide content and structured day data.",
     "Image CDN": "Licensed destination photography.",
-    "Mapbox or Google Maps": "Coordinates, maps, routing, and driving context.",
+    "Leaflet and OpenStreetMap": "Coordinates, maps, nearby discovery, and routing context.",
     "Local transport sources": "Current schedules and practical alternatives.",
     "Weather provider": "Live conditions and rainy-day variants.",
     "OpenAI API": "Personalization, translation, and structured itinerary variants.",
@@ -813,10 +876,10 @@ function renderTrip() {
       <section class="form-panel">
         <h2>Create a trip</h2>
         <div class="field-grid">
-          <label>Trip name<input value="Autumn in Paris" aria-label="Trip name"/></label>
+          <label>Trip name<input value="Heraklion summer base" aria-label="Trip name"/></label>
           <label>Destination<input value="${state.trip.destination}" aria-label="Destination"/></label>
-          <label>Start date<input type="date" value="2026-10-03" aria-label="Start date"/></label>
-          <label>End date<input type="date" value="2026-10-09" aria-label="End date"/></label>
+          <label>Start date<input type="date" value="2026-07-17" aria-label="Start date"/></label>
+          <label>End date<input type="date" value="2026-07-24" aria-label="End date"/></label>
         </div>
         <div class="companion-row">
           <span class="avatar">TR</span><span class="avatar">MR</span><button class="icon-button" aria-label="Invite companion">+</button>
@@ -904,10 +967,10 @@ function getTravelerCityName(area) {
 
 function renderTimeline() {
   const items = [
-    ["3 Oct", "Trip created", "Autumn in Paris became your planning home."],
-    ["4 Oct", "3 places saved", "La Calabra, Louvre Museum, and Eiffel Tower added."],
-    ["5 Oct", "First moment", "Seine at blue hour assembled from 9 clips."],
-    ["6 Oct", "Share link prepared", "Public view can include itinerary and moments."],
+    ["17 Jul", "Trip created", "Heraklion, Crete became your planning home."],
+    ["18 Jul", "3 places saved", "Koules Fortress, Knossos Palace, and the museum added."],
+    ["19 Jul", "First moment", "Old harbor blue-hour clips assembled from 9 captures."],
+    ["20 Jul", "Share link prepared", "Public view can include itinerary and moments."],
   ];
   return `
     <div class="timeline-page">
@@ -976,15 +1039,11 @@ function renderProfile() {
 }
 
 function renderMobileNav() {
-  const firstItems = navItems.slice(0, 2);
-  const lastItems = navItems.slice(2);
+  const items = [navItems[0], navItems[1], searchNavItem, navItems[2], navItems[3]];
   return `
     <div class="mobile-nav-shell">
-      ${renderSearchAction("mobile-search")}
       <nav class="mobile-nav" aria-label="Mobile primary">
-        ${firstItems.map(([id, label, icon]) => `<button class="${state.activeView === id ? "is-active" : ""}" data-view="${id}"><span class="nav-icon">${renderIcon(icon)}</span><em>${label}</em></button>`).join("")}
-        <span class="mobile-nav-spacer" aria-hidden="true"></span>
-        ${lastItems.map(([id, label, icon]) => `<button class="${state.activeView === id ? "is-active" : ""}" data-view="${id}"><span class="nav-icon">${renderIcon(icon)}</span><em>${label}</em></button>`).join("")}
+        ${items.map(([id, label, icon]) => `<button class="${state.activeView === id ? "is-active" : ""}" data-view="${id}"><span class="nav-icon">${renderIcon(icon)}</span><em>${label}</em></button>`).join("")}
       </nav>
     </div>
   `;
@@ -1028,13 +1087,14 @@ function renderHomeChecklist() {
 }
 
 function renderHomeIdeaCard(place) {
+  const href = getExternalMapUrl(place);
   return `
-    <article class="home-idea-card">
+    <a class="home-idea-card" href="${escapeHtml(href)}" target="_blank" rel="noreferrer" aria-label="Open ${escapeHtml(place.title)} in OpenStreetMap">
       <div class="home-idea-image ${getIdeaTone(place.category)}"></div>
       <h3>${escapeHtml(place.title)}</h3>
       <p>${escapeHtml(place.reason)}</p>
       <small>★ ${escapeHtml(place.tag)} · ${escapeHtml(place.distance)}</small>
-    </article>
+    </a>
   `;
 }
 
@@ -1085,8 +1145,9 @@ function renderPlaceResult(place) {
 function renderRecommendation(item) {
   const translation = item.englishTitle && item.englishTitle !== item.title ? `<small>English: ${escapeHtml(item.englishTitle)}</small>` : "";
   const source = item.source ? `<small>${escapeHtml(item.source)}</small>` : "";
+  const href = getExternalMapUrl(item);
   return `
-    <article class="recommendation-card">
+    <a class="recommendation-card" href="${escapeHtml(href)}" target="_blank" rel="noreferrer" aria-label="Open ${escapeHtml(item.title)} in OpenStreetMap">
       <span>${item.tag}</span>
       <div>
         <h3>${escapeHtml(item.title)}</h3>
@@ -1095,8 +1156,17 @@ function renderRecommendation(item) {
         ${source}
       </div>
       <strong>${item.distance}</strong>
-    </article>
+    </a>
   `;
+}
+
+function getExternalMapUrl(place) {
+  const coordinates = place?.coordinates;
+  if (Array.isArray(coordinates) && coordinates.length === 2) {
+    const [lat, lng] = coordinates;
+    return `https://www.openstreetmap.org/?mlat=${encodeURIComponent(lat)}&mlon=${encodeURIComponent(lng)}#map=18/${encodeURIComponent(lat)}/${encodeURIComponent(lng)}`;
+  }
+  return "https://www.openstreetmap.org/search?query=" + encodeURIComponent(place?.title || "nearby places");
 }
 
 function renderPlaceIntelTabs() {
@@ -1291,7 +1361,7 @@ function bindEvents() {
 
   document.querySelectorAll("[data-refresh-location]").forEach((button) => {
     button.addEventListener("click", () => {
-      state.live.location = state.live.location === "Saint-Germain-des-Pres" ? "Latin Quarter" : "Saint-Germain-des-Pres";
+      state.live.location = state.live.location === "Heraklion" ? "Old Harbor" : "Heraklion";
       state.live.lastSync = "just now";
       state.recommendations = [...state.recommendations].reverse();
       render();
@@ -1390,10 +1460,10 @@ function bindEvents() {
     button.addEventListener("click", () => {
       state.routeOptimized = true;
       state.guideRoute = [
-        { time: "10:00", stop: "Sainte-Chapelle", note: "Best light first, before the chapel queue grows." },
-        { time: "11:10", stop: "Shakespeare and Company", note: "Eight-minute walk with a short browse window." },
-        { time: "12:30", stop: "Cafe de Flore", note: "Reset block before indoor museum time." },
-        { time: "14:30", stop: "Musee d'Orsay", note: "Rain-safe anchor with no route backtracking." },
+        { time: "09:30", stop: "Lions Square", note: "Coffee first, then a short walk to the museum." },
+        { time: "10:30", stop: "Heraklion Archaeological Museum", note: "Indoor culture before peak heat." },
+        { time: "13:00", stop: "Peskesi", note: "Lunch reset close to the old town route." },
+        { time: "18:30", stop: "Koules Fortress", note: "Harbor light with no route backtracking." },
       ];
       render();
     });
@@ -1428,7 +1498,7 @@ function bindEvents() {
     button.addEventListener("click", () => {
       const type = button.dataset.action;
       const label = type.charAt(0).toUpperCase() + type.slice(1);
-      state.moments.unshift({ title: `${label} captured in Paris`, type: label, date: "Today", length: type === "note" ? "note" : "0:15", tone: "street" });
+      state.moments.unshift({ title: `${label} captured in Heraklion`, type: label, date: "Today", length: type === "note" ? "note" : "0:15", tone: "street" });
       state.activeView = type === "note" ? "trip" : "moments";
       render();
     });
@@ -1449,7 +1519,7 @@ function getNearYouNowPlaces() {
     return state.nearbyDiscovery.places.slice(0, 6);
   }
 
-  const origin = state.locationContext.coordinates || [48.8539, 2.3332];
+  const origin = state.locationContext.coordinates || [35.3391, 25.132];
   const hasLivePosition = Boolean(state.locationContext.coordinates);
   const candidates = state.places
     .filter((place) => isInCurrentDestination(place) && place.coordinates)
@@ -1462,7 +1532,7 @@ function getNearYouNowPlaces() {
       const tag = state.savedIds.has(place.id) ? "Saved" : place.category;
       const reason = hasLivePosition
         ? `${place.category} near your live position. ${state.confirmedIds.has(place.id) ? "Already visited; good reference point." : "Possible next stop."}`
-        : `${place.category} using demo Saint-Germain position until GPS is allowed.`;
+        : `${place.category} using central Heraklion until GPS is allowed.`;
 
       return {
         ...place,
@@ -1487,7 +1557,7 @@ function renderNearbyDiscoveryStatus() {
 }
 
 function initWeatherContext() {
-  if (state.activeView !== "live") return;
+  if (!["home", "live"].includes(state.activeView)) return;
   if (!state.locationContext.coordinates) return;
   if (["loading", "ready", "error"].includes(state.weatherContext.status)) return;
 
@@ -1530,7 +1600,8 @@ async function fetchWeatherContext({ force = false } = {}) {
     url.searchParams.set("latitude", lat);
     url.searchParams.set("longitude", lng);
     url.searchParams.set("current", "temperature_2m,precipitation,rain,weather_code,wind_speed_10m,is_day");
-    url.searchParams.set("forecast_days", "1");
+    url.searchParams.set("daily", "weather_code,temperature_2m_max,temperature_2m_min");
+    url.searchParams.set("forecast_days", "4");
 
     const response = await fetch(url, { headers: { Accept: "application/json" } });
     if (!response.ok) throw new Error("Weather unavailable");
@@ -1540,7 +1611,7 @@ async function fetchWeatherContext({ force = false } = {}) {
       status: "ready",
       updatedAt: new Date().toISOString(),
       error: "",
-      current: normalizeWeatherData(data.current || {}),
+      current: normalizeWeatherData(data.current || {}, data.daily || {}),
     };
     state.weatherContext = nextWeather;
     writeCachedWeatherContext(nextWeather);
@@ -1564,7 +1635,7 @@ async function fetchWeatherContext({ force = false } = {}) {
 }
 
 function initNearbyDiscovery() {
-  if (state.activeView !== "live") return;
+  if (!["home", "live"].includes(state.activeView)) return;
   if (!state.locationContext.coordinates) return;
   if (["loading", "ready", "error"].includes(state.nearbyDiscovery.status)) return;
 
@@ -1728,7 +1799,7 @@ function buildNearbySource(tags) {
   return bits.join(" · ");
 }
 
-function normalizeWeatherData(current) {
+function normalizeWeatherData(current, daily = {}) {
   const code = Number(current.weather_code ?? 0);
   return {
     temperature: Number(current.temperature_2m ?? 0),
@@ -1738,7 +1809,19 @@ function normalizeWeatherData(current) {
     weatherCode: code,
     isDay: current.is_day !== 0,
     label: getWeatherLabel(code),
+    forecast: normalizeDailyForecast(daily),
   };
+}
+
+function normalizeDailyForecast(daily) {
+  const times = daily.time || [];
+  const max = daily.temperature_2m_max || [];
+  const codes = daily.weather_code || [];
+  return times.slice(0, 4).map((time, index) => ({
+    day: index === 0 ? "Today" : new Intl.DateTimeFormat([], { weekday: "short" }).format(new Date(`${time}T12:00:00`)),
+    temp: `${Math.round(Number(max[index] ?? 0))}°`,
+    label: getWeatherLabel(Number(codes[index] ?? 0)),
+  }));
 }
 
 function getWeatherLabel(code) {
