@@ -21,6 +21,9 @@ const REST_COUNTRIES_API = "https://restcountries.com/v3.1/name/";
 const OVERPASS_API = "https://overpass-api.de/api/interpreter";
 const NEARBY_DISCOVERY_CACHE_KEY = "trip-nearby-discovery-v1";
 const NEARBY_DISCOVERY_CACHE_MAX_AGE = 1000 * 60 * 30;
+const OPEN_METEO_API = "https://api.open-meteo.com/v1/forecast";
+const WEATHER_CACHE_KEY = "trip-weather-context-v1";
+const WEATHER_CACHE_MAX_AGE = 1000 * 60 * 20;
 
 let leafletMaps = new Map();
 let leafletInitFrame = null;
@@ -72,6 +75,12 @@ const state = {
     updatedAt: null,
     error: "",
     places: [],
+  },
+  weatherContext: {
+    status: "idle",
+    updatedAt: null,
+    error: "",
+    current: null,
   },
   trip: {
     destination: "Paris, France",
@@ -333,6 +342,7 @@ function render() {
     bindEvents();
     scheduleLeafletMaps();
     initAutomaticPositioning();
+    initWeatherContext();
     initPlaceIntelligence();
     initNearbyDiscovery();
     syncLiveClock();
@@ -597,6 +607,9 @@ function renderLive() {
       </section>
       <section class="position-panel">
         ${renderLocationContext()}
+      </section>
+      <section class="weather-live-panel">
+        ${renderWeatherContext()}
       </section>
       <section class="recommendation-panel">
         <div class="section-head"><h2>Near you now</h2><button data-refresh-nearby>${state.nearbyDiscovery.status === "loading" ? "Scanning" : "Scan"}</button></div>
@@ -992,6 +1005,7 @@ function renderPlaceResult(place) {
 
 function renderRecommendation(item) {
   const translation = item.englishTitle && item.englishTitle !== item.title ? `<small>English: ${escapeHtml(item.englishTitle)}</small>` : "";
+  const source = item.source ? `<small>${escapeHtml(item.source)}</small>` : "";
   return `
     <article class="recommendation-card">
       <span>${item.tag}</span>
@@ -999,9 +1013,35 @@ function renderRecommendation(item) {
         <h3>${escapeHtml(item.title)}</h3>
         ${translation}
         <p>${escapeHtml(item.reason)}</p>
+        ${source}
       </div>
       <strong>${item.distance}</strong>
     </article>
+  `;
+}
+
+function renderWeatherContext() {
+  const weather = state.weatherContext.current;
+  const updated = state.weatherContext.updatedAt ? new Date(state.weatherContext.updatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "";
+  const status = {
+    idle: "Waiting for location",
+    loading: "Checking weather...",
+    ready: weather ? `${weather.label} · ${Math.round(weather.temperature)}°C${updated ? ` · ${updated}` : ""}` : "Weather ready",
+    error: state.weatherContext.error || "Weather unavailable",
+  }[state.weatherContext.status] || "Waiting for location";
+
+  return `
+    <div class="location-context" aria-live="polite">
+      <div class="section-head">
+        <h2>Weather fit</h2>
+        <button data-refresh-weather>${state.weatherContext.status === "loading" ? "Checking" : "Refresh"}</button>
+      </div>
+      <p class="location-status">${escapeHtml(status)}</p>
+      <div class="area-detail-list">
+        <span>${escapeHtml(getWeatherRankingHint())}</span>
+        <span>Source: Open-Meteo forecast hook</span>
+      </div>
+    </div>
   `;
 }
 
@@ -1297,6 +1337,12 @@ function bindEvents() {
     });
   });
 
+  document.querySelectorAll("[data-refresh-weather]").forEach((button) => {
+    button.addEventListener("click", () => {
+      fetchWeatherContext({ force: true });
+    });
+  });
+
   document.querySelectorAll("[data-organize-media]").forEach((button) => {
     button.addEventListener("click", () => {
       state.mediaOrganized = true;
@@ -1449,9 +1495,86 @@ function renderNearbyDiscoveryStatus() {
   const updated = state.nearbyDiscovery.updatedAt ? new Date(state.nearbyDiscovery.updatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "";
   if (state.nearbyDiscovery.status === "loading") return "Scanning OpenStreetMap for top traveler places nearby.";
   if (state.nearbyDiscovery.error) return state.nearbyDiscovery.error;
-  if (state.nearbyDiscovery.places.length) return `Showing cafes, restaurants, sights, viewpoints, museums, and notable nearby stops${updated ? ` · ${updated}` : ""}.`;
-  if (state.locationContext.coordinates) return "Ready to scan nearby cafes, restaurants, sights, viewpoints, museums, and notable stops.";
+  if (state.nearbyDiscovery.places.length) return `Showing weather-aware cafes, restaurants, sights, viewpoints, museums, utilities, and notable stops${updated ? ` · ${updated}` : ""}.`;
+  if (state.locationContext.coordinates) return "Ready to scan real nearby cafes, restaurants, sights, viewpoints, toilets, drinking water, museums, and notable stops.";
   return "Allow location access to scan real nearby traveler places.";
+}
+
+function initWeatherContext() {
+  if (state.activeView !== "live") return;
+  if (!state.locationContext.coordinates) return;
+  if (["loading", "ready", "error"].includes(state.weatherContext.status)) return;
+
+  const cached = readCachedWeatherContext();
+  if (cached) {
+    state.weatherContext = { ...state.weatherContext, ...cached, status: "ready", error: "" };
+    render();
+    return;
+  }
+
+  fetchWeatherContext();
+}
+
+async function fetchWeatherContext({ force = false } = {}) {
+  if (!state.locationContext.coordinates) {
+    state.weatherContext = {
+      ...state.weatherContext,
+      status: "idle",
+      error: "Location is needed before checking weather.",
+    };
+    render();
+    return;
+  }
+
+  if (!force) {
+    const cached = readCachedWeatherContext();
+    if (cached) {
+      state.weatherContext = { ...state.weatherContext, ...cached, status: "ready", error: "" };
+      render();
+      return;
+    }
+  }
+
+  state.weatherContext = { ...state.weatherContext, status: "loading", error: "" };
+  render();
+
+  try {
+    const [lat, lng] = state.locationContext.coordinates;
+    const url = new URL(OPEN_METEO_API);
+    url.searchParams.set("latitude", lat);
+    url.searchParams.set("longitude", lng);
+    url.searchParams.set("current", "temperature_2m,precipitation,rain,weather_code,wind_speed_10m,is_day");
+    url.searchParams.set("forecast_days", "1");
+
+    const response = await fetch(url, { headers: { Accept: "application/json" } });
+    if (!response.ok) throw new Error("Weather unavailable");
+
+    const data = await response.json();
+    const nextWeather = {
+      status: "ready",
+      updatedAt: new Date().toISOString(),
+      error: "",
+      current: normalizeWeatherData(data.current || {}),
+    };
+    state.weatherContext = nextWeather;
+    writeCachedWeatherContext(nextWeather);
+    if (state.nearbyDiscovery.status === "ready") {
+      state.nearbyDiscovery = {
+        status: "idle",
+        updatedAt: null,
+        error: "",
+        places: [],
+      };
+    }
+  } catch {
+    state.weatherContext = {
+      ...state.weatherContext,
+      status: "error",
+      error: "Weather hook could not be reached. Nearby places still work.",
+    };
+  } finally {
+    render();
+  }
 }
 
 function initNearbyDiscovery() {
@@ -1532,12 +1655,16 @@ function buildNearbyOverpassQuery(lat, lng) {
       way(around:${radius},${lat},${lng})["tourism"~"attraction|museum|viewpoint|gallery|artwork|zoo|aquarium"];
       node(around:${radius},${lat},${lng})["amenity"~"cafe|restaurant|bar|pub|ice_cream|food_court|marketplace"];
       way(around:${radius},${lat},${lng})["amenity"~"cafe|restaurant|bar|pub|ice_cream|food_court|marketplace"];
+      node(around:${radius},${lat},${lng})["amenity"~"toilets|drinking_water"];
+      way(around:${radius},${lat},${lng})["amenity"~"toilets|drinking_water"];
       node(around:${radius},${lat},${lng})["historic"];
       way(around:${radius},${lat},${lng})["historic"];
       node(around:${radius},${lat},${lng})["leisure"~"park|garden"];
       way(around:${radius},${lat},${lng})["leisure"~"park|garden"];
       node(around:${radius},${lat},${lng})["shop"~"bakery|coffee|chocolate|books|confectionery|deli"];
       way(around:${radius},${lat},${lng})["shop"~"bakery|coffee|chocolate|books|confectionery|deli"];
+      node(around:${radius},${lat},${lng})["wheelchair"];
+      way(around:${radius},${lat},${lng})["wheelchair"];
     );
     out center tags 80;
   `;
@@ -1569,6 +1696,7 @@ function normalizeNearbyElements(elements, origin) {
         category,
         distance: meters < 1000 ? `${Math.round(meters / 10) * 10} m` : `${(meters / 1000).toFixed(1)} km`,
         reason: buildNearbyReason(tags, category),
+        source: buildNearbySource(tags),
         coordinates: [lat, lng],
         score,
       };
@@ -1582,6 +1710,8 @@ function classifyNearbyPlace(tags) {
   if (tags.amenity === "cafe" || tags.shop === "coffee") return "Coffee";
   if (["restaurant", "food_court"].includes(tags.amenity)) return "Food";
   if (["bar", "pub"].includes(tags.amenity)) return "Drink";
+  if (tags.amenity === "toilets") return "Toilets";
+  if (tags.amenity === "drinking_water") return "Water";
   if (["museum", "gallery"].includes(tags.tourism)) return "Culture";
   if (["viewpoint", "attraction"].includes(tags.tourism) || tags.historic) return "Sight";
   if (["park", "garden"].includes(tags.leisure)) return "Reset";
@@ -1592,14 +1722,76 @@ function classifyNearbyPlace(tags) {
 function scoreNearbyPlace(tags, meters) {
   const categoryBoost = tags.tourism || tags.historic ? 0.78 : 1;
   const foodBoost = ["cafe", "restaurant"].includes(tags.amenity) ? 0.86 : 1;
+  const utilityBoost = ["toilets", "drinking_water"].includes(tags.amenity) ? 0.82 : 1;
   const namedBoost = tags.wikidata || tags.website ? 0.9 : 1;
-  return meters * categoryBoost * foodBoost * namedBoost;
+  const weatherBoost = getWeatherPlaceBoost(tags);
+  return meters * categoryBoost * foodBoost * utilityBoost * namedBoost * weatherBoost;
 }
 
 function buildNearbyReason(tags, category) {
-  const details = [tags.cuisine, tags.opening_hours, tags.tourism, tags.historic, tags.shop].filter(Boolean).slice(0, 2);
+  const details = [tags.cuisine, tags.opening_hours, tags.tourism, tags.historic, tags.shop, tags.wheelchair ? `wheelchair ${tags.wheelchair}` : ""].filter(Boolean).slice(0, 2);
   if (details.length) return `${category} nearby · ${details.join(" · ")}`;
   return `${category} nearby, found from OpenStreetMap traveler tags.`;
+}
+
+function buildNearbySource(tags) {
+  const bits = ["OpenStreetMap"];
+  if (tags.wikidata) bits.push(`Wikidata ${tags.wikidata}`);
+  if (tags.website) bits.push("website");
+  if (tags.opening_hours) bits.push("opening hours");
+  return bits.join(" · ");
+}
+
+function normalizeWeatherData(current) {
+  const code = Number(current.weather_code ?? 0);
+  return {
+    temperature: Number(current.temperature_2m ?? 0),
+    precipitation: Number(current.precipitation ?? 0),
+    rain: Number(current.rain ?? 0),
+    windSpeed: Number(current.wind_speed_10m ?? 0),
+    weatherCode: code,
+    isDay: current.is_day !== 0,
+    label: getWeatherLabel(code),
+  };
+}
+
+function getWeatherLabel(code) {
+  if ([0, 1].includes(code)) return "Clear";
+  if ([2, 3].includes(code)) return "Cloudy";
+  if ([45, 48].includes(code)) return "Fog";
+  if ((code >= 51 && code <= 67) || (code >= 80 && code <= 82)) return "Rain";
+  if (code >= 71 && code <= 77) return "Snow";
+  if (code >= 95) return "Storm";
+  return "Mixed";
+}
+
+function getWeatherPlaceBoost(tags) {
+  const weather = state.weatherContext.current;
+  if (!weather) return 1;
+
+  const isRainy = weather.rain > 0 || weather.precipitation > 0 || ["Rain", "Storm", "Snow"].includes(weather.label);
+  const isHot = weather.temperature >= 28;
+  const isOutdoor = tags.tourism === "viewpoint" || ["park", "garden"].includes(tags.leisure) || tags.historic;
+  const isIndoor = ["cafe", "restaurant", "bar", "pub", "food_court"].includes(tags.amenity) || ["museum", "gallery"].includes(tags.tourism) || tags.shop;
+  const isUtility = ["toilets", "drinking_water"].includes(tags.amenity);
+
+  if (isRainy && isIndoor) return 0.72;
+  if (isRainy && isOutdoor) return 1.28;
+  if (isHot && (isIndoor || isUtility)) return 0.76;
+  if (isHot && isOutdoor) return 1.12;
+  return 1;
+}
+
+function getWeatherRankingHint() {
+  const weather = state.weatherContext.current;
+  if (!weather) return "Weather will adjust nearby recommendations once available.";
+  if (weather.rain > 0 || weather.precipitation > 0 || ["Rain", "Storm", "Snow"].includes(weather.label)) {
+    return "Rain-aware ranking favors cafes, museums, shops, and indoor food stops.";
+  }
+  if (weather.temperature >= 28) {
+    return "Heat-aware ranking favors water, shade, cafes, museums, and shorter walks.";
+  }
+  return "Weather looks comfortable, so viewpoints, parks, sights, cafes, and food stops can all rank well.";
 }
 
 function getDistanceMeters(from, to) {
@@ -2035,6 +2227,7 @@ function cleanAreaType(value) {
 
 function applyLocationContext(context, { fromCache = false } = {}) {
   const previousNearbyKey = getNearbyDiscoveryLocationKey();
+  const previousWeatherKey = getWeatherLocationKey();
   state.locationContext = {
     ...state.locationContext,
     coordinates: context.coordinates,
@@ -2055,6 +2248,15 @@ function applyLocationContext(context, { fromCache = false } = {}) {
       updatedAt: null,
       error: "",
       places: [],
+    };
+  }
+
+  if (previousWeatherKey && previousWeatherKey !== getWeatherLocationKey()) {
+    state.weatherContext = {
+      status: "idle",
+      updatedAt: null,
+      error: "",
+      current: null,
     };
   }
 }
@@ -2115,6 +2317,36 @@ function writeCachedNearbyDiscoveries(nearby) {
   } catch {
     // Nearby scan still works for the current session if storage is unavailable.
   }
+}
+
+function readCachedWeatherContext() {
+  try {
+    const cached = JSON.parse(localStorage.getItem(WEATHER_CACHE_KEY) || "null");
+    if (!cached?.updatedAt || !cached?.current) return null;
+    if (Date.now() - Date.parse(cached.updatedAt) > WEATHER_CACHE_MAX_AGE) return null;
+    if (cached.locationKey !== getWeatherLocationKey()) return null;
+    return cached;
+  } catch {
+    return null;
+  }
+}
+
+function writeCachedWeatherContext(weather) {
+  try {
+    localStorage.setItem(
+      WEATHER_CACHE_KEY,
+      JSON.stringify({
+        ...weather,
+        locationKey: getWeatherLocationKey(),
+      })
+    );
+  } catch {
+    // Weather still works for the current session if storage is unavailable.
+  }
+}
+
+function getWeatherLocationKey() {
+  return state.locationContext.coordinates ? getLocationCacheKey(state.locationContext.coordinates) : "";
 }
 
 function getNearbyDiscoveryLocationKey() {

@@ -503,6 +503,7 @@ h3 {
 .weather-aware-panel,
 .recommendation-panel,
 .position-panel,
+.weather-live-panel,
 .nearby-plan-panel,
 .place-intel-panel,
 .confirmation-panel,
@@ -596,6 +597,7 @@ h3 {
 .ideas-card,
 .recommendation-panel,
 .position-panel,
+.weather-live-panel,
 .nearby-plan-panel,
 .place-intel-panel,
 .confirmation-panel,
@@ -1327,7 +1329,8 @@ h3 {
   overflow: hidden;
 }
 
-.position-panel {
+.position-panel,
+.weather-live-panel {
   padding: 18px;
 }
 
