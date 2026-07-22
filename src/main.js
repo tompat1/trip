@@ -1,6 +1,7 @@
 import * as L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { creteSeed } from "./data/creteSeed.js";
+import { enrichPlaceMedia } from "./enrichment/mediaAggregator.js";
 import { normalizeOsmElement, normalizeSeedPlace, normalizeUserPlace } from "./enrichment/normalizers.js";
 import { resolveLocationContext } from "./enrichment/placeResolver.js";
 import "./styles.css";
@@ -1199,6 +1200,16 @@ function renderPlaceImage(place, className) {
 
 function getPlaceImageAttribution(place = {}, imageUrl = "") {
   if (place.image?.url === imageUrl) return place.image;
+  const cached = state.placeImageCache[getPlaceImageKey(place)];
+  const cachedHero = cached?.hero;
+  if (cachedHero && [cachedHero.imageUrl, cachedHero.thumbnailUrl].includes(imageUrl)) {
+    return {
+      provider: cachedHero.provider,
+      sourceUrl: cachedHero.sourcePageUrl,
+      attribution: cachedHero.attributionText || cachedHero.creatorName || cachedHero.provider,
+      visualRole: cachedHero.illustrativeOnly ? "illustrative" : cachedHero.exactLocation ? "exact" : "approximate",
+    };
+  }
   if (!imageUrl) {
     return {
       provider: "fallback",
@@ -1899,7 +1910,8 @@ function getCategoryColor(category = "") {
 }
 
 function getPlaceImageUrl(place = {}) {
-  return place.imageUrl || state.placeImageCache[getPlaceImageKey(place)]?.url || "";
+  const cached = state.placeImageCache[getPlaceImageKey(place)];
+  return place.imageUrl || cached?.hero?.thumbnailUrl || cached?.hero?.imageUrl || cached?.url || "";
 }
 
 function getOsmImageUrl(tags = {}) {
@@ -1938,12 +1950,8 @@ function getPlacesNeedingImages() {
 async function fetchRelevantPlaceImages(places) {
   let changed = false;
   for (const place of places) {
-    const image = await findCommonsImageForPlace(place);
-    state.placeImageCache[getPlaceImageKey(place)] = {
-      url: image?.url || "",
-      source: image?.source || "Wikimedia Commons",
-      updatedAt: new Date().toISOString(),
-    };
+    const media = await enrichPlaceMedia(place);
+    state.placeImageCache[getPlaceImageKey(place)] = media;
     changed = true;
   }
 
@@ -1954,12 +1962,11 @@ async function fetchRelevantPlaceImages(places) {
 }
 
 async function findCommonsImageForPlace(place) {
-  const queries = buildImageQueries(place);
-  for (const query of queries) {
-    const image = await searchCommonsImage(query, place);
-    if (image) return image;
-  }
-  return null;
+  const media = await enrichPlaceMedia(place);
+  return media.hero?.imageUrl ? {
+    url: media.hero.thumbnailUrl || media.hero.imageUrl,
+    source: media.hero.attributionText || media.hero.provider,
+  } : null;
 }
 
 function buildImageQueries(place) {
@@ -3000,7 +3007,7 @@ function readCachedPlaceImages() {
     const cached = JSON.parse(localStorage.getItem(PLACE_IMAGE_CACHE_KEY) || "{}");
     if (!cached || typeof cached !== "object") return {};
     return Object.fromEntries(
-      Object.entries(cached).filter(([, value]) => {
+      Object.entries(cached).map(([key, value]) => [key, normalizeCachedMediaValue(value)]).filter(([, value]) => {
         if (!value?.updatedAt) return false;
         return Date.now() - Date.parse(value.updatedAt) <= PLACE_IMAGE_CACHE_MAX_AGE;
       })
@@ -3008,6 +3015,38 @@ function readCachedPlaceImages() {
   } catch {
     return {};
   }
+}
+
+function normalizeCachedMediaValue(value = {}) {
+  if (value.hero || value.gallery || value.providerStatus) {
+    return {
+      ...value,
+      updatedAt: value.updatedAt || value.generatedAt || new Date().toISOString(),
+    };
+  }
+
+  return {
+    hero: {
+      id: "legacy-image",
+      provider: value.source?.includes("Wikimedia") ? "commons" : "external",
+      imageUrl: value.url || "",
+      thumbnailUrl: value.url || "",
+      sourcePageUrl: value.url || "",
+      attributionText: value.source || "External source",
+      exactLocation: false,
+      approximateLocation: true,
+      illustrativeOnly: false,
+      visualRole: "hero",
+      finalScore: 50,
+    },
+    gallery: [],
+    roles: {},
+    attributions: [],
+    coverage: { images: value.url ? "partial" : "fallback" },
+    providerStatus: [],
+    generatedAt: value.updatedAt || new Date().toISOString(),
+    updatedAt: value.updatedAt || new Date().toISOString(),
+  };
 }
 
 function writeCachedPlaceImages(images) {
