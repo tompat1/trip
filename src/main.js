@@ -1446,7 +1446,6 @@ function formatLiveDateTime() {
     day: "numeric",
     hour: "2-digit",
     minute: "2-digit",
-    second: "2-digit",
   }).format(new Date());
 }
 
@@ -1941,7 +1940,8 @@ function createLeafletMap(container, places, options = {}, retry = true) {
       return createLeafletMap(container, places, options, false);
     }
 
-    throw error;
+    console.warn("Leaflet map could not be initialized", error);
+    return null;
   }
 
   L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
