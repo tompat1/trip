@@ -2,6 +2,7 @@ import * as L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { creteSeed } from "./data/creteSeed.js";
 import { normalizeOsmElement, normalizeSeedPlace, normalizeUserPlace } from "./enrichment/normalizers.js";
+import { resolveLocationContext } from "./enrichment/placeResolver.js";
 import "./styles.css";
 
 const placeColors = {
@@ -66,6 +67,7 @@ const state = {
     accuracy: null,
     updatedAt: null,
     area: null,
+    resolved: null,
     error: "",
   },
   placeIntel: {
@@ -1961,13 +1963,15 @@ async function findCommonsImageForPlace(place) {
 }
 
 function buildImageQueries(place) {
-  const title = String(place.title || "").trim();
+  const title = String(place.canonicalName || place.identity?.canonicalName || place.title || "").trim();
   const area = String(place.area || "").trim();
+  const aliases = Array.isArray(place.aliases) ? place.aliases : place.identity?.aliases || [];
   return [
     [title, "Heraklion", "Crete"].filter(Boolean).join(" "),
     [title, area, "Heraklion"].filter(Boolean).join(" "),
+    ...aliases.slice(0, 3).map((alias) => [alias, area || "Crete"].filter(Boolean).join(" ")),
     title,
-  ].filter(Boolean);
+  ].filter(Boolean).filter((query, index, all) => all.indexOf(query) === index);
 }
 
 async function searchCommonsImage(query, place) {
@@ -2561,8 +2565,8 @@ function getIntelQuery(tab) {
   if (!area) return "";
 
   return {
-    place: getCurrentPlaceName(area),
-    city: area.city,
+    place: area.canonicalName || getCurrentPlaceName(area),
+    city: area.city || area.locality,
     region: area.region,
     island: area.island,
     country: area.country,
@@ -2710,6 +2714,8 @@ async function collectAreaData(coordinates, accuracy) {
   const timeout = window.setTimeout(() => controller.abort(), 9000);
 
   try {
+    url.searchParams.set("namedetails", "1");
+
     const response = await fetch(url, {
       headers: { Accept: "application/json" },
       signal: controller.signal,
@@ -2717,12 +2723,18 @@ async function collectAreaData(coordinates, accuracy) {
     if (!response.ok) throw new Error("Reverse geocoding failed");
 
     const data = await response.json();
+    const resolved = await resolveLocationContext({
+      coordinates,
+      accuracyMeters: accuracy,
+      nominatimData: data,
+    }).catch(() => null);
     const context = {
       cacheKey,
       coordinates,
       accuracy,
       updatedAt: new Date().toISOString(),
-      area: normalizeAreaData(data),
+      area: normalizeAreaData(data, resolved),
+      resolved,
     };
     writeCachedLocation(context);
     applyLocationContext(context);
@@ -2738,7 +2750,7 @@ async function collectAreaData(coordinates, accuracy) {
   }
 }
 
-function normalizeAreaData(data) {
+function normalizeAreaData(data, resolved = null) {
   const address = data.address || {};
   const city = inferCityName(address, data.display_name || "");
   const displayName = cleanDisplayName(data.display_name || "Unknown area");
@@ -2752,12 +2764,22 @@ function normalizeAreaData(data) {
     island: cleanAreaName(address.island || address.archipelago || ""),
     country: cleanAreaName(address.country || ""),
     countryCode: address.country_code || "",
+    locality: cleanAreaName(resolved?.locality || address.city || address.town || address.village || ""),
+    neighbourhood: cleanAreaName(resolved?.neighbourhood || address.neighbourhood || address.suburb || ""),
     postcode: address.postcode || "",
     displayName,
     osmId: data.osm_id || "",
     osmType: cleanAreaType(data.type || data.category || data.osm_type || "OpenStreetMap area"),
     placeType: data.type || "",
     boundingBox: data.boundingbox || [],
+    resolvedPlaceId: resolved?.place?.id || "",
+    canonicalName: resolved?.place?.canonicalName || city,
+    localName: resolved?.place?.localName || data.namedetails?.["name:el"] || "",
+    aliases: resolved?.place?.aliases || [],
+    wikidataId: resolved?.place?.wikidataId || data.extratags?.wikidata || "",
+    wikipediaUrl: resolved?.place?.wikipediaUrl || "",
+    matchLevel: resolved?.matchLevel || "",
+    confidence: resolved?.confidence || 0,
   };
 }
 
@@ -2803,6 +2825,7 @@ function applyLocationContext(context, { fromCache = false } = {}) {
     accuracy: context.accuracy,
     updatedAt: context.updatedAt,
     area: context.area,
+    resolved: context.resolved || state.locationContext.resolved,
     status: "located",
     error: fromCache ? "" : state.locationContext.error,
   };
@@ -2846,15 +2869,16 @@ function sanitizeCachedLocation(cached) {
   if (!cached?.area) return cached;
   return {
     ...cached,
-    area: {
-      ...cached.area,
-      city: inferCityName(cached.area, cached.area.displayName || ""),
+      area: {
+        ...cached.area,
+        city: inferCityName(cached.area, cached.area.displayName || ""),
       region: cleanAreaName(cached.area.region || ""),
       country: cleanAreaName(cached.area.country || ""),
       displayName: cleanDisplayName(cached.area.displayName || ""),
-      osmType: cleanAreaType(cached.area.osmType || ""),
-    },
-  };
+        osmType: cleanAreaType(cached.area.osmType || ""),
+        aliases: Array.isArray(cached.area.aliases) ? cached.area.aliases : [],
+      },
+    };
 }
 
 function writeCachedLocation(context) {

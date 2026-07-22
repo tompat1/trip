@@ -1,4 +1,5 @@
 import { DEFAULT_LANGUAGE, IMAGE_PROVIDERS, ROUTE_ROLES, VISUAL_ROLES } from "./schemas.js";
+import { buildPlaceAliases, createResolvedPlaceIdentity } from "./placeResolver.js";
 
 export function commonsFileUrl(fileName) {
   return `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(fileName)}`;
@@ -62,11 +63,35 @@ export function normalizeSeedPlace(place = {}, defaults = {}) {
     attribution: place.imageAttribution || place.source,
     visualRole: place.visualRole,
   });
+  const identity = createResolvedPlaceIdentity({
+    canonicalName: place.title || defaults.title || "",
+    localName: place.localName || "",
+    aliases: buildPlaceAliases({
+      canonicalName: place.title || defaults.title || "",
+      localName: place.localName || "",
+      namedetails: place.aliases ? Object.fromEntries(place.aliases.map((alias, index) => [`alt_name:${index}`, alias])) : {},
+    }),
+    latitude: place.coordinates?.[0] ?? defaults.coordinates?.[0],
+    longitude: place.coordinates?.[1] ?? defaults.coordinates?.[1],
+    countryCode: place.countryCode || "GR",
+    region: place.region || "Crete",
+    municipality: place.municipality || "",
+    osmType: place.osmType || "",
+    osmId: place.osmId || "",
+    wikidataId: place.wikidataId || "",
+    wikipediaUrl: place.wikipediaUrl || "",
+    officialWebsite: place.website || "",
+    categories: [place.category || place.tag].filter(Boolean),
+  });
 
   return {
     ...place,
     id: place.id || slugify(place.title || defaults.title || "place"),
     coordinates: normalizeCoordinates(place.coordinates, defaults.coordinates),
+    identity,
+    canonicalName: identity.canonicalName,
+    localName: identity.localName,
+    aliases: identity.aliases,
     sourceRole: place.sourceRole || ROUTE_ROLES.seed,
     image,
     imageUrl: image.url,
@@ -102,11 +127,36 @@ export function normalizeOsmElement(element = {}, origin, helpers = {}) {
     attribution: "OpenStreetMap contributors",
     visualRole: VISUAL_ROLES.approximate,
   });
+  const identity = createResolvedPlaceIdentity({
+    canonicalName: title,
+    localName: tags["name:el"] || tags.name || "",
+    aliases: buildPlaceAliases({
+      canonicalName: title,
+      localName: tags["name:el"] || tags.name || "",
+      namedetails: tags,
+    }),
+    latitude: lat,
+    longitude: lng,
+    countryCode: "",
+    osmType: element.type,
+    osmId: element.id,
+    wikidataId: tags.wikidata || "",
+    wikipediaUrl: "",
+    officialWebsite: tags.website || "",
+    categories: [category, tags.amenity, tags.tourism, tags.historic, tags.shop].filter(Boolean),
+  });
 
   return {
     id: `osm-${element.type}-${element.id}`,
     title,
     englishTitle,
+    localName: identity.localName,
+    aliases: identity.aliases,
+    identity,
+    canonicalName: identity.canonicalName,
+    osmType: identity.osmType,
+    osmId: identity.osmId,
+    wikidataId: identity.wikidataId,
     tag: category,
     category,
     coordinates: [lat, lng],
@@ -133,6 +183,15 @@ export function normalizeUserPlace(place = {}) {
   return {
     ...place,
     id: place.id || `user-${Date.now()}`,
+    identity: createResolvedPlaceIdentity({
+      canonicalName: place.title || "Traveler place",
+      localName: place.localName || "",
+      aliases: buildPlaceAliases({ canonicalName: place.title || "Traveler place", localName: place.localName || "" }),
+      latitude: place.coordinates?.[0],
+      longitude: place.coordinates?.[1],
+      countryCode: place.countryCode || "",
+      categories: [place.category || place.tag].filter(Boolean),
+    }),
     sourceRole: ROUTE_ROLES.user,
     source: place.source || "Traveler added",
     image,
@@ -186,4 +245,3 @@ function slugify(value = "") {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/(^-|-$)/g, "");
 }
-
