@@ -343,7 +343,6 @@ function render() {
     scheduleLeafletMaps();
     initAutomaticPositioning();
     initWeatherContext();
-    initPlaceIntelligence();
     initNearbyDiscovery();
     syncLiveClock();
     initLiveDeviceHooks();
@@ -531,6 +530,8 @@ function renderGuide() {
 
 function renderHome() {
   const saved = state.places.filter((place) => state.savedIds.has(place.id));
+  const weather = state.weatherContext.current;
+  const weatherPlace = getLiveHeaderTitle();
   return `
     <div class="home-grid">
       <section class="hero-panel">
@@ -554,10 +555,10 @@ function renderHome() {
         </div>
       </section>
       <section class="weather-card">
-        <h3>Paris weather</h3>
-        <strong>18°C</strong>
-        <span>Partly cloudy</span>
-        <div class="weather-row"><span>Mon 21°</span><span>Tue 19°</span><span>Wed 20°</span></div>
+        <h3>${escapeHtml(weatherPlace)} weather</h3>
+        <strong>${weather ? `${Math.round(weather.temperature)}°C` : "—"}</strong>
+        <span>${weather ? escapeHtml(weather.label) : "Open Live to check"}</span>
+        <div class="weather-row"><span>Open-Meteo</span><span>${weather ? escapeHtml(getWeatherRankingHint()) : "Location needed"}</span></div>
       </section>
       <section class="live-summary-card">
         <div class="section-head"><h3>Trip Mode</h3><button data-view="live">Open live</button></div>
@@ -605,32 +606,11 @@ function renderLive() {
       <section class="live-map-card">
         ${renderLiveMap(nearbySaved)}
       </section>
-      <section class="position-panel">
-        ${renderLocationContext()}
-      </section>
-      <section class="weather-live-panel">
-        ${renderWeatherContext()}
-      </section>
       <section class="recommendation-panel">
         <div class="section-head"><h2>Near you now</h2><button data-refresh-nearby>${state.nearbyDiscovery.status === "loading" ? "Scanning" : "Scan"}</button></div>
         <p class="panel-note">${renderNearbyDiscoveryStatus()}</p>
         <div class="recommendation-list">
           ${nearYouNow.map(renderRecommendation).join("")}
-        </div>
-      </section>
-      <section class="nearby-plan-panel">
-        <h2>Nearby plan</h2>
-        <div class="nearby-plan-list">
-          ${renderNearYouNowPlan()}
-        </div>
-      </section>
-      <section class="place-intel-panel">
-        ${renderPlaceIntelTabs()}
-      </section>
-      <section class="confirmation-panel">
-        <div class="section-head"><h2>Visit confirmation</h2><button data-confirm-next>Confirm next</button></div>
-        <div class="visit-list">
-          ${state.places.filter((place) => state.savedIds.has(place.id)).map(renderVisitRow).join("")}
         </div>
       </section>
       <section class="nearby-panel">
@@ -851,6 +831,7 @@ function renderSearch() {
 }
 
 function renderMap() {
+  const nearYouNow = getNearYouNowPlaces();
   return `
     <div class="map-page">
       <section class="map-panel large">
@@ -860,7 +841,11 @@ function renderMap() {
         <h2>Saved places</h2>
         ${state.places.filter((place) => state.savedIds.has(place.id)).map(renderSavedPlace).join("")}
         <div class="area-divider"></div>
-        ${renderLocationContext()}
+        <div class="section-head"><h2>Near you now</h2><button data-refresh-nearby>${state.nearbyDiscovery.status === "loading" ? "Scanning" : "Scan"}</button></div>
+        <p class="panel-note">${renderNearbyDiscoveryStatus()}</p>
+        <div class="recommendation-list">
+          ${nearYouNow.map(renderRecommendation).join("")}
+        </div>
       </aside>
     </div>
   `;
@@ -1020,50 +1005,6 @@ function renderRecommendation(item) {
   `;
 }
 
-function renderWeatherContext() {
-  const weather = state.weatherContext.current;
-  const updated = state.weatherContext.updatedAt ? new Date(state.weatherContext.updatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "";
-  const status = {
-    idle: "Waiting for location",
-    loading: "Checking weather...",
-    ready: weather ? `${weather.label} · ${Math.round(weather.temperature)}°C${updated ? ` · ${updated}` : ""}` : "Weather ready",
-    error: state.weatherContext.error || "Weather unavailable",
-  }[state.weatherContext.status] || "Waiting for location";
-
-  return `
-    <div class="location-context" aria-live="polite">
-      <div class="section-head">
-        <h2>Weather fit</h2>
-        <button data-refresh-weather>${state.weatherContext.status === "loading" ? "Checking" : "Refresh"}</button>
-      </div>
-      <p class="location-status">${escapeHtml(status)}</p>
-      <div class="area-detail-list">
-        <span>${escapeHtml(getWeatherRankingHint())}</span>
-        <span>Source: Open-Meteo forecast hook</span>
-      </div>
-    </div>
-  `;
-}
-
-function renderNearYouNowPlan() {
-  const steps = [
-    ["1", "Locate", state.locationContext.coordinates ? "Using your current GPS fix." : "Ask for browser location permission."],
-    ["2", "Score", "Rank places by walking distance, saved status, category fit, and itinerary timing."],
-    ["3", "Enrich", "Pull city and region context from public web hooks, then keep results cached."],
-    ["4", "Act", "Show the best next stop, backup indoor option, and one low-effort reset place."],
-  ];
-
-  return steps
-    .map(
-      ([number, title, text]) => `
-        <article>
-          <span>${number}</span>
-          <div><strong>${title}</strong><p>${text}</p></div>
-        </article>`
-    )
-    .join("");
-}
-
 function renderPlaceIntelTabs() {
   const tabs = [
     ["place", "Place"],
@@ -1157,55 +1098,6 @@ function renderSavedPlace(place) {
       <div><h3>${place.title}</h3><p>${place.time} · ${place.category}</p></div>
       <button class="icon-button" data-save="${place.id}" aria-label="Remove ${place.title}">×</button>
     </article>
-  `;
-}
-
-function renderLocationContext() {
-  const context = state.locationContext;
-  const area = context.area;
-  const updated = context.updatedAt ? new Date(context.updatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "";
-  const city = escapeHtml(getTravelerCityName(area) || "Unknown");
-  const region = escapeHtml(area?.region || "Unknown");
-  const country = escapeHtml(area?.country || "Unknown");
-  const displayName = escapeHtml(cleanDisplayName(area?.displayName || ""));
-  const osmType = escapeHtml(area?.osmType || "OpenStreetMap area");
-  const osmId = escapeHtml(area?.osmId || "");
-  const postcode = escapeHtml(area?.postcode || "");
-  const status = {
-    idle: "Waiting for position",
-    locating: "Locating...",
-    collecting: "Collecting area data...",
-    located: "Position locked",
-    unavailable: "Position unavailable",
-    denied: "Permission needed",
-  }[context.status] || "Waiting for position";
-
-  return `
-    <div class="location-context" aria-live="polite">
-      <div class="section-head">
-        <h2>Area context</h2>
-        <button data-refresh-position>${context.status === "locating" || context.status === "collecting" ? "Working" : "Locate"}</button>
-      </div>
-      <p class="location-status">${status}${updated ? ` · ${updated}` : ""}</p>
-      ${context.error ? `<p class="location-error">${escapeHtml(context.error)}</p>` : ""}
-      ${
-        area
-          ? `
-            <div class="area-grid">
-              <span><strong>${city}</strong>city</span>
-              <span><strong>${region}</strong>region</span>
-              <span><strong>${country}</strong>country</span>
-              <span><strong>${context.accuracy ? `${Math.round(context.accuracy)} m` : "Unknown"}</strong>accuracy</span>
-            </div>
-            <div class="area-detail-list">
-              <span>${displayName}</span>
-              <span>${osmType}${osmId ? ` · ${osmId}` : ""}</span>
-              ${postcode ? `<span>Postcode ${postcode}</span>` : ""}
-            </div>
-          `
-          : `<p class="empty-state">Open Live or Map and allow location access to collect city, region, and area data.</p>`
-      }
-    </div>
   `;
 }
 
@@ -2183,7 +2075,7 @@ async function collectAreaData(coordinates, accuracy) {
 
 function normalizeAreaData(data) {
   const address = data.address || {};
-  const city = cleanAreaName(address.city || address.town || address.village || address.suburb || address.city_district || address.municipality || address.county || "");
+  const city = inferCityName(address, data.display_name || "");
   const displayName = cleanDisplayName(data.display_name || "Unknown area");
   return {
     city,
@@ -2208,7 +2100,19 @@ function cleanAreaName(value) {
   return String(value || "")
     .replace(/^municipal unit of\s+/i, "")
     .replace(/^municipality of\s+/i, "")
+    .replace(/\bmunicipal unit\b/gi, "city")
+    .replace(/\bmunicipality\b/gi, "city")
     .trim();
+}
+
+function inferCityName(address, displayName = "") {
+  const direct = address.city || address.town || address.village || address.suburb || address.city_district;
+  if (direct) return cleanAreaName(direct);
+
+  const haystack = [address.municipality, address.county, address.state, displayName].filter(Boolean).join(", ");
+  if (/heraklion|iraklio|ηράκλειο/i.test(haystack)) return "Heraklion";
+
+  return cleanAreaName(address.county || address.region || address.state || address.municipality || "");
 }
 
 function cleanDisplayName(value) {
@@ -2267,10 +2171,25 @@ function readCachedLocation(coordinates) {
     if (!cached?.updatedAt || !cached?.cacheKey) return null;
     if (Date.now() - Date.parse(cached.updatedAt) > LOCATION_CACHE_MAX_AGE) return null;
     if (coordinates && cached.cacheKey !== getLocationCacheKey(coordinates)) return null;
-    return cached;
+    return sanitizeCachedLocation(cached);
   } catch {
     return null;
   }
+}
+
+function sanitizeCachedLocation(cached) {
+  if (!cached?.area) return cached;
+  return {
+    ...cached,
+    area: {
+      ...cached.area,
+      city: inferCityName(cached.area, cached.area.displayName || ""),
+      region: cleanAreaName(cached.area.region || ""),
+      country: cleanAreaName(cached.area.country || ""),
+      displayName: cleanDisplayName(cached.area.displayName || ""),
+      osmType: cleanAreaType(cached.area.osmType || ""),
+    },
+  };
 }
 
 function writeCachedLocation(context) {
@@ -2419,7 +2338,9 @@ function initLeafletMaps() {
       currentLabel,
       routePlaces: nearbyPlaces,
       selectedPlaces: nearbyPlaces,
-      zoom: 14,
+      zoom: 16,
+      fitPadding: [16, 16],
+      fitMaxZoom: 16,
     });
   }
 }
@@ -2498,7 +2419,10 @@ function createLeafletMap(container, places, options = {}, retry = true) {
   }
 
   if (bounds.length > 1) {
-    map.fitBounds(bounds, { padding: [28, 28], maxZoom: options.zoom || 13 });
+    map.fitBounds(bounds, {
+      padding: options.fitPadding || [28, 28],
+      maxZoom: options.fitMaxZoom || options.zoom || 13,
+    });
   } else if (bounds.length === 1) {
     map.setView(bounds[0], options.zoom || 13);
   } else {
