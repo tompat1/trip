@@ -25,12 +25,16 @@ const OPEN_METEO_API = "https://api.open-meteo.com/v1/forecast";
 const WEATHER_CACHE_KEY = "trip-weather-context-v1";
 const WEATHER_CACHE_MAX_AGE = 1000 * 60 * 20;
 const USER_PLACES_STORAGE_KEY = "trip-user-nearby-places-v1";
+const PLACE_IMAGE_CACHE_KEY = "trip-place-images-v1";
+const PLACE_IMAGE_CACHE_MAX_AGE = 1000 * 60 * 60 * 24 * 7;
+const COMMONS_API = "https://commons.wikimedia.org/w/api.php";
 const HERAKLION_CENTER = [35.3391, 25.132];
 
 let leafletMaps = new Map();
 let leafletInitFrame = null;
 let liveClockTimer = null;
 let liveDeviceHooksReady = false;
+let imageLookupInFlight = false;
 let isRendering = false;
 let pendingRender = false;
 
@@ -85,6 +89,7 @@ const state = {
     current: null,
   },
   placeEditorOpen: false,
+  placeImageCache: readCachedPlaceImages(),
   userPlaces: readStoredUserPlaces(),
   trip: {
     destination: "Heraklion, Crete",
@@ -178,7 +183,7 @@ const state = {
       nearby: true,
       distance: "450 m",
       coordinates: [35.3393, 25.1319],
-      imageUrl: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=900&q=80",
+      imageUrl: "",
     },
     {
       id: "venetian-walls",
@@ -366,6 +371,7 @@ function render() {
     initAutomaticPositioning();
     initWeatherContext();
     initNearbyDiscovery();
+    initPlaceImageLookup();
     syncLiveClock();
     initLiveDeviceHooks();
   } finally {
@@ -788,7 +794,8 @@ function renderKnownPlaceManager() {
       </label>
       <label>Latitude<input name="lat" type="number" step="any" required value="${escapeHtml(defaultLat)}" /></label>
       <label>Longitude<input name="lng" type="number" step="any" required value="${escapeHtml(defaultLng)}" /></label>
-      <label class="wide-field">Image URL<input name="imageUrl" type="url" placeholder="https://..." /></label>
+      <label>Image URL<input name="imageUrl" type="url" placeholder="https://..." /></label>
+      <label>Upload image<input name="imageFile" type="file" accept="image/*" /></label>
       <label class="wide-field">Short description<textarea name="description" rows="2" placeholder="Why it is worth knowing about"></textarea></label>
       <button class="primary-button" type="submit">${renderIcon("plus")} Add to Near you now</button>
     </form>
@@ -812,7 +819,8 @@ function renderUserPlaceEditor(place) {
       </label>
       <label>Lat<input name="lat" type="number" step="any" required value="${escapeHtml(lat)}" /></label>
       <label>Lng<input name="lng" type="number" step="any" required value="${escapeHtml(lng)}" /></label>
-      <label class="wide-field">Image URL<input name="imageUrl" type="url" value="${escapeHtml(place.imageUrl || "")}" /></label>
+      <label>Image URL<input name="imageUrl" type="url" value="${escapeHtml(isDataImage(place.imageUrl) ? "" : place.imageUrl || "")}" /></label>
+      <label>Upload image<input name="imageFile" type="file" accept="image/*" /></label>
       <label class="wide-field">Description<textarea name="description" rows="2">${escapeHtml(place.description || place.reason || "")}</textarea></label>
       <div class="known-place-actions">
         <a class="ghost-button" href="${escapeHtml(getExternalMapUrl(place))}" target="_blank" rel="noreferrer">Open map</a>
@@ -1449,9 +1457,9 @@ function bindEvents() {
   });
 
   document.querySelectorAll("[data-known-place-form]").forEach((form) => {
-    form.addEventListener("submit", (event) => {
+    form.addEventListener("submit", async (event) => {
       event.preventDefault();
-      const place = buildUserPlaceFromForm(new FormData(form));
+      const place = await buildUserPlaceFromForm(new FormData(form));
       state.userPlaces = [place, ...state.userPlaces];
       writeStoredUserPlaces(state.userPlaces);
       state.placeEditorOpen = true;
@@ -1460,10 +1468,12 @@ function bindEvents() {
   });
 
   document.querySelectorAll("[data-user-place-edit]").forEach((form) => {
-    form.addEventListener("submit", (event) => {
+    form.addEventListener("submit", async (event) => {
       event.preventDefault();
       const id = form.dataset.userPlaceEdit;
-      state.userPlaces = state.userPlaces.map((place) => (place.id === id ? buildUserPlaceFromForm(new FormData(form), place) : place));
+      const existing = state.userPlaces.find((place) => place.id === id);
+      const updated = await buildUserPlaceFromForm(new FormData(form), existing);
+      state.userPlaces = state.userPlaces.map((place) => (place.id === id ? updated : place));
       writeStoredUserPlaces(state.userPlaces);
       state.placeEditorOpen = true;
       render();
@@ -1714,11 +1724,12 @@ function mergeNearbyPlaces(places) {
   });
 }
 
-function buildUserPlaceFromForm(formData, existing = {}) {
+async function buildUserPlaceFromForm(formData, existing = {}) {
   const category = normalizeUserCategory(formData.get("category"));
   const lat = Number(formData.get("lat"));
   const lng = Number(formData.get("lng"));
   const coordinates = Number.isFinite(lat) && Number.isFinite(lng) ? [lat, lng] : state.locationContext.coordinates || HERAKLION_CENTER;
+  const uploadedImage = await readUploadedImage(formData.get("imageFile"));
   return {
     id: existing.id || `user-${Date.now()}`,
     title: String(formData.get("title") || existing.title || "Untitled place").trim(),
@@ -1728,11 +1739,25 @@ function buildUserPlaceFromForm(formData, existing = {}) {
     reason: String(formData.get("description") || "").trim(),
     source: "Your JSON place",
     coordinates,
-    imageUrl: String(formData.get("imageUrl") || existing.imageUrl || "").trim(),
+    imageUrl: uploadedImage || String(formData.get("imageUrl") || existing.imageUrl || "").trim(),
     color: getCategoryColor(category),
     saved: category === "Saved",
     updatedAt: new Date().toISOString(),
   };
+}
+
+function readUploadedImage(file) {
+  if (!(file instanceof File) || !file.size || !file.type.startsWith("image/")) return Promise.resolve("");
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.addEventListener("load", () => resolve(String(reader.result || "")));
+    reader.addEventListener("error", () => resolve(""));
+    reader.readAsDataURL(file);
+  });
+}
+
+function isDataImage(value = "") {
+  return /^data:image\//i.test(String(value));
 }
 
 function normalizeUserCategory(category) {
@@ -1752,16 +1777,7 @@ function getCategoryColor(category = "") {
 }
 
 function getPlaceImageUrl(place = {}) {
-  return place.imageUrl || getFallbackPlaceImageUrl(place.category || place.tag || "");
-}
-
-function getFallbackPlaceImageUrl(category = "") {
-  const key = category.toLowerCase();
-  if (key.includes("coffee") || key.includes("cafe")) return "https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=900&q=80";
-  if (key.includes("restaurant") || key.includes("food") || key.includes("drink")) return "https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=900&q=80";
-  if (key.includes("museum") || key.includes("culture")) return getCommonsImageUrl("Heraklion Archaeological Museum.jpg");
-  if (key.includes("saved")) return getCommonsImageUrl("Heraklion Koules fortress.jpg");
-  return getCommonsImageUrl("Heraklion harbour and Koules fortress.jpg");
+  return place.imageUrl || state.placeImageCache[getPlaceImageKey(place)]?.url || "";
 }
 
 function getOsmImageUrl(tags = {}) {
@@ -1773,6 +1789,121 @@ function getOsmImageUrl(tags = {}) {
 
 function getCommonsImageUrl(fileName) {
   return `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(fileName)}`;
+}
+
+function initPlaceImageLookup() {
+  if (!["home", "live", "search"].includes(state.activeView)) return;
+  if (imageLookupInFlight) return;
+
+  const places = getPlacesNeedingImages();
+  if (!places.length) return;
+
+  imageLookupInFlight = true;
+  fetchRelevantPlaceImages(places)
+    .catch(() => {})
+    .finally(() => {
+      imageLookupInFlight = false;
+    });
+}
+
+function getPlacesNeedingImages() {
+  const candidates = mergeNearbyPlaces([...getNearYouNowPlaces(), ...state.places.filter(isInCurrentDestination), ...state.userPlaces]);
+  return candidates
+    .filter((place) => place?.title && !place.imageUrl && !state.placeImageCache[getPlaceImageKey(place)])
+    .slice(0, 8);
+}
+
+async function fetchRelevantPlaceImages(places) {
+  let changed = false;
+  for (const place of places) {
+    const image = await findCommonsImageForPlace(place);
+    state.placeImageCache[getPlaceImageKey(place)] = {
+      url: image?.url || "",
+      source: image?.source || "Wikimedia Commons",
+      updatedAt: new Date().toISOString(),
+    };
+    changed = true;
+  }
+
+  if (changed) {
+    writeCachedPlaceImages(state.placeImageCache);
+    render();
+  }
+}
+
+async function findCommonsImageForPlace(place) {
+  const queries = buildImageQueries(place);
+  for (const query of queries) {
+    const image = await searchCommonsImage(query, place);
+    if (image) return image;
+  }
+  return null;
+}
+
+function buildImageQueries(place) {
+  const title = String(place.title || "").trim();
+  const area = String(place.area || "").trim();
+  return [
+    [title, "Heraklion", "Crete"].filter(Boolean).join(" "),
+    [title, area, "Heraklion"].filter(Boolean).join(" "),
+    title,
+  ].filter(Boolean);
+}
+
+async function searchCommonsImage(query, place) {
+  const url = new URL(COMMONS_API);
+  url.searchParams.set("origin", "*");
+  url.searchParams.set("action", "query");
+  url.searchParams.set("format", "json");
+  url.searchParams.set("generator", "search");
+  url.searchParams.set("gsrnamespace", "6");
+  url.searchParams.set("gsrlimit", "6");
+  url.searchParams.set("gsrsearch", query);
+  url.searchParams.set("prop", "imageinfo");
+  url.searchParams.set("iiprop", "url|mime");
+  url.searchParams.set("iiurlwidth", "900");
+
+  const response = await fetch(url, { headers: { Accept: "application/json" } });
+  if (!response.ok) return null;
+
+  const data = await response.json();
+  const pages = Object.values(data.query?.pages || {});
+  const match = pages.find((page) => {
+    const info = page.imageinfo?.[0];
+    return info?.thumburl && /^image\//.test(info.mime || "") && isRelevantCommonsImage(page, place);
+  });
+  const info = match?.imageinfo?.[0];
+  return info?.thumburl ? { url: info.thumburl, source: "Wikimedia Commons" } : null;
+}
+
+function isRelevantCommonsImage(page, place = {}) {
+  const haystack = normalizeImageText([page.title, page.imageinfo?.[0]?.descriptionurl].filter(Boolean).join(" "));
+  const titleTokens = getImageTokens(place.title);
+  const areaTokens = getImageTokens(place.area);
+  if (!titleTokens.length) return false;
+
+  const matchedTitleTokens = titleTokens.filter((token) => haystack.includes(token));
+  if (matchedTitleTokens.length >= Math.min(2, titleTokens.length)) return true;
+  return titleTokens.some((token) => haystack.includes(token)) && areaTokens.some((token) => haystack.includes(token));
+}
+
+function getImageTokens(value = "") {
+  return normalizeImageText(value)
+    .split(" ")
+    .filter((token) => token.length > 3 && !["the", "and", "with", "near", "city", "crete", "heraklion"].includes(token));
+}
+
+function normalizeImageText(value = "") {
+  return String(value)
+    .toLowerCase()
+    .replace(/[_-]/g, " ")
+    .replace(/[^a-z0-9 ]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function getPlaceImageKey(place = {}) {
+  return String(place.id || place.title || "").toLowerCase().trim();
 }
 
 function renderNearbyDiscoveryStatus() {
@@ -2689,6 +2820,29 @@ function writeStoredUserPlaces(places) {
     );
   } catch {
     // The in-memory list still updates if browser storage is unavailable.
+  }
+}
+
+function readCachedPlaceImages() {
+  try {
+    const cached = JSON.parse(localStorage.getItem(PLACE_IMAGE_CACHE_KEY) || "{}");
+    if (!cached || typeof cached !== "object") return {};
+    return Object.fromEntries(
+      Object.entries(cached).filter(([, value]) => {
+        if (!value?.updatedAt) return false;
+        return Date.now() - Date.parse(value.updatedAt) <= PLACE_IMAGE_CACHE_MAX_AGE;
+      })
+    );
+  } catch {
+    return {};
+  }
+}
+
+function writeCachedPlaceImages(images) {
+  try {
+    localStorage.setItem(PLACE_IMAGE_CACHE_KEY, JSON.stringify(images));
+  } catch {
+    // Images are progressive enhancement; the UI remains usable without this cache.
   }
 }
 
