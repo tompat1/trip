@@ -217,6 +217,173 @@ const state = {
       distance: "6.5 km",
       coordinates: [35.3354, 25.0746],
     },
+    {
+      id: "coffee-brew-your-mind",
+      title: "Brew Your Mind",
+      area: "Arkadiou 251, Rethymno",
+      category: "Coffee roastery",
+      rating: "4.6",
+      note: "Coffee nerd pick: Rethymno roastery focused on precision-roasted specialty beans.",
+      time: "Coffee radar",
+      day: 0,
+      color: "sun",
+      nearby: true,
+      curated: true,
+      coffeeNerd: true,
+      distance: "Crete radar",
+      coordinates: [35.3678, 24.4778],
+      imageUrl: "/assets/coffee/brew-your-mind.webp",
+      website: "https://brewyourmind.gr/",
+      source: "Official site",
+    },
+    {
+      id: "coffee-skrik",
+      title: "Skrik | the good hood spot",
+      area: "Dimakopoulou 59, Rethymno",
+      category: "Specialty coffee",
+      rating: "4.8",
+      note: "Coffee nerd pick: Rethymno specialty coffee spot with barista/roast focus and strong local reviews.",
+      time: "Coffee radar",
+      day: 0,
+      color: "sun",
+      nearby: true,
+      curated: true,
+      coffeeNerd: true,
+      distance: "Crete radar",
+      coordinates: [35.3688, 24.4745],
+      imageUrl: "/assets/coffee/skrik.webp",
+      website: "https://skrik.gr/",
+      source: "Official site",
+    },
+    {
+      id: "coffee-kross-tsouderon",
+      title: "KROSS Coffee Roasters",
+      area: "Tsouderon 73, Chania",
+      category: "Coffee roastery",
+      rating: "4.6",
+      note: "Coffee nerd pick: award-winning Chania roaster with competition roots and serious bean program.",
+      time: "Coffee radar",
+      day: 0,
+      color: "sun",
+      nearby: true,
+      curated: true,
+      coffeeNerd: true,
+      distance: "Crete radar",
+      coordinates: [35.5142, 24.0184],
+      imageUrl: "/assets/coffee/kross-roasters.webp",
+      website: "https://www.krosscoffeeroasters.com/",
+      source: "Official site",
+    },
+    {
+      id: "coffee-monogram-square",
+      title: "Monogram Roasters",
+      area: "Square 1866 n.10, Chania",
+      category: "Coffee roastery",
+      rating: "4.7",
+      note: "Coffee nerd pick: fifth-generation Chania roasters making specialty coffee in central Chania.",
+      time: "Coffee radar",
+      day: 0,
+      color: "sun",
+      nearby: true,
+      curated: true,
+      coffeeNerd: true,
+      distance: "Crete radar",
+      coordinates: [35.5129, 24.0174],
+      imageUrl: "/assets/coffee/monogram.webp",
+      website: "https://www.monogramroasters.gr/about/",
+      source: "Official site",
+    },
+    {
+      id: "coffee-monogram-old-town",
+      title: "Monogram Old Town",
+      area: "Daskalogianni 5, Chania",
+      category: "Cafe",
+      rating: "4.7",
+      note: "Coffee nerd pick: old-town Monogram location for specialty espresso, filter and beans.",
+      time: "Coffee radar",
+      day: 0,
+      color: "sun",
+      nearby: true,
+      curated: true,
+      coffeeNerd: true,
+      distance: "Crete radar",
+      coordinates: [35.5151, 24.0205],
+      imageUrl: "/assets/coffee/monogram.webp",
+      website: "https://www.monogramroasters.gr/about/",
+      source: "Official site",
+    },
+    {
+      id: "coffee-vivliothiki",
+      title: "Vivliothiki Café",
+      area: "Rethymno",
+      category: "Cafe",
+      rating: "4.7",
+      note: "Coffee nerd radar: strong cafe signal from the Rethymno specialty shortlist.",
+      time: "Coffee radar",
+      day: 0,
+      color: "sun",
+      nearby: true,
+      curated: true,
+      coffeeNerd: true,
+      distance: "Crete radar",
+      coordinates: [35.3668, 24.4802],
+      imageUrl: "/assets/coffee/vivliothiki.webp",
+      source: "Coffee radar seed",
+    },
+    {
+      id: "coffee-barrio-kallithea",
+      title: "Barrio The Neighbourhood Cafe - Kallithea",
+      area: "Kallithea, Rethymno",
+      category: "Coffee shop",
+      rating: "4.8",
+      note: "Coffee nerd radar: high-rated neighbourhood cafe from the Rethymno shortlist.",
+      time: "Coffee radar",
+      day: 0,
+      color: "sun",
+      nearby: true,
+      curated: true,
+      coffeeNerd: true,
+      distance: "Crete radar",
+      coordinates: [35.3658, 24.4953],
+      imageUrl: "/assets/coffee/barrio-kallithea.webp",
+      source: "Coffee radar seed",
+    },
+    {
+      id: "coffee-barrio",
+      title: "Barrio The Neighbourhood Cafe",
+      area: "Rethymno",
+      category: "Coffee shop",
+      rating: "4.8",
+      note: "Coffee nerd radar: specialty-leaning cafe pick for espresso and a longer sit.",
+      time: "Coffee radar",
+      day: 0,
+      color: "sun",
+      nearby: true,
+      curated: true,
+      coffeeNerd: true,
+      distance: "Crete radar",
+      coordinates: [35.3666, 24.4752],
+      imageUrl: "/assets/coffee/barrio.webp",
+      source: "Coffee radar seed",
+    },
+    {
+      id: "coffee-bikakis",
+      title: "BIKAKIS Bakery-Cafe-Street Food",
+      area: "Rethymno",
+      category: "Cafe",
+      rating: "4.5",
+      note: "Coffee radar: practical bakery-cafe stop when you want coffee plus food.",
+      time: "Coffee radar",
+      day: 0,
+      color: "sun",
+      nearby: true,
+      curated: true,
+      coffeeNerd: true,
+      distance: "Crete radar",
+      coordinates: [35.3541, 24.4626],
+      imageUrl: "/assets/coffee/bikakis.webp",
+      source: "Coffee radar seed",
+    },
   ],
   recommendations: [
     { title: "Lions Square", reason: "Coffee, shade, and an easy city-center meeting point", tag: "Coffee", distance: "350 m", coordinates: [35.3391, 25.132] },
@@ -1744,9 +1911,10 @@ function getNearYouNowPlaces() {
   const origin = state.locationContext.coordinates || HERAKLION_CENTER;
   const hasLivePosition = Boolean(state.locationContext.coordinates);
   const userNearby = getUserNearbyPlaces(origin, hasLivePosition);
+  const curatedNearby = getCuratedTastePlaces(origin, hasLivePosition);
 
   if (state.nearbyDiscovery.places.length) {
-    return filterVisibleNearbyPlaces(mergeNearbyPlaces([...userNearby, ...state.nearbyDiscovery.places])).slice(0, 6);
+    return filterVisibleNearbyPlaces(mergeNearbyPlaces([...userNearby, ...curatedNearby, ...state.nearbyDiscovery.places])).slice(0, 8);
   }
 
   const candidates = state.places
@@ -1755,12 +1923,13 @@ function getNearYouNowPlaces() {
       const meters = getDistanceMeters(origin, place.coordinates);
       const savedBoost = state.savedIds.has(place.id) ? 0.82 : 1;
       const nearbyBoost = place.nearby ? 0.9 : 1;
-      const score = meters * savedBoost * nearbyBoost;
+      const tasteBoost = getTasteBoost(place);
+      const score = meters * savedBoost * nearbyBoost * tasteBoost;
       const distance = meters < 1000 ? `${Math.round(meters / 10) * 10} m` : `${(meters / 1000).toFixed(1)} km`;
       const tag = state.savedIds.has(place.id) ? "Saved" : place.category;
       const reason = hasLivePosition
-        ? `${place.category} near your live position. ${state.confirmedIds.has(place.id) ? "Already visited; good reference point." : "Possible next stop."}`
-        : `${place.category} using central Heraklion until GPS is allowed.`;
+        ? place.note || `${place.category} near your live position. ${state.confirmedIds.has(place.id) ? "Already visited; good reference point." : "Possible next stop."}`
+        : place.note || `${place.category} using central Heraklion until GPS is allowed.`;
 
       return {
         ...place,
@@ -1772,7 +1941,7 @@ function getNearYouNowPlaces() {
       };
     });
 
-  return filterVisibleNearbyPlaces(mergeNearbyPlaces([...userNearby, ...candidates.sort((a, b) => a.score - b.score)])).slice(0, 6);
+  return filterVisibleNearbyPlaces(mergeNearbyPlaces([...userNearby, ...curatedNearby, ...candidates.sort((a, b) => a.score - b.score)])).slice(0, 8);
 }
 
 function filterVisibleNearbyPlaces(places) {
@@ -1796,6 +1965,32 @@ function getUserNearbyPlaces(origin, hasLivePosition) {
       };
     })
     .sort((a, b) => a.score - b.score);
+}
+
+function getCuratedTastePlaces(origin, hasLivePosition) {
+  return state.places
+    .filter((place) => place.curated && place.coffeeNerd && place.coordinates)
+    .map((place) => {
+      const meters = getDistanceMeters(origin, place.coordinates);
+      return {
+        ...place,
+        tag: place.category,
+        distance: hasLivePosition
+          ? meters < 1000 ? `${Math.round(meters / 10) * 10} m` : `${(meters / 1000).toFixed(1)} km`
+          : place.distance || "Crete radar",
+        reason: place.note,
+        source: place.source || "Coffee radar seed",
+        score: Math.max(1, meters * getTasteBoost(place)),
+      };
+    })
+    .sort((a, b) => a.score - b.score);
+}
+
+function getTasteBoost(place = {}) {
+  const key = `${place.category || ""} ${place.note || ""} ${place.title || ""}`.toLowerCase();
+  if (place.coffeeNerd || key.includes("roaster") || key.includes("specialty")) return 0.02;
+  if (key.includes("coffee") || key.includes("cafe")) return 0.2;
+  return 1;
 }
 
 function mergeNearbyPlaces(places) {
@@ -2173,6 +2368,12 @@ function buildNearbyOverpassQuery(lat, lng) {
       way(around:${radius},${lat},${lng})["tourism"~"attraction|museum|viewpoint|gallery|artwork|zoo|aquarium"];
       node(around:${radius},${lat},${lng})["amenity"~"cafe|restaurant|bar|pub|ice_cream|food_court|marketplace"];
       way(around:${radius},${lat},${lng})["amenity"~"cafe|restaurant|bar|pub|ice_cream|food_court|marketplace"];
+      node(around:${radius},${lat},${lng})["craft"="roastery"];
+      way(around:${radius},${lat},${lng})["craft"="roastery"];
+      node(around:${radius},${lat},${lng})["roastery"="yes"];
+      way(around:${radius},${lat},${lng})["roastery"="yes"];
+      node(around:${radius},${lat},${lng})["coffee"="specialty"];
+      way(around:${radius},${lat},${lng})["coffee"="specialty"];
       node(around:${radius},${lat},${lng})["amenity"~"toilets|drinking_water"];
       way(around:${radius},${lat},${lng})["amenity"~"toilets|drinking_water"];
       node(around:${radius},${lat},${lng})["historic"];
@@ -2226,6 +2427,8 @@ function normalizeNearbyElements(elements, origin) {
 }
 
 function classifyNearbyPlace(tags) {
+  if (tags.craft === "roastery" || tags.roastery === "yes") return "Coffee roastery";
+  if (tags.coffee === "specialty") return "Specialty coffee";
   if (tags.amenity === "cafe" || tags.shop === "coffee") return "Coffee";
   if (["restaurant", "food_court"].includes(tags.amenity)) return "Food";
   if (["bar", "pub"].includes(tags.amenity)) return "Drink";
@@ -2241,14 +2444,15 @@ function classifyNearbyPlace(tags) {
 function scoreNearbyPlace(tags, meters) {
   const categoryBoost = tags.tourism || tags.historic ? 0.78 : 1;
   const foodBoost = ["cafe", "restaurant"].includes(tags.amenity) ? 0.86 : 1;
+  const coffeeNerdBoost = tags.craft === "roastery" || tags.roastery === "yes" || tags.coffee === "specialty" ? 0.42 : 1;
   const utilityBoost = ["toilets", "drinking_water"].includes(tags.amenity) ? 0.82 : 1;
   const namedBoost = tags.wikidata || tags.website ? 0.9 : 1;
   const weatherBoost = getWeatherPlaceBoost(tags);
-  return meters * categoryBoost * foodBoost * utilityBoost * namedBoost * weatherBoost;
+  return meters * categoryBoost * foodBoost * coffeeNerdBoost * utilityBoost * namedBoost * weatherBoost;
 }
 
 function buildNearbyReason(tags, category) {
-  const details = [tags.cuisine, tags.opening_hours, tags.tourism, tags.historic, tags.shop, tags.wheelchair ? `wheelchair ${tags.wheelchair}` : ""].filter(Boolean).slice(0, 2);
+  const details = [tags.coffee, tags.craft, tags.roastery === "yes" ? "roastery" : "", tags.cuisine, tags.opening_hours, tags.tourism, tags.historic, tags.shop, tags.wheelchair ? `wheelchair ${tags.wheelchair}` : ""].filter(Boolean).slice(0, 2);
   if (details.length) return `${category} nearby · ${details.join(" · ")}`;
   return `${category} nearby, found from OpenStreetMap traveler tags.`;
 }
