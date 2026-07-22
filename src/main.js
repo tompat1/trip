@@ -18,6 +18,9 @@ const PLACE_INTEL_CACHE_MAX_AGE = 1000 * 60 * 60 * 24;
 const WIKIPEDIA_API = "https://en.wikipedia.org/api/rest_v1/page/summary/";
 const WIKIPEDIA_SEARCH_API = "https://en.wikipedia.org/w/api.php";
 const REST_COUNTRIES_API = "https://restcountries.com/v3.1/name/";
+const OVERPASS_API = "https://overpass-api.de/api/interpreter";
+const NEARBY_DISCOVERY_CACHE_KEY = "trip-nearby-discovery-v1";
+const NEARBY_DISCOVERY_CACHE_MAX_AGE = 1000 * 60 * 30;
 
 let leafletMaps = new Map();
 let leafletInitFrame = null;
@@ -63,6 +66,12 @@ const state = {
       island: null,
       country: null,
     },
+  },
+  nearbyDiscovery: {
+    status: "idle",
+    updatedAt: null,
+    error: "",
+    places: [],
   },
   trip: {
     destination: "Paris, France",
@@ -325,6 +334,7 @@ function render() {
     scheduleLeafletMaps();
     initAutomaticPositioning();
     initPlaceIntelligence();
+    initNearbyDiscovery();
     syncLiveClock();
     initLiveDeviceHooks();
   } finally {
@@ -368,14 +378,15 @@ function renderSidebar() {
 
 function renderHeader() {
   const isLive = state.activeView === "live";
+  const title = isLive ? getLiveHeaderTitle() : state.trip.destination;
   const headerMeta = isLive
     ? `<span id="live-date-time" data-live-clock>${formatLiveDateTime()}</span>`
     : `<span>${state.trip.dates}</span>`;
   return `
     <header class="topbar">
       <div>
-        <p class="eyebrow">${state.activeView === "guide" ? "MVP 3 · Intelligent guide" : state.tripMode ? "MVP 2 · Live journey" : "MVP 1 · Plan and remember"}</p>
-        <h1>${state.trip.destination}</h1>
+        <p class="eyebrow">${isLive ? "Live journey" : state.activeView === "guide" ? "Intelligent guide" : state.tripMode ? "Live journey" : "Plan and remember"}</p>
+        <h1>${escapeHtml(title)}</h1>
         ${headerMeta}
       </div>
       <div class="top-actions">
@@ -572,7 +583,7 @@ function renderLive() {
     <div class="live-page">
       <section class="live-hero">
         <div>
-          <p class="eyebrow">Trip Mode · ${state.live.lastSync}</p>
+          <p class="eyebrow">Live journey · ${state.live.lastSync}</p>
           <h2>${state.live.location}</h2>
           <p>${area ? `Positioned near ${area.city || area.region || area.country}. Live routing, visit confirmations, saved places, media, and collaborators stay together while you move.` : "Live routing, visit confirmations, saved places, media, and collaborators stay together while you move."}</p>
         </div>
@@ -588,8 +599,8 @@ function renderLive() {
         ${renderLocationContext()}
       </section>
       <section class="recommendation-panel">
-        <div class="section-head"><h2>Near you now</h2><button data-refresh-position>Locate</button></div>
-        <p class="panel-note">${state.locationContext.coordinates ? "Sorted from your current position with saved places and route fit weighted higher." : "Allow location access to replace demo distances with real distance scoring."}</p>
+        <div class="section-head"><h2>Near you now</h2><button data-refresh-nearby>${state.nearbyDiscovery.status === "loading" ? "Scanning" : "Scan"}</button></div>
+        <p class="panel-note">${renderNearbyDiscoveryStatus()}</p>
         <div class="recommendation-list">
           ${nearYouNow.map(renderRecommendation).join("")}
         </div>
@@ -840,6 +851,16 @@ function renderMap() {
       </aside>
     </div>
   `;
+}
+
+function getLiveHeaderTitle() {
+  const area = state.locationContext.area;
+  return getTravelerCityName(area) || state.live.location || "Near you now";
+}
+
+function getTravelerCityName(area) {
+  if (!area) return "";
+  return area.city || area.town || area.village || area.suburb || area.municipality || area.county || area.region || area.country || "";
 }
 
 function renderTimeline() {
@@ -1101,7 +1122,7 @@ function renderLocationContext() {
   const context = state.locationContext;
   const area = context.area;
   const updated = context.updatedAt ? new Date(context.updatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "";
-  const city = escapeHtml(area?.city || "Unknown");
+  const city = escapeHtml(getTravelerCityName(area) || "Unknown");
   const region = escapeHtml(area?.region || "Unknown");
   const country = escapeHtml(area?.country || "Unknown");
   const displayName = escapeHtml(area?.displayName || "");
@@ -1268,6 +1289,12 @@ function bindEvents() {
     });
   });
 
+  document.querySelectorAll("[data-refresh-nearby]").forEach((button) => {
+    button.addEventListener("click", () => {
+      fetchNearbyDiscoveries({ force: true });
+    });
+  });
+
   document.querySelectorAll("[data-organize-media]").forEach((button) => {
     button.addEventListener("click", () => {
       state.mediaOrganized = true;
@@ -1384,6 +1411,10 @@ function bindEvents() {
 }
 
 function getNearYouNowPlaces() {
+  if (state.nearbyDiscovery.places.length) {
+    return state.nearbyDiscovery.places.slice(0, 6);
+  }
+
   const origin = state.locationContext.coordinates || [48.8539, 2.3332];
   const hasLivePosition = Boolean(state.locationContext.coordinates);
   const candidates = state.places
@@ -1410,6 +1441,161 @@ function getNearYouNowPlaces() {
     });
 
   return candidates.sort((a, b) => a.score - b.score).slice(0, 4);
+}
+
+function renderNearbyDiscoveryStatus() {
+  const updated = state.nearbyDiscovery.updatedAt ? new Date(state.nearbyDiscovery.updatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "";
+  if (state.nearbyDiscovery.status === "loading") return "Scanning OpenStreetMap for top traveler places nearby.";
+  if (state.nearbyDiscovery.error) return state.nearbyDiscovery.error;
+  if (state.nearbyDiscovery.places.length) return `Showing cafes, restaurants, sights, viewpoints, museums, and notable nearby stops${updated ? ` · ${updated}` : ""}.`;
+  if (state.locationContext.coordinates) return "Ready to scan nearby cafes, restaurants, sights, viewpoints, museums, and notable stops.";
+  return "Allow location access to scan real nearby traveler places.";
+}
+
+function initNearbyDiscovery() {
+  if (state.activeView !== "live") return;
+  if (!state.locationContext.coordinates) return;
+  if (["loading", "ready", "error"].includes(state.nearbyDiscovery.status)) return;
+
+  const cached = readCachedNearbyDiscoveries();
+  if (cached) {
+    state.nearbyDiscovery = { ...state.nearbyDiscovery, ...cached, status: "ready", error: "" };
+    render();
+    return;
+  }
+
+  fetchNearbyDiscoveries();
+}
+
+async function fetchNearbyDiscoveries({ force = false } = {}) {
+  if (!state.locationContext.coordinates) {
+    state.nearbyDiscovery = {
+      ...state.nearbyDiscovery,
+      status: "idle",
+      error: "Location is needed before scanning nearby places.",
+    };
+    render();
+    return;
+  }
+
+  if (!force) {
+    const cached = readCachedNearbyDiscoveries();
+    if (cached) {
+      state.nearbyDiscovery = { ...state.nearbyDiscovery, ...cached, status: "ready", error: "" };
+      render();
+      return;
+    }
+  }
+
+  state.nearbyDiscovery = { ...state.nearbyDiscovery, status: "loading", error: "" };
+  render();
+
+  try {
+    const [lat, lng] = state.locationContext.coordinates;
+    const query = buildNearbyOverpassQuery(lat, lng);
+    const response = await fetch(OVERPASS_API, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=UTF-8", Accept: "application/json" },
+      body: query,
+    });
+    if (!response.ok) throw new Error("Nearby scan failed");
+
+    const data = await response.json();
+    const places = normalizeNearbyElements(data.elements || [], state.locationContext.coordinates);
+    const nextNearby = {
+      status: "ready",
+      updatedAt: new Date().toISOString(),
+      error: places.length ? "" : "No strong nearby traveler places found yet. Try a wider area later.",
+      places,
+    };
+    state.nearbyDiscovery = nextNearby;
+    writeCachedNearbyDiscoveries(nextNearby);
+  } catch {
+    state.nearbyDiscovery = {
+      ...state.nearbyDiscovery,
+      status: "error",
+      error: "Nearby scan could not reach OpenStreetMap right now. Showing saved/demo places.",
+    };
+  } finally {
+    render();
+  }
+}
+
+function buildNearbyOverpassQuery(lat, lng) {
+  const radius = 1500;
+  return `
+    [out:json][timeout:12];
+    (
+      node(around:${radius},${lat},${lng})["tourism"~"attraction|museum|viewpoint|gallery|artwork|zoo|aquarium"];
+      way(around:${radius},${lat},${lng})["tourism"~"attraction|museum|viewpoint|gallery|artwork|zoo|aquarium"];
+      node(around:${radius},${lat},${lng})["amenity"~"cafe|restaurant|bar|pub|ice_cream|food_court|marketplace"];
+      way(around:${radius},${lat},${lng})["amenity"~"cafe|restaurant|bar|pub|ice_cream|food_court|marketplace"];
+      node(around:${radius},${lat},${lng})["historic"];
+      way(around:${radius},${lat},${lng})["historic"];
+      node(around:${radius},${lat},${lng})["leisure"~"park|garden"];
+      way(around:${radius},${lat},${lng})["leisure"~"park|garden"];
+      node(around:${radius},${lat},${lng})["shop"~"bakery|coffee|chocolate|books|confectionery|deli"];
+      way(around:${radius},${lat},${lng})["shop"~"bakery|coffee|chocolate|books|confectionery|deli"];
+    );
+    out center tags 80;
+  `;
+}
+
+function normalizeNearbyElements(elements, origin) {
+  const seen = new Set();
+  return elements
+    .map((element) => {
+      const tags = element.tags || {};
+      const name = tags.name || tags["name:en"];
+      const lat = element.lat ?? element.center?.lat;
+      const lng = element.lon ?? element.center?.lon;
+      if (!name || !lat || !lng) return null;
+
+      const key = `${name.toLowerCase()}-${Math.round(lat * 10000)}-${Math.round(lng * 10000)}`;
+      if (seen.has(key)) return null;
+      seen.add(key);
+
+      const meters = getDistanceMeters(origin, [lat, lng]);
+      const category = classifyNearbyPlace(tags);
+      const score = scoreNearbyPlace(tags, meters);
+      return {
+        id: `osm-${element.type}-${element.id}`,
+        title: name,
+        tag: category,
+        category,
+        distance: meters < 1000 ? `${Math.round(meters / 10) * 10} m` : `${(meters / 1000).toFixed(1)} km`,
+        reason: buildNearbyReason(tags, category),
+        coordinates: [lat, lng],
+        score,
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.score - b.score)
+    .slice(0, 12);
+}
+
+function classifyNearbyPlace(tags) {
+  if (tags.amenity === "cafe" || tags.shop === "coffee") return "Coffee";
+  if (["restaurant", "food_court"].includes(tags.amenity)) return "Food";
+  if (["bar", "pub"].includes(tags.amenity)) return "Drink";
+  if (["museum", "gallery"].includes(tags.tourism)) return "Culture";
+  if (["viewpoint", "attraction"].includes(tags.tourism) || tags.historic) return "Sight";
+  if (["park", "garden"].includes(tags.leisure)) return "Reset";
+  if (tags.shop) return "Shop";
+  return "Nearby";
+}
+
+function scoreNearbyPlace(tags, meters) {
+  const categoryBoost = tags.tourism || tags.historic ? 0.78 : 1;
+  const foodBoost = ["cafe", "restaurant"].includes(tags.amenity) ? 0.86 : 1;
+  const namedBoost = tags.wikidata || tags.website ? 0.9 : 1;
+  return meters * categoryBoost * foodBoost * namedBoost;
+}
+
+function buildNearbyReason(tags, category) {
+  const details = [tags.cuisine, tags.opening_hours, tags.tourism, tags.historic, tags.shop].filter(Boolean).slice(0, 2);
+  if (details.length) return `${category} nearby · ${details.join(" · ")}`;
+  return `${category} nearby, found from OpenStreetMap traveler tags.`;
 }
 
 function getDistanceMeters(from, to) {
@@ -1801,11 +1987,17 @@ async function collectAreaData(coordinates, accuracy) {
 
 function normalizeAreaData(data) {
   const address = data.address || {};
+  const city = cleanAreaName(address.city || address.town || address.village || address.suburb || address.city_district || address.municipality || address.county || "");
   return {
-    city: address.city || address.town || address.village || address.municipality || address.suburb || address.city_district || address.county || "",
-    region: address.state || address.region || address.county || "",
-    island: address.island || address.archipelago || "",
-    country: address.country || "",
+    city,
+    municipality: cleanAreaName(address.municipality || ""),
+    town: cleanAreaName(address.town || ""),
+    village: cleanAreaName(address.village || ""),
+    suburb: cleanAreaName(address.suburb || ""),
+    county: cleanAreaName(address.county || ""),
+    region: cleanAreaName(address.state || address.region || address.county || ""),
+    island: cleanAreaName(address.island || address.archipelago || ""),
+    country: cleanAreaName(address.country || ""),
     countryCode: address.country_code || "",
     postcode: address.postcode || "",
     displayName: data.display_name || "Unknown area",
@@ -1816,7 +2008,15 @@ function normalizeAreaData(data) {
   };
 }
 
+function cleanAreaName(value) {
+  return String(value || "")
+    .replace(/^municipal unit of\s+/i, "")
+    .replace(/^municipality of\s+/i, "")
+    .trim();
+}
+
 function applyLocationContext(context, { fromCache = false } = {}) {
+  const previousNearbyKey = getNearbyDiscoveryLocationKey();
   state.locationContext = {
     ...state.locationContext,
     coordinates: context.coordinates,
@@ -1827,9 +2027,18 @@ function applyLocationContext(context, { fromCache = false } = {}) {
     error: fromCache ? "" : state.locationContext.error,
   };
 
-  const areaName = context.area?.city || context.area?.region;
+  const areaName = getTravelerCityName(context.area);
   if (areaName) state.live.location = areaName;
   state.live.lastSync = fromCache ? "cached" : "just now";
+
+  if (previousNearbyKey && previousNearbyKey !== getNearbyDiscoveryLocationKey()) {
+    state.nearbyDiscovery = {
+      status: "idle",
+      updatedAt: null,
+      error: "",
+      places: [],
+    };
+  }
 }
 
 function readCachedLocation(coordinates) {
@@ -1862,6 +2071,36 @@ function readCachedPlaceIntel() {
   } catch {
     return null;
   }
+}
+
+function readCachedNearbyDiscoveries() {
+  try {
+    const cached = JSON.parse(localStorage.getItem(NEARBY_DISCOVERY_CACHE_KEY) || "null");
+    if (!cached?.updatedAt || !Array.isArray(cached.places)) return null;
+    if (Date.now() - Date.parse(cached.updatedAt) > NEARBY_DISCOVERY_CACHE_MAX_AGE) return null;
+    if (cached.locationKey !== getNearbyDiscoveryLocationKey()) return null;
+    return cached;
+  } catch {
+    return null;
+  }
+}
+
+function writeCachedNearbyDiscoveries(nearby) {
+  try {
+    localStorage.setItem(
+      NEARBY_DISCOVERY_CACHE_KEY,
+      JSON.stringify({
+        ...nearby,
+        locationKey: getNearbyDiscoveryLocationKey(),
+      })
+    );
+  } catch {
+    // Nearby scan still works for the current session if storage is unavailable.
+  }
+}
+
+function getNearbyDiscoveryLocationKey() {
+  return state.locationContext.coordinates ? getLocationCacheKey(state.locationContext.coordinates) : "";
 }
 
 function writeCachedPlaceIntel(intel) {
@@ -1923,7 +2162,8 @@ function initLeafletMaps() {
 
   const liveMap = document.querySelector("#live-map");
   if (liveMap) {
-    const nearbyPlaces = destinationPlaces.filter((place) => state.savedIds.has(place.id) || place.nearby).slice(0, 5);
+    const discoveredPlaces = state.nearbyDiscovery.places.length ? state.nearbyDiscovery.places.slice(0, 8) : [];
+    const nearbyPlaces = discoveredPlaces.length ? discoveredPlaces : destinationPlaces.filter((place) => state.savedIds.has(place.id) || place.nearby).slice(0, 5);
     createLeafletMap(liveMap, nearbyPlaces, {
       currentLocation,
       currentLabel,
