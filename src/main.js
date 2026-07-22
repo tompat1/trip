@@ -529,58 +529,99 @@ function renderGuide() {
 }
 
 function renderHome() {
-  const saved = state.places.filter((place) => state.savedIds.has(place.id));
   const weather = state.weatherContext.current;
   const weatherPlace = getLiveHeaderTitle();
+  const nearYouNow = getNearYouNowPlaces();
+  const topPick = nearYouNow[0];
+  const localTime = formatLiveDateTime();
+  const accuracy = state.locationContext.accuracy ? `${Math.round(state.locationContext.accuracy)} m` : "Waiting";
   return `
-    <div class="home-grid">
-      <section class="hero-panel">
-        <div class="passport-stamp">PAR / 2026</div>
-        <h2>Every place becomes a story.</h2>
-        <p>Plan the trail, save what matters, capture moments, and keep the whole journey in one warm, portable notebook.</p>
-        <div class="hero-actions">
-          <button class="primary-button" data-view="trip">Plan this trip</button>
-          <button class="ghost-button" data-view="search">Find places</button>
+    <div class="home-dashboard">
+      <section class="home-trip-banner">
+        <div>
+          <p class="eyebrow">Live journey</p>
+          <h2>${escapeHtml(weatherPlace)}</h2>
+          <span>${escapeHtml(localTime)}</span>
+        </div>
+        <div class="top-actions">
+          <button class="icon-action" data-view="map" aria-label="Open map">${renderIcon("map")}</button>
+          <button class="ghost-button" data-copy-share>${renderIcon("share")} Share</button>
+          <button class="primary-button" data-view="trip">${renderIcon("plus")} New trip</button>
+          <button class="mode-button is-active">Trip Mode</button>
         </div>
       </section>
+
+      <section class="home-greeting-panel">
+        <p class="eyebrow">Good ${getDayPeriod()}</p>
+        <h2>${escapeHtml(state.trip.profile.split(" ")[0] || "traveler")}</h2>
+        <p><span class="live-dot"></span>${state.locationContext.coordinates ? `You are in ${escapeHtml(weatherPlace)}` : "Enable location to personalize this dashboard."}</p>
+        <span>${weather ? `${escapeHtml(weather.label)} · ${Math.round(weather.temperature)}°C` : "Weather hook waiting"} · ${accuracy} accuracy</span>
+      </section>
+
+      <section class="upcoming-panel">
+        <div>
+          <p class="eyebrow">Recommended next</p>
+          <h2>${topPick ? escapeHtml(topPick.title) : "Scan nearby places"}</h2>
+          <p>${topPick ? escapeHtml(topPick.reason) : "Use OpenStreetMap nearby tags to find cafes, food, sights, water, toilets, museums and viewpoints around you."}</p>
+        </div>
+        <button class="icon-button" data-refresh-nearby aria-label="Refresh nearby places">⌖</button>
+      </section>
+
       <section class="task-card">
         <h3>Continue planning</h3>
-        ${["Choose experiences", "Invite travel companions", "Upload first memory", "Check visa requirements"]
-          .map((task, index) => `<label><input type="checkbox" ${index < 2 ? "checked" : ""}/> ${task}<span>···</span></label>`)
-          .join("")}
+        ${renderHomeChecklist()}
       </section>
-      <section class="map-card">
-        <div class="mini-map" aria-label="Saved places map preview">
-          ${saved.map((place, index) => `<button class="pin pin-${index + 1}" data-view="map" aria-label="${place.title} on map"></button>`).join("")}
+
+      <section class="home-map-card">
+        ${renderHomeMap()}
+        <div class="map-status-card">
+          <strong>${state.locationContext.coordinates ? `Near ${escapeHtml(weatherPlace)}` : "Location pending"}</strong>
+          <span>Accuracy: ${accuracy}</span>
         </div>
       </section>
+
       <section class="weather-card">
         <h3>${escapeHtml(weatherPlace)} weather</h3>
         <strong>${weather ? `${Math.round(weather.temperature)}°C` : "—"}</strong>
         <span>${weather ? escapeHtml(weather.label) : "Open Live to check"}</span>
-        <div class="weather-row"><span>Open-Meteo</span><span>${weather ? escapeHtml(getWeatherRankingHint()) : "Location needed"}</span></div>
+        <div class="weather-row"><span>Open-Meteo</span><span>${weather ? `${Math.round(weather.windSpeed)} km/h wind` : "Location needed"}</span></div>
       </section>
-      <section class="live-summary-card">
-        <div class="section-head"><h3>Trip Mode</h3><button data-view="live">Open live</button></div>
-        <strong>${state.live.location}</strong>
-        <p>${state.live.nextStop} is ${state.live.walkingTime} away. ${state.offlineReady ? "Itinerary and map are cached." : "Offline pack pending."}</p>
-        <div class="status-row">
-          <span>${state.confirmedIds.size} confirmed</span>
-          <span>${state.collaborators.length} collaborators</span>
+
+      <section class="local-facts-panel">
+        <article><span>Local time</span><strong>${new Intl.DateTimeFormat([], { hour: "2-digit", minute: "2-digit" }).format(new Date())}</strong><small>Europe/Athens when destination timezone is resolved</small></article>
+        <article><span>Currency</span><strong>EUR (€)</strong><small>Browser currency formatter</small></article>
+      </section>
+
+      <section class="home-ideas-panel">
+        <div class="section-head"><h3>Ideas near you</h3><button data-refresh-nearby>Scan</button></div>
+        <div class="home-idea-strip">
+          ${nearYouNow.slice(0, 5).map(renderHomeIdeaCard).join("")}
         </div>
       </section>
-      <section class="ideas-card">
-        <div class="section-head"><h3>Ideas for your trip</h3><button data-view="search">See all</button></div>
-        <div class="place-strip">
-          ${state.places.slice(0, 4).map(renderTinyPlace).join("")}
+
+      <section class="home-hook-panel">
+        <h3>Events and official sources</h3>
+        <div class="hook-card-grid">
+          ${renderHomeHookCard("Events", "Heraklion Culture", "Connector planned · no fake events shown")}
+          ${renderHomeHookCard("Transport", "Urban Bus / KTEL", "Approved endpoint needed")}
+          ${renderHomeHookCard("Guide", "Visit Heraklion / Incredible Crete", "Curated pull source")}
         </div>
       </section>
+
+      <section class="home-nearby-panel">
+        <div class="section-head"><h3>Nearby now</h3><button data-view="live">Open live</button></div>
+        <div class="recommendation-list">
+          ${nearYouNow.slice(0, 3).map(renderRecommendation).join("")}
+        </div>
+      </section>
+
       <section class="quick-card">
         <h3>Quick capture</h3>
         <button data-action="photo">${renderIcon("photo")} Photo</button>
         <button data-action="video">${renderIcon("video")} Video</button>
         <button data-action="note">${renderIcon("note")} Note</button>
         <button data-action="moment">${renderIcon("moment")} Moment</button>
+        <button data-action="expense">${renderIcon("plus")} Expense</button>
       </section>
     </div>
   `;
@@ -967,6 +1008,59 @@ function renderTinyPlace(place) {
       <small>${place.category}</small>
     </button>
   `;
+}
+
+function renderHomeMap() {
+  return `<div id="home-map" class="leaflet-map leaflet-home-map" role="img" aria-label="Live map preview with nearby places"></div>`;
+}
+
+function renderHomeChecklist() {
+  const items = [
+    ["Location permission", state.locationContext.status === "located"],
+    ["Nearby places scanned", state.nearbyDiscovery.status === "ready"],
+    ["Weather checked", state.weatherContext.status === "ready"],
+    ["Offline shell ready", state.offlineReady],
+  ];
+
+  return items
+    .map(([label, checked]) => `<label><input type="checkbox" ${checked ? "checked" : ""}/> ${label}<span>···</span></label>`)
+    .join("");
+}
+
+function renderHomeIdeaCard(place) {
+  return `
+    <article class="home-idea-card">
+      <div class="home-idea-image ${getIdeaTone(place.category)}"></div>
+      <h3>${escapeHtml(place.title)}</h3>
+      <p>${escapeHtml(place.reason)}</p>
+      <small>★ ${escapeHtml(place.tag)} · ${escapeHtml(place.distance)}</small>
+    </article>
+  `;
+}
+
+function renderHomeHookCard(title, source, status) {
+  return `
+    <article>
+      <strong>${title}</strong>
+      <span>${source}</span>
+      <small>${status}</small>
+    </article>
+  `;
+}
+
+function getIdeaTone(category = "") {
+  const key = category.toLowerCase();
+  if (key.includes("coffee") || key.includes("food")) return "sun";
+  if (key.includes("culture") || key.includes("sight")) return "blue";
+  if (key.includes("water") || key.includes("reset")) return "green";
+  return "clay";
+}
+
+function getDayPeriod() {
+  const hour = new Date().getHours();
+  if (hour < 12) return "morning";
+  if (hour < 18) return "afternoon";
+  return "evening";
 }
 
 function renderPlaceResult(place) {
@@ -2326,6 +2420,21 @@ function initLeafletMaps() {
       currentLabel,
       routePlaces: destinationPlaces.filter((place) => state.savedIds.has(place.id)),
       selectedPlaces: destinationPlaces.filter((place) => state.savedIds.has(place.id)),
+    });
+  }
+
+  const homeMap = document.querySelector("#home-map");
+  if (homeMap) {
+    const homePlaces = state.nearbyDiscovery.places.length
+      ? state.nearbyDiscovery.places.slice(0, 8)
+      : destinationPlaces.filter((place) => state.savedIds.has(place.id) || place.nearby).slice(0, 5);
+    createLeafletMap(homeMap, homePlaces, {
+      currentLocation,
+      currentLabel,
+      selectedPlaces: homePlaces,
+      zoom: 15,
+      fitPadding: [14, 14],
+      fitMaxZoom: 15,
     });
   }
 
