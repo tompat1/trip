@@ -504,7 +504,6 @@ h3 {
 .quick-card,
 .live-hero,
 .live-map-card,
-.known-place-panel,
 .guide-hero,
 .visual-guide-panel,
 .day-module-panel,
@@ -829,8 +828,61 @@ h3 {
   align-self: start;
 }
 
-.known-place-panel {
-  padding: 18px;
+.recommendation-panel {
+  position: relative;
+  display: grid;
+  align-content: start;
+  gap: 12px;
+}
+
+.nearby-add-row {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  display: flex;
+  justify-content: center;
+  margin: 2px -6px -6px;
+  padding: 10px 6px 2px;
+  background: linear-gradient(transparent, rgba(255, 253, 248, .96) 34%);
+}
+
+.nearby-add-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 48px;
+  border: 0;
+  border-radius: 12px;
+  color: var(--white);
+  background: var(--red);
+  box-shadow: 0 14px 24px rgba(217, 74, 58, .24);
+  font-weight: 900;
+}
+
+.nearby-add-button .app-icon {
+  width: 20px;
+  height: 20px;
+}
+
+.nearby-place-drawer {
+  display: grid;
+  gap: 14px;
+  margin-top: 2px;
+  padding: 14px;
+  border: 1px solid rgba(217, 74, 58, .18);
+  border-radius: var(--radius);
+  background: rgba(255, 250, 241, .98);
+  box-shadow: 0 18px 42px rgba(23, 24, 23, .13);
+  animation: slideInPanel .22s ease both;
+}
+
+@keyframes slideInPanel {
+  from {
+    opacity: 0;
+    transform: translateX(18px);
+  }
 }
 
 .known-place-form,
@@ -919,6 +971,25 @@ h3 {
   background: rgba(255, 253, 248, .86);
   font-weight: 900;
   text-decoration: none;
+}
+
+.recommendation-panel .known-place-form,
+.recommendation-panel .known-place-edit {
+  grid-template-columns: 1fr 1fr;
+}
+
+.recommendation-panel .known-place-form label:first-child,
+.recommendation-panel .known-place-form .wide-field,
+.recommendation-panel .known-place-form button,
+.recommendation-panel .known-place-edit .category-badge,
+.recommendation-panel .known-place-edit label:nth-of-type(1),
+.recommendation-panel .known-place-edit .wide-field,
+.recommendation-panel .known-place-actions {
+  grid-column: 1 / -1;
+}
+
+.recommendation-panel .known-place-edit {
+  align-items: start;
 }
 
 .hero-panel::after {
@@ -2944,6 +3015,26 @@ button:focus-visible {
   .known-place-form,
   .known-place-edit {
     grid-template-columns: 1fr;
+  }
+
+  .nearby-place-drawer {
+    position: fixed;
+    left: 14px;
+    right: 14px;
+    bottom: 112px;
+    z-index: 12;
+    max-height: min(72vh, 620px);
+    overflow: auto;
+    border-radius: 18px;
+    box-shadow: 0 22px 60px rgba(23, 24, 23, .24);
+    animation: slideUpPanel .24s ease both;
+  }
+
+  @keyframes slideUpPanel {
+    from {
+      opacity: 0;
+      transform: translateY(26px);
+    }
   }
 
   .known-place-edit .category-badge,

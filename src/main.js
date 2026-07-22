@@ -84,6 +84,7 @@ const state = {
     error: "",
     current: null,
   },
+  placeEditorOpen: false,
   userPlaces: readStoredUserPlaces(),
   trip: {
     destination: "Heraklion, Crete",
@@ -723,15 +724,18 @@ function renderLive() {
       <section class="live-map-card">
         ${renderLiveMap(nearbySaved)}
       </section>
-      <section class="known-place-panel">
-        ${renderKnownPlaceManager()}
-      </section>
       <section class="recommendation-panel">
         <div class="section-head"><h2>Near you now</h2><button data-refresh-nearby>${state.nearbyDiscovery.status === "loading" ? "Scanning" : "Scan"}</button></div>
         <p class="panel-note">${renderNearbyDiscoveryStatus()}</p>
         <div class="recommendation-list">
           ${nearYouNow.map(renderRecommendation).join("")}
         </div>
+        <div class="nearby-add-row">
+          <button class="nearby-add-button" data-toggle-place-editor aria-expanded="${state.placeEditorOpen}" aria-controls="nearby-place-drawer">
+            ${renderIcon("plus")} Add cool place
+          </button>
+        </div>
+        ${state.placeEditorOpen ? renderKnownPlaceManager() : ""}
       </section>
       <section class="nearby-panel">
         <h2>Nearby saved places</h2>
@@ -764,11 +768,13 @@ function renderLive() {
 function renderKnownPlaceManager() {
   const [defaultLat, defaultLng] = state.locationContext.coordinates || HERAKLION_CENTER;
   return `
-    <div class="section-head">
+    <div id="nearby-place-drawer" class="nearby-place-drawer">
+      <div class="section-head">
       <div>
-        <h2>Add cool place</h2>
+        <h2>Add or edit places</h2>
         <p class="panel-note">Saved locally as JSON for now. Later this can move to the database without changing the shape.</p>
       </div>
+      <button data-toggle-place-editor aria-label="Close add place panel">×</button>
     </div>
     <form class="known-place-form" data-known-place-form>
       <label>Name<input name="title" required placeholder="Great coffee, view, restaurant..." /></label>
@@ -788,6 +794,7 @@ function renderKnownPlaceManager() {
     </form>
     <div class="known-place-list">
       ${state.userPlaces.length ? state.userPlaces.map(renderUserPlaceEditor).join("") : `<p class="empty-state">No custom places yet. Add the cafe, restaurant, walk, or saved spot you just found.</p>`}
+    </div>
     </div>
   `;
 }
@@ -1434,12 +1441,20 @@ function bindEvents() {
     });
   });
 
+  document.querySelectorAll("[data-toggle-place-editor]").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.placeEditorOpen = !state.placeEditorOpen;
+      render();
+    });
+  });
+
   document.querySelectorAll("[data-known-place-form]").forEach((form) => {
     form.addEventListener("submit", (event) => {
       event.preventDefault();
       const place = buildUserPlaceFromForm(new FormData(form));
       state.userPlaces = [place, ...state.userPlaces];
       writeStoredUserPlaces(state.userPlaces);
+      state.placeEditorOpen = true;
       render();
     });
   });
@@ -1450,6 +1465,7 @@ function bindEvents() {
       const id = form.dataset.userPlaceEdit;
       state.userPlaces = state.userPlaces.map((place) => (place.id === id ? buildUserPlaceFromForm(new FormData(form), place) : place));
       writeStoredUserPlaces(state.userPlaces);
+      state.placeEditorOpen = true;
       render();
     });
   });
@@ -1458,6 +1474,7 @@ function bindEvents() {
     button.addEventListener("click", () => {
       state.userPlaces = state.userPlaces.filter((place) => place.id !== button.dataset.deleteUserPlace);
       writeStoredUserPlaces(state.userPlaces);
+      state.placeEditorOpen = true;
       render();
     });
   });
