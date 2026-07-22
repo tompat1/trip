@@ -735,6 +735,7 @@ function renderRecommendedNextItem(place) {
 function renderLive() {
   const nearbySaved = state.places.filter((place) => state.savedIds.has(place.id) || place.nearby).slice(0, 5);
   const nearYouNow = getNearYouNowPlaces();
+  const livePanelPlaces = nearYouNow.slice(0, 4);
   const area = state.locationContext.area;
   return `
     <div class="live-page">
@@ -756,7 +757,7 @@ function renderLive() {
         <div class="section-head"><h2>Near you now</h2><button data-refresh-nearby>${state.nearbyDiscovery.status === "loading" ? "Scanning" : "Scan"}</button></div>
         <p class="panel-note">${renderNearbyDiscoveryStatus()}</p>
         <div class="recommendation-list">
-          ${nearYouNow.map(renderRecommendation).join("")}
+          ${livePanelPlaces.map(renderRecommendation).join("")}
         </div>
         <div class="nearby-add-row">
           <button class="nearby-add-button" data-toggle-place-editor aria-expanded="${state.placeEditorOpen}" aria-controls="nearby-place-drawer">

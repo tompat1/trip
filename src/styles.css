@@ -881,6 +881,14 @@ h3 {
   display: grid;
   align-content: start;
   gap: 12px;
+  align-self: start;
+  max-height: 520px;
+  overflow: hidden;
+}
+
+.recommendation-panel .recommendation-list {
+  overflow: auto;
+  padding-right: 2px;
 }
 
 .nearby-add-row {
@@ -1409,6 +1417,7 @@ h3 {
 .live-page {
   display: grid;
   grid-template-columns: minmax(0, 1.08fr) minmax(320px, .92fr);
+  align-items: start;
   gap: 16px;
 }
 
@@ -2943,6 +2952,16 @@ button:focus-visible {
   .profile-page,
   .search-layout {
     grid-template-columns: 1fr;
+  }
+
+  .recommendation-panel {
+    max-height: none;
+    overflow: visible;
+  }
+
+  .recommendation-panel .recommendation-list {
+    overflow: visible;
+    padding-right: 0;
   }
 
   .hero-panel,
