@@ -10,6 +10,10 @@ const placeColors = {
   clay: "#9c6e55",
 };
 
+const NOMINATIM_REVERSE_ENDPOINT = "https://nominatim.openstreetmap.org/reverse";
+const LOCATION_CACHE_KEY = "trip-location-context-v1";
+const LOCATION_CACHE_MAX_AGE = 1000 * 60 * 60 * 12;
+
 let leafletMaps = [];
 
 const state = {
@@ -27,6 +31,16 @@ const state = {
   guideWeatherMode: "mixed",
   routeOptimized: false,
   acknowledgedAlerts: new Set(),
+  locationContext: {
+    automatic: true,
+    attempted: false,
+    status: "idle",
+    coordinates: null,
+    accuracy: null,
+    updatedAt: null,
+    area: null,
+    error: "",
+  },
   trip: {
     destination: "Paris, France",
     dates: "3 - 9 Oct 2026",
@@ -278,6 +292,7 @@ function render() {
   `;
   bindEvents();
   initLeafletMaps();
+  initAutomaticPositioning();
 }
 
 function renderSidebar() {
@@ -505,13 +520,14 @@ function renderHome() {
 
 function renderLive() {
   const nearbySaved = state.places.filter((place) => state.savedIds.has(place.id) || place.nearby).slice(0, 5);
+  const area = state.locationContext.area;
   return `
     <div class="live-page">
       <section class="live-hero">
         <div>
           <p class="eyebrow">Trip Mode · ${state.live.lastSync}</p>
           <h2>${state.live.location}</h2>
-          <p>Live routing, visit confirmations, saved places, media, and collaborators stay together while you move.</p>
+          <p>${area ? `Positioned near ${area.city || area.region || area.country}. Live routing, visit confirmations, saved places, media, and collaborators stay together while you move.` : "Live routing, visit confirmations, saved places, media, and collaborators stay together while you move."}</p>
         </div>
         <div class="live-meter" aria-label="Live trip status">
           <span>${state.live.battery}</span>
@@ -521,8 +537,11 @@ function renderLive() {
       <section class="live-map-card">
         ${renderLiveMap(nearbySaved)}
       </section>
+      <section class="position-panel">
+        ${renderLocationContext()}
+      </section>
       <section class="recommendation-panel">
-        <div class="section-head"><h2>Near you now</h2><button data-refresh-location>Refresh</button></div>
+        <div class="section-head"><h2>Near you now</h2><button data-refresh-position>Locate</button></div>
         <div class="recommendation-list">
           ${state.recommendations.map(renderRecommendation).join("")}
         </div>
@@ -759,6 +778,8 @@ function renderMap() {
       <aside class="saved-panel">
         <h2>Saved places</h2>
         ${state.places.filter((place) => state.savedIds.has(place.id)).map(renderSavedPlace).join("")}
+        <div class="area-divider"></div>
+        ${renderLocationContext()}
       </aside>
     </div>
   `;
@@ -940,6 +961,55 @@ function renderSavedPlace(place) {
   `;
 }
 
+function renderLocationContext() {
+  const context = state.locationContext;
+  const area = context.area;
+  const updated = context.updatedAt ? new Date(context.updatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "";
+  const city = escapeHtml(area?.city || "Unknown");
+  const region = escapeHtml(area?.region || "Unknown");
+  const country = escapeHtml(area?.country || "Unknown");
+  const displayName = escapeHtml(area?.displayName || "");
+  const osmType = escapeHtml(area?.osmType || "OpenStreetMap area");
+  const osmId = escapeHtml(area?.osmId || "");
+  const postcode = escapeHtml(area?.postcode || "");
+  const status = {
+    idle: "Waiting for position",
+    locating: "Locating...",
+    collecting: "Collecting area data...",
+    located: "Position locked",
+    unavailable: "Position unavailable",
+    denied: "Permission needed",
+  }[context.status] || "Waiting for position";
+
+  return `
+    <div class="location-context" aria-live="polite">
+      <div class="section-head">
+        <h2>Area context</h2>
+        <button data-refresh-position>${context.status === "locating" || context.status === "collecting" ? "Working" : "Locate"}</button>
+      </div>
+      <p class="location-status">${status}${updated ? ` · ${updated}` : ""}</p>
+      ${context.error ? `<p class="location-error">${escapeHtml(context.error)}</p>` : ""}
+      ${
+        area
+          ? `
+            <div class="area-grid">
+              <span><strong>${city}</strong>city</span>
+              <span><strong>${region}</strong>region</span>
+              <span><strong>${country}</strong>country</span>
+              <span><strong>${context.accuracy ? `${Math.round(context.accuracy)} m` : "Unknown"}</strong>accuracy</span>
+            </div>
+            <div class="area-detail-list">
+              <span>${displayName}</span>
+              <span>${osmType}${osmId ? ` · ${osmId}` : ""}</span>
+              ${postcode ? `<span>Postcode ${postcode}</span>` : ""}
+            </div>
+          `
+          : `<p class="empty-state">Open Live or Map and allow location access to collect city, region, and area data.</p>`
+      }
+    </div>
+  `;
+}
+
 function renderLiveMap(places) {
   return `
     <div id="live-map" class="leaflet-map leaflet-live-map" role="img" aria-label="Live OpenStreetMap view with current location and saved places"></div>
@@ -1040,6 +1110,12 @@ function bindEvents() {
       state.live.lastSync = "just now";
       state.recommendations = [...state.recommendations].reverse();
       render();
+    });
+  });
+
+  document.querySelectorAll("[data-refresh-position]").forEach((button) => {
+    button.addEventListener("click", () => {
+      requestCurrentPosition({ force: true });
     });
   });
 
@@ -1158,11 +1234,206 @@ function bindEvents() {
   }
 }
 
+function initAutomaticPositioning() {
+  if (!state.locationContext.automatic || state.locationContext.attempted) return;
+  if (!["live", "map"].includes(state.activeView)) return;
+
+  const cached = readCachedLocation();
+  if (cached) {
+    applyLocationContext(cached, { fromCache: true });
+    state.locationContext.attempted = true;
+    render();
+    return;
+  }
+
+  requestCurrentPosition();
+}
+
+function requestCurrentPosition({ force = false } = {}) {
+  if (!navigator.geolocation) {
+    state.locationContext = {
+      ...state.locationContext,
+      attempted: true,
+      status: "unavailable",
+      error: "This browser does not expose location services.",
+    };
+    render();
+    return;
+  }
+
+  state.locationContext = {
+    ...state.locationContext,
+    attempted: true,
+    status: "locating",
+    error: "",
+  };
+  render();
+
+  navigator.geolocation.getCurrentPosition(
+    (position) => {
+      const coordinates = [position.coords.latitude, position.coords.longitude];
+      const cached = force ? null : readCachedLocation(coordinates);
+
+      state.locationContext = {
+        ...state.locationContext,
+        coordinates,
+        accuracy: position.coords.accuracy,
+        updatedAt: new Date(position.timestamp || Date.now()).toISOString(),
+        status: cached ? "located" : "collecting",
+        error: "",
+      };
+      render();
+
+      if (cached) {
+        applyLocationContext({
+          ...cached,
+          coordinates,
+          accuracy: position.coords.accuracy,
+          updatedAt: state.locationContext.updatedAt,
+        });
+        render();
+        return;
+      }
+
+      collectAreaData(coordinates, position.coords.accuracy);
+    },
+    (error) => {
+      const denied = error.code === error.PERMISSION_DENIED;
+      state.locationContext = {
+        ...state.locationContext,
+        status: denied ? "denied" : "unavailable",
+        error: denied ? "Allow location access to position the trip map automatically." : "Could not get a reliable location fix.",
+      };
+      render();
+    },
+    {
+      enableHighAccuracy: true,
+      maximumAge: 1000 * 60 * 5,
+      timeout: 10000,
+    }
+  );
+}
+
+async function collectAreaData(coordinates, accuracy) {
+  const cacheKey = getLocationCacheKey(coordinates);
+  const url = new URL(NOMINATIM_REVERSE_ENDPOINT);
+  url.searchParams.set("format", "jsonv2");
+  url.searchParams.set("lat", coordinates[0]);
+  url.searchParams.set("lon", coordinates[1]);
+  url.searchParams.set("addressdetails", "1");
+  url.searchParams.set("extratags", "1");
+  url.searchParams.set("zoom", "12");
+  url.searchParams.set("accept-language", "en");
+
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), 9000);
+
+  try {
+    const response = await fetch(url, {
+      headers: { Accept: "application/json" },
+      signal: controller.signal,
+    });
+    if (!response.ok) throw new Error("Reverse geocoding failed");
+
+    const data = await response.json();
+    const context = {
+      cacheKey,
+      coordinates,
+      accuracy,
+      updatedAt: new Date().toISOString(),
+      area: normalizeAreaData(data),
+    };
+    writeCachedLocation(context);
+    applyLocationContext(context);
+  } catch (error) {
+    state.locationContext = {
+      ...state.locationContext,
+      status: "located",
+      error: "Position found, but area data could not be collected yet.",
+    };
+  } finally {
+    window.clearTimeout(timeout);
+    render();
+  }
+}
+
+function normalizeAreaData(data) {
+  const address = data.address || {};
+  return {
+    city: address.city || address.town || address.village || address.municipality || address.suburb || address.city_district || address.county || "",
+    region: address.state || address.region || address.county || "",
+    country: address.country || "",
+    countryCode: address.country_code || "",
+    postcode: address.postcode || "",
+    displayName: data.display_name || "Unknown area",
+    osmId: data.osm_id || "",
+    osmType: data.osm_type || data.category || "OpenStreetMap area",
+    placeType: data.type || "",
+    boundingBox: data.boundingbox || [],
+  };
+}
+
+function applyLocationContext(context, { fromCache = false } = {}) {
+  state.locationContext = {
+    ...state.locationContext,
+    coordinates: context.coordinates,
+    accuracy: context.accuracy,
+    updatedAt: context.updatedAt,
+    area: context.area,
+    status: "located",
+    error: fromCache ? "" : state.locationContext.error,
+  };
+
+  const areaName = context.area?.city || context.area?.region;
+  if (areaName) state.live.location = areaName;
+  state.live.lastSync = fromCache ? "cached" : "just now";
+}
+
+function readCachedLocation(coordinates) {
+  try {
+    const cached = JSON.parse(localStorage.getItem(LOCATION_CACHE_KEY) || "null");
+    if (!cached?.updatedAt || !cached?.cacheKey) return null;
+    if (Date.now() - Date.parse(cached.updatedAt) > LOCATION_CACHE_MAX_AGE) return null;
+    if (coordinates && cached.cacheKey !== getLocationCacheKey(coordinates)) return null;
+    return cached;
+  } catch {
+    return null;
+  }
+}
+
+function writeCachedLocation(context) {
+  try {
+    localStorage.setItem(LOCATION_CACHE_KEY, JSON.stringify(context));
+  } catch {
+    // Private browsing or storage quotas can block caching; live positioning still works.
+  }
+}
+
+function getLocationCacheKey(coordinates) {
+  return coordinates.map((value) => Number(value).toFixed(3)).join(",");
+}
+
+function escapeHtml(value) {
+  return String(value ?? "").replace(/[&<>"']/g, (char) => (
+    {
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#39;",
+    }[char]
+  ));
+}
+
 function initLeafletMaps() {
   const destinationPlaces = state.places.filter(isInCurrentDestination);
+  const currentLocation = state.locationContext.coordinates || [48.8539, 2.3332];
+  const currentLabel = state.locationContext.area?.city || state.live.location;
   const tripMap = document.querySelector("#trip-map");
   if (tripMap) {
     createLeafletMap(tripMap, destinationPlaces, {
+      currentLocation,
+      currentLabel,
       routePlaces: destinationPlaces.filter((place) => state.savedIds.has(place.id)),
       selectedPlaces: destinationPlaces.filter((place) => state.savedIds.has(place.id)),
     });
@@ -1172,8 +1443,8 @@ function initLeafletMaps() {
   if (liveMap) {
     const nearbyPlaces = destinationPlaces.filter((place) => state.savedIds.has(place.id) || place.nearby).slice(0, 5);
     createLeafletMap(liveMap, nearbyPlaces, {
-      currentLocation: [48.8539, 2.3332],
-      currentLabel: state.live.location,
+      currentLocation,
+      currentLabel,
       routePlaces: nearbyPlaces,
       selectedPlaces: nearbyPlaces,
       zoom: 14,
