@@ -13,8 +13,15 @@ const placeColors = {
 const NOMINATIM_REVERSE_ENDPOINT = "https://nominatim.openstreetmap.org/reverse";
 const LOCATION_CACHE_KEY = "trip-location-context-v1";
 const LOCATION_CACHE_MAX_AGE = 1000 * 60 * 60 * 12;
+const PLACE_INTEL_CACHE_KEY = "trip-place-intel-v1";
+const PLACE_INTEL_CACHE_MAX_AGE = 1000 * 60 * 60 * 24;
+const WIKIPEDIA_API = "https://en.wikipedia.org/api/rest_v1/page/summary/";
+const WIKIPEDIA_SEARCH_API = "https://en.wikipedia.org/w/api.php";
+const REST_COUNTRIES_API = "https://restcountries.com/v3.1/name/";
 
 let leafletMaps = [];
+let liveClockTimer = null;
+let liveDeviceHooksReady = false;
 
 const state = {
   activeView: "search",
@@ -41,6 +48,19 @@ const state = {
     area: null,
     error: "",
   },
+  placeIntel: {
+    activeTab: "place",
+    status: "idle",
+    updatedAt: null,
+    error: "",
+    tabs: {
+      place: null,
+      city: null,
+      region: null,
+      island: null,
+      country: null,
+    },
+  },
   trip: {
     destination: "Paris, France",
     dates: "3 - 9 Oct 2026",
@@ -54,6 +74,7 @@ const state = {
     nextStop: "Sainte-Chapelle",
     walkingTime: "13 min",
     battery: "82%",
+    connection: navigator.onLine ? "Online" : "Offline",
   },
   collaborators: [
     { initials: "TR", name: "Thomas", status: "Live" },
@@ -293,6 +314,9 @@ function render() {
   bindEvents();
   initLeafletMaps();
   initAutomaticPositioning();
+  initPlaceIntelligence();
+  syncLiveClock();
+  initLiveDeviceHooks();
 }
 
 function renderSidebar() {
@@ -325,12 +349,16 @@ function renderSidebar() {
 }
 
 function renderHeader() {
+  const isLive = state.activeView === "live";
+  const headerMeta = isLive
+    ? `<span id="live-date-time" data-live-clock>${formatLiveDateTime()}</span>`
+    : `<span>${state.trip.dates}</span>`;
   return `
     <header class="topbar">
       <div>
         <p class="eyebrow">${state.activeView === "guide" ? "MVP 3 · Intelligent guide" : state.tripMode ? "MVP 2 · Live journey" : "MVP 1 · Plan and remember"}</p>
         <h1>${state.trip.destination}</h1>
-        <span>${state.trip.dates}</span>
+        ${headerMeta}
       </div>
       <div class="top-actions">
         <button class="icon-action" data-view="map" aria-label="Open map">${renderIcon("map")}</button>
@@ -520,6 +548,7 @@ function renderHome() {
 
 function renderLive() {
   const nearbySaved = state.places.filter((place) => state.savedIds.has(place.id) || place.nearby).slice(0, 5);
+  const nearYouNow = getNearYouNowPlaces();
   const area = state.locationContext.area;
   return `
     <div class="live-page">
@@ -531,7 +560,7 @@ function renderLive() {
         </div>
         <div class="live-meter" aria-label="Live trip status">
           <span>${state.live.battery}</span>
-          <small>offline pack ready</small>
+          <small>${state.live.connection} · pack ready</small>
         </div>
       </section>
       <section class="live-map-card">
@@ -542,9 +571,19 @@ function renderLive() {
       </section>
       <section class="recommendation-panel">
         <div class="section-head"><h2>Near you now</h2><button data-refresh-position>Locate</button></div>
+        <p class="panel-note">${state.locationContext.coordinates ? "Sorted from your current position with saved places and route fit weighted higher." : "Allow location access to replace demo distances with real distance scoring."}</p>
         <div class="recommendation-list">
-          ${state.recommendations.map(renderRecommendation).join("")}
+          ${nearYouNow.map(renderRecommendation).join("")}
         </div>
+      </section>
+      <section class="nearby-plan-panel">
+        <h2>Nearby plan</h2>
+        <div class="nearby-plan-list">
+          ${renderNearYouNowPlan()}
+        </div>
+      </section>
+      <section class="place-intel-panel">
+        ${renderPlaceIntelTabs()}
       </section>
       <section class="confirmation-panel">
         <div class="section-head"><h2>Visit confirmation</h2><button data-confirm-next>Confirm next</button></div>
@@ -925,6 +964,85 @@ function renderRecommendation(item) {
   `;
 }
 
+function renderNearYouNowPlan() {
+  const steps = [
+    ["1", "Locate", state.locationContext.coordinates ? "Using your current GPS fix." : "Ask for browser location permission."],
+    ["2", "Score", "Rank places by walking distance, saved status, category fit, and itinerary timing."],
+    ["3", "Enrich", "Pull city and region context from public web hooks, then keep results cached."],
+    ["4", "Act", "Show the best next stop, backup indoor option, and one low-effort reset place."],
+  ];
+
+  return steps
+    .map(
+      ([number, title, text]) => `
+        <article>
+          <span>${number}</span>
+          <div><strong>${title}</strong><p>${text}</p></div>
+        </article>`
+    )
+    .join("");
+}
+
+function renderPlaceIntelTabs() {
+  const tabs = [
+    ["place", "Place"],
+    ["city", "City"],
+    ["region", "Region"],
+    ["island", "Island"],
+    ["country", "Country"],
+  ];
+  const active = state.placeIntel.activeTab;
+  const item = state.placeIntel.tabs[active];
+  const updated = state.placeIntel.updatedAt ? new Date(state.placeIntel.updatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "";
+
+  return `
+    <div class="section-head">
+      <div>
+        <h2>Live place intelligence</h2>
+        <p class="panel-note">${renderPlaceIntelStatus()}${updated ? ` · ${updated}` : ""}</p>
+      </div>
+      <button data-refresh-intel>${state.placeIntel.status === "loading" ? "Loading" : "Refresh"}</button>
+    </div>
+    <div class="intel-tabs" role="tablist" aria-label="Place intelligence tabs">
+      ${tabs.map(([id, label]) => `<button role="tab" aria-selected="${active === id}" class="${active === id ? "is-active" : ""}" data-intel-tab="${id}">${label}</button>`).join("")}
+    </div>
+    ${renderPlaceIntelCard(active, item)}
+  `;
+}
+
+function renderPlaceIntelStatus() {
+  if (state.placeIntel.error) return escapeHtml(state.placeIntel.error);
+  return {
+    idle: "Waiting for area context",
+    loading: "Searching public sources",
+    ready: "Public source hooks ready",
+  }[state.placeIntel.status] || "Waiting for area context";
+}
+
+function renderPlaceIntelCard(tab, item) {
+  if (!item) {
+    return `
+      <article class="intel-card is-empty">
+        <h3>${escapeHtml(getIntelQuery(tab) || tab)}</h3>
+        <p>Allow location access, then TRIP can collect public context for this layer.</p>
+        <span>Source hooks: Wikipedia, REST Countries, OpenStreetMap address data</span>
+      </article>
+    `;
+  }
+
+  return `
+    <article class="intel-card">
+      <span>${escapeHtml(item.source)}</span>
+      <h3>${escapeHtml(item.title)}</h3>
+      <p>${escapeHtml(item.summary)}</p>
+      <div class="intel-fact-row">
+        ${item.facts.map((fact) => `<small>${escapeHtml(fact)}</small>`).join("")}
+      </div>
+      ${item.url ? `<a href="${escapeHtml(item.url)}" target="_blank" rel="noreferrer">Open source</a>` : ""}
+    </article>
+  `;
+}
+
 function renderVisitRow(place) {
   const confirmed = state.confirmedIds.has(place.id);
   return `
@@ -1119,6 +1237,19 @@ function bindEvents() {
     });
   });
 
+  document.querySelectorAll("[data-intel-tab]").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.placeIntel.activeTab = button.dataset.intelTab;
+      render();
+    });
+  });
+
+  document.querySelectorAll("[data-refresh-intel]").forEach((button) => {
+    button.addEventListener("click", () => {
+      fetchPlaceIntelligence({ force: true });
+    });
+  });
+
   document.querySelectorAll("[data-organize-media]").forEach((button) => {
     button.addEventListener("click", () => {
       state.mediaOrganized = true;
@@ -1234,6 +1365,112 @@ function bindEvents() {
   }
 }
 
+function getNearYouNowPlaces() {
+  const origin = state.locationContext.coordinates || [48.8539, 2.3332];
+  const hasLivePosition = Boolean(state.locationContext.coordinates);
+  const candidates = state.places
+    .filter((place) => isInCurrentDestination(place) && place.coordinates)
+    .map((place) => {
+      const meters = getDistanceMeters(origin, place.coordinates);
+      const savedBoost = state.savedIds.has(place.id) ? 0.82 : 1;
+      const nearbyBoost = place.nearby ? 0.9 : 1;
+      const score = meters * savedBoost * nearbyBoost;
+      const distance = meters < 1000 ? `${Math.round(meters / 10) * 10} m` : `${(meters / 1000).toFixed(1)} km`;
+      const tag = state.savedIds.has(place.id) ? "Saved" : place.category;
+      const reason = hasLivePosition
+        ? `${place.category} near your live position. ${state.confirmedIds.has(place.id) ? "Already visited; good reference point." : "Possible next stop."}`
+        : `${place.category} using demo Saint-Germain position until GPS is allowed.`;
+
+      return {
+        ...place,
+        score,
+        title: place.title,
+        reason,
+        tag,
+        distance,
+      };
+    });
+
+  return candidates.sort((a, b) => a.score - b.score).slice(0, 4);
+}
+
+function getDistanceMeters(from, to) {
+  const earthRadius = 6371000;
+  const toRadians = (value) => (value * Math.PI) / 180;
+  const lat1 = toRadians(from[0]);
+  const lat2 = toRadians(to[0]);
+  const deltaLat = toRadians(to[0] - from[0]);
+  const deltaLng = toRadians(to[1] - from[1]);
+  const haversine = Math.sin(deltaLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(deltaLng / 2) ** 2;
+  return earthRadius * 2 * Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine));
+}
+
+function syncLiveClock() {
+  updateLiveClock();
+  if (liveClockTimer) return;
+
+  liveClockTimer = window.setInterval(() => {
+    updateLiveClock();
+  }, 1000);
+}
+
+function updateLiveClock() {
+  document.querySelectorAll("[data-live-clock]").forEach((node) => {
+    node.textContent = formatLiveDateTime();
+  });
+}
+
+function formatLiveDateTime() {
+  return new Intl.DateTimeFormat([], {
+    weekday: "long",
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  }).format(new Date());
+}
+
+function initLiveDeviceHooks() {
+  if (liveDeviceHooksReady) return;
+  liveDeviceHooksReady = true;
+
+  const updateConnection = () => {
+    state.live.connection = navigator.onLine ? "Online" : "Offline";
+    updateLiveMeter();
+  };
+
+  window.addEventListener("online", updateConnection);
+  window.addEventListener("offline", updateConnection);
+  updateConnection();
+
+  if (!navigator.getBattery) return;
+
+  navigator.getBattery().then((battery) => {
+    const updateBattery = () => {
+      state.live.battery = `${Math.round(battery.level * 100)}%`;
+      updateLiveMeter();
+    };
+
+    battery.addEventListener("levelchange", updateBattery);
+    battery.addEventListener("chargingchange", updateBattery);
+    updateBattery();
+  }).catch(() => {
+    // Battery status is intentionally unavailable in some browsers.
+  });
+}
+
+function updateLiveMeter() {
+  const meter = document.querySelector(".live-meter");
+  if (!meter) return;
+
+  const value = meter.querySelector("span");
+  const label = meter.querySelector("small");
+  if (value) value.textContent = state.live.battery;
+  if (label) label.textContent = `${state.live.connection} · pack ready`;
+}
+
 function initAutomaticPositioning() {
   if (!state.locationContext.automatic || state.locationContext.attempted) return;
   if (!["live", "map"].includes(state.activeView)) return;
@@ -1247,6 +1484,175 @@ function initAutomaticPositioning() {
   }
 
   requestCurrentPosition();
+}
+
+function initPlaceIntelligence() {
+  if (state.activeView !== "live") return;
+  if (!state.locationContext.area) return;
+  if (state.placeIntel.status === "loading" || state.placeIntel.status === "ready") return;
+
+  const cached = readCachedPlaceIntel();
+  if (cached) {
+    state.placeIntel = {
+      ...state.placeIntel,
+      ...cached,
+      status: "ready",
+      error: "",
+    };
+    render();
+    return;
+  }
+
+  fetchPlaceIntelligence();
+}
+
+async function fetchPlaceIntelligence({ force = false } = {}) {
+  if (!state.locationContext.area) {
+    state.placeIntel = {
+      ...state.placeIntel,
+      status: "idle",
+      error: "Area context is needed before web hooks can run.",
+    };
+    render();
+    return;
+  }
+
+  if (!force) {
+    const cached = readCachedPlaceIntel();
+    if (cached) {
+      state.placeIntel = { ...state.placeIntel, ...cached, status: "ready", error: "" };
+      render();
+      return;
+    }
+  }
+
+  state.placeIntel = { ...state.placeIntel, status: "loading", error: "" };
+  render();
+
+  const tabs = { ...state.placeIntel.tabs };
+  const tabIds = Object.keys(tabs);
+
+  try {
+    const results = await Promise.all(tabIds.map((tab) => fetchIntelForTab(tab)));
+    results.forEach(([tab, item]) => {
+      tabs[tab] = item;
+    });
+
+    const nextIntel = {
+      activeTab: state.placeIntel.activeTab,
+      status: "ready",
+      updatedAt: new Date().toISOString(),
+      error: "",
+      tabs,
+    };
+    state.placeIntel = nextIntel;
+    writeCachedPlaceIntel(nextIntel);
+  } catch {
+    state.placeIntel = {
+      ...state.placeIntel,
+      status: "idle",
+      error: "Public data hooks could not be reached yet.",
+    };
+  } finally {
+    render();
+  }
+}
+
+async function fetchIntelForTab(tab) {
+  const query = getIntelQuery(tab);
+  if (!query) {
+    return [
+      tab,
+      {
+        source: "Trip context",
+        title: tab === "island" ? "No island detected" : "Waiting for context",
+        summary: tab === "island" ? "The current OpenStreetMap address did not include an island field. This tab is ready for island-aware trips like Crete." : "No query available yet.",
+        facts: ["Context hook"],
+        url: "",
+      },
+    ];
+  }
+
+  if (tab === "country") {
+    const country = await fetchCountryIntel(query);
+    if (country) return [tab, country];
+  }
+
+  return [tab, await fetchWikipediaIntel(query, tab)];
+}
+
+function getIntelQuery(tab) {
+  const area = state.locationContext.area;
+  if (!area) return "";
+
+  return {
+    place: getCurrentPlaceName(area),
+    city: area.city,
+    region: area.region,
+    island: area.island,
+    country: area.country,
+  }[tab] || "";
+}
+
+function getCurrentPlaceName(area) {
+  return (area.displayName || "").split(",")[0]?.trim() || area.city || area.region || area.country || "";
+}
+
+async function fetchWikipediaIntel(query, tab) {
+  const title = await findWikipediaTitle(query);
+  const response = await fetch(`${WIKIPEDIA_API}${encodeURIComponent(title || query)}`, {
+    headers: { Accept: "application/json" },
+  });
+  if (!response.ok) throw new Error("Wikipedia summary unavailable");
+
+  const data = await response.json();
+  return {
+    source: "Wikipedia",
+    title: data.title || query,
+    summary: data.extract || `No summary was available for ${query}.`,
+    facts: [
+      `${tab.charAt(0).toUpperCase() + tab.slice(1)} layer`,
+      data.type || "summary",
+      data.lang ? data.lang.toUpperCase() : "EN",
+    ],
+    url: data.content_urls?.desktop?.page || "",
+  };
+}
+
+async function findWikipediaTitle(query) {
+  const url = new URL(WIKIPEDIA_SEARCH_API);
+  url.searchParams.set("origin", "*");
+  url.searchParams.set("action", "query");
+  url.searchParams.set("list", "search");
+  url.searchParams.set("format", "json");
+  url.searchParams.set("srlimit", "1");
+  url.searchParams.set("srsearch", query);
+
+  const response = await fetch(url, { headers: { Accept: "application/json" } });
+  if (!response.ok) return query;
+
+  const data = await response.json();
+  return data.query?.search?.[0]?.title || query;
+}
+
+async function fetchCountryIntel(countryName) {
+  const response = await fetch(`${REST_COUNTRIES_API}${encodeURIComponent(countryName)}?fullText=true`, {
+    headers: { Accept: "application/json" },
+  });
+  if (!response.ok) return null;
+
+  const [country] = await response.json();
+  if (!country) return null;
+
+  const currencies = country.currencies ? Object.values(country.currencies).map((currency) => currency.name).join(", ") : "Unknown currency";
+  const languages = country.languages ? Object.values(country.languages).slice(0, 3).join(", ") : "Unknown languages";
+  return {
+    source: "REST Countries",
+    title: country.name?.common || countryName,
+    summary: `${country.name?.common || countryName} has ${country.capital?.[0] || "no listed capital"} as its capital and a population of ${country.population?.toLocaleString?.() || "unknown"}.`,
+    facts: [currencies, languages, country.region || "Unknown region"],
+    url: country.maps?.openStreetMaps || "",
+  };
 }
 
 function requestCurrentPosition({ force = false } = {}) {
@@ -1362,6 +1768,7 @@ function normalizeAreaData(data) {
   return {
     city: address.city || address.town || address.village || address.municipality || address.suburb || address.city_district || address.county || "",
     region: address.state || address.region || address.county || "",
+    island: address.island || address.archipelago || "",
     country: address.country || "",
     countryCode: address.country_code || "",
     postcode: address.postcode || "",
@@ -1407,6 +1814,37 @@ function writeCachedLocation(context) {
   } catch {
     // Private browsing or storage quotas can block caching; live positioning still works.
   }
+}
+
+function readCachedPlaceIntel() {
+  try {
+    const cached = JSON.parse(localStorage.getItem(PLACE_INTEL_CACHE_KEY) || "null");
+    if (!cached?.updatedAt || !cached?.tabs) return null;
+    if (Date.now() - Date.parse(cached.updatedAt) > PLACE_INTEL_CACHE_MAX_AGE) return null;
+    if (cached.areaKey !== getPlaceIntelAreaKey()) return null;
+    return cached;
+  } catch {
+    return null;
+  }
+}
+
+function writeCachedPlaceIntel(intel) {
+  try {
+    localStorage.setItem(
+      PLACE_INTEL_CACHE_KEY,
+      JSON.stringify({
+        ...intel,
+        areaKey: getPlaceIntelAreaKey(),
+      })
+    );
+  } catch {
+    // Storage can be blocked; web hooks still update the current session.
+  }
+}
+
+function getPlaceIntelAreaKey() {
+  const area = state.locationContext.area;
+  return [area?.city, area?.region, area?.island, area?.country].filter(Boolean).join("|").toLowerCase();
 }
 
 function getLocationCacheKey(coordinates) {

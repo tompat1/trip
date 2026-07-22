@@ -321,11 +321,18 @@ button {
 }
 
 .topbar {
+  position: sticky;
+  top: 0;
+  z-index: 9;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 18px;
+  margin: -22px -22px 18px;
+  padding: 22px;
+  border-bottom: 1px solid rgba(222, 214, 199, .72);
+  background: rgba(244, 240, 231, .88);
+  backdrop-filter: blur(18px);
 }
 
 .eyebrow {
@@ -487,6 +494,8 @@ h3 {
 .weather-aware-panel,
 .recommendation-panel,
 .position-panel,
+.nearby-plan-panel,
+.place-intel-panel,
 .confirmation-panel,
 .nearby-panel,
 .media-panel,
@@ -578,6 +587,8 @@ h3 {
 .ideas-card,
 .recommendation-panel,
 .position-panel,
+.nearby-plan-panel,
+.place-intel-panel,
 .confirmation-panel,
 .source-panel,
 .answer-panel,
@@ -1369,6 +1380,7 @@ h3 {
 }
 
 .recommendation-list,
+.nearby-plan-list,
 .visit-list,
 .media-stack,
 .collab-list {
@@ -1377,6 +1389,7 @@ h3 {
 }
 
 .recommendation-card,
+.nearby-plan-list article,
 .visit-row,
 .nearby-place,
 .media-stack article,
@@ -1416,6 +1429,8 @@ h3 {
 }
 
 .recommendation-card p,
+.panel-note,
+.nearby-plan-list p,
 .visit-row p,
 .nearby-place p,
 .media-stack small,
@@ -1423,6 +1438,110 @@ h3 {
   display: block;
   color: var(--muted);
   line-height: 1.4;
+}
+
+.panel-note {
+  margin-bottom: 12px;
+}
+
+.nearby-plan-list article {
+  grid-template-columns: 38px minmax(0, 1fr);
+}
+
+.nearby-plan-list article > span {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--white);
+  background: var(--blue);
+  font-weight: 900;
+}
+
+.nearby-plan-list strong,
+.nearby-plan-list p {
+  margin-bottom: 0;
+}
+
+.intel-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.intel-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.intel-tabs button {
+  flex: 0 0 auto;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--ink);
+  background: var(--white);
+  font-weight: 900;
+}
+
+.intel-tabs button.is-active {
+  border-color: var(--red);
+  color: var(--white);
+  background: var(--red);
+}
+
+.intel-card {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--white);
+}
+
+.intel-card > span {
+  width: max-content;
+  padding: 6px 8px;
+  border-radius: 999px;
+  color: var(--blue);
+  background: rgba(56, 92, 115, .1);
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.intel-card h3,
+.intel-card p {
+  margin-bottom: 0;
+}
+
+.intel-card p {
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.intel-card a {
+  width: max-content;
+  color: var(--red);
+  font-weight: 900;
+  text-decoration: none;
+}
+
+.intel-fact-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.intel-fact-row small {
+  padding: 6px 8px;
+  border-radius: 999px;
+  color: var(--clay);
+  background: rgba(156, 110, 85, .1);
+  font-weight: 900;
 }
 
 .recommendation-card strong {
