@@ -25,6 +25,7 @@ const OPEN_METEO_API = "https://api.open-meteo.com/v1/forecast";
 const WEATHER_CACHE_KEY = "trip-weather-context-v1";
 const WEATHER_CACHE_MAX_AGE = 1000 * 60 * 20;
 const USER_PLACES_STORAGE_KEY = "trip-user-nearby-places-v1";
+const HIDDEN_NEARBY_STORAGE_KEY = "trip-hidden-nearby-v1";
 const PLACE_IMAGE_CACHE_KEY = "trip-place-images-v1";
 const PLACE_IMAGE_CACHE_MAX_AGE = 1000 * 60 * 60 * 24 * 7;
 const COMMONS_API = "https://commons.wikimedia.org/w/api.php";
@@ -91,6 +92,7 @@ const state = {
   placeEditorOpen: false,
   placeImageCache: readCachedPlaceImages(),
   userPlaces: readStoredUserPlaces(),
+  hiddenNearbyIds: readStoredHiddenNearbyIds(),
   trip: {
     destination: "Heraklion, Crete",
     dates: "17 - 24 Jul 2026",
@@ -1082,7 +1084,7 @@ function renderMoments() {
       <section class="upload-panel">
         <h2>Photo and video upload</h2>
         <label class="drop-zone">
-          <input type="file" multiple accept="image/*,video/*" aria-label="Upload photos and videos"/>
+          <input data-media-upload type="file" multiple accept="image/*,video/*" aria-label="Upload photos and videos"/>
           <span>Drop memories here</span>
           <small>Photos, video clips, captions, and location notes</small>
         </label>
@@ -1234,7 +1236,8 @@ function renderRecommendation(item) {
   const href = getExternalMapUrl(item);
   const iconName = getPlaceIconName(item);
   return `
-    <a class="recommendation-card" href="${escapeHtml(href)}" target="_blank" rel="noreferrer" aria-label="Open ${escapeHtml(item.title)} in OpenStreetMap">
+    <article class="recommendation-card">
+      <a class="recommendation-link" href="${escapeHtml(href)}" target="_blank" rel="noreferrer" aria-label="Open ${escapeHtml(item.title)} in OpenStreetMap">
       <div class="recommendation-media">
         ${renderPlaceImage(item, "recommendation-image")}
         <span class="category-badge ${iconName}" title="${escapeHtml(item.tag || item.category || "Nearby")}">${renderIcon(iconName)}</span>
@@ -1246,7 +1249,12 @@ function renderRecommendation(item) {
         ${source}
       </div>
       <strong>${item.distance}</strong>
-    </a>
+      </a>
+      <div class="recommendation-actions">
+        <button data-edit-user-place="${escapeHtml(item.id)}" aria-label="Edit ${escapeHtml(item.title)}">${renderIcon("note")}</button>
+        <button data-hide-nearby="${escapeHtml(item.id)}" aria-label="Remove ${escapeHtml(item.title)} as not relevant">−</button>
+      </div>
+    </article>
   `;
 }
 
@@ -1456,6 +1464,35 @@ function bindEvents() {
     });
   });
 
+  document.querySelectorAll("[data-edit-user-place]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const id = button.dataset.editUserPlace;
+      if (!state.userPlaces.some((place) => place.id === id)) {
+        const place = getNearYouNowPlaces().find((item) => item.id === id);
+        if (place) {
+          state.userPlaces = [buildUserPlaceFromNearby(place), ...state.userPlaces];
+          state.hiddenNearbyIds.delete(id);
+          writeStoredUserPlaces(state.userPlaces);
+          writeStoredHiddenNearbyIds(state.hiddenNearbyIds);
+        }
+      }
+      state.placeEditorOpen = true;
+      render();
+      requestAnimationFrame(() => {
+        document.querySelector(`[data-user-place-edit="${CSS.escape(id)}"] input[name="title"]`)?.focus();
+      });
+    });
+  });
+
+  document.querySelectorAll("[data-hide-nearby]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const id = button.dataset.hideNearby;
+      state.hiddenNearbyIds.add(id);
+      writeStoredHiddenNearbyIds(state.hiddenNearbyIds);
+      render();
+    });
+  });
+
   document.querySelectorAll("[data-known-place-form]").forEach((form) => {
     form.addEventListener("submit", async (event) => {
       event.preventDefault();
@@ -1650,7 +1687,7 @@ function bindEvents() {
     });
   });
 
-  const fileInput = document.querySelector('input[type="file"]');
+  const fileInput = document.querySelector("[data-media-upload]");
   if (fileInput) {
     fileInput.addEventListener("change", () => {
       if (!fileInput.files.length) return;
@@ -1666,7 +1703,7 @@ function getNearYouNowPlaces() {
   const userNearby = getUserNearbyPlaces(origin, hasLivePosition);
 
   if (state.nearbyDiscovery.places.length) {
-    return mergeNearbyPlaces([...userNearby, ...state.nearbyDiscovery.places]).slice(0, 6);
+    return filterVisibleNearbyPlaces(mergeNearbyPlaces([...userNearby, ...state.nearbyDiscovery.places])).slice(0, 6);
   }
 
   const candidates = state.places
@@ -1692,7 +1729,11 @@ function getNearYouNowPlaces() {
       };
     });
 
-  return mergeNearbyPlaces([...userNearby, ...candidates.sort((a, b) => a.score - b.score)]).slice(0, 6);
+  return filterVisibleNearbyPlaces(mergeNearbyPlaces([...userNearby, ...candidates.sort((a, b) => a.score - b.score)])).slice(0, 6);
+}
+
+function filterVisibleNearbyPlaces(places) {
+  return places.filter((place) => !state.hiddenNearbyIds.has(place.id));
 }
 
 function getUserNearbyPlaces(origin, hasLivePosition) {
@@ -1742,6 +1783,24 @@ async function buildUserPlaceFromForm(formData, existing = {}) {
     imageUrl: uploadedImage || String(formData.get("imageUrl") || existing.imageUrl || "").trim(),
     color: getCategoryColor(category),
     saved: category === "Saved",
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+function buildUserPlaceFromNearby(place) {
+  const category = normalizeUserCategory(place.category || place.tag);
+  return {
+    id: place.id,
+    title: place.title,
+    category,
+    tag: category,
+    description: place.description || place.reason || "",
+    reason: place.description || place.reason || "",
+    source: "Your JSON place",
+    coordinates: place.coordinates || HERAKLION_CENTER,
+    imageUrl: getPlaceImageUrl(place),
+    color: getCategoryColor(category),
+    saved: Boolean(place.saved || state.savedIds.has(place.id)),
     updatedAt: new Date().toISOString(),
   };
 }
@@ -2820,6 +2879,23 @@ function writeStoredUserPlaces(places) {
     );
   } catch {
     // The in-memory list still updates if browser storage is unavailable.
+  }
+}
+
+function readStoredHiddenNearbyIds() {
+  try {
+    const ids = JSON.parse(localStorage.getItem(HIDDEN_NEARBY_STORAGE_KEY) || "[]");
+    return new Set(Array.isArray(ids) ? ids.filter(Boolean).map(String) : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function writeStoredHiddenNearbyIds(ids) {
+  try {
+    localStorage.setItem(HIDDEN_NEARBY_STORAGE_KEY, JSON.stringify([...ids]));
+  } catch {
+    // Hidden nearby places still update for the current session if storage is unavailable.
   }
 }
 
