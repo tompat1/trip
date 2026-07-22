@@ -54,6 +54,7 @@ const state = {
   guideWeatherMode: "mixed",
   routeOptimized: false,
   acknowledgedAlerts: new Set(),
+  selectedMapPlaceId: null,
   locationContext: {
     automatic: true,
     attempted: false,
@@ -562,7 +563,6 @@ function renderHome() {
   const weather = state.weatherContext.current;
   const weatherPlace = getLiveHeaderTitle();
   const nearYouNow = getNearYouNowPlaces();
-  const topPick = nearYouNow[0];
   const localTime = formatLiveDateTime();
   const accuracy = state.locationContext.accuracy ? `${Math.round(state.locationContext.accuracy)} m` : "Waiting";
   return `
@@ -591,14 +591,7 @@ function renderHome() {
         <span>${weather ? `${escapeHtml(weather.label)} · ${Math.round(weather.temperature)}°C` : "Weather hook waiting"} · ${accuracy} accuracy</span>
       </section>
 
-      <section class="upcoming-panel">
-        <div>
-          <p class="eyebrow">Recommended next</p>
-          <h2>${topPick ? escapeHtml(topPick.title) : "Scan nearby places"}</h2>
-          <p>${topPick ? escapeHtml(topPick.reason) : "Use OpenStreetMap nearby tags to find cafes, food, sights, water, toilets, museums and viewpoints around you."}</p>
-        </div>
-        <button class="icon-button" data-refresh-nearby aria-label="Refresh nearby places">⌖</button>
-      </section>
+      ${renderRecommendedNextPanel(nearYouNow)}
 
       <section class="task-card">
         <h3>Continue planning</h3>
@@ -710,6 +703,33 @@ function buildFallbackForecast(weather) {
     temp: `${temp - Math.min(index, 2)}°`,
     label,
   }));
+}
+
+function renderRecommendedNextPanel(places) {
+  const picks = places.slice(0, 3);
+  return `
+    <section class="upcoming-panel">
+      <div>
+        <p class="eyebrow">Recommended next</p>
+        <h2>${picks[0] ? escapeHtml(picks[0].title) : "Scan nearby places"}</h2>
+        <p>${picks[0] ? escapeHtml(picks[0].reason) : "Use OpenStreetMap nearby tags to find cafes, food, sights, water, toilets, museums and viewpoints around you."}</p>
+        <div class="recommended-next-list">
+          ${picks.map(renderRecommendedNextItem).join("")}
+        </div>
+      </div>
+      <button class="icon-button" data-refresh-nearby aria-label="Refresh nearby places">⌖</button>
+    </section>
+  `;
+}
+
+function renderRecommendedNextItem(place) {
+  return `
+    <a class="recommended-next-item" href="${escapeHtml(getMobileMapUrl(place))}" data-map-focus="${escapeHtml(place.id)}" aria-label="Focus ${escapeHtml(place.title)} on the trip map">
+      <span class="category-badge ${getPlaceIconName(place)}" aria-hidden="true">${renderIcon(getPlaceIconName(place))}</span>
+      <strong>${escapeHtml(place.title)}</strong>
+      <small>${escapeHtml(place.distance || place.category || "Nearby")}</small>
+    </a>
+  `;
 }
 
 function renderLive() {
@@ -1175,9 +1195,8 @@ function renderHomeChecklist() {
 }
 
 function renderHomeIdeaCard(place) {
-  const href = getExternalMapUrl(place);
   return `
-    <a class="home-idea-card" href="${escapeHtml(href)}" target="_blank" rel="noreferrer" aria-label="Open ${escapeHtml(place.title)} in OpenStreetMap">
+    <a class="home-idea-card" href="${escapeHtml(getMobileMapUrl(place))}" data-map-focus="${escapeHtml(place.id)}" aria-label="Focus ${escapeHtml(place.title)} on the trip map">
       ${renderPlaceImage(place, "home-idea-image")}
       <h3>${escapeHtml(place.title)}</h3>
       <p>${escapeHtml(place.reason)}</p>
@@ -1233,11 +1252,10 @@ function renderPlaceResult(place) {
 function renderRecommendation(item) {
   const translation = item.englishTitle && item.englishTitle !== item.title ? `<small>English: ${escapeHtml(item.englishTitle)}</small>` : "";
   const source = item.source ? `<small>${escapeHtml(item.source)}</small>` : "";
-  const href = getExternalMapUrl(item);
   const iconName = getPlaceIconName(item);
   return `
     <article class="recommendation-card">
-      <a class="recommendation-link" href="${escapeHtml(href)}" target="_blank" rel="noreferrer" aria-label="Open ${escapeHtml(item.title)} in OpenStreetMap">
+      <a class="recommendation-link" href="${escapeHtml(getMobileMapUrl(item))}" data-map-focus="${escapeHtml(item.id)}" aria-label="Focus ${escapeHtml(item.title)} on the trip map">
       <div class="recommendation-media">
         ${renderPlaceImage(item, "recommendation-image")}
         <span class="category-badge ${iconName}" title="${escapeHtml(item.tag || item.category || "Nearby")}">${renderIcon(iconName)}</span>
@@ -1272,6 +1290,20 @@ function getExternalMapUrl(place) {
     return `https://www.openstreetmap.org/?mlat=${encodeURIComponent(lat)}&mlon=${encodeURIComponent(lng)}#map=18/${encodeURIComponent(lat)}/${encodeURIComponent(lng)}`;
   }
   return "https://www.openstreetmap.org/search?query=" + encodeURIComponent(place?.title || "nearby places");
+}
+
+function getMobileMapUrl(place) {
+  const coordinates = place?.coordinates;
+  const label = place?.title || "Nearby place";
+  if (Array.isArray(coordinates) && coordinates.length === 2) {
+    const [lat, lng] = coordinates;
+    return `https://maps.apple.com/?ll=${encodeURIComponent(`${lat},${lng}`)}&q=${encodeURIComponent(label)}`;
+  }
+  return `https://maps.apple.com/?q=${encodeURIComponent(label)}`;
+}
+
+function shouldOpenNativeMaps() {
+  return window.matchMedia("(max-width: 900px)").matches || /iPhone|iPad|iPod/i.test(navigator.userAgent);
 }
 
 function getPlaceIconName(place = {}) {
@@ -1431,6 +1463,16 @@ function bindEvents() {
   document.querySelectorAll("[data-view]").forEach((button) => {
     button.addEventListener("click", () => {
       state.activeView = button.dataset.view;
+      render();
+    });
+  });
+
+  document.querySelectorAll("[data-map-focus]").forEach((link) => {
+    link.addEventListener("click", (event) => {
+      if (shouldOpenNativeMaps()) return;
+      event.preventDefault();
+      state.selectedMapPlaceId = link.dataset.mapFocus;
+      state.activeView = "map";
       render();
     });
   });
@@ -3001,16 +3043,20 @@ function scheduleLeafletMaps() {
 
 function initLeafletMaps() {
   const userPlaces = getMapReadyUserPlaces();
-  const destinationPlaces = [...state.places.filter(isInCurrentDestination), ...userPlaces];
+  const selectedMapPlace = getSelectedMapPlace();
+  const destinationPlaces = mergeNearbyPlaces([...state.places.filter(isInCurrentDestination), ...userPlaces, selectedMapPlace].filter(Boolean));
   const currentLocation = state.locationContext.coordinates || HERAKLION_CENTER;
   const currentLabel = state.locationContext.area?.city || state.live.location;
   const tripMap = document.querySelector("#trip-map");
   if (tripMap) {
+    const selectedPlaces = destinationPlaces.filter((place) => state.savedIds.has(place.id) || place.id === state.selectedMapPlaceId);
     createLeafletMap(tripMap, destinationPlaces, {
       currentLocation,
       currentLabel,
       routePlaces: destinationPlaces.filter((place) => state.savedIds.has(place.id)),
-      selectedPlaces: destinationPlaces.filter((place) => state.savedIds.has(place.id)),
+      selectedPlaces,
+      focusPlaceId: state.selectedMapPlaceId,
+      zoom: 16,
     });
   }
 
@@ -3050,6 +3096,11 @@ function isInCurrentDestination(place) {
   return lat > 48 && lat < 49 && lng > 2 && lng < 3;
 }
 
+function getSelectedMapPlace() {
+  if (!state.selectedMapPlaceId) return null;
+  return [...getNearYouNowPlaces(), ...state.userPlaces, ...state.places].find((place) => place.id === state.selectedMapPlaceId) || null;
+}
+
 function createLeafletMap(container, places, options = {}, retry = true) {
   if (!container?.id || !document.body.contains(container)) return null;
   removeLeafletMap(container.id);
@@ -3079,6 +3130,8 @@ function createLeafletMap(container, places, options = {}, retry = true) {
   const validPlaces = places.filter((place) => place.coordinates);
   const selectedIds = new Set((options.selectedPlaces || validPlaces).map((place) => place.id));
   const bounds = [];
+  let focusedMarker = null;
+  let focusedPlace = null;
 
   validPlaces.forEach((place) => {
     const marker = L.circleMarker(place.coordinates, {
@@ -3099,6 +3152,10 @@ function createLeafletMap(container, places, options = {}, retry = true) {
       <strong>${escapeHtml(place.title)}</strong><br/>
       ${popupLines.join("<br/>")}
     `);
+    if (options.focusPlaceId && place.id === options.focusPlaceId) {
+      focusedMarker = marker;
+      focusedPlace = place;
+    }
     bounds.push(place.coordinates);
   });
 
@@ -3124,6 +3181,11 @@ function createLeafletMap(container, places, options = {}, retry = true) {
     map.setView(bounds[0], options.zoom || 13);
   } else {
     map.setView(HERAKLION_CENTER, options.zoom || 12);
+  }
+
+  if (focusedMarker && focusedPlace) {
+    map.setView(focusedPlace.coordinates, options.zoom || 16);
+    focusedMarker.openPopup();
   }
 
   leafletMaps.set(container.id, map);

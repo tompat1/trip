@@ -710,6 +710,54 @@ h3 {
   gap: 14px;
 }
 
+.recommended-next-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.recommended-next-item {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 9px;
+  min-height: 46px;
+  padding: 7px 9px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  color: inherit;
+  background: rgba(255, 253, 248, .74);
+  text-decoration: none;
+}
+
+.recommended-next-item:hover,
+.recommended-next-item:focus-visible {
+  border-color: rgba(217, 74, 58, .32);
+  box-shadow: 0 10px 20px rgba(23, 24, 23, .08);
+}
+
+.recommended-next-item .category-badge {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+}
+
+.recommended-next-item .category-badge .app-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.recommended-next-item strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recommended-next-item small {
+  color: var(--muted);
+  font-weight: 900;
+}
+
 .home-map-card {
   position: relative;
   grid-column: span 2;
