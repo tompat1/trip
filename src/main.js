@@ -19,9 +19,12 @@ const WIKIPEDIA_API = "https://en.wikipedia.org/api/rest_v1/page/summary/";
 const WIKIPEDIA_SEARCH_API = "https://en.wikipedia.org/w/api.php";
 const REST_COUNTRIES_API = "https://restcountries.com/v3.1/name/";
 
-let leafletMaps = [];
+let leafletMaps = new Map();
+let leafletInitFrame = null;
 let liveClockTimer = null;
 let liveDeviceHooksReady = false;
+let isRendering = false;
+let pendingRender = false;
 
 const state = {
   activeView: "search",
@@ -299,24 +302,39 @@ function renderIcon(name) {
 }
 
 function render() {
-  destroyLeafletMaps();
-  const app = document.querySelector("#app");
-  app.innerHTML = `
-    <div class="app-shell">
-      ${renderSidebar()}
-      <main id="main" class="workspace" tabindex="-1">
-        ${renderHeader()}
-        ${renderView()}
-      </main>
-      ${renderMobileNav()}
-    </div>
-  `;
-  bindEvents();
-  initLeafletMaps();
-  initAutomaticPositioning();
-  initPlaceIntelligence();
-  syncLiveClock();
-  initLiveDeviceHooks();
+  if (isRendering) {
+    pendingRender = true;
+    return;
+  }
+
+  isRendering = true;
+  try {
+    destroyLeafletMaps();
+    const app = document.querySelector("#app");
+    app.innerHTML = `
+      <div class="app-shell">
+        ${renderSidebar()}
+        <main id="main" class="workspace" tabindex="-1">
+          ${renderHeader()}
+          ${renderView()}
+        </main>
+        ${renderMobileNav()}
+      </div>
+    `;
+    bindEvents();
+    scheduleLeafletMaps();
+    initAutomaticPositioning();
+    initPlaceIntelligence();
+    syncLiveClock();
+    initLiveDeviceHooks();
+  } finally {
+    isRendering = false;
+  }
+
+  if (pendingRender) {
+    pendingRender = false;
+    requestAnimationFrame(render);
+  }
 }
 
 function renderSidebar() {
@@ -1863,6 +1881,14 @@ function escapeHtml(value) {
   ));
 }
 
+function scheduleLeafletMaps() {
+  if (leafletInitFrame) window.cancelAnimationFrame(leafletInitFrame);
+  leafletInitFrame = window.requestAnimationFrame(() => {
+    leafletInitFrame = null;
+    initLeafletMaps();
+  });
+}
+
 function initLeafletMaps() {
   const destinationPlaces = state.places.filter(isInCurrentDestination);
   const currentLocation = state.locationContext.coordinates || [48.8539, 2.3332];
@@ -1898,11 +1924,25 @@ function isInCurrentDestination(place) {
   return lat > 48 && lat < 49 && lng > 2 && lng < 3;
 }
 
-function createLeafletMap(container, places, options = {}) {
-  const map = L.map(container, {
-    scrollWheelZoom: false,
-    zoomControl: true,
-  });
+function createLeafletMap(container, places, options = {}, retry = true) {
+  if (!container?.id || !document.body.contains(container)) return null;
+  removeLeafletMap(container.id);
+  resetLeafletContainer(container);
+
+  let map;
+  try {
+    map = L.map(container, {
+      scrollWheelZoom: false,
+      zoomControl: true,
+    });
+  } catch (error) {
+    if (retry && /already initialized/i.test(error.message || "")) {
+      resetLeafletContainer(container);
+      return createLeafletMap(container, places, options, false);
+    }
+
+    throw error;
+  }
 
   L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
     maxZoom: 19,
@@ -1960,13 +2000,55 @@ function createLeafletMap(container, places, options = {}) {
     map.setView([48.8566, 2.3522], options.zoom || 12);
   }
 
-  leafletMaps.push(map);
-  requestAnimationFrame(() => map.invalidateSize());
+  leafletMaps.set(container.id, map);
+  requestAnimationFrame(() => {
+    if (document.body.contains(container) && leafletMaps.get(container.id) === map) {
+      map.invalidateSize();
+    }
+  });
+
+  return map;
 }
 
 function destroyLeafletMaps() {
-  leafletMaps.forEach((map) => map.remove());
-  leafletMaps = [];
+  if (leafletInitFrame) {
+    window.cancelAnimationFrame(leafletInitFrame);
+    leafletInitFrame = null;
+  }
+
+  leafletMaps.forEach((map, id) => {
+    removeLeafletMap(id, map);
+  });
+  leafletMaps.clear();
+}
+
+function removeLeafletMap(id, existingMap = leafletMaps.get(id)) {
+  if (!existingMap) return;
+
+  const container = existingMap.getContainer?.();
+  try {
+    existingMap.remove();
+  } catch {
+    // Leaflet can throw if a container was already detached by the SPA render.
+  }
+
+  if (container) resetLeafletContainer(container);
+  leafletMaps.delete(id);
+}
+
+function resetLeafletContainer(container) {
+  if (!container) return;
+
+  delete container._leaflet_id;
+  container.replaceChildren();
+  container.classList.remove(
+    "leaflet-container",
+    "leaflet-touch",
+    "leaflet-fade-anim",
+    "leaflet-grab",
+    "leaflet-touch-drag",
+    "leaflet-touch-zoom"
+  );
 }
 
 if ("serviceWorker" in navigator && import.meta.env.PROD) {
