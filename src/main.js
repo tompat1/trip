@@ -119,6 +119,7 @@ const state = {
       nearby: true,
       distance: "1.0 km",
       coordinates: [35.3447, 25.1367],
+      imageUrl: getCommonsImageUrl("Heraklion Koules fortress.jpg"),
     },
     {
       id: "museum",
@@ -133,6 +134,7 @@ const state = {
       nearby: true,
       distance: "700 m",
       coordinates: [35.3397, 25.1389],
+      imageUrl: getCommonsImageUrl("Heraklion Archaeological Museum.jpg"),
     },
     {
       id: "lions-square",
@@ -147,6 +149,7 @@ const state = {
       nearby: true,
       distance: "350 m",
       coordinates: [35.3391, 25.132],
+      imageUrl: getCommonsImageUrl("Morosini Fountain Heraklion.jpg"),
     },
     {
       id: "knossos",
@@ -159,6 +162,7 @@ const state = {
       day: 1,
       color: "red",
       coordinates: [35.2986, 25.1631],
+      imageUrl: getCommonsImageUrl("Knossos Palace North Entrance.jpg"),
     },
     {
       id: "peskesi",
@@ -173,6 +177,7 @@ const state = {
       nearby: true,
       distance: "450 m",
       coordinates: [35.3393, 25.1319],
+      imageUrl: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=900&q=80",
     },
     {
       id: "venetian-walls",
@@ -187,6 +192,7 @@ const state = {
       nearby: true,
       distance: "800 m",
       coordinates: [35.3375, 25.1262],
+      imageUrl: getCommonsImageUrl("Venetian Walls Heraklion.jpg"),
     },
     {
       id: "ammoudara",
@@ -776,6 +782,7 @@ function renderKnownPlaceManager() {
       </label>
       <label>Latitude<input name="lat" type="number" step="any" required value="${escapeHtml(defaultLat)}" /></label>
       <label>Longitude<input name="lng" type="number" step="any" required value="${escapeHtml(defaultLng)}" /></label>
+      <label class="wide-field">Image URL<input name="imageUrl" type="url" placeholder="https://..." /></label>
       <label class="wide-field">Short description<textarea name="description" rows="2" placeholder="Why it is worth knowing about"></textarea></label>
       <button class="primary-button" type="submit">${renderIcon("plus")} Add to Near you now</button>
     </form>
@@ -798,6 +805,7 @@ function renderUserPlaceEditor(place) {
       </label>
       <label>Lat<input name="lat" type="number" step="any" required value="${escapeHtml(lat)}" /></label>
       <label>Lng<input name="lng" type="number" step="any" required value="${escapeHtml(lng)}" /></label>
+      <label class="wide-field">Image URL<input name="imageUrl" type="url" value="${escapeHtml(place.imageUrl || "")}" /></label>
       <label class="wide-field">Description<textarea name="description" rows="2">${escapeHtml(place.description || place.reason || "")}</textarea></label>
       <div class="known-place-actions">
         <a class="ghost-button" href="${escapeHtml(getExternalMapUrl(place))}" target="_blank" rel="noreferrer">Open map</a>
@@ -1153,7 +1161,7 @@ function renderHomeIdeaCard(place) {
   const href = getExternalMapUrl(place);
   return `
     <a class="home-idea-card" href="${escapeHtml(href)}" target="_blank" rel="noreferrer" aria-label="Open ${escapeHtml(place.title)} in OpenStreetMap">
-      <div class="home-idea-image ${getIdeaTone(place.category)}"></div>
+      ${renderPlaceImage(place, "home-idea-image")}
       <h3>${escapeHtml(place.title)}</h3>
       <p>${escapeHtml(place.reason)}</p>
       <small>★ ${escapeHtml(place.tag)} · ${escapeHtml(place.distance)}</small>
@@ -1212,7 +1220,10 @@ function renderRecommendation(item) {
   const iconName = getPlaceIconName(item);
   return `
     <a class="recommendation-card" href="${escapeHtml(href)}" target="_blank" rel="noreferrer" aria-label="Open ${escapeHtml(item.title)} in OpenStreetMap">
-      <span class="category-badge ${iconName}" title="${escapeHtml(item.tag || item.category || "Nearby")}">${renderIcon(iconName)}</span>
+      <div class="recommendation-media">
+        ${renderPlaceImage(item, "recommendation-image")}
+        <span class="category-badge ${iconName}" title="${escapeHtml(item.tag || item.category || "Nearby")}">${renderIcon(iconName)}</span>
+      </div>
       <div>
         <h3>${escapeHtml(item.title)}</h3>
         ${translation}
@@ -1222,6 +1233,13 @@ function renderRecommendation(item) {
       <strong>${item.distance}</strong>
     </a>
   `;
+}
+
+function renderPlaceImage(place, className) {
+  const imageUrl = getPlaceImageUrl(place);
+  const tone = getIdeaTone(place?.category || place?.tag || "");
+  const style = imageUrl ? ` style="background-image: linear-gradient(180deg, transparent 44%, rgba(23,24,23,.45)), url('${escapeHtml(imageUrl)}');"` : "";
+  return `<div class="${className} ${tone}"${style} aria-hidden="true"></div>`;
 }
 
 function getExternalMapUrl(place) {
@@ -1693,6 +1711,7 @@ function buildUserPlaceFromForm(formData, existing = {}) {
     reason: String(formData.get("description") || "").trim(),
     source: "Your JSON place",
     coordinates,
+    imageUrl: String(formData.get("imageUrl") || existing.imageUrl || "").trim(),
     color: getCategoryColor(category),
     saved: category === "Saved",
     updatedAt: new Date().toISOString(),
@@ -1713,6 +1732,30 @@ function getCategoryColor(category = "") {
   if (key.includes("restaurant")) return "clay";
   if (key.includes("saved")) return "red";
   return "green";
+}
+
+function getPlaceImageUrl(place = {}) {
+  return place.imageUrl || getFallbackPlaceImageUrl(place.category || place.tag || "");
+}
+
+function getFallbackPlaceImageUrl(category = "") {
+  const key = category.toLowerCase();
+  if (key.includes("coffee") || key.includes("cafe")) return "https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=900&q=80";
+  if (key.includes("restaurant") || key.includes("food") || key.includes("drink")) return "https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=900&q=80";
+  if (key.includes("museum") || key.includes("culture")) return getCommonsImageUrl("Heraklion Archaeological Museum.jpg");
+  if (key.includes("saved")) return getCommonsImageUrl("Heraklion Koules fortress.jpg");
+  return getCommonsImageUrl("Heraklion harbour and Koules fortress.jpg");
+}
+
+function getOsmImageUrl(tags = {}) {
+  if (tags.image && /^https?:\/\//i.test(tags.image)) return tags.image;
+  const commons = tags.wikimedia_commons || tags.image || "";
+  const fileName = commons.replace(/^File:/i, "").trim();
+  return fileName ? getCommonsImageUrl(fileName) : "";
+}
+
+function getCommonsImageUrl(fileName) {
+  return `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(fileName)}`;
 }
 
 function renderNearbyDiscoveryStatus() {
@@ -1923,6 +1966,7 @@ function normalizeNearbyElements(elements, origin) {
         reason: buildNearbyReason(tags, category),
         source: buildNearbySource(tags),
         coordinates: [lat, lng],
+        imageUrl: getOsmImageUrl(tags),
         score,
       };
     })
@@ -2597,6 +2641,7 @@ function readStoredUserPlaces() {
         reason: String(place.description || place.reason || "").trim(),
         source: "Your JSON place",
         coordinates: Array.isArray(place.coordinates) && place.coordinates.length === 2 ? place.coordinates.map(Number) : null,
+        imageUrl: String(place.imageUrl || "").trim(),
         color: getCategoryColor(place.category),
         saved: Boolean(place.saved || normalizeUserCategory(place.category) === "Saved"),
       }))
@@ -2616,6 +2661,7 @@ function writeStoredUserPlaces(places) {
           title: place.title,
           category: place.category,
           description: place.description || place.reason || "",
+          imageUrl: place.imageUrl || "",
           coordinates: place.coordinates,
           saved: Boolean(place.saved),
           updatedAt: place.updatedAt,

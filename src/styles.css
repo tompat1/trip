@@ -793,6 +793,8 @@ h3 {
   border: 1px solid rgba(23, 24, 23, .08);
   border-radius: var(--radius);
   background: linear-gradient(140deg, var(--blue), var(--clay));
+  background-position: center;
+  background-size: cover;
 }
 
 .home-idea-image.sun { background: linear-gradient(140deg, #e9c76b, #d94a3a); }
@@ -834,7 +836,7 @@ h3 {
 .known-place-form,
 .known-place-edit {
   display: grid;
-  grid-template-columns: minmax(140px, 1.15fr) minmax(120px, .72fr) minmax(100px, .6fr) minmax(100px, .6fr) auto;
+  grid-template-columns: minmax(140px, 1.15fr) minmax(120px, .72fr) minmax(96px, .48fr) minmax(96px, .48fr) minmax(170px, 1fr) auto;
   gap: 10px;
   align-items: end;
 }
@@ -892,7 +894,7 @@ h3 {
 }
 
 .known-place-edit {
-  grid-template-columns: auto minmax(130px, 1fr) 130px 100px 100px minmax(180px, 1.2fr) auto;
+  grid-template-columns: auto minmax(130px, 1fr) 126px 96px 96px minmax(150px, 1fr) minmax(180px, 1.1fr) auto;
   align-items: end;
   padding: 10px;
   border: 1px solid var(--line);
@@ -1834,9 +1836,46 @@ h3 {
 }
 
 .recommendation-card {
+  grid-template-columns: 78px minmax(0, 1fr) auto;
   color: inherit;
   text-decoration: none;
   transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease;
+}
+
+.recommendation-media {
+  position: relative;
+  width: 78px;
+  height: 66px;
+}
+
+.recommendation-image {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border: 1px solid rgba(23, 24, 23, .08);
+  border-radius: 10px;
+  background: linear-gradient(140deg, var(--blue), var(--clay));
+  background-position: center;
+  background-size: cover;
+}
+
+.recommendation-image.sun { background: linear-gradient(140deg, #e9c76b, #d94a3a); }
+.recommendation-image.blue { background: linear-gradient(140deg, #385c73, #8bb9c4); }
+.recommendation-image.green { background: linear-gradient(140deg, #65705b, #d7c7a5); }
+.recommendation-image.clay { background: linear-gradient(140deg, #9c6e55, #171817); }
+
+.recommendation-media .category-badge {
+  position: absolute;
+  right: -7px;
+  bottom: -7px;
+  width: 30px;
+  height: 30px;
+  border: 2px solid var(--white);
+}
+
+.recommendation-media .category-badge .app-icon {
+  width: 17px;
+  height: 17px;
 }
 
 .recommendation-card:hover,
@@ -2877,22 +2916,29 @@ button:focus-visible {
     width: 104px;
   }
 
-  .recommendation-card,
   .nearby-place,
   .guide-pick,
   .guide-alert {
     grid-template-columns: minmax(0, 1fr) auto;
   }
 
-  .recommendation-card span,
   .guide-alert > span {
     grid-column: 1 / -1;
     width: max-content;
   }
 
-  .recommendation-card .category-badge {
-    width: 42px;
-    height: 42px;
+  .recommendation-card {
+    grid-template-columns: 72px minmax(0, 1fr);
+  }
+
+  .recommendation-media {
+    width: 72px;
+    height: 62px;
+  }
+
+  .recommendation-card > strong {
+    grid-column: 2;
+    justify-self: start;
   }
 
   .known-place-form,
