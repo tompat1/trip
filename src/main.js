@@ -450,6 +450,7 @@ function renderHome() {
   const weatherPlace = getLiveHeaderTitle();
   const nearYouNow = getNearYouNowPlaces();
   const homeIdeas = getHomeIdeaPlaces(5);
+  const homeNearby = getHomeNearbyPlaces(3);
   const localTime = formatLiveDateTime();
   const accuracy = state.locationContext.accuracy ? `${Math.round(state.locationContext.accuracy)} m` : "Waiting";
   return `
@@ -478,7 +479,7 @@ function renderHome() {
         <span>${weather ? `${escapeHtml(weather.label)} · ${Math.round(weather.temperature)}°C` : "Weather hook waiting"} · ${accuracy} accuracy</span>
       </section>
 
-      ${renderRecommendedNextPanel(nearYouNow)}
+      ${renderRecommendedNextPanel(homeNearby)}
 
       <section class="task-card">
         <h3>Continue planning</h3>
@@ -516,7 +517,7 @@ function renderHome() {
       <section class="home-nearby-panel">
         <div class="section-head"><h3>Nearby now</h3><button data-view="live">Open live</button></div>
         <div class="recommendation-list">
-          ${nearYouNow.slice(0, 3).map(renderRecommendation).join("")}
+          ${homeNearby.map(renderRecommendation).join("")}
         </div>
       </section>
 
@@ -1133,6 +1134,17 @@ function getHomeIdeaPlaces(limit = 5) {
     .slice(0, limit);
 }
 
+function getHomeNearbyPlaces(limit = 3) {
+  const imageReadyNearby = getNearYouNowPlaces()
+    .filter((place) => isTravelerDisplayPlace(place) && hasUsablePlaceImage(place))
+    .slice(0, limit);
+  if (imageReadyNearby.length >= limit) return imageReadyNearby;
+
+  return mergeNearbyPlaces([...imageReadyNearby, ...getHomeIdeaPlaces(limit)])
+    .filter(isTravelerDisplayPlace)
+    .slice(0, limit);
+}
+
 function formatDistance(meters) {
   if (!Number.isFinite(meters)) return "Nearby";
   return meters < 1000 ? `${Math.round(meters / 10) * 10} m` : `${(meters / 1000).toFixed(1)} km`;
@@ -1215,6 +1227,8 @@ function renderPlaceImage(place, className) {
   const imageUrl = getPlaceImageUrl(place);
   const imageAttribution = getPlaceImageAttribution(place, imageUrl);
   const tone = getIdeaTone(place?.category || place?.tag || "");
+  const fallbackIcon = getPlaceIconName(place);
+  const fallbackLabel = place?.category || place?.tag || "Place";
   return `
     <div
       class="${className} ${tone}"
@@ -1225,6 +1239,7 @@ function renderPlaceImage(place, className) {
       aria-hidden="true"
     >
       ${imageUrl ? `<img src="${escapeHtml(imageUrl)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.parentElement.classList.add('is-missing'); this.remove();"/>` : ""}
+      <span class="place-image-fallback">${renderIcon(fallbackIcon)}<small>${escapeHtml(fallbackLabel)}</small></span>
     </div>
   `;
 }
@@ -1795,7 +1810,10 @@ function getNearYouNowPlaces() {
   const curatedNearby = getCuratedTastePlaces(origin, hasLivePosition);
 
   if (state.nearbyDiscovery.places.length) {
-    return filterVisibleNearbyPlaces(mergeNearbyPlaces([...userNearby, ...curatedNearby, ...state.nearbyDiscovery.places])).slice(0, 8);
+    return filterVisibleNearbyPlaces(mergeNearbyPlaces([...userNearby, ...curatedNearby, ...state.nearbyDiscovery.places]))
+      .filter(isTravelerDisplayPlace)
+      .sort((a, b) => (a.score ?? 999999) - (b.score ?? 999999))
+      .slice(0, 8);
   }
 
   const candidates = state.places
@@ -1822,7 +1840,9 @@ function getNearYouNowPlaces() {
       };
     });
 
-  return filterVisibleNearbyPlaces(mergeNearbyPlaces([...userNearby, ...curatedNearby, ...candidates.sort((a, b) => a.score - b.score)])).slice(0, 8);
+  return filterVisibleNearbyPlaces(mergeNearbyPlaces([...userNearby, ...curatedNearby, ...candidates.sort((a, b) => a.score - b.score)]))
+    .filter(isTravelerDisplayPlace)
+    .slice(0, 8);
 }
 
 function getClosestNearYouNowPlaces(limit = 5) {
@@ -1835,11 +1855,12 @@ function getClosestNearYouNowPlaces(limit = 5) {
   ]);
 
   return filterVisibleNearbyPlaces(candidates)
+    .filter(isTravelerDisplayPlace)
     .map((place) => {
       const meters = getDistanceMeters(origin, place.coordinates);
       return {
         ...place,
-        score: meters,
+        score: meters + (hasUsablePlaceImage(place) ? 0 : 75),
         distance: meters < 1000 ? `${Math.round(meters / 10) * 10} m` : `${(meters / 1000).toFixed(1)} km`,
         reason: place.description || place.reason || place.note || `${place.category || place.tag || "Place"} near your current position.`,
         tag: place.tag || place.category || "Nearby",
@@ -1847,6 +1868,15 @@ function getClosestNearYouNowPlaces(limit = 5) {
     })
     .sort((a, b) => a.score - b.score)
     .slice(0, limit);
+}
+
+function isTravelerDisplayPlace(place = {}) {
+  const key = `${place.category || ""} ${place.tag || ""} ${place.title || ""}`.toLowerCase();
+  return !/(parking|car park|fuel|gas station|rental car|taxi stand|bus stop|toilets|drinking water|utility)/i.test(key);
+}
+
+function hasUsablePlaceImage(place = {}) {
+  return Boolean(getPlaceImageUrl(place));
 }
 
 function filterVisibleNearbyPlaces(places) {

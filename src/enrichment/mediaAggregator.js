@@ -344,9 +344,11 @@ function getNameMatchScore(value = "", place = {}) {
 }
 
 function getHardRejectionReason(image, longEdge) {
+  const visualText = `${image.rawTitle || ""} ${image.sourcePageUrl || ""}`;
   if (!image.imageUrl || !image.sourcePageUrl) return "missing-source-provenance";
   if (longEdge && longEdge < 900) return "too-small";
-  if (/watermark|screenshot|map/i.test(`${image.rawTitle || ""} ${image.sourcePageUrl || ""}`)) return "blocked-visual-type";
+  if (/watermark|screenshot|map/i.test(visualText)) return "blocked-visual-type";
+  if (/\b(parking|car park|carpark|automobile|vehicle|rental car|garage|traffic)\b/i.test(visualText)) return "irrelevant-vehicle-or-parking";
   return "";
 }
 

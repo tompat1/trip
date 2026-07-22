@@ -877,6 +877,31 @@ h3 {
   background: rgba(255, 253, 248, .68);
 }
 
+.place-image-fallback {
+  display: grid;
+  place-items: center;
+  gap: 5px;
+  color: rgba(255, 253, 248, .92);
+  text-align: center;
+  font-weight: 900;
+}
+
+.place-image-fallback .app-icon {
+  width: 24px;
+  height: 24px;
+}
+
+.place-image-fallback small {
+  max-width: 90%;
+  color: inherit;
+  font-size: 11px;
+}
+
+.home-idea-image img + .place-image-fallback,
+.recommendation-image img + .place-image-fallback {
+  display: none;
+}
+
 .home-idea-image.sun { background: linear-gradient(140deg, #e9c76b, #d94a3a); }
 .home-idea-image.blue { background: linear-gradient(140deg, #385c73, #8bb9c4); }
 .home-idea-image.green { background: linear-gradient(140deg, #65705b, #d7c7a5); }
@@ -2088,6 +2113,15 @@ h3 {
   object-fit: contain;
   object-position: center;
   background: rgba(255, 253, 248, .72);
+}
+
+.recommendation-image .place-image-fallback .app-icon {
+  width: 19px;
+  height: 19px;
+}
+
+.recommendation-image .place-image-fallback small {
+  font-size: 9px;
 }
 
 .recommendation-image.sun { background: linear-gradient(140deg, #e9c76b, #d94a3a); }
