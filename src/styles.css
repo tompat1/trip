@@ -891,6 +891,19 @@ h3 {
   padding-right: 2px;
 }
 
+.live-page .recommendation-panel {
+  max-height: 560px;
+  min-height: 0;
+}
+
+.live-page .recommendation-panel .recommendation-list {
+  max-height: 330px;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
 .nearby-add-row {
   position: sticky;
   bottom: 0;
@@ -2901,6 +2914,50 @@ button:focus-visible {
   gap: 12px;
 }
 
+.profile-focus-group {
+  display: grid;
+  gap: 12px;
+  margin-top: 6px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.profile-focus-group h3 {
+  margin-bottom: 4px;
+}
+
+.profile-focus-toggle {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.profile-focus-toggle button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  color: var(--ink);
+  background: rgba(255, 253, 248, .78);
+  font-weight: 900;
+}
+
+.profile-focus-toggle button.is-active {
+  border-color: rgba(217, 74, 58, .36);
+  color: var(--red);
+  background: rgba(217, 74, 58, .1);
+  box-shadow: 0 12px 22px rgba(217, 74, 58, .12);
+}
+
+.profile-focus-toggle .app-icon {
+  width: 19px;
+  height: 19px;
+}
+
 .mobile-nav {
   display: none;
 }
@@ -2962,6 +3019,17 @@ button:focus-visible {
   .recommendation-panel .recommendation-list {
     overflow: visible;
     padding-right: 0;
+  }
+
+  .live-page .recommendation-panel {
+    max-height: 520px;
+    overflow: hidden;
+  }
+
+  .live-page .recommendation-panel .recommendation-list {
+    max-height: 300px;
+    overflow-y: auto;
+    padding-right: 2px;
   }
 
   .hero-panel,

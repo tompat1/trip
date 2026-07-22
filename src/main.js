@@ -1,5 +1,7 @@
 import * as L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import { creteSeed } from "./data/creteSeed.js";
+import { normalizeOsmElement, normalizeSeedPlace, normalizeUserPlace } from "./enrichment/normalizers.js";
 import "./styles.css";
 
 const placeColors = {
@@ -48,6 +50,7 @@ const state = {
   shareEnabled: false,
   tripMode: true,
   offlineReady: true,
+  travelFocus: "coffee",
   mediaOrganized: false,
   storyDrafted: false,
   guideQuery: "What should I do if rain starts after lunch?",
@@ -94,307 +97,12 @@ const state = {
   placeImageCache: readCachedPlaceImages(),
   userPlaces: readStoredUserPlaces(),
   hiddenNearbyIds: readStoredHiddenNearbyIds(),
-  trip: {
-    destination: "Heraklion, Crete",
-    dates: "17 - 24 Jul 2026",
-    profile: "Thomas R.",
-    handle: "@thomas",
-    link: "trip.rynell.org/s/heraklion-july",
-  },
-  live: {
-    location: "Heraklion",
-    lastSync: "2 min ago",
-    nextStop: "Knossos Palace",
-    walkingTime: "13 min",
-    battery: "82%",
-    connection: navigator.onLine ? "Online" : "Offline",
-  },
-  collaborators: [
-    { initials: "TR", name: "Thomas", status: "Live" },
-    { initials: "MR", name: "Maya", status: "Editing" },
-    { initials: "AL", name: "Alex", status: "Offline" },
-  ],
-  places: [
-    {
-      id: "koules",
-      title: "Koules Fortress",
-      area: "Old Harbor",
-      category: "Sight",
-      rating: "4.7",
-      note: "Walk the Venetian sea fort and pair it with the harbor wall at golden hour.",
-      time: "18:30",
-      day: 0,
-      color: "blue",
-      nearby: true,
-      distance: "1.0 km",
-      coordinates: [35.3447, 25.1367],
-      imageUrl: getCommonsImageUrl("Heraklion Koules fortress.jpg"),
-    },
-    {
-      id: "museum",
-      title: "Heraklion Archaeological Museum",
-      area: "City center",
-      category: "Museum",
-      rating: "4.8",
-      note: "The best primer for Minoan Crete before or after Knossos.",
-      time: "10:30",
-      day: 1,
-      color: "green",
-      nearby: true,
-      distance: "700 m",
-      coordinates: [35.3397, 25.1389],
-      imageUrl: getCommonsImageUrl("Heraklion Archaeological Museum.jpg"),
-    },
-    {
-      id: "lions-square",
-      title: "Lions Square",
-      area: "Morosini Fountain",
-      category: "Coffee",
-      rating: "4.6",
-      note: "Central meeting point for coffee, bougatsa, shade, and people-watching.",
-      time: "09:00",
-      day: 0,
-      color: "sun",
-      nearby: true,
-      distance: "350 m",
-      coordinates: [35.3391, 25.132],
-      imageUrl: getCommonsImageUrl("Morosini Fountain Heraklion.jpg"),
-    },
-    {
-      id: "knossos",
-      title: "Knossos Palace",
-      area: "Knossos",
-      category: "Archaeology",
-      rating: "4.8",
-      note: "Go early for shade and space around the palace complex.",
-      time: "11:00",
-      day: 1,
-      color: "red",
-      coordinates: [35.2986, 25.1631],
-      imageUrl: getCommonsImageUrl("Knossos Palace North Entrance.jpg"),
-    },
-    {
-      id: "peskesi",
-      title: "Peskesi",
-      area: "Old town",
-      category: "Restaurant",
-      rating: "4.7",
-      note: "Cretan ingredients and a good dinner anchor in the old town.",
-      time: "20:00",
-      day: 2,
-      color: "clay",
-      nearby: true,
-      distance: "450 m",
-      coordinates: [35.3393, 25.1319],
-      imageUrl: "",
-    },
-    {
-      id: "venetian-walls",
-      title: "Venetian Walls",
-      area: "Old city edge",
-      category: "Walk",
-      rating: "4.5",
-      note: "A breezy walk with city views and context for Heraklion's layered history.",
-      time: "17:00",
-      day: 2,
-      color: "green",
-      nearby: true,
-      distance: "800 m",
-      coordinates: [35.3375, 25.1262],
-      imageUrl: getCommonsImageUrl("Venetian Walls Heraklion.jpg"),
-    },
-    {
-      id: "ammoudara",
-      title: "Ammoudara Beach",
-      area: "West of Heraklion",
-      category: "Beach",
-      rating: "4.5",
-      note: "Easy sandy beach break when the city gets hot.",
-      time: "15:30",
-      day: 3,
-      color: "sun",
-      nearby: true,
-      distance: "6.5 km",
-      coordinates: [35.3354, 25.0746],
-    },
-    {
-      id: "coffee-brew-your-mind",
-      title: "Brew Your Mind",
-      area: "Arkadiou 251, Rethymno",
-      category: "Coffee roastery",
-      rating: "4.6",
-      note: "Coffee nerd pick: Rethymno roastery focused on precision-roasted specialty beans.",
-      time: "Coffee radar",
-      day: 0,
-      color: "sun",
-      nearby: true,
-      curated: true,
-      coffeeNerd: true,
-      distance: "Crete radar",
-      coordinates: [35.3678, 24.4778],
-      imageUrl: "/assets/coffee/brew-your-mind.webp",
-      website: "https://brewyourmind.gr/",
-      source: "Official site",
-    },
-    {
-      id: "coffee-skrik",
-      title: "Skrik | the good hood spot",
-      area: "Dimakopoulou 59, Rethymno",
-      category: "Specialty coffee",
-      rating: "4.8",
-      note: "Coffee nerd pick: Rethymno specialty coffee spot with barista/roast focus and strong local reviews.",
-      time: "Coffee radar",
-      day: 0,
-      color: "sun",
-      nearby: true,
-      curated: true,
-      coffeeNerd: true,
-      distance: "Crete radar",
-      coordinates: [35.3688, 24.4745],
-      imageUrl: "/assets/coffee/skrik.webp",
-      website: "https://skrik.gr/",
-      source: "Official site",
-    },
-    {
-      id: "coffee-kross-tsouderon",
-      title: "KROSS Coffee Roasters",
-      area: "Tsouderon 73, Chania",
-      category: "Coffee roastery",
-      rating: "4.6",
-      note: "Coffee nerd pick: award-winning Chania roaster with competition roots and serious bean program.",
-      time: "Coffee radar",
-      day: 0,
-      color: "sun",
-      nearby: true,
-      curated: true,
-      coffeeNerd: true,
-      distance: "Crete radar",
-      coordinates: [35.5142, 24.0184],
-      imageUrl: "/assets/coffee/kross-roasters.webp",
-      website: "https://www.krosscoffeeroasters.com/",
-      source: "Official site",
-    },
-    {
-      id: "coffee-monogram-square",
-      title: "Monogram Roasters",
-      area: "Square 1866 n.10, Chania",
-      category: "Coffee roastery",
-      rating: "4.7",
-      note: "Coffee nerd pick: fifth-generation Chania roasters making specialty coffee in central Chania.",
-      time: "Coffee radar",
-      day: 0,
-      color: "sun",
-      nearby: true,
-      curated: true,
-      coffeeNerd: true,
-      distance: "Crete radar",
-      coordinates: [35.5129, 24.0174],
-      imageUrl: "/assets/coffee/monogram.webp",
-      website: "https://www.monogramroasters.gr/about/",
-      source: "Official site",
-    },
-    {
-      id: "coffee-monogram-old-town",
-      title: "Monogram Old Town",
-      area: "Daskalogianni 5, Chania",
-      category: "Cafe",
-      rating: "4.7",
-      note: "Coffee nerd pick: old-town Monogram location for specialty espresso, filter and beans.",
-      time: "Coffee radar",
-      day: 0,
-      color: "sun",
-      nearby: true,
-      curated: true,
-      coffeeNerd: true,
-      distance: "Crete radar",
-      coordinates: [35.5151, 24.0205],
-      imageUrl: "/assets/coffee/monogram.webp",
-      website: "https://www.monogramroasters.gr/about/",
-      source: "Official site",
-    },
-    {
-      id: "coffee-vivliothiki",
-      title: "Vivliothiki Café",
-      area: "Rethymno",
-      category: "Cafe",
-      rating: "4.7",
-      note: "Coffee nerd radar: strong cafe signal from the Rethymno specialty shortlist.",
-      time: "Coffee radar",
-      day: 0,
-      color: "sun",
-      nearby: true,
-      curated: true,
-      coffeeNerd: true,
-      distance: "Crete radar",
-      coordinates: [35.3668, 24.4802],
-      imageUrl: "/assets/coffee/vivliothiki.webp",
-      source: "Coffee radar seed",
-    },
-    {
-      id: "coffee-barrio-kallithea",
-      title: "Barrio The Neighbourhood Cafe - Kallithea",
-      area: "Kallithea, Rethymno",
-      category: "Coffee shop",
-      rating: "4.8",
-      note: "Coffee nerd radar: high-rated neighbourhood cafe from the Rethymno shortlist.",
-      time: "Coffee radar",
-      day: 0,
-      color: "sun",
-      nearby: true,
-      curated: true,
-      coffeeNerd: true,
-      distance: "Crete radar",
-      coordinates: [35.3658, 24.4953],
-      imageUrl: "/assets/coffee/barrio-kallithea.webp",
-      source: "Coffee radar seed",
-    },
-    {
-      id: "coffee-barrio",
-      title: "Barrio The Neighbourhood Cafe",
-      area: "Rethymno",
-      category: "Coffee shop",
-      rating: "4.8",
-      note: "Coffee nerd radar: specialty-leaning cafe pick for espresso and a longer sit.",
-      time: "Coffee radar",
-      day: 0,
-      color: "sun",
-      nearby: true,
-      curated: true,
-      coffeeNerd: true,
-      distance: "Crete radar",
-      coordinates: [35.3666, 24.4752],
-      imageUrl: "/assets/coffee/barrio.webp",
-      source: "Coffee radar seed",
-    },
-    {
-      id: "coffee-bikakis",
-      title: "BIKAKIS Bakery-Cafe-Street Food",
-      area: "Rethymno",
-      category: "Cafe",
-      rating: "4.5",
-      note: "Coffee radar: practical bakery-cafe stop when you want coffee plus food.",
-      time: "Coffee radar",
-      day: 0,
-      color: "sun",
-      nearby: true,
-      curated: true,
-      coffeeNerd: true,
-      distance: "Crete radar",
-      coordinates: [35.3541, 24.4626],
-      imageUrl: "/assets/coffee/bikakis.webp",
-      source: "Coffee radar seed",
-    },
-  ],
-  recommendations: [
-    { title: "Lions Square", reason: "Coffee, shade, and an easy city-center meeting point", tag: "Coffee", distance: "350 m", coordinates: [35.3391, 25.132] },
-    { title: "Koules Fortress", reason: "Harbor walk and sunset-friendly photos", tag: "Sight", distance: "1.0 km", coordinates: [35.3447, 25.1367] },
-    { title: "Peskesi", reason: "Cretan dinner anchor close to the old town", tag: "Food", distance: "450 m", coordinates: [35.3393, 25.1319] },
-  ],
-  mediaQueue: [
-    { title: "34 photos", bucket: "Heraklion harbor", status: "Ready to pin to Koules" },
-    { title: "6 videos", bucket: "Old town walk", status: "Ready for story draft" },
-    { title: "3 notes", bucket: "Cretan food finds", status: "Pinned to places" },
-  ],
+  trip: { ...creteSeed.trip },
+  live: { ...creteSeed.live, connection: navigator.onLine ? "Online" : "Offline" },
+  collaborators: creteSeed.collaborators.map((collaborator) => ({ ...collaborator })),
+  places: creteSeed.places.map((place) => normalizeSeedPlace(place)),
+  recommendations: creteSeed.recommendations.map((recommendation) => ({ ...recommendation })),
+  mediaQueue: creteSeed.mediaQueue.map((item) => ({ ...item })),
   guideSources: [
     { name: "Visit Heraklion", type: "Destination", freshness: "Source hook", status: "Planned" },
     { name: "Incredible Crete", type: "Region", freshness: "Source hook", status: "Planned" },
@@ -480,6 +188,13 @@ const navItems = [
 ];
 
 const searchNavItem = ["search", "Search", "search"];
+
+const travelFocusOptions = [
+  { id: "coffee", label: "Coffee", icon: "coffee" },
+  { id: "shopper", label: "Shopper", icon: "saved" },
+  { id: "arty", label: "Arty/Muse", icon: "walk" },
+  { id: "beachy", label: "Beachy", icon: "navigation" },
+];
 
 const dayLabels = ["Sat 3", "Sun 4", "Mon 5", "Tue 6", "Wed 7", "Thu 8", "Fri 9"];
 
@@ -901,8 +616,7 @@ function renderRecommendedNextItem(place) {
 
 function renderLive() {
   const nearbySaved = state.places.filter((place) => state.savedIds.has(place.id) || place.nearby).slice(0, 5);
-  const nearYouNow = getNearYouNowPlaces();
-  const livePanelPlaces = nearYouNow.slice(0, 4);
+  const livePanelPlaces = getClosestNearYouNowPlaces(5);
   const area = state.locationContext.area;
   return `
     <div class="live-page">
@@ -1292,12 +1006,13 @@ function renderMoments() {
 }
 
 function renderProfile() {
+  const activeFocus = travelFocusOptions.find((option) => option.id === state.travelFocus) || travelFocusOptions[0];
   return `
     <div class="profile-page">
       <section class="profile-panel">
         <span class="avatar big">TR</span>
         <h2>${state.trip.profile}</h2>
-        <p>${state.trip.handle} · Memory-first traveler</p>
+        <p>${state.trip.handle} · ${escapeHtml(activeFocus.label)} focus</p>
         <div class="stats">
           <span><strong>1</strong> trip</span>
           <span><strong>${state.savedIds.size}</strong> saved</span>
@@ -1309,6 +1024,24 @@ function renderProfile() {
         <label>Display name<input value="${state.trip.profile}" aria-label="Display name"/></label>
         <label>Email<input value="thomas@example.com" aria-label="Email"/></label>
         <label>Home base<input value="Warsaw, Poland" aria-label="Home base"/></label>
+        <div class="profile-focus-group">
+          <div>
+            <h3>Travel focus</h3>
+            <p class="panel-note">Tune nearby suggestions to how you want to explore right now.</p>
+          </div>
+          <div class="profile-focus-toggle" role="group" aria-label="Travel focus">
+            ${travelFocusOptions.map((option) => `
+              <button
+                class="${state.travelFocus === option.id ? "is-active" : ""}"
+                data-travel-focus="${option.id}"
+                aria-pressed="${state.travelFocus === option.id}"
+              >
+                ${renderIcon(option.icon)}
+                <span>${escapeHtml(option.label)}</span>
+              </button>
+            `).join("")}
+          </div>
+        </div>
       </section>
     </div>
   `;
@@ -1446,9 +1179,62 @@ function renderRecommendation(item) {
 
 function renderPlaceImage(place, className) {
   const imageUrl = getPlaceImageUrl(place);
+  const imageAttribution = getPlaceImageAttribution(place, imageUrl);
   const tone = getIdeaTone(place?.category || place?.tag || "");
   const style = imageUrl ? ` style="background-image: linear-gradient(180deg, transparent 44%, rgba(23,24,23,.45)), url('${escapeHtml(imageUrl)}');"` : "";
-  return `<div class="${className} ${tone}"${style} aria-hidden="true"></div>`;
+  return `
+    <div
+      class="${className} ${tone}"
+      ${style}
+      data-image-provider="${escapeHtml(imageAttribution.provider)}"
+      data-image-source="${escapeHtml(imageAttribution.sourceUrl)}"
+      data-image-attribution="${escapeHtml(imageAttribution.attribution)}"
+      data-visual-role="${escapeHtml(imageAttribution.visualRole)}"
+      aria-hidden="true"
+    ></div>
+  `;
+}
+
+function getPlaceImageAttribution(place = {}, imageUrl = "") {
+  if (place.image?.url === imageUrl) return place.image;
+  if (!imageUrl) {
+    return {
+      provider: "fallback",
+      sourceUrl: "",
+      attribution: "Generated interface fallback",
+      visualRole: "illustrative",
+    };
+  }
+  if (imageUrl.startsWith("data:")) {
+    return {
+      provider: "upload",
+      sourceUrl: "",
+      attribution: "Traveler upload",
+      visualRole: "exact",
+    };
+  }
+  if (imageUrl.startsWith("/assets/")) {
+    return {
+      provider: "user",
+      sourceUrl: "User-provided reference asset",
+      attribution: place.imageAttribution || "Traveler reference",
+      visualRole: "approximate",
+    };
+  }
+  if (imageUrl.includes("commons.wikimedia.org") || imageUrl.includes("wikimedia.org")) {
+    return {
+      provider: "commons",
+      sourceUrl: imageUrl,
+      attribution: "Wikimedia Commons",
+      visualRole: "approximate",
+    };
+  }
+  return {
+    provider: "external",
+    sourceUrl: imageUrl,
+    attribution: place.source || "External source",
+    visualRole: "approximate",
+  };
 }
 
 function getExternalMapUrl(place) {
@@ -1648,6 +1434,13 @@ function bindEvents() {
   document.querySelectorAll("[data-filter]").forEach((button) => {
     button.addEventListener("click", () => {
       state.filters = button.dataset.filter;
+      render();
+    });
+  });
+
+  document.querySelectorAll("[data-travel-focus]").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.travelFocus = button.dataset.travelFocus;
       render();
     });
   });
@@ -1944,6 +1737,30 @@ function getNearYouNowPlaces() {
   return filterVisibleNearbyPlaces(mergeNearbyPlaces([...userNearby, ...curatedNearby, ...candidates.sort((a, b) => a.score - b.score)])).slice(0, 8);
 }
 
+function getClosestNearYouNowPlaces(limit = 5) {
+  const origin = state.locationContext.coordinates || HERAKLION_CENTER;
+  const discovered = state.nearbyDiscovery.places.length ? state.nearbyDiscovery.places : [];
+  const candidates = mergeNearbyPlaces([
+    ...getUserNearbyPlaces(origin, Boolean(state.locationContext.coordinates)),
+    ...discovered,
+    ...state.places.filter((place) => isInCurrentDestination(place) && place.coordinates),
+  ]);
+
+  return filterVisibleNearbyPlaces(candidates)
+    .map((place) => {
+      const meters = getDistanceMeters(origin, place.coordinates);
+      return {
+        ...place,
+        score: meters,
+        distance: meters < 1000 ? `${Math.round(meters / 10) * 10} m` : `${(meters / 1000).toFixed(1)} km`,
+        reason: place.description || place.reason || place.note || `${place.category || place.tag || "Place"} near your current position.`,
+        tag: place.tag || place.category || "Nearby",
+      };
+    })
+    .sort((a, b) => a.score - b.score)
+    .slice(0, limit);
+}
+
 function filterVisibleNearbyPlaces(places) {
   return places.filter((place) => !state.hiddenNearbyIds.has(place.id));
 }
@@ -1988,8 +1805,14 @@ function getCuratedTastePlaces(origin, hasLivePosition) {
 
 function getTasteBoost(place = {}) {
   const key = `${place.category || ""} ${place.note || ""} ${place.title || ""}`.toLowerCase();
-  if (place.coffeeNerd || key.includes("roaster") || key.includes("specialty")) return 0.02;
-  if (key.includes("coffee") || key.includes("cafe")) return 0.2;
+  if (state.travelFocus === "coffee") {
+    if (place.coffeeNerd || key.includes("roaster") || key.includes("specialty")) return 0.02;
+    if (key.includes("coffee") || key.includes("cafe")) return 0.2;
+  }
+  if (state.travelFocus === "shopper" && (key.includes("shop") || key.includes("market") || key.includes("deli") || key.includes("bakery"))) return 0.18;
+  if (state.travelFocus === "arty" && (key.includes("museum") || key.includes("gallery") || key.includes("archaeolog") || key.includes("art") || key.includes("culture"))) return 0.16;
+  if (state.travelFocus === "beachy" && (key.includes("beach") || key.includes("harbor") || key.includes("sea") || key.includes("swim"))) return 0.16;
+  if (key.includes("coffee") || key.includes("cafe")) return 0.55;
   return 1;
 }
 
@@ -2009,7 +1832,7 @@ async function buildUserPlaceFromForm(formData, existing = {}) {
   const lng = Number(formData.get("lng"));
   const coordinates = Number.isFinite(lat) && Number.isFinite(lng) ? [lat, lng] : state.locationContext.coordinates || HERAKLION_CENTER;
   const uploadedImage = await readUploadedImage(formData.get("imageFile"));
-  return {
+  return normalizeUserPlace({
     id: existing.id || `user-${Date.now()}`,
     title: String(formData.get("title") || existing.title || "Untitled place").trim(),
     category,
@@ -2022,12 +1845,12 @@ async function buildUserPlaceFromForm(formData, existing = {}) {
     color: getCategoryColor(category),
     saved: category === "Saved",
     updatedAt: new Date().toISOString(),
-  };
+  });
 }
 
 function buildUserPlaceFromNearby(place) {
   const category = normalizeUserCategory(place.category || place.tag);
-  return {
+  return normalizeUserPlace({
     id: place.id,
     title: place.title,
     category,
@@ -2040,7 +1863,7 @@ function buildUserPlaceFromNearby(place) {
     color: getCategoryColor(category),
     saved: Boolean(place.saved || state.savedIds.has(place.id)),
     updatedAt: new Date().toISOString(),
-  };
+  });
 }
 
 function readUploadedImage(file) {
@@ -2394,30 +2217,29 @@ function normalizeNearbyElements(elements, origin) {
   return elements
     .map((element) => {
       const tags = element.tags || {};
-      const englishTitle = tags["name:en"] || "";
-      const name = englishTitle || tags.name;
       const lat = element.lat ?? element.center?.lat;
       const lng = element.lon ?? element.center?.lon;
-      if (!name || !lat || !lng) return null;
+      const osmPlace = normalizeOsmElement(element, origin, {
+        classify: classifyNearbyPlace,
+        distance: getDistanceMeters,
+        imageUrl: getOsmImageUrl,
+      });
+      if (!osmPlace || !lat || !lng) return null;
 
-      const key = `${name.toLowerCase()}-${Math.round(lat * 10000)}-${Math.round(lng * 10000)}`;
+      const key = `${osmPlace.title.toLowerCase()}-${Math.round(lat * 10000)}-${Math.round(lng * 10000)}`;
       if (seen.has(key)) return null;
       seen.add(key);
 
-      const meters = getDistanceMeters(origin, [lat, lng]);
-      const category = classifyNearbyPlace(tags);
+      const meters = osmPlace.distanceMeters ?? getDistanceMeters(origin, [lat, lng]);
+      const category = osmPlace.category;
       const score = scoreNearbyPlace(tags, meters);
       return {
-        id: `osm-${element.type}-${element.id}`,
-        title: name,
-        englishTitle,
-        tag: category,
+        ...osmPlace,
         category,
+        tag: category,
         distance: meters < 1000 ? `${Math.round(meters / 10) * 10} m` : `${(meters / 1000).toFixed(1)} km`,
         reason: buildNearbyReason(tags, category),
         source: buildNearbySource(tags),
-        coordinates: [lat, lng],
-        imageUrl: getOsmImageUrl(tags),
         score,
       };
     })
@@ -3086,19 +2908,22 @@ function readStoredUserPlaces() {
     const places = JSON.parse(localStorage.getItem(USER_PLACES_STORAGE_KEY) || "[]");
     if (!Array.isArray(places)) return [];
     return places
-      .map((place) => ({
-        ...place,
-        title: String(place.title || "").trim(),
-        category: normalizeUserCategory(place.category),
-        tag: normalizeUserCategory(place.category),
-        description: String(place.description || place.reason || "").trim(),
-        reason: String(place.description || place.reason || "").trim(),
-        source: "Your JSON place",
-        coordinates: Array.isArray(place.coordinates) && place.coordinates.length === 2 ? place.coordinates.map(Number) : null,
-        imageUrl: String(place.imageUrl || "").trim(),
-        color: getCategoryColor(place.category),
-        saved: Boolean(place.saved || normalizeUserCategory(place.category) === "Saved"),
-      }))
+      .map((place) => {
+        const category = normalizeUserCategory(place.category);
+        return normalizeUserPlace({
+          ...place,
+          title: String(place.title || "").trim(),
+          category,
+          tag: category,
+          description: String(place.description || place.reason || "").trim(),
+          reason: String(place.description || place.reason || "").trim(),
+          source: "Your JSON place",
+          coordinates: Array.isArray(place.coordinates) && place.coordinates.length === 2 ? place.coordinates.map(Number) : null,
+          imageUrl: String(place.imageUrl || "").trim(),
+          color: getCategoryColor(category),
+          saved: Boolean(place.saved || category === "Saved"),
+        });
+      })
       .filter((place) => place.id && place.title && place.coordinates?.every(Number.isFinite));
   } catch {
     return [];
@@ -3280,15 +3105,16 @@ function initLeafletMaps() {
 
   const liveMap = document.querySelector("#live-map");
   if (liveMap) {
-    const nearbyPlaces = getNearYouNowPlaces().slice(0, 8);
+    const nearbyPlaces = getClosestNearYouNowPlaces(5);
     createLeafletMap(liveMap, nearbyPlaces, {
       currentLocation,
       currentLabel,
       routePlaces: nearbyPlaces,
       selectedPlaces: nearbyPlaces,
-      zoom: 16,
+      zoom: 17,
       fitPadding: [16, 16],
       fitMaxZoom: 16,
+      focusCurrentLocation: true,
     });
   }
 }
@@ -3337,6 +3163,7 @@ function createLeafletMap(container, places, options = {}, retry = true) {
   const bounds = [];
   let focusedMarker = null;
   let focusedPlace = null;
+  let currentLocationMarker = null;
 
   validPlaces.forEach((place) => {
     const marker = L.circleMarker(place.coordinates, {
@@ -3365,7 +3192,7 @@ function createLeafletMap(container, places, options = {}, retry = true) {
   });
 
   if (options.currentLocation) {
-    L.circleMarker(options.currentLocation, {
+    currentLocationMarker = L.circleMarker(options.currentLocation, {
       radius: 11,
       color: "#171817",
       weight: 3,
@@ -3391,6 +3218,9 @@ function createLeafletMap(container, places, options = {}, retry = true) {
   if (focusedMarker && focusedPlace) {
     map.setView(focusedPlace.coordinates, options.zoom || 16);
     focusedMarker.openPopup();
+  } else if (options.focusCurrentLocation && options.currentLocation) {
+    map.setView(options.currentLocation, options.zoom || 17);
+    currentLocationMarker?.openPopup();
   }
 
   leafletMaps.set(container.id, map);
