@@ -1,6 +1,7 @@
 import * as L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { creteSeed } from "./data/creteSeed.js";
+import { composeEditorialProfile, createPlaceProfileEnvelope, createVerifiedFactBundle } from "./enrichment/editorialComposer.js";
 import { enrichPlaceMedia } from "./enrichment/mediaAggregator.js";
 import { normalizeOsmElement, normalizeSeedPlace, normalizeUserPlace } from "./enrichment/normalizers.js";
 import { resolveLocationContext } from "./enrichment/placeResolver.js";
@@ -1099,11 +1100,12 @@ function renderHomeChecklist() {
 }
 
 function renderHomeIdeaCard(place) {
+  const editorial = getPlaceEditorial(place);
   return `
     <a class="home-idea-card" href="${escapeHtml(getMobileMapUrl(place))}" data-map-focus="${escapeHtml(place.id)}" aria-label="Focus ${escapeHtml(place.title)} on the trip map">
       ${renderPlaceImage(place, "home-idea-image")}
       <h3>${escapeHtml(place.title)}</h3>
-      <p>${escapeHtml(place.reason)}</p>
+      <p>${escapeHtml(editorial.whyStop || place.reason)}</p>
       <small>★ ${escapeHtml(place.tag)} · ${escapeHtml(place.distance)}</small>
     </a>
   `;
@@ -1136,6 +1138,7 @@ function getDayPeriod() {
 
 function renderPlaceResult(place) {
   const saved = state.savedIds.has(place.id);
+  const editorial = getPlaceEditorial(place);
   return `
     <article class="place-result">
       <div class="place-photo ${place.color}"></div>
@@ -1143,7 +1146,7 @@ function renderPlaceResult(place) {
         <h3>${place.title}</h3>
         <p>${place.area}</p>
         <span>★ ${place.rating} · ${place.category}</span>
-        <small>${place.note}</small>
+        <small>${escapeHtml(editorial.whyStop || place.note)}</small>
       </div>
       <div class="place-actions">
         <button class="save-button ${saved ? "is-saved" : ""}" data-save="${place.id}">${saved ? "Saved" : "Save"}</button>
@@ -1157,6 +1160,7 @@ function renderRecommendation(item) {
   const translation = item.englishTitle && item.englishTitle !== item.title ? `<small>English: ${escapeHtml(item.englishTitle)}</small>` : "";
   const source = item.source ? `<small>${escapeHtml(item.source)}</small>` : "";
   const iconName = getPlaceIconName(item);
+  const editorial = getPlaceEditorial(item);
   return `
     <article class="recommendation-card">
       <a class="recommendation-link" href="${escapeHtml(getMobileMapUrl(item))}" data-map-focus="${escapeHtml(item.id)}" aria-label="Focus ${escapeHtml(item.title)} on the trip map">
@@ -1167,7 +1171,7 @@ function renderRecommendation(item) {
       <div>
         <h3>${escapeHtml(item.title)}</h3>
         ${translation}
-        <p>${escapeHtml(item.reason)}</p>
+        <p>${escapeHtml(editorial.whyStop || item.reason)}</p>
         ${source}
       </div>
       <strong>${item.distance}</strong>
@@ -1247,6 +1251,47 @@ function getPlaceImageAttribution(place = {}, imageUrl = "") {
     sourceUrl: imageUrl,
     attribution: place.source || "External source",
     visualRole: "approximate",
+  };
+}
+
+function getPlaceEditorial(place = {}) {
+  return composeEditorialProfile(place, {
+    facts: createVerifiedFactBundle(place, state.locationContext.resolved || state.locationContext.area || {}),
+    media: state.placeImageCache[getPlaceImageKey(place)],
+    travellerProfile: getTravellerProfile(),
+    routeContext: getRouteContext(place),
+  });
+}
+
+function getPlaceProfile(place = {}) {
+  const media = state.placeImageCache[getPlaceImageKey(place)];
+  return createPlaceProfileEnvelope(place, {
+    media,
+    attributions: media?.attributions || [],
+    locationContext: state.locationContext.resolved || state.locationContext.area || {},
+    travellerProfile: getTravellerProfile(),
+    routeContext: getRouteContext(place),
+  });
+}
+
+function getTravellerProfile() {
+  return {
+    focus: state.travelFocus,
+    interests: [state.travelFocus],
+    transport: "mixed",
+    preferShortDetours: true,
+  };
+}
+
+function getRouteContext(place = {}) {
+  return {
+    origin: getLiveHeaderTitle(),
+    destination: state.trip.destination,
+    availableHours: 3,
+    travellerProfile: getTravellerProfile(),
+    previousStop: state.confirmedIds.size ? "confirmed visit" : "",
+    nextStop: state.live.nextStop && state.live.nextStop !== place.title ? state.live.nextStop : "",
+    weatherContext: state.weatherContext.current || {},
   };
 }
 
