@@ -1506,7 +1506,7 @@ function initAutomaticPositioning() {
 function initPlaceIntelligence() {
   if (state.activeView !== "live") return;
   if (!state.locationContext.area) return;
-  if (state.placeIntel.status === "loading" || state.placeIntel.status === "ready") return;
+  if (["loading", "ready", "error"].includes(state.placeIntel.status)) return;
 
   const cached = readCachedPlaceIntel();
   if (cached) {
@@ -1550,7 +1550,15 @@ async function fetchPlaceIntelligence({ force = false } = {}) {
   const tabIds = Object.keys(tabs);
 
   try {
-    const results = await Promise.all(tabIds.map((tab) => fetchIntelForTab(tab)));
+    const results = await Promise.all(
+      tabIds.map(async (tab) => {
+        try {
+          return await fetchIntelForTab(tab);
+        } catch {
+          return [tab, createIntelFallback(tab)];
+        }
+      })
+    );
     results.forEach(([tab, item]) => {
       tabs[tab] = item;
     });
@@ -1567,12 +1575,23 @@ async function fetchPlaceIntelligence({ force = false } = {}) {
   } catch {
     state.placeIntel = {
       ...state.placeIntel,
-      status: "idle",
+      status: "error",
       error: "Public data hooks could not be reached yet.",
     };
   } finally {
     render();
   }
+}
+
+function createIntelFallback(tab) {
+  const query = getIntelQuery(tab) || tab;
+  return {
+    source: "Local fallback",
+    title: query,
+    summary: `Public ${tab} data could not be reached right now. The tab is ready and can be refreshed when the network settles.`,
+    facts: ["No live GET retry", "Cached when available", "Manual refresh"],
+    url: "",
+  };
 }
 
 async function fetchIntelForTab(tab) {

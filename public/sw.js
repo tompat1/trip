@@ -1,4 +1,4 @@
-const CACHE_NAME = "trip-intelligent-guide-v1";
+const CACHE_NAME = "trip-intelligent-guide-v2";
 const APP_SHELL = ["/", "/index.html"];
 
 self.addEventListener("install", (event) => {
@@ -21,7 +21,6 @@ self.addEventListener("fetch", (event) => {
 
   const requestUrl = new URL(event.request.url);
   if (requestUrl.origin !== self.location.origin) {
-    event.respondWith(fetch(event.request));
     return;
   }
 
