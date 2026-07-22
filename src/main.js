@@ -860,7 +860,7 @@ function getLiveHeaderTitle() {
 
 function getTravelerCityName(area) {
   if (!area) return "";
-  return area.city || area.town || area.village || area.suburb || area.municipality || area.county || area.region || area.country || "";
+  return area.city || area.town || area.village || area.suburb || area.county || area.region || area.country || "";
 }
 
 function renderTimeline() {
@@ -991,12 +991,14 @@ function renderPlaceResult(place) {
 }
 
 function renderRecommendation(item) {
+  const translation = item.englishTitle && item.englishTitle !== item.title ? `<small>English: ${escapeHtml(item.englishTitle)}</small>` : "";
   return `
     <article class="recommendation-card">
       <span>${item.tag}</span>
       <div>
-        <h3>${item.title}</h3>
-        <p>${item.reason}</p>
+        <h3>${escapeHtml(item.title)}</h3>
+        ${translation}
+        <p>${escapeHtml(item.reason)}</p>
       </div>
       <strong>${item.distance}</strong>
     </article>
@@ -1125,7 +1127,7 @@ function renderLocationContext() {
   const city = escapeHtml(getTravelerCityName(area) || "Unknown");
   const region = escapeHtml(area?.region || "Unknown");
   const country = escapeHtml(area?.country || "Unknown");
-  const displayName = escapeHtml(area?.displayName || "");
+  const displayName = escapeHtml(cleanDisplayName(area?.displayName || ""));
   const osmType = escapeHtml(area?.osmType || "OpenStreetMap area");
   const osmId = escapeHtml(area?.osmId || "");
   const postcode = escapeHtml(area?.postcode || "");
@@ -1546,7 +1548,8 @@ function normalizeNearbyElements(elements, origin) {
   return elements
     .map((element) => {
       const tags = element.tags || {};
-      const name = tags.name || tags["name:en"];
+      const englishTitle = tags["name:en"] || "";
+      const name = englishTitle || tags.name;
       const lat = element.lat ?? element.center?.lat;
       const lng = element.lon ?? element.center?.lon;
       if (!name || !lat || !lng) return null;
@@ -1561,6 +1564,7 @@ function normalizeNearbyElements(elements, origin) {
       return {
         id: `osm-${element.type}-${element.id}`,
         title: name,
+        englishTitle,
         tag: category,
         category,
         distance: meters < 1000 ? `${Math.round(meters / 10) * 10} m` : `${(meters / 1000).toFixed(1)} km`,
@@ -1988,9 +1992,9 @@ async function collectAreaData(coordinates, accuracy) {
 function normalizeAreaData(data) {
   const address = data.address || {};
   const city = cleanAreaName(address.city || address.town || address.village || address.suburb || address.city_district || address.municipality || address.county || "");
+  const displayName = cleanDisplayName(data.display_name || "Unknown area");
   return {
     city,
-    municipality: cleanAreaName(address.municipality || ""),
     town: cleanAreaName(address.town || ""),
     village: cleanAreaName(address.village || ""),
     suburb: cleanAreaName(address.suburb || ""),
@@ -2000,9 +2004,9 @@ function normalizeAreaData(data) {
     country: cleanAreaName(address.country || ""),
     countryCode: address.country_code || "",
     postcode: address.postcode || "",
-    displayName: data.display_name || "Unknown area",
+    displayName,
     osmId: data.osm_id || "",
-    osmType: data.osm_type || data.category || "OpenStreetMap area",
+    osmType: cleanAreaType(data.type || data.category || data.osm_type || "OpenStreetMap area"),
     placeType: data.type || "",
     boundingBox: data.boundingbox || [],
   };
@@ -2013,6 +2017,20 @@ function cleanAreaName(value) {
     .replace(/^municipal unit of\s+/i, "")
     .replace(/^municipality of\s+/i, "")
     .trim();
+}
+
+function cleanDisplayName(value) {
+  return String(value || "")
+    .split(",")
+    .map((part) => cleanAreaName(part))
+    .filter(Boolean)
+    .join(", ");
+}
+
+function cleanAreaType(value) {
+  const normalized = String(value || "");
+  if (/municipal/i.test(normalized)) return "City";
+  return normalized || "OpenStreetMap area";
 }
 
 function applyLocationContext(context, { fromCache = false } = {}) {
@@ -2221,22 +2239,18 @@ function createLeafletMap(container, places, options = {}, retry = true) {
       fillOpacity: 0.94,
     }).addTo(map);
 
+    const popupLines = [
+      place.englishTitle && place.englishTitle !== place.title ? `English: ${escapeHtml(place.englishTitle)}` : "",
+      [place.time, place.category].filter(Boolean).join(" · "),
+      place.area || place.reason || "",
+    ].filter(Boolean);
+
     marker.bindPopup(`
-      <strong>${place.title}</strong><br/>
-      ${place.time} · ${place.category}<br/>
-      ${place.area}
+      <strong>${escapeHtml(place.title)}</strong><br/>
+      ${popupLines.join("<br/>")}
     `);
     bounds.push(place.coordinates);
   });
-
-  const routeCoordinates = (options.routePlaces || []).filter((place) => place.coordinates).map((place) => place.coordinates);
-  if (routeCoordinates.length > 1) {
-    L.polyline(routeCoordinates, {
-      color: "#d94a3a",
-      opacity: 0.74,
-      weight: 4,
-    }).addTo(map);
-  }
 
   if (options.currentLocation) {
     L.circleMarker(options.currentLocation, {
@@ -2247,7 +2261,7 @@ function createLeafletMap(container, places, options = {}, retry = true) {
       fillOpacity: 1,
     })
       .addTo(map)
-      .bindPopup(`<strong>${options.currentLabel || "Current location"}</strong>`);
+      .bindPopup(`<strong>${escapeHtml(options.currentLabel || "Current location")}</strong>`);
     bounds.push(options.currentLocation);
   }
 
