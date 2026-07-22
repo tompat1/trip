@@ -655,6 +655,7 @@ h3 {
 }
 
 .story-image {
+  position: relative;
   display: flex;
   align-items: flex-end;
   min-height: 136px;
@@ -662,9 +663,29 @@ h3 {
   overflow: hidden;
   border: 1px solid rgba(23, 24, 23, .08);
   border-radius: var(--radius);
-  background-color: #d8cbb6;
-  background-position: center;
-  background-size: cover;
+  background:
+    linear-gradient(140deg, rgba(56, 92, 115, .16), rgba(156, 110, 85, .18)),
+    #d8cbb6;
+}
+
+.story-image img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  filter: saturate(1.02) contrast(1.02);
+}
+
+.story-image.is-missing::before {
+  content: "Image unavailable";
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  font-weight: 900;
 }
 
 .story-image:first-child {
@@ -672,6 +693,8 @@ h3 {
 }
 
 .story-image figcaption {
+  position: relative;
+  z-index: 1;
   width: 100%;
   padding: 44px 12px 12px;
   color: var(--white);
@@ -835,19 +858,34 @@ h3 {
 }
 
 .home-idea-image {
+  display: grid;
+  place-items: center;
   min-height: 118px;
+  aspect-ratio: 4 / 3;
   margin-bottom: 10px;
+  overflow: hidden;
   border: 1px solid rgba(23, 24, 23, .08);
   border-radius: var(--radius);
   background: linear-gradient(140deg, var(--blue), var(--clay));
-  background-position: center;
-  background-size: cover;
+}
+
+.home-idea-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center;
+  background: rgba(255, 253, 248, .68);
 }
 
 .home-idea-image.sun { background: linear-gradient(140deg, #e9c76b, #d94a3a); }
 .home-idea-image.blue { background: linear-gradient(140deg, #385c73, #8bb9c4); }
 .home-idea-image.green { background: linear-gradient(140deg, #65705b, #d7c7a5); }
 .home-idea-image.clay { background: linear-gradient(140deg, #9c6e55, #171817); }
+
+.home-idea-image.is-missing {
+  background:
+    linear-gradient(140deg, rgba(56, 92, 115, .84), rgba(156, 110, 85, .88));
+}
 
 .home-idea-card h3,
 .home-idea-card p {
@@ -2034,20 +2072,33 @@ h3 {
 }
 
 .recommendation-image {
+  display: grid;
+  place-items: center;
   width: 100%;
   height: 100%;
   overflow: hidden;
   border: 1px solid rgba(23, 24, 23, .08);
   border-radius: 10px;
   background: linear-gradient(140deg, var(--blue), var(--clay));
-  background-position: center;
-  background-size: cover;
+}
+
+.recommendation-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center;
+  background: rgba(255, 253, 248, .72);
 }
 
 .recommendation-image.sun { background: linear-gradient(140deg, #e9c76b, #d94a3a); }
 .recommendation-image.blue { background: linear-gradient(140deg, #385c73, #8bb9c4); }
 .recommendation-image.green { background: linear-gradient(140deg, #65705b, #d7c7a5); }
 .recommendation-image.clay { background: linear-gradient(140deg, #9c6e55, #171817); }
+
+.recommendation-image.is-missing {
+  background:
+    linear-gradient(140deg, rgba(56, 92, 115, .9), rgba(156, 110, 85, .9));
+}
 
 .recommendation-media .category-badge {
   position: absolute;
@@ -2410,6 +2461,8 @@ button:focus-visible {
 .map-panel.large {
   border-radius: var(--radius);
   box-shadow: var(--shadow);
+  min-width: 0;
+  overflow: hidden;
 }
 
 .search-box {
@@ -2611,7 +2664,8 @@ button:focus-visible {
 }
 
 .leaflet-trip-map {
-  min-height: 540px;
+  min-height: min(68vh, 620px);
+  height: min(68vh, 620px);
 }
 
 .leaflet-live-map {

@@ -449,6 +449,7 @@ function renderHome() {
   const weather = state.weatherContext.current;
   const weatherPlace = getLiveHeaderTitle();
   const nearYouNow = getNearYouNowPlaces();
+  const homeIdeas = getHomeIdeaPlaces(5);
   const localTime = formatLiveDateTime();
   const accuracy = state.locationContext.accuracy ? `${Math.round(state.locationContext.accuracy)} m` : "Waiting";
   return `
@@ -499,7 +500,7 @@ function renderHome() {
       <section class="home-ideas-panel">
         <div class="section-head"><h3>Ideas near you</h3><button data-refresh-nearby>Scan</button></div>
         <div class="home-idea-strip">
-          ${nearYouNow.slice(0, 5).map(renderHomeIdeaCard).join("")}
+          ${homeIdeas.map(renderHomeIdeaCard).join("")}
         </div>
       </section>
 
@@ -548,9 +549,9 @@ function renderDestinationStoryPanel() {
         </div>
       </div>
       <div class="story-image-grid" aria-label="Heraklion and Crete visual highlights">
-        ${renderStoryImage("Koules Fortress", "https://commons.wikimedia.org/wiki/Special:FilePath/Heraklion%20Koules%20fortress.jpg")}
-        ${renderStoryImage("Knossos Palace", "https://commons.wikimedia.org/wiki/Special:FilePath/Knossos%20Palace%20North%20Entrance.jpg")}
-        ${renderStoryImage("Heraklion Museum", "https://commons.wikimedia.org/wiki/Special:FilePath/Heraklion%20Archaeological%20Museum.jpg")}
+        ${renderStoryImage("Koules Fortress", "https://commons.wikimedia.org/wiki/Special:FilePath/A08%20Koules%20842.JPG")}
+        ${renderStoryImage("Knossos Palace", "https://commons.wikimedia.org/wiki/Special:FilePath/Knossos%20-%20North%20entrance.jpg")}
+        ${renderStoryImage("Heraklion Museum", "https://commons.wikimedia.org/wiki/Special:FilePath/Heraklion%20Archaeological%20Museum%20%2830524450382%29.jpg")}
       </div>
     </section>
   `;
@@ -558,7 +559,8 @@ function renderDestinationStoryPanel() {
 
 function renderStoryImage(label, imageUrl) {
   return `
-    <figure class="story-image" style="background-image: linear-gradient(180deg, transparent 38%, rgba(23,24,23,.76)), url('${escapeHtml(imageUrl)}');">
+    <figure class="story-image">
+      <img src="${escapeHtml(imageUrl)}" alt="${escapeHtml(label)}" loading="lazy" referrerpolicy="no-referrer" onerror="this.closest('.story-image').classList.add('is-missing'); this.remove();"/>
       <figcaption>${escapeHtml(label)}</figcaption>
     </figure>
   `;
@@ -610,7 +612,7 @@ function renderRecommendedNextPanel(places) {
 
 function renderRecommendedNextItem(place) {
   return `
-    <a class="recommended-next-item" href="${escapeHtml(getMobileMapUrl(place))}" data-map-focus="${escapeHtml(place.id)}" aria-label="Focus ${escapeHtml(place.title)} on the trip map">
+    <a class="recommended-next-item" href="#map" data-map-focus="${escapeHtml(place.id)}" data-native-map-url="${escapeHtml(getMobileMapUrl(place))}" aria-label="Focus ${escapeHtml(place.title)} on the trip map">
       <span class="category-badge ${getPlaceIconName(place)}" aria-hidden="true">${renderIcon(getPlaceIconName(place))}</span>
       <strong>${escapeHtml(place.title)}</strong>
       <small>${escapeHtml(place.distance || place.category || "Nearby")}</small>
@@ -1102,13 +1104,38 @@ function renderHomeChecklist() {
 function renderHomeIdeaCard(place) {
   const editorial = getPlaceEditorial(place);
   return `
-    <a class="home-idea-card" href="${escapeHtml(getMobileMapUrl(place))}" data-map-focus="${escapeHtml(place.id)}" aria-label="Focus ${escapeHtml(place.title)} on the trip map">
+    <a class="home-idea-card" href="#map" data-map-focus="${escapeHtml(place.id)}" data-native-map-url="${escapeHtml(getMobileMapUrl(place))}" aria-label="Focus ${escapeHtml(place.title)} on the trip map">
       ${renderPlaceImage(place, "home-idea-image")}
       <h3>${escapeHtml(place.title)}</h3>
       <p>${escapeHtml(editorial.whyStop || place.reason)}</p>
       <small>★ ${escapeHtml(place.tag)} · ${escapeHtml(place.distance)}</small>
     </a>
   `;
+}
+
+function getHomeIdeaPlaces(limit = 5) {
+  const origin = state.locationContext.coordinates || HERAKLION_CENTER;
+  const scenicSeeds = state.places
+    .filter((place) => place.coordinates && getPlaceImageUrl(place))
+    .map((place) => ({
+      ...place,
+      tag: place.tag || place.category,
+      reason: place.reason || place.note,
+      distance: place.distance || formatDistance(getDistanceMeters(origin, place.coordinates)),
+      score: getDistanceMeters(origin, place.coordinates) * getTasteBoost(place),
+    }));
+  const liveWithImages = getNearYouNowPlaces()
+    .filter((place) => getPlaceImageUrl(place))
+    .map((place) => ({ ...place, score: place.score ?? getDistanceMeters(origin, place.coordinates || origin) }));
+
+  return mergeNearbyPlaces([...liveWithImages, ...scenicSeeds])
+    .sort((a, b) => a.score - b.score)
+    .slice(0, limit);
+}
+
+function formatDistance(meters) {
+  if (!Number.isFinite(meters)) return "Nearby";
+  return meters < 1000 ? `${Math.round(meters / 10) * 10} m` : `${(meters / 1000).toFixed(1)} km`;
 }
 
 function renderHomeHookCard(title, source, status) {
@@ -1163,7 +1190,7 @@ function renderRecommendation(item) {
   const editorial = getPlaceEditorial(item);
   return `
     <article class="recommendation-card">
-      <a class="recommendation-link" href="${escapeHtml(getMobileMapUrl(item))}" data-map-focus="${escapeHtml(item.id)}" aria-label="Focus ${escapeHtml(item.title)} on the trip map">
+      <a class="recommendation-link" href="#map" data-map-focus="${escapeHtml(item.id)}" data-native-map-url="${escapeHtml(getMobileMapUrl(item))}" aria-label="Focus ${escapeHtml(item.title)} on the trip map">
       <div class="recommendation-media">
         ${renderPlaceImage(item, "recommendation-image")}
         <span class="category-badge ${iconName}" title="${escapeHtml(item.tag || item.category || "Nearby")}">${renderIcon(iconName)}</span>
@@ -1188,17 +1215,17 @@ function renderPlaceImage(place, className) {
   const imageUrl = getPlaceImageUrl(place);
   const imageAttribution = getPlaceImageAttribution(place, imageUrl);
   const tone = getIdeaTone(place?.category || place?.tag || "");
-  const style = imageUrl ? ` style="background-image: linear-gradient(180deg, transparent 44%, rgba(23,24,23,.45)), url('${escapeHtml(imageUrl)}');"` : "";
   return `
     <div
       class="${className} ${tone}"
-      ${style}
       data-image-provider="${escapeHtml(imageAttribution.provider)}"
       data-image-source="${escapeHtml(imageAttribution.sourceUrl)}"
       data-image-attribution="${escapeHtml(imageAttribution.attribution)}"
       data-visual-role="${escapeHtml(imageAttribution.visualRole)}"
       aria-hidden="true"
-    ></div>
+    >
+      ${imageUrl ? `<img src="${escapeHtml(imageUrl)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.parentElement.classList.add('is-missing'); this.remove();"/>` : ""}
+    </div>
   `;
 }
 
@@ -1481,8 +1508,11 @@ function bindEvents() {
 
   document.querySelectorAll("[data-map-focus]").forEach((link) => {
     link.addEventListener("click", (event) => {
-      if (shouldOpenNativeMaps()) return;
       event.preventDefault();
+      if (shouldOpenNativeMaps() && link.dataset.nativeMapUrl) {
+        window.location.href = link.dataset.nativeMapUrl;
+        return;
+      }
       state.selectedMapPlaceId = link.dataset.mapFocus;
       state.activeView = "map";
       render();
@@ -1956,7 +1986,7 @@ function getCategoryColor(category = "") {
 
 function getPlaceImageUrl(place = {}) {
   const cached = state.placeImageCache[getPlaceImageKey(place)];
-  return place.imageUrl || cached?.hero?.thumbnailUrl || cached?.hero?.imageUrl || cached?.url || "";
+  return place.imageUrl || cached?.hero?.imageUrl || cached?.hero?.thumbnailUrl || cached?.url || "";
 }
 
 function getOsmImageUrl(tags = {}) {
