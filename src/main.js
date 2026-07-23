@@ -31,7 +31,7 @@ const WEATHER_CACHE_KEY = "trip-weather-context-v1";
 const WEATHER_CACHE_MAX_AGE = 1000 * 60 * 20;
 const USER_PLACES_STORAGE_KEY = "trip-user-nearby-places-v1";
 const HIDDEN_NEARBY_STORAGE_KEY = "trip-hidden-nearby-v1";
-const PLACE_IMAGE_CACHE_KEY = "trip-place-images-v1";
+const PLACE_IMAGE_CACHE_KEY = "trip-place-images-v2";
 const PLACE_IMAGE_CACHE_MAX_AGE = 1000 * 60 * 60 * 24 * 7;
 const COMMONS_API = "https://commons.wikimedia.org/w/api.php";
 const HERAKLION_CENTER = [35.3391, 25.132];
@@ -50,6 +50,9 @@ const state = {
   savedIds: new Set(["koules", "knossos", "museum"]),
   confirmedIds: new Set(["koules"]),
   filters: "All",
+  filtersOpen: false,
+  searchQuery: "",
+  searchSort: "closest",
   shareEnabled: false,
   tripMode: true,
   offlineReady: true,
@@ -218,6 +221,7 @@ const icons = {
   walk: `<circle cx="12" cy="5.4" r="2"/><path d="m10.6 8.8-1.8 4 3.3 2.2 2.2 4.5"/><path d="m12.5 9 2.1 2.6 3 .7"/><path d="m9.4 14.1-2.3 5.1"/><path d="m12.1 15 2.7-2.1"/>`,
   saved: `<path d="M12 20.2s-7-4.3-7-10.1A4 4 0 0 1 12 7.4a4 4 0 0 1 7 2.7c0 5.8-7 10.1-7 10.1Z"/><path d="m9.7 12.1 1.5 1.5 3.4-3.7"/>`,
   chevron: `<path d="m9 5 7 7-7 7"/>`,
+  locate: `<path d="M12 2.8v3.1"/><path d="M12 18.1v3.1"/><path d="M2.8 12h3.1"/><path d="M18.1 12h3.1"/><circle cx="12" cy="12" r="5.2"/><circle cx="12" cy="12" r="1.8"/>`,
   timeline: `<path d="M5 6h5"/><path d="M14 6h5"/><path d="M5 12h14"/><path d="M5 18h5"/><path d="M14 18h5"/><circle cx="12" cy="6" r="2"/><circle cx="12" cy="18" r="2"/>`,
   camera: `<path d="M4.5 8.5h4l1.4-2h4.2l1.4 2h4v10h-15z"/><circle cx="12" cy="13.5" r="3.2"/><path d="M17 11h.1"/>`,
   user: `<circle cx="12" cy="8.2" r="3.5"/><path d="M5.5 20c1.2-3.4 3.4-5.1 6.5-5.1s5.3 1.7 6.5 5.1"/>`,
@@ -248,7 +252,7 @@ function render() {
     app.innerHTML = `
       <div class="app-shell">
         ${renderSidebar()}
-        <main id="main" class="workspace" tabindex="-1">
+        <main id="main" class="workspace workspace--${escapeHtml(state.activeView)}" tabindex="-1">
           ${renderHeader()}
           ${renderView()}
         </main>
@@ -536,6 +540,9 @@ function renderHome() {
 function renderDestinationStoryPanel() {
   const title = state.locationContext.area?.city || "Heraklion";
   const region = state.locationContext.area?.region || "Crete";
+  const storyPlaces = ["koules", "knossos", "museum"]
+    .map((id) => state.places.find((place) => place.id === id))
+    .filter(Boolean);
   return `
     <section class="destination-story-panel" aria-labelledby="destination-story-title">
       <div class="story-copy">
@@ -550,17 +557,23 @@ function renderDestinationStoryPanel() {
         </div>
       </div>
       <div class="story-image-grid" aria-label="Heraklion and Crete visual highlights">
-        ${renderStoryImage("Koules Fortress", "https://commons.wikimedia.org/wiki/Special:FilePath/A08%20Koules%20842.JPG")}
-        ${renderStoryImage("Knossos Palace", "https://commons.wikimedia.org/wiki/Special:FilePath/Knossos%20-%20North%20entrance.jpg")}
-        ${renderStoryImage("Heraklion Museum", "https://commons.wikimedia.org/wiki/Special:FilePath/Heraklion%20Archaeological%20Museum%20%2830524450382%29.jpg")}
+        ${storyPlaces.map(renderStoryImage).join("")}
       </div>
     </section>
   `;
 }
 
-function renderStoryImage(label, imageUrl) {
+function renderStoryImage(place) {
+  const label = place?.title || "Heraklion highlight";
+  const imageUrl = getPlaceImageUrl(place);
+  const attribution = getPlaceImageAttribution(place, imageUrl);
   return `
-    <figure class="story-image">
+    <figure
+      class="story-image"
+      data-image-provider="${escapeHtml(attribution.provider)}"
+      data-image-source="${escapeHtml(attribution.sourceUrl)}"
+      data-image-attribution="${escapeHtml(attribution.attribution)}"
+    >
       <img src="${escapeHtml(imageUrl)}" alt="${escapeHtml(label)}" loading="lazy" referrerpolicy="no-referrer" onerror="this.closest('.story-image').classList.add('is-missing'); this.remove();"/>
       <figcaption>${escapeHtml(label)}</figcaption>
     </figure>
@@ -900,34 +913,65 @@ function renderTrip() {
 }
 
 function renderSearch() {
-  const categories = ["All", "Cafe", "Museum", "Landmark", "Hidden gems", "Neighborhood"];
-  const places = state.filters === "All" ? state.places.slice(0, 4) : state.places.filter((place) => place.category === state.filters);
+  const categories = [
+    ["All", "All"],
+    ["Coffee", "Coffee"],
+    ["Food", "Food"],
+    ["Museum", "Museums"],
+    ["Sight", "Sights"],
+    ["Beach", "Beach"],
+    ["Saved", "Saved"],
+    ["Nearby", "Nearby"],
+  ];
+  const places = getSearchPlaces();
+  const status = places.length
+    ? `${places.length} ${places.length === 1 ? "place" : "places"}${state.searchQuery ? ` for "${state.searchQuery}"` : ""}`
+    : "No matching places yet";
+  const sortOptions = [
+    ["closest", "Closest"],
+    ["price-asc", "$ to $$$"],
+    ["price-desc", "$$$ to $"],
+  ];
   return `
     <div class="search-page">
       <section class="search-panel">
         <div class="search-command-row">
           <label class="search-box">
             ${renderIcon("search")}
-            <input placeholder="Search places, cafes, museums, neighborhoods..." aria-label="Search places"/>
+            <input data-search-input value="${escapeHtml(state.searchQuery)}" placeholder="Search places, cafes, museums..." aria-label="Search places"/>
           </label>
-          <button class="filter-button" aria-label="Filter places">${renderIcon("filter")}</button>
+          <button class="filter-button ${state.filtersOpen ? "is-active" : ""}" data-toggle-filters aria-label="Filter places" aria-expanded="${state.filtersOpen}">${renderIcon("filter")}</button>
         </div>
-        <div class="filter-row">
-          ${categories.map((category) => `<button class="${state.filters === category ? "is-active" : ""}" data-filter="${category}">${category}</button>`).join("")}
+        <div class="filter-row ${state.filtersOpen ? "is-open" : ""}">
+          ${categories.map(([value, label]) => `<button class="${state.filters === value ? "is-active" : ""}" data-filter="${value}">${label}</button>`).join("")}
         </div>
+        <div class="sort-row" aria-label="Sort search results">
+          ${sortOptions.map(([value, label]) => `<button class="${state.searchSort === value ? "is-active" : ""}" data-search-sort="${value}">${label}</button>`).join("")}
+        </div>
+        <p class="search-status">${escapeHtml(status)}</p>
       </section>
       <section class="search-results-panel">
         <div class="result-list">
-          ${places.map(renderPlaceResult).join("")}
+          ${places.length ? places.map(renderPlaceResult).join("") : renderEmptySearchState()}
         </div>
         <button class="vibe-card" data-view="guide">
           <span>${renderIcon("spark")}</span>
           <strong>Find places that fit your vibe</strong>
-          <small>Try “quiet coffee shops in Le Marais”</small>
+          <small>Try “quiet coffee near the old harbor”</small>
           <em>${renderIcon("chevron")}</em>
         </button>
       </section>
     </div>
+  `;
+}
+
+function renderEmptySearchState() {
+  return `
+    <article class="empty-search-state">
+      <span>${renderIcon("search")}</span>
+      <strong>No matching places yet</strong>
+      <p>Try coffee, museum, harbor, beach, saved, or scan nearby places from the live view.</p>
+    </article>
   `;
 }
 
@@ -1178,13 +1222,15 @@ function getDayPeriod() {
 function renderPlaceResult(place) {
   const saved = state.savedIds.has(place.id);
   const editorial = getPlaceEditorial(place);
+  const distance = place.distance ? `<em>${escapeHtml(place.distance)}</em>` : "";
+  const price = renderPriceLevel(place.priceLevel);
   return `
     <article class="place-result">
-      <div class="place-photo ${place.color}"></div>
+      ${renderPlaceImage(place, "place-photo")}
       <div class="place-copy">
-        <h3>${place.title}</h3>
-        <p>${place.area}</p>
-        <span>★ ${place.rating} · ${place.category}</span>
+        <h3>${escapeHtml(place.title)}</h3>
+        <p>${escapeHtml(place.area || place.source || "Nearby")}</p>
+        <span>★ ${escapeHtml(place.rating || "New")} · ${escapeHtml(place.category || place.tag || "Place")} · ${price} ${distance}</span>
         <small>${escapeHtml(editorial.whyStop || place.note)}</small>
       </div>
       <div class="place-actions">
@@ -1193,6 +1239,108 @@ function renderPlaceResult(place) {
       </div>
     </article>
   `;
+}
+
+function getSearchPlaces() {
+  const origin = state.locationContext.coordinates || HERAKLION_CENTER;
+  const candidates = mergeNearbyPlaces([
+    ...state.places,
+    ...state.userPlaces,
+    ...getNearYouNowPlaces(),
+    ...state.nearbyDiscovery.places,
+  ]);
+
+  return candidates
+    .filter(isTravelerDisplayPlace)
+    .map((place) => {
+      const meters = Array.isArray(place.coordinates) ? getDistanceMeters(origin, place.coordinates) : Infinity;
+      return {
+        ...place,
+        distance: place.distance || formatDistance(meters),
+        priceLevel: getPlacePriceLevel(place),
+        score: Number.isFinite(meters) ? meters : 999999,
+      };
+    })
+    .filter(placeMatchesSearchFilter)
+    .filter(placeMatchesSearchQuery)
+    .sort(sortSearchPlaces)
+    .slice(0, 18);
+}
+
+function sortSearchPlaces(a, b) {
+  const savedDelta = Number(state.savedIds.has(b.id)) - Number(state.savedIds.has(a.id));
+  if (savedDelta) return savedDelta;
+
+  if (state.searchSort === "price-asc") {
+    const priceDelta = (a.priceLevel ?? 2) - (b.priceLevel ?? 2);
+    if (priceDelta) return priceDelta;
+  }
+
+  if (state.searchSort === "price-desc") {
+    const priceDelta = (b.priceLevel ?? 2) - (a.priceLevel ?? 2);
+    if (priceDelta) return priceDelta;
+  }
+
+  return (a.score ?? 999999) - (b.score ?? 999999);
+}
+
+function getPlacePriceLevel(place = {}) {
+  if (Number.isFinite(Number(place.priceLevel))) return Math.max(1, Math.min(3, Number(place.priceLevel)));
+  const text = `${place.price || ""} ${place.priceRange || ""} ${place.category || ""} ${place.tag || ""} ${place.note || ""} ${place.reason || ""}`.toLowerCase();
+  if (/\${3}|€€€|fine|palace|museum|restaurant|dinner|roastery|specialty/.test(text)) return 3;
+  if (/\${2}|€€|taverna|food|lunch|bakery|cafe|coffee|beach/.test(text)) return 2;
+  return 1;
+}
+
+function renderPriceLevel(level = 2) {
+  const clamped = Math.max(1, Math.min(3, Number(level) || 2));
+  return "$".repeat(clamped);
+}
+
+function placeMatchesSearchFilter(place = {}) {
+  const filter = state.filters;
+  if (filter === "All") return true;
+  if (filter === "Saved") return state.savedIds.has(place.id) || place.saved;
+  if (filter === "Nearby") return place.nearby || place.source === "OpenStreetMap nearby" || Number(place.score) < 2000;
+
+  const key = getSearchHaystack(place);
+  if (filter === "Coffee") return /(coffee|cafe|roaster|espresso|filter|bakery)/i.test(key);
+  if (filter === "Food") return /(restaurant|food|taverna|dinner|lunch|cuisine|bakery|deli)/i.test(key);
+  if (filter === "Museum") return /(museum|gallery|archaeolog|art|culture)/i.test(key);
+  if (filter === "Sight") return /(sight|landmark|fortress|harbor|harbour|fountain|walls|palace|historic|walk)/i.test(key);
+  if (filter === "Beach") return /(beach|sea|swim|coast|harbor|harbour)/i.test(key);
+  return true;
+}
+
+function placeMatchesSearchQuery(place = {}) {
+  const query = normalizeSearchText(state.searchQuery);
+  if (!query) return true;
+  const haystack = normalizeSearchText(getSearchHaystack(place));
+  return query.split(" ").every((token) => haystack.includes(token));
+}
+
+function getSearchHaystack(place = {}) {
+  return [
+    place.title,
+    place.englishTitle,
+    place.category,
+    place.tag,
+    place.area,
+    place.note,
+    place.reason,
+    place.description,
+    place.source,
+  ].filter(Boolean).join(" ");
+}
+
+function normalizeSearchText(value = "") {
+  return String(value)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9α-ωάέήίόύώϊϋΐΰ ]/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function renderRecommendation(item) {
@@ -1467,7 +1615,17 @@ function renderSavedPlace(place) {
 
 function renderLiveMap(places) {
   return `
-    <div id="live-map" class="leaflet-map leaflet-live-map" role="img" aria-label="Live OpenStreetMap view with current location and saved places"></div>
+    <div class="live-map-shell">
+      <div id="live-map" class="leaflet-map leaflet-live-map" role="img" aria-label="Live OpenStreetMap view with current location and saved places"></div>
+      <button
+        class="map-locate-button"
+        data-center-live-location
+        aria-label="Update and center on current location"
+        title="Update current location"
+      >
+        ${renderIcon("locate")}
+      </button>
+    </div>
   `;
 }
 
@@ -1537,7 +1695,35 @@ function bindEvents() {
   document.querySelectorAll("[data-filter]").forEach((button) => {
     button.addEventListener("click", () => {
       state.filters = button.dataset.filter;
+      state.filtersOpen = false;
       render();
+    });
+  });
+
+  document.querySelectorAll("[data-toggle-filters]").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.filtersOpen = !state.filtersOpen;
+      render();
+    });
+  });
+
+  document.querySelectorAll("[data-search-sort]").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.searchSort = button.dataset.searchSort;
+      render();
+    });
+  });
+
+  document.querySelectorAll("[data-search-input]").forEach((input) => {
+    input.addEventListener("input", () => {
+      const cursor = input.selectionStart || input.value.length;
+      state.searchQuery = input.value;
+      render();
+      requestAnimationFrame(() => {
+        const nextInput = document.querySelector("[data-search-input]");
+        nextInput?.focus();
+        nextInput?.setSelectionRange(cursor, cursor);
+      });
     });
   });
 
@@ -1650,16 +1836,21 @@ function bindEvents() {
 
   document.querySelectorAll("[data-refresh-location]").forEach((button) => {
     button.addEventListener("click", () => {
-      state.live.location = state.live.location === "Heraklion" ? "Old Harbor" : "Heraklion";
-      state.live.lastSync = "just now";
-      state.recommendations = [...state.recommendations].reverse();
-      render();
+      requestCurrentPosition({ force: true, centerLiveMap: state.activeView === "live" });
     });
   });
 
   document.querySelectorAll("[data-refresh-position]").forEach((button) => {
     button.addEventListener("click", () => {
-      requestCurrentPosition({ force: true });
+      requestCurrentPosition({ force: true, centerLiveMap: state.activeView === "live" });
+    });
+  });
+
+  document.querySelectorAll("[data-center-live-location]").forEach((button) => {
+    button.addEventListener("click", () => {
+      button.classList.add("is-locating");
+      if (state.locationContext.coordinates) centerLiveMapOnCurrentLocation();
+      requestCurrentPosition({ force: true, centerLiveMap: true });
     });
   });
 
@@ -2746,7 +2937,7 @@ async function fetchCountryIntel(countryName) {
   };
 }
 
-function requestCurrentPosition({ force = false } = {}) {
+function requestCurrentPosition({ force = false, centerLiveMap = false } = {}) {
   if (!navigator.geolocation) {
     state.locationContext = {
       ...state.locationContext,
@@ -2780,6 +2971,7 @@ function requestCurrentPosition({ force = false } = {}) {
         error: "",
       };
       render();
+      if (centerLiveMap) scheduleLiveMapCenter(coordinates);
 
       if (cached) {
         applyLocationContext({
@@ -2789,10 +2981,11 @@ function requestCurrentPosition({ force = false } = {}) {
           updatedAt: state.locationContext.updatedAt,
         });
         render();
+        if (centerLiveMap) scheduleLiveMapCenter(coordinates);
         return;
       }
 
-      collectAreaData(coordinates, position.coords.accuracy);
+      collectAreaData(coordinates, position.coords.accuracy, { centerLiveMap });
     },
     (error) => {
       const denied = error.code === error.PERMISSION_DENIED;
@@ -2811,7 +3004,7 @@ function requestCurrentPosition({ force = false } = {}) {
   );
 }
 
-async function collectAreaData(coordinates, accuracy) {
+async function collectAreaData(coordinates, accuracy, { centerLiveMap = false } = {}) {
   const cacheKey = getLocationCacheKey(coordinates);
   const url = new URL(NOMINATIM_REVERSE_ENDPOINT);
   url.searchParams.set("format", "jsonv2");
@@ -2850,6 +3043,7 @@ async function collectAreaData(coordinates, accuracy) {
     };
     writeCachedLocation(context);
     applyLocationContext(context);
+    if (centerLiveMap) scheduleLiveMapCenter(coordinates);
   } catch (error) {
     state.locationContext = {
       ...state.locationContext,
@@ -3287,6 +3481,28 @@ function initLeafletMaps() {
   }
 }
 
+function centerLiveMapOnCurrentLocation() {
+  const coordinates = state.locationContext.coordinates;
+  const liveMap = leafletMaps.get("live-map");
+  if (!liveMap || !coordinates) return false;
+  liveMap.setView(coordinates, Math.max(liveMap.getZoom(), 17), { animate: true });
+  liveMap.eachLayer((layer) => {
+    if (layer.options?.tripRole === "current-location") layer.openPopup?.();
+  });
+  return true;
+}
+
+function scheduleLiveMapCenter(coordinates = state.locationContext.coordinates) {
+  if (!coordinates) return;
+  requestAnimationFrame(() => {
+    const centered = centerLiveMapOnCurrentLocation();
+    if (!centered && document.querySelector("#live-map")) {
+      scheduleLeafletMaps();
+      requestAnimationFrame(centerLiveMapOnCurrentLocation);
+    }
+  });
+}
+
 function isInCurrentDestination(place) {
   if (!place.coordinates) return false;
   if (!state.trip.destination.toLowerCase().includes("paris")) return true;
@@ -3366,6 +3582,7 @@ function createLeafletMap(container, places, options = {}, retry = true) {
       weight: 3,
       fillColor: "#fffdf8",
       fillOpacity: 1,
+      tripRole: "current-location",
     })
       .addTo(map)
       .bindPopup(`<strong>${escapeHtml(options.currentLabel || "Current location")}</strong>`);

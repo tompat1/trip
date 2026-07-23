@@ -11,7 +11,11 @@ export async function enrichPlaceMedia(place, options = {}) {
     .map((image) => rankImageCandidate(image, place))
     .filter((image) => !image.rejected)
     .sort((a, b) => b.finalScore - a.finalScore);
-  const hero = candidates.find((image) => image.visualRole === "hero" && image.finalScore >= 65) || candidates[0] || createDesignedFallbackImage(place);
+  const hero =
+    candidates.find((image) => image.visualRole === "hero" && image.finalScore >= 68 && !image.illustrativeOnly) ||
+    candidates.find((image) => image.finalScore >= 62 && image.relevanceScore >= 0.35) ||
+    candidates.find((image) => image.finalScore >= 70 && image.exactLocation && image.distanceMeters <= getNearbyImageRadius(place)) ||
+    createDesignedFallbackImage(place);
   const gallery = candidates.filter((image) => image.id !== hero.id).slice(0, 8);
 
   return {
@@ -250,12 +254,15 @@ function rankImageCandidate(image, place) {
   const longEdge = getLongEdge(image);
   const aspect = image.aspectRatio || (image.width && image.height ? image.width / image.height : 0);
   const exactNameMatch = getNameMatchScore(image.rawTitle || image.sourcePageUrl, place);
-  const possibleMismatch = exactNameMatch < 0.25 && !image.exactLocation ? 1 : 0;
+  const distanceMeters = getImageDistanceMeters(image, place);
+  const nearbyRadius = getNearbyImageRadius(place);
+  const weakNameMatch = exactNameMatch < 0.25;
+  const possibleMismatch = weakNameMatch && (!image.exactLocation || distanceMeters > nearbyRadius) ? 1 : 0;
   const genericStockPenalty = isGenericRegionalImage(image, place) ? 1 : 0;
-  const rejectionReason = getHardRejectionReason(image, longEdge);
+  const rejectionReason = getHardRejectionReason(image, longEdge, { weakNameMatch, distanceMeters, nearbyRadius });
   const finalScore = calculateImageScore({
     exactNameMatch,
-    geotagDistanceScore: image.exactLocation ? 0.95 : 0.35,
+    geotagDistanceScore: getGeotagDistanceScore(distanceMeters, image.exactLocation),
     landmarkMatch: exactNameMatch,
     sourceTrust: image.sourceTrust || 0.7,
     resolutionScore: Math.min(1, longEdge / 1800),
@@ -274,6 +281,7 @@ function rankImageCandidate(image, place) {
     qualityScore: Math.min(1, longEdge / 1800),
     editorialScore: finalScore / 100,
     finalScore,
+    distanceMeters,
     rejected: Boolean(rejectionReason),
     rejectionReason,
     illustrativeOnly: image.illustrativeOnly || genericStockPenalty > 0,
@@ -343,13 +351,51 @@ function getNameMatchScore(value = "", place = {}) {
   return Math.min(1, matches / Math.min(3, unique.length));
 }
 
-function getHardRejectionReason(image, longEdge) {
+function getHardRejectionReason(image, longEdge, context = {}) {
   const visualText = `${image.rawTitle || ""} ${image.sourcePageUrl || ""}`;
   if (!image.imageUrl || !image.sourcePageUrl) return "missing-source-provenance";
   if (longEdge && longEdge < 900) return "too-small";
   if (/watermark|screenshot|map/i.test(visualText)) return "blocked-visual-type";
   if (/\b(parking|car park|carpark|automobile|vehicle|rental car|garage|traffic)\b/i.test(visualText)) return "irrelevant-vehicle-or-parking";
+  if (context.weakNameMatch && Number.isFinite(context.distanceMeters) && context.distanceMeters > context.nearbyRadius) return "nearby-but-not-this-place";
   return "";
+}
+
+function getImageDistanceMeters(image, place) {
+  if (!Number.isFinite(image.latitude) || !Number.isFinite(image.longitude) || !Array.isArray(place.coordinates)) return Infinity;
+  const [lat, lng] = place.coordinates;
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return Infinity;
+  return getDistanceMeters([lat, lng], [image.latitude, image.longitude]);
+}
+
+function getNearbyImageRadius(place = {}) {
+  const key = `${place.category || ""} ${place.tag || ""} ${place.title || ""}`.toLowerCase();
+  if (key.includes("coffee") || key.includes("cafe") || key.includes("restaurant") || key.includes("shop")) return 90;
+  if (key.includes("museum") || key.includes("fountain")) return 180;
+  if (key.includes("beach") || key.includes("walls") || key.includes("fortress") || key.includes("harbor")) return 650;
+  return 240;
+}
+
+function getGeotagDistanceScore(distanceMeters, exactLocation) {
+  if (!exactLocation || !Number.isFinite(distanceMeters)) return 0.25;
+  if (distanceMeters <= 90) return 1;
+  if (distanceMeters <= 240) return 0.82;
+  if (distanceMeters <= 650) return 0.56;
+  if (distanceMeters <= 1500) return 0.28;
+  return 0.08;
+}
+
+function getDistanceMeters(origin, destination) {
+  const [lat1, lon1] = origin;
+  const [lat2, lon2] = destination;
+  const earthRadius = 6371000;
+  const toRad = (value) => (value * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+  return earthRadius * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
 function isGenericRegionalImage(image, place) {
