@@ -1599,7 +1599,10 @@ function renderNearbyPlace(place) {
         <h3>${place.title}</h3>
         <p>${place.category} · ${distance}</p>
       </div>
-      <button class="icon-button" data-place="${place.id}" aria-label="Focus ${place.title}">⌖</button>
+      <div class="nearby-place-actions">
+        <button class="icon-button" data-place="${place.id}" aria-label="Focus ${place.title}">⌖</button>
+        <button class="icon-button" data-edit-user-place="${escapeHtml(place.id)}" aria-label="Edit ${escapeHtml(place.title)}">${renderIcon("note")}</button>
+      </div>
     </article>
   `;
 }
@@ -1758,21 +1761,7 @@ function bindEvents() {
 
   document.querySelectorAll("[data-edit-user-place]").forEach((button) => {
     button.addEventListener("click", () => {
-      const id = button.dataset.editUserPlace;
-      if (!state.userPlaces.some((place) => place.id === id)) {
-        const place = getNearYouNowPlaces().find((item) => item.id === id);
-        if (place) {
-          state.userPlaces = [buildUserPlaceFromNearby(place), ...state.userPlaces];
-          state.hiddenNearbyIds.delete(id);
-          writeStoredUserPlaces(state.userPlaces);
-          writeStoredHiddenNearbyIds(state.hiddenNearbyIds);
-        }
-      }
-      state.placeEditorOpen = true;
-      render();
-      requestAnimationFrame(() => {
-        document.querySelector(`[data-user-place-edit="${CSS.escape(id)}"] input[name="title"]`)?.focus();
-      });
+      openPlaceEditorForPlace(button.dataset.editUserPlace);
     });
   });
 
@@ -2173,6 +2162,35 @@ function buildUserPlaceFromNearby(place) {
     saved: Boolean(place.saved || state.savedIds.has(place.id)),
     updatedAt: new Date().toISOString(),
   });
+}
+
+function openPlaceEditorForPlace(id) {
+  if (!id) return;
+  if (!state.userPlaces.some((place) => place.id === id)) {
+    const place = findEditableSourcePlace(id);
+    if (place) {
+      state.userPlaces = [buildUserPlaceFromNearby(place), ...state.userPlaces];
+      state.hiddenNearbyIds.delete(id);
+      writeStoredUserPlaces(state.userPlaces);
+      writeStoredHiddenNearbyIds(state.hiddenNearbyIds);
+    }
+  }
+  state.placeEditorOpen = true;
+  state.activeView = "live";
+  render();
+  requestAnimationFrame(() => {
+    document.querySelector(`[data-user-place-edit="${CSS.escape(id)}"] input[name="title"]`)?.focus();
+  });
+}
+
+function findEditableSourcePlace(id) {
+  return [
+    ...state.userPlaces,
+    ...getNearYouNowPlaces(),
+    ...state.nearbyDiscovery.places,
+    ...state.places,
+    getSelectedMapPlace(),
+  ].filter(Boolean).find((place) => place.id === id) || null;
 }
 
 function readUploadedImage(file) {
@@ -3542,6 +3560,12 @@ function createLeafletMap(container, places, options = {}, retry = true) {
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
   }).addTo(map);
 
+  map.on("popupopen", (event) => {
+    event.popup.getElement()?.querySelectorAll("[data-edit-user-place]").forEach((button) => {
+      button.addEventListener("click", () => openPlaceEditorForPlace(button.dataset.editUserPlace));
+    });
+  });
+
   const validPlaces = places.filter((place) => place.coordinates);
   const selectedIds = new Set((options.selectedPlaces || validPlaces).map((place) => place.id));
   const bounds = [];
@@ -3567,6 +3591,7 @@ function createLeafletMap(container, places, options = {}, retry = true) {
     marker.bindPopup(`
       <strong>${escapeHtml(place.title)}</strong><br/>
       ${popupLines.join("<br/>")}
+      <button class="leaflet-popup-edit" type="button" data-edit-user-place="${escapeHtml(place.id)}">Edit place</button>
     `);
     if (options.focusPlaceId && place.id === options.focusPlaceId) {
       focusedMarker = marker;

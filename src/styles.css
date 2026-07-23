@@ -1962,7 +1962,7 @@ h3 {
   position: absolute;
   right: 14px;
   top: 14px;
-  z-index: 500;
+  z-index: 390;
   display: grid;
   width: 46px;
   height: 46px;
@@ -2855,6 +2855,15 @@ button:focus-visible {
   font: inherit;
 }
 
+.leaflet-top,
+.leaflet-bottom {
+  z-index: 380;
+}
+
+.leaflet-popup-pane {
+  z-index: 700;
+}
+
 .leaflet-control-attribution {
   font-size: 11px;
 }
@@ -2870,6 +2879,26 @@ button:focus-visible {
 .leaflet-popup-content {
   margin: 10px 12px;
   line-height: 1.45;
+}
+
+.leaflet-popup-edit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  margin-top: 9px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  color: var(--white);
+  background: var(--red);
+  font-weight: 900;
+}
+
+.nearby-place-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .river,
@@ -3575,6 +3604,26 @@ button:focus-visible {
     width: 50px;
     height: 50px;
     border-radius: 16px;
+  }
+
+  .leaflet-top.leaflet-left {
+    top: auto;
+    bottom: 12px;
+  }
+
+  .leaflet-touch .leaflet-bar {
+    border: 1px solid rgba(23, 24, 23, .12);
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 12px 26px rgba(23, 24, 23, .16);
+  }
+
+  .leaflet-popup {
+    max-width: calc(100vw - 64px);
+  }
+
+  .leaflet-popup-content-wrapper {
+    max-width: calc(100vw - 64px);
   }
 
   .quick-card {
