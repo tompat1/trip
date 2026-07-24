@@ -203,6 +203,7 @@ button {
 
 .nav-item:hover,
 .nav-item.is-active,
+.brand.is-active,
 .mobile-nav .is-active {
   background: rgba(217, 74, 58, .1);
   color: var(--red);
@@ -215,6 +216,12 @@ button {
   border-color: var(--red);
   background: var(--red);
   transform: translateY(-1px);
+}
+
+.brand.is-active .brand-mark {
+  color: var(--white);
+  border-color: var(--red);
+  background: var(--red);
 }
 
 .nav-search {
@@ -716,6 +723,63 @@ h3 {
   align-items: center;
   gap: 8px;
   margin-bottom: 10px;
+}
+
+.location-prompt {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  margin-top: 16px;
+  padding: 10px;
+  border: 1px solid rgba(56, 92, 115, .16);
+  border-radius: 12px;
+  background: rgba(56, 92, 115, .07);
+}
+
+.location-prompt > span {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border-radius: 10px;
+  color: var(--blue);
+  background: var(--white);
+}
+
+.location-prompt strong,
+.location-prompt small {
+  display: block;
+}
+
+.location-prompt small {
+  margin-top: 2px;
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.location-prompt button {
+  min-height: 36px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  color: var(--white);
+  background: var(--red);
+  font-weight: 900;
+}
+
+.location-prompt.is-ready {
+  border-color: rgba(101, 112, 91, .2);
+  background: rgba(101, 112, 91, .08);
+}
+
+.location-prompt.is-ready > span {
+  color: var(--green);
+}
+
+.location-prompt.is-ready button {
+  color: var(--green);
+  background: rgba(101, 112, 91, .14);
 }
 
 .live-dot {
@@ -3640,6 +3704,15 @@ button:focus-visible {
     justify-content: center;
     min-width: 0;
     padding: 0 10px;
+  }
+
+  .location-prompt {
+    grid-template-columns: 34px minmax(0, 1fr);
+  }
+
+  .location-prompt button {
+    grid-column: 1 / -1;
+    width: 100%;
   }
 
   .destination-story-panel {

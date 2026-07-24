@@ -280,7 +280,7 @@ function render() {
 function renderSidebar() {
   return `
     <aside class="sidebar" aria-label="Primary">
-      <button class="brand" data-view="home" aria-label="TRIP home">
+      <button class="brand ${getActiveNavId() === "home" ? "is-active" : ""}" data-view="home" aria-label="TRIP home" ${getActiveNavId() === "home" ? 'aria-current="page"' : ""}>
         <span class="brand-mark">T</span>
         <span>
           <strong>TRIP</strong>
@@ -292,7 +292,7 @@ function renderSidebar() {
         ${navItems
           .map(
             ([id, label, icon]) => `
-              <button class="nav-item ${state.activeView === id ? "is-active" : ""}" data-view="${id}">
+              <button class="nav-item ${getActiveNavId() === id ? "is-active" : ""}" data-view="${id}" ${getActiveNavId() === id ? 'aria-current="page"' : ""}>
                 <span class="nav-icon">${renderIcon(icon)}</span><em>${label}</em>
               </button>`
           )
@@ -481,6 +481,7 @@ function renderHome() {
         <h2>${escapeHtml(state.trip.profile.split(" ")[0] || "traveler")}</h2>
         <p><span class="live-dot"></span>${state.locationContext.coordinates ? `You are in ${escapeHtml(weatherPlace)}` : "Enable location to personalize this dashboard."}</p>
         <span>${weather ? `${escapeHtml(weather.label)} · ${Math.round(weather.temperature)}°C` : "Weather hook waiting"} · ${accuracy} accuracy</span>
+        ${renderLocationPrompt()}
       </section>
 
       ${renderRecommendedNextPanel(homeNearby)}
@@ -1100,10 +1101,11 @@ function renderProfile() {
 
 function renderMobileNav() {
   const items = [navItems[0], navItems[1], searchNavItem, navItems[2], navItems[3]];
+  const activeId = getActiveNavId();
   return `
     <div class="mobile-nav-shell">
       <nav class="mobile-nav" aria-label="Mobile primary">
-        ${items.map(([id, label, icon]) => `<button class="${state.activeView === id ? "is-active" : ""}" data-view="${id}"><span class="nav-icon">${renderIcon(icon)}</span><em>${label}</em></button>`).join("")}
+        ${items.map(([id, label, icon]) => `<button class="${activeId === id ? "is-active" : ""}" data-view="${id}" ${activeId === id ? 'aria-current="page"' : ""}><span class="nav-icon">${renderIcon(icon)}</span><em>${label}</em></button>`).join("")}
       </nav>
     </div>
   `;
@@ -1112,10 +1114,48 @@ function renderMobileNav() {
 function renderSearchAction(extraClass = "") {
   const [id, label, icon] = searchNavItem;
   return `
-    <button class="nav-search ${extraClass} ${state.activeView === id ? "is-active" : ""}" data-view="${id}" aria-label="Open trip search">
+    <button class="nav-search ${extraClass} ${getActiveNavId() === id ? "is-active" : ""}" data-view="${id}" aria-label="Open trip search" ${getActiveNavId() === id ? 'aria-current="page"' : ""}>
       <span class="nav-icon">${renderIcon(icon)}</span>
       <em>${label}</em>
     </button>
+  `;
+}
+
+function getActiveNavId() {
+  if (["map", "live"].includes(state.activeView)) return "live";
+  if (["guide", "search"].includes(state.activeView)) return "search";
+  if (["trip", "timeline", "moments"].includes(state.activeView)) return "trip";
+  return state.activeView;
+}
+
+function renderLocationPrompt() {
+  const status = state.locationContext.status;
+  const updated = state.locationContext.updatedAt
+    ? new Date(state.locationContext.updatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+    : "";
+  if (state.locationContext.coordinates) {
+    return `
+      <div class="location-prompt is-ready">
+        <span>${renderIcon("locate")}</span>
+        <div>
+          <strong>Current position active</strong>
+          <small>${updated ? `Updated ${updated}` : "Ready for nearby scans"}</small>
+        </div>
+        <button data-refresh-position>${status === "locating" ? "Updating" : "Refresh"}</button>
+      </div>
+    `;
+  }
+
+  const message = state.locationContext.error || "Use your current position for nearby places, weather, and map centering.";
+  return `
+    <div class="location-prompt">
+      <span>${renderIcon("locate")}</span>
+      <div>
+        <strong>${status === "denied" ? "Location is blocked" : status === "locating" ? "Finding your position" : "Location needed"}</strong>
+        <small>${escapeHtml(message)}</small>
+      </div>
+      <button data-refresh-position>${status === "locating" ? "Checking" : "Use my location"}</button>
+    </div>
   `;
 }
 
@@ -2754,7 +2794,6 @@ function updateLiveMeter() {
 
 function initAutomaticPositioning() {
   if (!state.locationContext.automatic || state.locationContext.attempted) return;
-  if (!["live", "map"].includes(state.activeView)) return;
 
   const cached = readCachedLocation();
   if (cached) {
@@ -2763,8 +2802,6 @@ function initAutomaticPositioning() {
     render();
     return;
   }
-
-  requestCurrentPosition();
 }
 
 function initPlaceIntelligence() {
@@ -3717,4 +3754,11 @@ if ("serviceWorker" in navigator && import.meta.env.DEV) {
   });
 }
 
+function startOnHomePage() {
+  state.activeView = "home";
+  state.placeEditorOpen = false;
+  state.selectedMapPlaceId = null;
+}
+
+startOnHomePage();
 render();
