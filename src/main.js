@@ -35,6 +35,7 @@ const PLACE_IMAGE_CACHE_KEY = "trip-place-images-v2";
 const PLACE_IMAGE_CACHE_MAX_AGE = 1000 * 60 * 60 * 24 * 7;
 const COMMONS_API = "https://commons.wikimedia.org/w/api.php";
 const HERAKLION_CENTER = [35.3391, 25.132];
+const MAP_OVERLAY_GRACE_MS = 5000;
 
 let leafletMaps = new Map();
 let leafletInitFrame = null;
@@ -497,6 +498,8 @@ function renderHome() {
 
       <section class="home-map-card">
         ${renderHomeMap()}
+        ${renderMapLoadingOverlay("Preparing nearby map")}
+        ${renderMapControls("home-map", { locate: true })}
         ${state.mapStatusDismissed ? "" : renderMapStatusCard(weatherPlace, accuracy)}
       </section>
 
@@ -1775,7 +1778,7 @@ function ensureLiveMapStartsAtCurrentLocation() {
 
 function toggleMapFullscreen(mapId) {
   const map = leafletMaps.get(mapId);
-  const shell = document.querySelector(`#${CSS.escape(mapId)}`)?.closest(".map-shell");
+  const shell = document.querySelector(`#${CSS.escape(mapId)}`)?.closest(".map-shell, .home-map-card");
   const button = document.querySelector(`[data-map-fullscreen="${CSS.escape(mapId)}"]`);
   if (!map || !shell) return;
 
@@ -1807,7 +1810,7 @@ function toggleMapFullscreen(mapId) {
 }
 
 document.addEventListener("fullscreenchange", () => {
-  document.querySelectorAll(".map-shell").forEach((shell) => {
+  document.querySelectorAll(".map-shell, .home-map-card").forEach((shell) => {
     const isActive = document.fullscreenElement === shell || shell.classList.contains("is-map-fullscreen");
     shell.querySelectorAll("[data-map-fullscreen]").forEach((button) => {
       button.classList.toggle("is-fullscreen", isActive);
@@ -3633,18 +3636,16 @@ function scheduleLeafletMaps() {
 }
 
 function initLeafletMaps() {
-  const userPlaces = getMapReadyUserPlaces();
-  const selectedMapPlace = getSelectedMapPlace();
-  const destinationPlaces = mergeNearbyPlaces([...state.places.filter(isInCurrentDestination), ...userPlaces, selectedMapPlace].filter(Boolean));
+  const sharedMapPlaces = getSharedMapPlaces();
   const currentLocation = state.locationContext.coordinates || HERAKLION_CENTER;
   const currentLabel = state.locationContext.area?.city || state.live.location;
   const tripMap = document.querySelector("#trip-map");
   if (tripMap) {
-    const selectedPlaces = destinationPlaces.filter((place) => state.savedIds.has(place.id) || place.id === state.selectedMapPlaceId);
-    createLeafletMap(tripMap, destinationPlaces, {
+    const selectedPlaces = sharedMapPlaces.filter((place) => state.savedIds.has(place.id) || place.id === state.selectedMapPlaceId || place.nearby);
+    createLeafletMap(tripMap, sharedMapPlaces, {
       currentLocation,
       currentLabel,
-      routePlaces: destinationPlaces.filter((place) => state.savedIds.has(place.id)),
+      routePlaces: sharedMapPlaces.filter((place) => state.savedIds.has(place.id)),
       selectedPlaces,
       focusPlaceId: state.selectedMapPlaceId,
       zoom: 16,
@@ -3653,11 +3654,10 @@ function initLeafletMaps() {
 
   const homeMap = document.querySelector("#home-map");
   if (homeMap) {
-    const homePlaces = getNearYouNowPlaces().slice(0, 8);
-    createLeafletMap(homeMap, homePlaces, {
+    createLeafletMap(homeMap, sharedMapPlaces, {
       currentLocation,
       currentLabel,
-      selectedPlaces: homePlaces,
+      selectedPlaces: sharedMapPlaces,
       zoom: 15,
       fitPadding: [14, 14],
       fitMaxZoom: 15,
@@ -3667,17 +3667,29 @@ function initLeafletMaps() {
   const liveMap = document.querySelector("#live-map");
   if (liveMap) {
     const nearbyPlaces = getClosestNearYouNowPlaces(5);
-    createLeafletMap(liveMap, nearbyPlaces, {
+    createLeafletMap(liveMap, sharedMapPlaces, {
       currentLocation,
       currentLabel,
       routePlaces: nearbyPlaces,
-      selectedPlaces: nearbyPlaces,
+      selectedPlaces: sharedMapPlaces,
       zoom: 17,
       fitPadding: [16, 16],
       fitMaxZoom: 16,
       focusCurrentLocation: true,
     });
   }
+}
+
+function getSharedMapPlaces() {
+  return mergeNearbyPlaces([
+    ...state.places.filter(isInCurrentDestination),
+    ...getMapReadyUserPlaces(),
+    ...getNearYouNowPlaces(),
+    ...state.nearbyDiscovery.places,
+    getSelectedMapPlace(),
+  ].filter(Boolean))
+    .filter((place) => Array.isArray(place.coordinates))
+    .filter(isTravelerDisplayPlace);
 }
 
 function centerLiveMapOnCurrentLocation() {
@@ -3754,7 +3766,7 @@ function createLeafletMap(container, places, options = {}, retry = true) {
     .on("tileerror", () => markMapLoaded(container, { delayed: true }))
     .addTo(map);
 
-  window.setTimeout(() => markMapLoaded(container, { delayed: true }), 4500);
+  window.setTimeout(() => markMapLoaded(container, { delayed: true }), MAP_OVERLAY_GRACE_MS);
 
   map.on("popupopen", (event) => {
     event.popup.getElement()?.querySelectorAll("[data-edit-user-place]").forEach((button) => {
@@ -3893,7 +3905,7 @@ function resetLeafletContainer(container) {
 }
 
 function markMapLoaded(container, { delayed = false } = {}) {
-  const shell = container?.closest(".map-shell");
+  const shell = container?.closest(".map-shell, .home-map-card");
   if (!shell) return;
   shell.classList.add("is-loaded");
   if (delayed) shell.classList.add("is-delayed");

@@ -860,7 +860,9 @@ h3 {
 }
 
 .map-shell.is-map-fullscreen,
-.map-shell:fullscreen {
+.map-shell:fullscreen,
+.home-map-card.is-map-fullscreen,
+.home-map-card:fullscreen {
   position: fixed;
   inset: 0;
   z-index: 900;
@@ -872,7 +874,9 @@ h3 {
 }
 
 .map-shell.is-map-fullscreen .leaflet-map,
-.map-shell:fullscreen .leaflet-map {
+.map-shell:fullscreen .leaflet-map,
+.home-map-card.is-map-fullscreen .leaflet-map,
+.home-map-card:fullscreen .leaflet-map {
   height: 100%;
   min-height: 100%;
 }
@@ -988,7 +992,8 @@ h3 {
   font-weight: 800;
 }
 
-.map-shell.is-loaded .map-loading-overlay {
+.map-shell.is-loaded .map-loading-overlay,
+.home-map-card.is-loaded .map-loading-overlay {
   opacity: 0;
   transform: translateY(-6px);
   transition: opacity .24s var(--ease), transform .24s var(--ease);
