@@ -321,7 +321,7 @@ function renderHeader() {
         ${headerMeta}
       </div>
       <div class="top-actions">
-        <button class="icon-action" data-view="map" aria-label="Open map">${renderIcon("map")}</button>
+        <button class="icon-action" data-view="live" aria-label="Open live map">${renderIcon("map")}</button>
         <button class="ghost-button" data-copy-share>${renderIcon("share")} Share</button>
         <button class="primary-button" data-open-create>${renderIcon("plus")} New trip</button>
       </div>
@@ -468,7 +468,7 @@ function renderHome() {
           <small class="currency-chip">EUR (€)</small>
         </div>
         <div class="top-actions">
-          <button class="icon-action" data-view="map" aria-label="Open map">${renderIcon("map")}</button>
+          <button class="icon-action" data-view="live" aria-label="Open live map">${renderIcon("map")}</button>
           <button class="ghost-button" data-copy-share>${renderIcon("share")} Share</button>
           <button class="primary-button" data-view="trip">${renderIcon("plus")} New trip</button>
           <button class="mode-button is-active">Trip Mode</button>
@@ -1757,19 +1757,35 @@ function renderMoment(moment) {
   `;
 }
 
+function navigateToView(view) {
+  const nextView = view === "map" ? "live" : view;
+  state.activeView = nextView;
+  render();
+  if (nextView === "live") {
+    requestAnimationFrame(() => ensureLiveMapStartsAtCurrentLocation());
+  }
+}
+
+function ensureLiveMapStartsAtCurrentLocation() {
+  if (state.activeView !== "live") return;
+  if (state.locationContext.coordinates) {
+    scheduleLiveMapCenter();
+    return;
+  }
+  requestCurrentPosition({ force: true, centerLiveMap: true });
+}
+
 function bindEvents() {
   document.querySelectorAll("[data-toggle-trip-mode]").forEach((button) => {
     button.addEventListener("click", () => {
       state.tripMode = !state.tripMode;
-      state.activeView = state.tripMode ? "live" : "home";
-      render();
+      navigateToView(state.tripMode ? "live" : "home");
     });
   });
 
   document.querySelectorAll("[data-view]").forEach((button) => {
     button.addEventListener("click", () => {
-      state.activeView = button.dataset.view;
-      render();
+      navigateToView(button.dataset.view);
     });
   });
 
