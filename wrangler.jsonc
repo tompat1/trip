@@ -1,12 +1,35 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "trip",
+  "main": "worker/index.js",
   "compatibility_date": "2026-07-13",
   "build": {
     "command": "npm run build"
   },
   "assets": {
     "directory": "./dist",
+    "binding": "ASSETS",
+    "run_worker_first": ["/api/*"],
     "not_found_handling": "single-page-application"
-  }
+  },
+  // Add bindings after creating resources:
+  // "d1_databases": [
+  //   {
+  //     "binding": "TRIP_DB",
+  //     "database_name": "trip",
+  //     "database_id": "<created-by-wrangler-d1-create>"
+  //   }
+  // ],
+  // "kv_namespaces": [
+  //   {
+  //     "binding": "TRIP_CACHE",
+  //     "id": "<created-by-wrangler-kv-namespace-create>"
+  //   }
+  // ],
+  // "r2_buckets": [
+  //   {
+  //     "binding": "TRIP_MEDIA",
+  //     "bucket_name": "trip-media"
+  //   }
+  // ]
 }

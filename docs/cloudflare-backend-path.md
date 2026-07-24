@@ -68,4 +68,15 @@ Do not scrape Google Maps, TripAdvisor, Instagram, Facebook, booking platforms, 
 
 ## Next Implementation Step
 
-Create the Worker API scaffold and D1 migration files, then move provider calls from the local `enrichmentService` implementation into Worker route handlers while preserving the same `PlaceProfile` contract.
+The Worker API scaffold now lives in `worker/index.js` and the first D1 migrations live in `migrations/`.
+
+Before enabling persistent storage in production:
+
+1. Create the D1 database.
+2. Apply `migrations/0001_enrichment_foundation.sql`.
+3. Apply `migrations/0002_provider_health.sql`.
+4. Create the KV namespace for provider/cache state.
+5. Create the R2 bucket for allowed uploads and reviewed derivatives.
+6. Add the real binding IDs to `wrangler.jsonc`.
+
+After bindings are configured, move provider calls from the local `enrichmentService` implementation into Worker route handlers while preserving the same `PlaceProfile` contract.
