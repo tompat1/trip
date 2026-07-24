@@ -9,6 +9,7 @@ Use Cloudflare Workers for the API boundary, with:
 - D1 for normalized place, fact, source, image, editorial, route and review records.
 - KV for short-lived provider health, cache indexes and stale-while-revalidate markers.
 - R2 for user uploads, reviewed image derivatives and future generated fallback assets.
+- D1 light media for the temporary pre-R2 bucket: small data URLs or text payloads only, capped by the Worker.
 - Worker environment bindings for provider credentials.
 - Static Vite assets served separately by the existing deployment path until a single Worker asset deployment is ready.
 
@@ -52,6 +53,13 @@ Initial D1 tables should follow the package plan:
 
 R2 should store only objects we are allowed to persist: user uploads, reviewed derivatives, and generated UI fallback assets. Third-party images should keep provider URLs and attribution records unless licence and provider terms allow storage.
 
+Until R2 is enabled, the Worker exposes a temporary D1-backed light media bucket:
+
+- `POST /api/media/light`
+- `GET /api/media/light/:key`
+
+This is for small payloads and metadata only. It is not a long-term object store and should be migrated to R2 when `TRIP_MEDIA` is available.
+
 ## Provider Policy
 
 Allowed first providers:
@@ -78,6 +86,7 @@ Before enabling persistent storage in production:
 4. Create the KV namespace for provider/cache state. Done: `TRIP_CACHE`.
 5. Create the R2 bucket for allowed uploads and reviewed derivatives. Blocked until R2 is enabled in the Cloudflare Dashboard.
 6. Add the real binding IDs to `wrangler.jsonc`. Done for D1/KV; pending for R2.
+7. Apply `migrations/0003_d1_light_media_bucket.sql`. Done when the temporary D1 light media bucket is needed.
 
 After bindings are configured, move provider calls from the local `enrichmentService` implementation into Worker route handlers while preserving the same `PlaceProfile` contract.
 
