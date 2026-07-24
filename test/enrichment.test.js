@@ -435,6 +435,43 @@ test("enrichment service refreshes media through the Worker first", async () => 
   assert.equal(media.providerStatus[0].provider, "curated-place-media");
 });
 
+test("enrichment service forwards forced media refresh to the Worker", async () => {
+  let requestedUrl = "";
+  let postedBody = null;
+  const service = createEnrichmentService({
+    apiBase: "https://trip.test",
+    fetchImpl: async (url, options = {}) => {
+      requestedUrl = String(url);
+      postedBody = JSON.parse(options.body);
+      return {
+        ok: true,
+        async json() {
+          return {
+            media: {
+              hero: {
+                id: "commons-koules",
+                provider: "commons",
+                imageUrl: "https://upload.wikimedia.org/wikipedia/commons/f/f9/Venitian_Fortress_of_Koules.jpg",
+                visualRole: "hero",
+                illustrativeOnly: false,
+              },
+              gallery: [],
+              coverage: { images: "partial" },
+            },
+            providerStatus: [{ provider: "commons", status: "ok", count: 1 }],
+          };
+        },
+      };
+    },
+  });
+
+  const media = await service.refreshMedia({ id: "koules", title: "Koules Fortress" }, { force: true });
+
+  assert.match(requestedUrl, /\/api\/places\/koules\/media\/refresh\?refresh=1$/);
+  assert.equal(postedBody.force, true);
+  assert.equal(media.hero.provider, "commons");
+});
+
 test("enrichment service falls back to local media providers after empty Worker media", async () => {
   const service = createEnrichmentService({
     apiBase: "https://trip.test",

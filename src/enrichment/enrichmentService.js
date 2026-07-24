@@ -271,10 +271,11 @@ function inferIsland(region = "") {
 async function refreshWorkerMedia(place = {}, options = {}) {
   const placeId = place.id || place.identity?.id || place.canonicalName || place.title || "place";
   const url = buildApiUrl(options.apiBase, `/api/places/${encodeURIComponent(placeId)}/media/refresh`);
+  if (options.force) url.searchParams.set("refresh", "1");
   const response = await options.fetchImpl(url.href, {
     method: "POST",
     headers: { Accept: "application/json", "Content-Type": "application/json" },
-    body: JSON.stringify({ place }),
+    body: JSON.stringify({ place, force: Boolean(options.force) }),
   });
   if (!response.ok) throw new Error(`worker-media-http-${response.status}`);
   const payload = await response.json();

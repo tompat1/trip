@@ -274,13 +274,23 @@ async function enrichPlaceHandler(context) {
 
 async function mediaRefreshHandler(context) {
   const [placeId] = context.params;
+  const url = new URL(context.request.url);
   const body = await readJson(context.request);
+  const forceRefresh = url.searchParams.get("refresh") === "1" || body.force === true;
   const inputPlace = { ...body.place, id: placeId };
   const storedMedia = await getStoredPlaceMedia(context, placeId);
-  const curatedMedia = storedMedia.hero ? storedMedia : createCuratedPlaceMedia(inputPlace, context);
-  const providerStatus = [createStorageStatus(context)];
-  let media = storedMedia.hero ? storedMedia : curatedMedia.hero ? curatedMedia : null;
-  let mediaProvider = storedMedia.hero ? "d1-place-images" : curatedMedia.hero ? "curated-place-media" : "";
+  const curatedMedia = forceRefresh || storedMedia.hero ? createEmptyMedia("fallback") : createCuratedPlaceMedia(inputPlace, context);
+  const providerStatus = [
+    {
+      ...createStorageStatus(context),
+      provider: "d1-place-images",
+      status: storedMedia.hero ? forceRefresh ? "skipped" : "ok" : "empty",
+      error: storedMedia.hero && forceRefresh ? "force-refresh-requested" : "",
+      count: [storedMedia.hero, ...(storedMedia.gallery || [])].filter((image) => image?.imageUrl).length,
+    },
+  ];
+  let media = !forceRefresh && storedMedia.hero ? storedMedia : curatedMedia.hero ? curatedMedia : null;
+  let mediaProvider = !forceRefresh && storedMedia.hero ? "d1-place-images" : curatedMedia.hero ? "curated-place-media" : "";
 
   if (!media) {
     const commons = await fetchAndPersistCommonsMedia(context, inputPlace);
@@ -289,6 +299,19 @@ async function mediaRefreshHandler(context) {
       media = commons.media;
       mediaProvider = "commons";
     }
+  }
+
+  if (!media && storedMedia.hero) {
+    media = storedMedia;
+    mediaProvider = "d1-place-images";
+    providerStatus.push({
+      provider: "d1-place-images",
+      status: "ok",
+      error: "live-refresh-empty-using-stored-media",
+      count: [storedMedia.hero, ...(storedMedia.gallery || [])].filter((image) => image?.imageUrl).length,
+      latencyMs: 0,
+      checkedAt: new Date().toISOString(),
+    });
   }
 
   if (!media) {
