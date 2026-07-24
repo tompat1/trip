@@ -1,10 +1,8 @@
 import * as L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { creteSeed } from "./data/creteSeed.js";
-import { composeEditorialProfile, createPlaceProfileEnvelope, createVerifiedFactBundle } from "./enrichment/editorialComposer.js";
-import { enrichPlaceMedia } from "./enrichment/mediaAggregator.js";
-import { normalizeOsmElement, normalizeSeedPlace, normalizeUserPlace } from "./enrichment/normalizers.js";
-import { resolveLocationContext } from "./enrichment/placeResolver.js";
+import { enrichmentService } from "./enrichment/enrichmentService.js";
+import { normalizeSeedPlace, normalizeUserPlace } from "./enrichment/normalizers.js";
 import "./styles.css";
 
 const placeColors = {
@@ -1614,8 +1612,8 @@ function getPlaceImageAttribution(place = {}, imageUrl = "") {
 }
 
 function getPlaceEditorial(place = {}) {
-  return composeEditorialProfile(place, {
-    facts: createVerifiedFactBundle(place, state.locationContext.resolved || state.locationContext.area || {}),
+  return enrichmentService.composeEditorial(place, {
+    facts: enrichmentService.createFacts(place, state.locationContext.resolved || state.locationContext.area || {}),
     media: state.placeImageCache[getPlaceImageKey(place)],
     travellerProfile: getTravellerProfile(),
     routeContext: getRouteContext(place),
@@ -1624,12 +1622,12 @@ function getPlaceEditorial(place = {}) {
 
 function getPlaceProfile(place = {}) {
   const media = state.placeImageCache[getPlaceImageKey(place)];
-  return createPlaceProfileEnvelope(place, {
+  return enrichmentService.createProfileContract({
+    place,
+    facts: enrichmentService.createFacts(place, state.locationContext.resolved || state.locationContext.area || {}),
+    editorial: getPlaceEditorial(place),
     media,
     attributions: media?.attributions || [],
-    locationContext: state.locationContext.resolved || state.locationContext.area || {},
-    travellerProfile: getTravellerProfile(),
-    routeContext: getRouteContext(place),
   });
 }
 
@@ -2570,7 +2568,7 @@ function getPlacesNeedingImages() {
 async function fetchRelevantPlaceImages(places) {
   let changed = false;
   for (const place of places) {
-    const media = await enrichPlaceMedia(place);
+    const media = await enrichmentService.refreshMedia(place);
     state.placeImageCache[getPlaceImageKey(place)] = media;
     changed = true;
   }
@@ -2582,7 +2580,7 @@ async function fetchRelevantPlaceImages(places) {
 }
 
 async function findCommonsImageForPlace(place) {
-  const media = await enrichPlaceMedia(place);
+  const media = await enrichmentService.refreshMedia(place);
   return media.hero?.imageUrl ? {
     url: media.hero.thumbnailUrl || media.hero.imageUrl,
     source: media.hero.attributionText || media.hero.provider,
@@ -2854,7 +2852,7 @@ function normalizeNearbyElements(elements, origin) {
       const tags = element.tags || {};
       const lat = element.lat ?? element.center?.lat;
       const lng = element.lon ?? element.center?.lon;
-      const osmPlace = normalizeOsmElement(element, origin, {
+      const osmPlace = enrichmentService.normalizeNearbyElement(element, origin, {
         classify: classifyNearbyPlace,
         distance: getDistanceMeters,
         imageUrl: getOsmImageUrl,
@@ -3361,7 +3359,7 @@ async function collectAreaData(coordinates, accuracy, { centerLiveMap = false, c
     if (!response.ok) throw new Error("Reverse geocoding failed");
 
     const data = await response.json();
-    const resolved = await resolveLocationContext({
+    const resolved = await enrichmentService.resolveLocation({
       coordinates,
       accuracyMeters: accuracy,
       nominatimData: data,

@@ -2,6 +2,20 @@
 
 Travel Planner Deluxe for `trip.rynell.org`.
 
+## Enrichment Migration
+
+The location-agnostic enrichment layer now exposes normalized contracts for
+place profiles, facts, images, sources, provider status and editorial content in
+`src/enrichment/schemas.js`.
+
+The UI should use `src/enrichment/enrichmentService.js` as its boundary instead
+of importing individual provider modules directly. This keeps the current
+frontend working while preparing the same contract for the future Cloudflare
+Worker API.
+
+Backend direction: Cloudflare Workers + D1/KV/R2. See
+`docs/cloudflare-backend-path.md`.
+
 ## Cloudflare Deployment
 
 Preferred Cloudflare Pages settings for the current Vite MVP:
