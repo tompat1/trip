@@ -3901,9 +3901,12 @@ function markMapLoaded(container, { delayed = false } = {}) {
 
 if ("serviceWorker" in navigator && import.meta.env.PROD) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("/sw.js").catch(() => {
-      // Local preview can block service workers depending on origin.
-    });
+    navigator.serviceWorker
+      .register("/sw.js", { updateViaCache: "none" })
+      .then((registration) => registration.update())
+      .catch(() => {
+        // Local preview can block service workers depending on origin.
+      });
   });
 }
 
