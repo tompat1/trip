@@ -88,6 +88,7 @@ Before enabling persistent storage in production:
 6. Add the real binding IDs to `wrangler.jsonc`. Done for D1/KV; pending for R2.
 7. Apply `migrations/0003_d1_light_media_bucket.sql`. Done when the temporary D1 light media bucket is needed.
 8. Apply `migrations/0004_seed_crete_poi_cache.sql`. Done as a temporary curated Heraklion POI fallback while live providers are hardened.
+9. Apply `migrations/0005_seed_crete_poi_facts.sql`. Done so temporary curated POIs return useful D1 fact rows through `GET /api/places/enrich`.
 
 After bindings are configured, move provider calls from the local `enrichmentService` implementation into Worker route handlers while preserving the same `PlaceProfile` contract.
 
@@ -97,6 +98,7 @@ Current service-boundary migrations:
 - Nearby discovery: `src/main.js` calls `enrichmentService.discoverNearby()`, which calls the Worker first and keeps the browser Overpass path as fallback.
 - Media refresh: `src/main.js` calls `enrichmentService.refreshMedia()`, which calls `POST /api/places/:id/media/refresh` first and keeps the local Commons/Openverse aggregator as fallback when the Worker only has designed fallback media.
 - Editorial generation: `enrichmentService.generateEditorial()` calls `POST /api/places/:id/editorial/generate` first and falls back to the local deterministic composer if the Worker is unavailable. The synchronous `composeEditorial()` path remains available for instant render-time copy.
+- Place profile enrichment: `enrichmentService.enrichPlace()` calls `GET /api/places/enrich?id=...` first and falls back to the local profile composer when D1 only has a coordinates-only shell.
 
 Current deployed health endpoint:
 

@@ -178,6 +178,83 @@ test("enrichment service returns a normalized PlaceProfile when media is supplie
   assert.equal(profile.providerStatus[0].provider, "test");
 });
 
+test("enrichment service enriches a place through the Worker profile contract first", async () => {
+  const service = createEnrichmentService({
+    apiBase: "https://trip.test",
+    fetchImpl: async (url) => {
+      assert.match(url, /\/api\/places\/enrich\?id=seed-lions-square$/);
+      return {
+        ok: true,
+        async json() {
+          return {
+            generatedAt: "2026-07-24T12:00:00.000Z",
+            refreshAfter: "2026-07-24T12:30:00.000Z",
+            providerStatus: [{ provider: "worker-storage", status: "ok", count: 0 }],
+            placeProfile: {
+              schemaVersion: "place-profile-v1",
+              place: {
+                id: "seed-lions-square",
+                canonicalName: "Lions Square",
+                coordinates: [35.3391, 25.132],
+              },
+              facts: [{ key: "category", value: "Coffee", sourceName: "Trip curated seed", confidence: 0.7 }],
+              editorial: { standfirst: "Lions Square is useful for coffee.", confidence: 0.7 },
+              media: { hero: null, gallery: [], coverage: { images: "fallback" } },
+              sources: [],
+              attributions: [],
+              coverage: "partial",
+            },
+          };
+        },
+      };
+    },
+  });
+
+  const profile = await service.enrichPlace({ id: "seed-lions-square", title: "Lions Square" });
+  assert.equal(profile.place.canonicalName, "Lions Square");
+  assert.equal(profile.facts[0].key, "category");
+  assert.equal(profile.providerStatus[0].provider, "worker-storage");
+});
+
+test("enrichment service ignores coordinates-only Worker profiles and falls back locally", async () => {
+  const service = createEnrichmentService({
+    apiBase: "https://trip.test",
+    fetchImpl: async (url) => {
+      if (String(url).includes("/api/places/enrich")) {
+        return {
+          ok: true,
+          async json() {
+            return {
+              placeProfile: {
+                schemaVersion: "place-profile-v1",
+                place: { id: "unknown", canonicalName: "unknown" },
+                facts: [],
+                editorial: {},
+                media: { hero: null, gallery: [], coverage: { images: "fallback" } },
+                sources: [],
+                attributions: [],
+                coverage: "coordinates-only",
+              },
+            };
+          },
+        };
+      }
+      throw new Error("media providers unavailable");
+    },
+  });
+
+  const profile = await service.enrichPlace({
+    id: "local-cafe",
+    title: "Local Cafe",
+    category: "Coffee",
+    coordinates: [35.3391, 25.132],
+  });
+
+  assert.equal(profile.place.title, "Local Cafe");
+  assert.ok(profile.facts.some((fact) => fact.key === "category"));
+  assert.equal(profile.media.hero.illustrativeOnly, true);
+});
+
 test("enrichment service discovers nearby places through the Worker contract", async () => {
   let requestedUrl = "";
   const service = createEnrichmentService({

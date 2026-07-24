@@ -114,6 +114,14 @@ export function createEnrichmentService(options = {}) {
     },
 
     async enrichPlace(place, options = {}) {
+      const workerProfile = await fetchWorkerPlaceProfile(place, { apiBase, fetchImpl }).catch(() => null);
+      if (workerProfile && workerProfile.coverage !== "coordinates-only" && workerProfile.facts?.length) {
+        return createPlaceProfileContract({
+          ...workerProfile,
+          providerStatus: workerProfile.providerStatus || [],
+        });
+      }
+
       const facts = options.facts || createVerifiedFactBundle(place, options.locationContext || {});
       const media = options.media || await enrichPlaceMedia(place, { fetchImpl }).catch((error) => createMediaFailure(error, now));
       const envelope = createPlaceProfileEnvelope(place, {
@@ -295,6 +303,22 @@ async function generateWorkerEditorial(place = {}, options = {}) {
   if (!response.ok) throw new Error(`worker-editorial-http-${response.status}`);
   const payload = await response.json();
   return payload.editorial || options.fallbackEditorial;
+}
+
+async function fetchWorkerPlaceProfile(place = {}, options = {}) {
+  const placeId = place.id || place.identity?.id || place.canonicalName || place.title || "";
+  if (!placeId) return null;
+  const url = buildApiUrl(options.apiBase, "/api/places/enrich");
+  url.searchParams.set("id", placeId);
+  const response = await options.fetchImpl(url.href, { headers: { Accept: "application/json" } });
+  if (!response.ok) throw new Error(`worker-enrich-http-${response.status}`);
+  const payload = await response.json();
+  return payload.placeProfile ? {
+    ...payload.placeProfile,
+    providerStatus: payload.providerStatus || payload.placeProfile.providerStatus || [],
+    generatedAt: payload.placeProfile.generatedAt || payload.generatedAt,
+    refreshAfter: payload.placeProfile.refreshAfter || payload.refreshAfter,
+  } : null;
 }
 
 function createMediaFailure(error, now) {
