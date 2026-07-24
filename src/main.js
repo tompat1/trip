@@ -99,6 +99,7 @@ const state = {
   },
   weatherContext: {
     status: "idle",
+    locationKey: "",
     updatedAt: null,
     error: "",
     current: null,
@@ -485,7 +486,7 @@ function renderHome() {
         <p class="eyebrow">Good ${getDayPeriod()}</p>
         <h2>${escapeHtml(state.trip.profile.split(" ")[0] || "traveler")}</h2>
         <p><span class="live-dot"></span>${state.locationContext.coordinates ? `You are in ${escapeHtml(weatherPlace)}` : "Enable location to personalize this dashboard."}</p>
-        <span>${weather ? `${escapeHtml(weather.label)} · ${Math.round(weather.temperature)}°C` : "Weather hook waiting"} · ${accuracy} accuracy</span>
+        <span>${weather ? `${escapeHtml(weather.label)} · ${Math.round(weather.temperature)}°C` : "Weather pending"} · ${accuracy} accuracy</span>
         ${renderLocationPrompt()}
       </section>
 
@@ -587,19 +588,84 @@ function renderStoryImage(place) {
 
 function renderCompactWeatherCard(weather, weatherPlace) {
   const forecast = weather?.forecast?.length ? weather.forecast : buildFallbackForecast(weather);
+  const status = getWeatherStatusCopy(weather);
+  const source = getWeatherSourceCopy(weather);
+  const weatherCode = weather?.weatherCode ?? forecast.find((day) => day.code != null)?.code;
   return `
     <div class="weather-card-head">
       <div>
         <h3>${escapeHtml(weatherPlace)} weather</h3>
-        <span>${weather ? escapeHtml(weather.label) : "Open-Meteo waiting for location"}</span>
+        <span>${escapeHtml(status)}</span>
       </div>
-      <strong>${weather ? `${Math.round(weather.temperature)}°C` : "—"}</strong>
+    </div>
+    <div class="weather-current">
+      ${renderWeatherGlyph(weatherCode, weather?.isDay !== false)}
+      <div>
+        <strong>${weather ? `${Math.round(weather.temperature)}°C` : "—"}</strong>
+        <span>${escapeHtml(weather?.label || "Forecast pending")}</span>
+        <time>${escapeHtml(formatWeatherDate(new Date()))}</time>
+      </div>
     </div>
     <div class="weather-row">
-      ${forecast.map((day) => `<span><em>${escapeHtml(day.day)}</em><strong>${escapeHtml(day.temp)}</strong><small>${escapeHtml(day.label)}</small></span>`).join("")}
+      ${forecast.map((day, index) => `
+        <span class="${index === 0 ? "is-today-forecast" : ""}">
+          <em>${escapeHtml(day.day)}</em>
+          <b>${escapeHtml(day.date || "")}</b>
+          ${renderWeatherGlyph(day.code, true, "mini")}
+          <strong>${escapeHtml(day.temp)}</strong>
+          <small>${escapeHtml(day.label)}</small>
+        </span>
+      `).join("")}
     </div>
-    <small class="weather-source">${weather ? `${Math.round(weather.windSpeed)} km/h wind · Open-Meteo` : "Allow location to load the forecast"}</small>
+    <small class="weather-source">${escapeHtml(source)}</small>
   `;
+}
+
+function getWeatherStatusCopy(weather) {
+  if (state.weatherContext.status === "loading") return "Checking Open-Meteo";
+  if (weather) {
+    const updated = state.weatherContext.updatedAt
+      ? new Date(state.weatherContext.updatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+      : "";
+    const source = weather.isCurrentLocation ? "Live Open-Meteo" : "Destination Open-Meteo";
+    return updated ? `${source} · ${updated}` : source;
+  }
+  if (state.weatherContext.status === "error") return "Open-Meteo unavailable";
+  return "Use location for forecast";
+}
+
+function getWeatherSourceCopy(weather) {
+  if (weather) {
+    return `${Math.round(weather.windSpeed)} km/h wind · ${weather.precipitation.toFixed(1)} mm precip`;
+  }
+  if (state.weatherContext.error) return state.weatherContext.error;
+  return "Location enables current local forecast.";
+}
+
+function renderWeatherGlyph(code, isDay = true, size = "large") {
+  const type = getWeatherIconType(code);
+  return `
+    <span class="weather-glyph weather-glyph--${type} weather-glyph--${size} ${isDay ? "is-day" : "is-night"}" aria-hidden="true">
+      <span class="weather-sun"></span>
+      <span class="weather-cloud weather-cloud-a"></span>
+      <span class="weather-cloud weather-cloud-b"></span>
+      <span class="weather-rain"></span>
+      <span class="weather-bolt"></span>
+      <span class="weather-fog weather-fog-a"></span>
+      <span class="weather-fog weather-fog-b"></span>
+    </span>
+  `;
+}
+
+function getWeatherIconType(code) {
+  if (code == null) return "pending";
+  const numericCode = Number(code);
+  if ([0, 1].includes(numericCode)) return "clear";
+  if ([2, 3].includes(numericCode)) return "cloudy";
+  if ([45, 48].includes(numericCode)) return "fog";
+  if ((numericCode >= 51 && numericCode <= 67) || (numericCode >= 80 && numericCode <= 82)) return "rain";
+  if (numericCode >= 95) return "storm";
+  return "cloudy";
 }
 
 function renderMapStatusCard(weatherPlace, accuracy) {
@@ -622,13 +688,65 @@ function renderMapStatusCard(weatherPlace, accuracy) {
 }
 
 function buildFallbackForecast(weather) {
-  const temp = weather ? Math.round(weather.temperature) : 28;
-  const label = weather?.label || "Sunny";
-  return ["Today", "Thu", "Fri", "Sat"].map((day, index) => ({
-    day,
+  if (!weather) {
+    return getForecastDayLabels().map((item) => ({
+      day: item.day,
+      date: item.date,
+      temp: "—",
+      label: "Pending",
+      code: null,
+    }));
+  }
+  const temp = Math.round(weather.temperature);
+  const label = weather.label || "Mixed";
+  return getForecastDayLabels().map((item, index) => ({
+    day: item.day,
+    date: item.date,
     temp: `${temp - Math.min(index, 2)}°`,
     label,
+    code: weather.weatherCode,
   }));
+}
+
+function getForecastDayLabels() {
+  return Array.from({ length: 5 }, (_, index) => {
+    const date = new Date();
+    date.setDate(date.getDate() + index);
+    return {
+      day: index === 0 ? "Today" : new Intl.DateTimeFormat([], { weekday: "short" }).format(date),
+      date: new Intl.DateTimeFormat([], { month: "short", day: "numeric" }).format(date),
+    };
+  });
+}
+
+function formatWeatherDate(date) {
+  return new Intl.DateTimeFormat([], {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  }).format(date);
+}
+
+function getWeatherRequestLocation() {
+  const coordinates = state.locationContext.coordinates || HERAKLION_CENTER;
+  return {
+    coordinates,
+    locationKey: getLocationCacheKey(coordinates),
+    isCurrentLocation: Boolean(state.locationContext.coordinates),
+  };
+}
+
+function getWeatherRequestLocationKey() {
+  return getWeatherRequestLocation().locationKey;
+}
+
+function buildWeatherMissingState(message = "Location or destination is needed before checking weather.") {
+  return {
+    ...state.weatherContext,
+    status: "idle",
+    locationKey: "",
+    error: message,
+  };
 }
 
 function renderRecommendedNextPanel(places) {
@@ -2048,7 +2166,11 @@ function bindEvents() {
 
   document.querySelectorAll("[data-refresh-weather]").forEach((button) => {
     button.addEventListener("click", () => {
-      fetchWeatherContext({ force: true });
+      if (state.locationContext.coordinates) {
+        fetchWeatherContext({ force: true });
+        return;
+      }
+      requestCurrentPosition({ force: true, centerLiveMap: state.activeView === "live" });
     });
   });
 
@@ -2546,12 +2668,13 @@ function renderNearbyDiscoveryStatus() {
 
 function initWeatherContext() {
   if (!["home", "live"].includes(state.activeView)) return;
-  if (!state.locationContext.coordinates) return;
-  if (["loading", "ready", "error"].includes(state.weatherContext.status)) return;
+  const locationKey = getWeatherRequestLocationKey();
+  if (!locationKey) return;
+  if (["loading", "ready", "error"].includes(state.weatherContext.status) && state.weatherContext.locationKey === locationKey) return;
 
-  const cached = readCachedWeatherContext();
+  const cached = readCachedWeatherContext(locationKey);
   if (cached) {
-    state.weatherContext = { ...state.weatherContext, ...cached, status: "ready", error: "" };
+    state.weatherContext = { ...state.weatherContext, ...cached, locationKey, status: "ready", error: "" };
     render();
     return;
   }
@@ -2560,36 +2683,35 @@ function initWeatherContext() {
 }
 
 async function fetchWeatherContext({ force = false } = {}) {
-  if (!state.locationContext.coordinates) {
-    state.weatherContext = {
-      ...state.weatherContext,
-      status: "idle",
-      error: "Location is needed before checking weather.",
-    };
+  const requestLocation = getWeatherRequestLocation();
+  const { coordinates, locationKey } = requestLocation;
+  if (!coordinates || !locationKey) {
+    state.weatherContext = buildWeatherMissingState();
     render();
     return;
   }
 
   if (!force) {
-    const cached = readCachedWeatherContext();
+    const cached = readCachedWeatherContext(locationKey);
     if (cached) {
-      state.weatherContext = { ...state.weatherContext, ...cached, status: "ready", error: "" };
+      state.weatherContext = { ...state.weatherContext, ...cached, locationKey, status: "ready", error: "" };
       render();
       return;
     }
   }
 
-  state.weatherContext = { ...state.weatherContext, status: "loading", error: "" };
+  state.weatherContext = { ...state.weatherContext, status: "loading", locationKey, error: "" };
   render();
 
   try {
-    const [lat, lng] = state.locationContext.coordinates;
+    const [lat, lng] = coordinates;
     const url = new URL(OPEN_METEO_API);
     url.searchParams.set("latitude", lat);
     url.searchParams.set("longitude", lng);
     url.searchParams.set("current", "temperature_2m,precipitation,rain,weather_code,wind_speed_10m,is_day");
     url.searchParams.set("daily", "weather_code,temperature_2m_max,temperature_2m_min");
-    url.searchParams.set("forecast_days", "4");
+    url.searchParams.set("forecast_days", "5");
+    url.searchParams.set("timezone", "auto");
 
     const response = await fetch(url, { headers: { Accept: "application/json" } });
     if (!response.ok) throw new Error("Weather unavailable");
@@ -2597,10 +2719,12 @@ async function fetchWeatherContext({ force = false } = {}) {
     const data = await response.json();
     const nextWeather = {
       status: "ready",
+      locationKey,
       updatedAt: new Date().toISOString(),
       error: "",
-      current: normalizeWeatherData(data.current || {}, data.daily || {}),
+      current: normalizeWeatherData(data.current || {}, data.daily || {}, requestLocation),
     };
+    if (getWeatherRequestLocationKey() !== locationKey) return;
     state.weatherContext = nextWeather;
     writeCachedWeatherContext(nextWeather);
     if (state.nearbyDiscovery.status === "ready") {
@@ -2612,9 +2736,11 @@ async function fetchWeatherContext({ force = false } = {}) {
       };
     }
   } catch {
+    if (getWeatherRequestLocationKey() !== locationKey) return;
     state.weatherContext = {
       ...state.weatherContext,
       status: "error",
+      locationKey,
       error: "Weather hook could not be reached. Nearby places still work.",
     };
   } finally {
@@ -2796,7 +2922,7 @@ function buildNearbySource(tags) {
   return bits.join(" · ");
 }
 
-function normalizeWeatherData(current, daily = {}) {
+function normalizeWeatherData(current, daily = {}, requestLocation = {}) {
   const code = Number(current.weather_code ?? 0);
   return {
     temperature: Number(current.temperature_2m ?? 0),
@@ -2805,6 +2931,8 @@ function normalizeWeatherData(current, daily = {}) {
     windSpeed: Number(current.wind_speed_10m ?? 0),
     weatherCode: code,
     isDay: current.is_day !== 0,
+    isCurrentLocation: Boolean(requestLocation.isCurrentLocation),
+    coordinates: requestLocation.coordinates || null,
     label: getWeatherLabel(code),
     forecast: normalizeDailyForecast(daily),
   };
@@ -2814,10 +2942,12 @@ function normalizeDailyForecast(daily) {
   const times = daily.time || [];
   const max = daily.temperature_2m_max || [];
   const codes = daily.weather_code || [];
-  return times.slice(0, 4).map((time, index) => ({
+  return times.slice(0, 5).map((time, index) => ({
     day: index === 0 ? "Today" : new Intl.DateTimeFormat([], { weekday: "short" }).format(new Date(`${time}T12:00:00`)),
+    date: new Intl.DateTimeFormat([], { month: "short", day: "numeric" }).format(new Date(`${time}T12:00:00`)),
     temp: `${Math.round(Number(max[index] ?? 0))}°`,
     label: getWeatherLabel(Number(codes[index] ?? 0)),
+    code: Number(codes[index] ?? 0),
   }));
 }
 
@@ -3158,6 +3288,7 @@ function requestCurrentPosition({ force = false, centerLiveMap = false, centerMa
 
   navigator.geolocation.getCurrentPosition(
     (position) => {
+      const previousWeatherKey = state.weatherContext.locationKey;
       const coordinates = [position.coords.latitude, position.coords.longitude];
       const cached = force ? null : readCachedLocation(coordinates);
 
@@ -3169,7 +3300,8 @@ function requestCurrentPosition({ force = false, centerLiveMap = false, centerMa
         status: cached ? "located" : "collecting",
         error: "",
       };
-      render();
+      resetWeatherForLocationChange(previousWeatherKey);
+      fetchWeatherContext();
       if (centerLiveMap) scheduleLiveMapCenter(coordinates);
       if (centerMapId) scheduleMapCenter(centerMapId, coordinates);
 
@@ -3326,7 +3458,7 @@ function cleanAreaType(value) {
 
 function applyLocationContext(context, { fromCache = false } = {}) {
   const previousNearbyKey = getNearbyDiscoveryLocationKey();
-  const previousWeatherKey = getWeatherLocationKey();
+  const previousWeatherKey = state.weatherContext.locationKey;
   state.locationContext = {
     ...state.locationContext,
     coordinates: context.coordinates,
@@ -3351,14 +3483,19 @@ function applyLocationContext(context, { fromCache = false } = {}) {
     };
   }
 
-  if (previousWeatherKey && previousWeatherKey !== getWeatherLocationKey()) {
-    state.weatherContext = {
-      status: "idle",
-      updatedAt: null,
-      error: "",
-      current: null,
-    };
-  }
+  resetWeatherForLocationChange(previousWeatherKey);
+}
+
+function resetWeatherForLocationChange(previousWeatherKey) {
+  const nextWeatherKey = getWeatherRequestLocationKey();
+  if (!nextWeatherKey || previousWeatherKey === nextWeatherKey) return;
+  state.weatherContext = {
+    status: "idle",
+    locationKey: nextWeatherKey,
+    updatedAt: null,
+    error: "",
+    current: null,
+  };
 }
 
 function readCachedLocation(coordinates) {
@@ -3558,12 +3695,12 @@ function writeCachedPlaceImages(images) {
   }
 }
 
-function readCachedWeatherContext() {
+function readCachedWeatherContext(locationKey = getWeatherRequestLocationKey()) {
   try {
     const cached = JSON.parse(localStorage.getItem(WEATHER_CACHE_KEY) || "null");
     if (!cached?.updatedAt || !cached?.current) return null;
     if (Date.now() - Date.parse(cached.updatedAt) > WEATHER_CACHE_MAX_AGE) return null;
-    if (cached.locationKey !== getWeatherLocationKey()) return null;
+    if (cached.locationKey !== locationKey) return null;
     return cached;
   } catch {
     return null;
@@ -3576,7 +3713,7 @@ function writeCachedWeatherContext(weather) {
       WEATHER_CACHE_KEY,
       JSON.stringify({
         ...weather,
-        locationKey: getWeatherLocationKey(),
+        locationKey: weather.locationKey || getWeatherRequestLocationKey(),
       })
     );
   } catch {
