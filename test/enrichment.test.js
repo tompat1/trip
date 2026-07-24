@@ -5,6 +5,7 @@ import { createEnrichmentService } from "../src/enrichment/enrichmentService.js"
 import { calculateImageScore, dedupeImages } from "../src/enrichment/mediaAggregator.js";
 import { areAliasesEquivalent, buildPlaceAliases, createResolvedPlaceIdentity } from "../src/enrichment/placeResolver.js";
 import { createNormalizedFact, createNormalizedImage, createPlaceProfileContract, ENRICHMENT_COVERAGE } from "../src/enrichment/schemas.js";
+import { createRequestPrincipal } from "../worker/index.js";
 
 const heraklionPlace = {
   id: "heraklion-test",
@@ -37,6 +38,23 @@ test("resolver keeps known Greek and Latin aliases equivalent", () => {
   assert.ok(aliases.includes("Rethymnon"));
   assert.equal(areAliasesEquivalent("Rethymnon", "Rethymno"), true);
   assert.equal(areAliasesEquivalent("Ηράκλειο", "Iraklio"), true);
+});
+
+test("Worker request principal distinguishes anonymous, traveler, and admin", () => {
+  const anonymous = createRequestPrincipal(new Request("https://trip.test/api/session"), { TRIP_ADMIN_TOKEN: "secret" });
+  assert.equal(anonymous.role, "anonymous");
+
+  const traveler = createRequestPrincipal(new Request("https://trip.test/api/session", {
+    headers: { "X-Trip-User-Id": "thomas" },
+  }), { TRIP_ADMIN_TOKEN: "secret" });
+  assert.equal(traveler.role, "traveler");
+  assert.equal(traveler.userId, "thomas");
+
+  const admin = createRequestPrincipal(new Request("https://trip.test/api/session", {
+    headers: { Authorization: "Bearer secret", "X-Trip-User-Id": "thomas" },
+  }), { TRIP_ADMIN_TOKEN: "secret" });
+  assert.equal(admin.role, "admin");
+  assert.equal(admin.authType, "admin-token");
 });
 
 test("image scoring rewards strong candidates and penalizes mismatch signals", () => {

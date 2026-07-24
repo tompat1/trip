@@ -5,12 +5,17 @@ const OVERPASS_ENDPOINTS = [
   "https://overpass-api.de/api/interpreter",
   "https://overpass.kumi.systems/api/interpreter",
 ];
+const ROLE = Object.freeze({
+  anonymous: "anonymous",
+  traveler: "traveler",
+  admin: "admin",
+});
 const JSON_HEADERS = {
   "Content-Type": "application/json; charset=utf-8",
   "Cache-Control": "no-store",
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET,POST,PATCH,OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type,Accept",
+  "Access-Control-Allow-Headers": "Content-Type,Accept,Authorization,X-Trip-User-Id",
 };
 
 export default {
@@ -39,6 +44,7 @@ async function handleApiRequest(request, env, ctx) {
 function matchRoute(method, pathname) {
   const routes = [
     ["GET", /^\/api\/health$/, healthHandler],
+    ["GET", /^\/api\/session$/, sessionHandler],
     ["POST", /^\/api\/location\/resolve$/, locationResolveHandler],
     ["GET", /^\/api\/places\/nearby$/, nearbyPlacesHandler],
     ["POST", /^\/api\/places\/enrich-location$/, enrichLocationHandler],
@@ -68,6 +74,7 @@ function createApiContext(request, env, ctx, params) {
     env,
     ctx,
     params,
+    principal: createRequestPrincipal(request, env),
     hasDb: Boolean(env.TRIP_DB),
     hasCache: Boolean(env.TRIP_CACHE),
     hasMedia: Boolean(env.TRIP_MEDIA),
@@ -88,6 +95,17 @@ function healthHandler({ hasDb, hasCache, hasMedia, hasLightMedia }) {
     },
     generatedAt: new Date().toISOString(),
   });
+}
+
+function sessionHandler(context) {
+  return json(partialResponse("session", {
+    principal: redactPrincipal(context.principal),
+    roles: {
+      canReviewMedia: isAdmin(context.principal),
+      canLockHero: isAdmin(context.principal),
+      canUseTravelerFeatures: [ROLE.traveler, ROLE.admin].includes(context.principal.role),
+    },
+  }, context));
 }
 
 async function locationResolveHandler(context) {
@@ -411,19 +429,25 @@ async function editorialGenerateHandler(context) {
 }
 
 async function placeImagePatchHandler(context) {
+  const forbidden = requireAdmin(context);
+  if (forbidden) return forbidden;
   const [imageId] = context.params;
   const body = await readJson(context.request);
   return json(partialResponse("placeImages.patch", {
     imageId,
     reviewState: body.reviewState || body.reviewStatus || "pending",
+    principal: redactPrincipal(context.principal),
   }, context));
 }
 
 function heroLockHandler(context) {
+  const forbidden = requireAdmin(context);
+  if (forbidden) return forbidden;
   const [placeId] = context.params;
   return json(partialResponse("places.heroLock", {
     placeId,
-    locked: false,
+    locked: true,
+    principal: redactPrincipal(context.principal),
   }, context));
 }
 
@@ -466,6 +490,68 @@ function createStorageStatus(context) {
     latencyMs: 0,
     checkedAt: new Date().toISOString(),
   };
+}
+
+export function createRequestPrincipal(request, env = {}) {
+  const authorization = request.headers.get("authorization") || "";
+  const bearer = authorization.match(/^Bearer\s+(.+)$/i)?.[1] || "";
+  const adminToken = env.TRIP_ADMIN_TOKEN || "";
+  if (adminToken && bearer && constantTimeStringEqual(bearer, adminToken)) {
+    return {
+      role: ROLE.admin,
+      userId: request.headers.get("x-trip-user-id") || "admin",
+      authType: "admin-token",
+    };
+  }
+
+  const userId = cleanPrincipalId(request.headers.get("x-trip-user-id") || "");
+  if (userId) {
+    return {
+      role: ROLE.traveler,
+      userId,
+      authType: "traveler-header",
+    };
+  }
+
+  return {
+    role: ROLE.anonymous,
+    userId: "",
+    authType: "none",
+  };
+}
+
+function requireAdmin(context) {
+  if (isAdmin(context.principal)) return null;
+  return jsonError("forbidden", "Admin role is required for this action.", 403);
+}
+
+function isAdmin(principal = {}) {
+  return principal.role === ROLE.admin;
+}
+
+function redactPrincipal(principal = {}) {
+  return {
+    role: principal.role || ROLE.anonymous,
+    userId: principal.userId || "",
+    authType: principal.authType || "none",
+  };
+}
+
+function cleanPrincipalId(value = "") {
+  const id = String(value || "").trim();
+  if (!id || id.length > 80) return "";
+  return /^[a-zA-Z0-9_.:@-]+$/.test(id) ? id : "";
+}
+
+function constantTimeStringEqual(a = "", b = "") {
+  const left = new TextEncoder().encode(String(a));
+  const right = new TextEncoder().encode(String(b));
+  const length = Math.max(left.length, right.length);
+  let mismatch = left.length === right.length ? 0 : 1;
+  for (let index = 0; index < length; index += 1) {
+    mismatch |= (left[index] || 0) ^ (right[index] || 0);
+  }
+  return mismatch === 0;
 }
 
 function createCoordinatesOnlyProfile({ id = "coordinates-only", title = "Current location", coordinates = null } = {}) {

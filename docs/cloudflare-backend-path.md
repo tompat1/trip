@@ -11,6 +11,7 @@ Use Cloudflare Workers for the API boundary, with:
 - R2 for user uploads, reviewed image derivatives and future generated fallback assets.
 - D1 light media for the temporary pre-R2 bucket: small data URLs or text payloads only, capped by the Worker.
 - Worker environment bindings for provider credentials.
+- `TRIP_ADMIN_TOKEN` Worker secret for the first lightweight admin boundary until a real auth provider is chosen.
 - Static Vite assets served separately by the existing deployment path until a single Worker asset deployment is ready.
 
 ## Why
@@ -26,6 +27,7 @@ Use Cloudflare Workers for the API boundary, with:
 The frontend should call these Worker routes once implemented:
 
 - `POST /api/location/resolve`
+- `GET /api/session`
 - `GET /api/places/nearby`
 - `POST /api/places/enrich-location`
 - `GET /api/places/enrich`
@@ -94,6 +96,7 @@ After bindings are configured, move provider calls from the local `enrichmentSer
 
 Current service-boundary migrations:
 
+- Roles/session: the Worker recognizes `anonymous`, `traveler` and `admin` principals. `GET /api/session` exposes the current role. `PATCH /api/place-images/:id` and `POST /api/places/:id/hero/lock` now require admin. This is a lightweight token/header boundary, not a full user account system.
 - Location resolve: `collectAreaData()` calls `enrichmentService.resolveLocation()`, which calls `POST /api/location/resolve` first and falls back to the local resolver if the Worker is unavailable.
 - Nearby discovery: `src/main.js` calls `enrichmentService.discoverNearby()`, which calls the Worker first and keeps the browser Overpass path as fallback.
 - Media refresh: `src/main.js` calls `enrichmentService.refreshMedia()`, which calls `POST /api/places/:id/media/refresh` first and keeps the local Commons/Openverse aggregator as fallback when the Worker only has designed fallback media.
@@ -111,6 +114,7 @@ Current deployed health endpoint:
 
 Current D1-backed endpoints:
 
+- `GET /api/session` returns the current principal role and capability flags.
 - `POST /api/location/resolve` reverse-geocodes coordinates through Nominatim, persists a place profile, source row and core facts.
 - `GET /api/places/nearby` returns normalized nearby places for `lat`, `lng`, `radius` and `intent`.
   - Default behavior is stale-while-revalidate: if D1 has POIs near the coordinates, it returns them immediately and refreshes Overpass in the background.
