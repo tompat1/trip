@@ -72,11 +72,18 @@ The Worker API scaffold now lives in `worker/index.js` and the first D1 migratio
 
 Before enabling persistent storage in production:
 
-1. Create the D1 database.
-2. Apply `migrations/0001_enrichment_foundation.sql`.
-3. Apply `migrations/0002_provider_health.sql`.
-4. Create the KV namespace for provider/cache state.
-5. Create the R2 bucket for allowed uploads and reviewed derivatives.
-6. Add the real binding IDs to `wrangler.jsonc`.
+1. Create the D1 database. Done: `trip`.
+2. Apply `migrations/0001_enrichment_foundation.sql`. Done.
+3. Apply `migrations/0002_provider_health.sql`. Done.
+4. Create the KV namespace for provider/cache state. Done: `TRIP_CACHE`.
+5. Create the R2 bucket for allowed uploads and reviewed derivatives. Blocked until R2 is enabled in the Cloudflare Dashboard.
+6. Add the real binding IDs to `wrangler.jsonc`. Done for D1/KV; pending for R2.
 
 After bindings are configured, move provider calls from the local `enrichmentService` implementation into Worker route handlers while preserving the same `PlaceProfile` contract.
+
+Current deployed health endpoint:
+
+- `https://trip.thomasrynell.workers.dev/api/health`
+- D1: ready
+- KV: ready
+- R2: missing

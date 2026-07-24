@@ -12,20 +12,20 @@
     "run_worker_first": ["/api/*"],
     "not_found_handling": "single-page-application"
   },
-  // Add bindings after creating resources:
-  // "d1_databases": [
-  //   {
-  //     "binding": "TRIP_DB",
-  //     "database_name": "trip",
-  //     "database_id": "<created-by-wrangler-d1-create>"
-  //   }
-  // ],
-  // "kv_namespaces": [
-  //   {
-  //     "binding": "TRIP_CACHE",
-  //     "id": "<created-by-wrangler-kv-namespace-create>"
-  //   }
-  // ],
+  "d1_databases": [
+    {
+      "binding": "TRIP_DB",
+      "database_name": "trip",
+      "database_id": "f4c07711-fc0a-4323-85e3-4a1f90775040"
+    }
+  ],
+  "kv_namespaces": [
+    {
+      "binding": "TRIP_CACHE",
+      "id": "650d3d064cb141aaa25f94dc4ae8a055"
+    }
+  ]
+  // Add after enabling R2 in the Cloudflare Dashboard:
   // "r2_buckets": [
   //   {
   //     "binding": "TRIP_MEDIA",
