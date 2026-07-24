@@ -87,13 +87,14 @@ Before enabling persistent storage in production:
 5. Create the R2 bucket for allowed uploads and reviewed derivatives. Blocked until R2 is enabled in the Cloudflare Dashboard.
 6. Add the real binding IDs to `wrangler.jsonc`. Done for D1/KV; pending for R2.
 7. Apply `migrations/0003_d1_light_media_bucket.sql`. Done when the temporary D1 light media bucket is needed.
+8. Apply `migrations/0004_seed_crete_poi_cache.sql`. Done as a temporary curated Heraklion POI fallback while live providers are hardened.
 
 After bindings are configured, move provider calls from the local `enrichmentService` implementation into Worker route handlers while preserving the same `PlaceProfile` contract.
 
 Current deployed health endpoint:
 
 - `https://trip.thomasrynell.workers.dev/api/health`
-- API version: `nominatim-location-v1`
+- API version: `overpass-nearby-v1`
 - D1: ready
 - KV: ready
 - R2: missing
@@ -102,7 +103,16 @@ Current deployed health endpoint:
 Current D1-backed endpoints:
 
 - `POST /api/location/resolve` reverse-geocodes coordinates through Nominatim, persists a place profile, source row and core facts.
+- `GET /api/places/nearby` returns normalized nearby places for `lat`, `lng`, `radius` and `intent`.
+  - Default behavior is stale-while-revalidate: if D1 has POIs near the coordinates, it returns them immediately and refreshes Overpass in the background.
+  - Add `refresh=1` to force a live Overpass attempt before falling back to D1.
+  - Provider status reports `overpass`, `d1-nearby-cache` and storage separately so the UI can show whether data is live or cached.
+  - The current temporary seed contains curated Heraklion POIs from `src/data/creteSeed.js`: Lions Square, Peskesi, Venetian Walls, Heraklion Archaeological Museum, Koules Fortress and Ammoudara Beach.
 - `POST /api/places/enrich-location` persists a basic `PlaceProfile` with core facts and placeholder editorial.
 - `GET /api/places/enrich?id=<placeId>` reads a stored `PlaceProfile`.
 - `POST /api/media/light` stores a small D1 light media object.
 - `GET /api/media/light/:key` reads a D1 light media object.
+
+Known provider note:
+
+- Public Overpass endpoints can time out from Cloudflare or under load. The Worker now avoids blocking the UI on those provider waits when cached POIs are available.
