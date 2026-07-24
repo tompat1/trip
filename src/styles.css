@@ -3248,6 +3248,17 @@ button:focus-visible {
   height: 22px;
 }
 
+.bookmark-button.is-loading,
+.recommendation-actions button.is-loading {
+  opacity: .68;
+  cursor: wait;
+}
+
+.bookmark-button.is-loading .app-icon,
+.recommendation-actions button.is-loading .app-icon {
+  animation: mapSpin .8s linear infinite;
+}
+
 .vibe-card {
   display: grid;
   grid-template-columns: 58px minmax(0, 1fr) auto;

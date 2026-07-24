@@ -104,6 +104,7 @@ const state = {
   },
   placeEditorOpen: false,
   placeImageCache: readCachedPlaceImages(),
+  refreshingImageIds: new Set(),
   userPlaces: readStoredUserPlaces(),
   hiddenNearbyIds: readStoredHiddenNearbyIds(),
   trip: { ...creteSeed.trip },
@@ -224,6 +225,7 @@ const icons = {
   saved: `<path d="M12 20.2s-7-4.3-7-10.1A4 4 0 0 1 12 7.4a4 4 0 0 1 7 2.7c0 5.8-7 10.1-7 10.1Z"/><path d="m9.7 12.1 1.5 1.5 3.4-3.7"/>`,
   chevron: `<path d="m9 5 7 7-7 7"/>`,
   locate: `<path d="M12 2.8v3.1"/><path d="M12 18.1v3.1"/><path d="M2.8 12h3.1"/><path d="M18.1 12h3.1"/><circle cx="12" cy="12" r="5.2"/><circle cx="12" cy="12" r="1.8"/>`,
+  refresh: `<path d="M20 11a8 8 0 0 0-13.7-4.8L4 8.5"/><path d="M4 4.5v4h4"/><path d="M4 13a8 8 0 0 0 13.7 4.8L20 15.5"/><path d="M20 19.5v-4h-4"/>`,
   fullscreenExit: `<path d="M9.3 5.2v4.5H4.8"/><path d="M14.7 5.2v4.5h4.5"/><path d="M9.3 18.8v-4.5H4.8"/><path d="M14.7 18.8v-4.5h4.5"/><path d="M9.3 9.7 5.1 5.5"/><path d="m14.7 9.7 4.2-4.2"/><path d="m9.3 14.3-4.2 4.2"/><path d="m14.7 14.3 4.2 4.2"/>`,
   timeline: `<path d="M5 6h5"/><path d="M14 6h5"/><path d="M5 12h14"/><path d="M5 18h5"/><path d="M14 18h5"/><circle cx="12" cy="6" r="2"/><circle cx="12" cy="18" r="2"/>`,
   camera: `<path d="M4.5 8.5h4l1.4-2h4.2l1.4 2h4v10h-15z"/><circle cx="12" cy="13.5" r="3.2"/><path d="M17 11h.1"/>`,
@@ -1392,6 +1394,7 @@ function renderPlaceResult(place) {
   const editorial = getPlaceEditorial(place);
   const distance = place.distance ? `<em>${escapeHtml(place.distance)}</em>` : "";
   const price = renderPriceLevel(place.priceLevel);
+  const imageRefreshing = state.refreshingImageIds.has(place.id);
   return `
     <article class="place-result">
       ${renderPlaceImage(place, "place-photo")}
@@ -1403,6 +1406,7 @@ function renderPlaceResult(place) {
       </div>
       <div class="place-actions">
         <button class="save-button ${saved ? "is-saved" : ""}" data-save="${place.id}">${saved ? "Saved" : "Save"}</button>
+        <button class="bookmark-button ${imageRefreshing ? "is-loading" : ""}" data-refresh-place-image="${escapeHtml(place.id)}" aria-label="Refresh image for ${escapeHtml(place.title)}" ${imageRefreshing ? "disabled" : ""}>${renderIcon("refresh")}</button>
         <button class="bookmark-button ${saved ? "is-saved" : ""}" data-save="${place.id}" aria-label="${saved ? "Remove" : "Save"} ${place.title}">${renderIcon("bookmark")}</button>
       </div>
     </article>
@@ -1516,6 +1520,7 @@ function renderRecommendation(item) {
   const source = item.source ? `<small>${escapeHtml(item.source)}</small>` : "";
   const iconName = getPlaceIconName(item);
   const editorial = getPlaceEditorial(item);
+  const imageRefreshing = state.refreshingImageIds.has(item.id);
   return `
     <article class="recommendation-card">
       <a class="recommendation-link" href="#map" data-map-focus="${escapeHtml(item.id)}" data-native-map-url="${escapeHtml(getMobileMapUrl(item))}" aria-label="Focus ${escapeHtml(item.title)} on the trip map">
@@ -1532,6 +1537,7 @@ function renderRecommendation(item) {
       <strong>${item.distance}</strong>
       </a>
       <div class="recommendation-actions">
+        <button class="${imageRefreshing ? "is-loading" : ""}" data-refresh-place-image="${escapeHtml(item.id)}" aria-label="Refresh image for ${escapeHtml(item.title)}" ${imageRefreshing ? "disabled" : ""}>${renderIcon("refresh")}</button>
         <button data-edit-user-place="${escapeHtml(item.id)}" aria-label="Edit ${escapeHtml(item.title)}">${renderIcon("note")}</button>
         <button data-hide-nearby="${escapeHtml(item.id)}" aria-label="Remove ${escapeHtml(item.title)} as not relevant">−</button>
       </div>
@@ -2173,6 +2179,14 @@ function bindEvents() {
     });
   });
 
+  document.querySelectorAll("[data-refresh-place-image]").forEach((button) => {
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      refreshPlaceImage(button.dataset.refreshPlaceImage);
+    });
+  });
+
   document.querySelectorAll("[data-refresh-weather]").forEach((button) => {
     button.addEventListener("click", () => {
       if (state.locationContext.coordinates) {
@@ -2586,6 +2600,27 @@ async function fetchRelevantPlaceImages(places) {
 
   if (changed) {
     writeCachedPlaceImages(state.placeImageCache);
+    render();
+  }
+}
+
+async function refreshPlaceImage(placeId) {
+  const place = findEditableSourcePlace(placeId);
+  if (!place || state.refreshingImageIds.has(place.id)) return;
+
+  state.refreshingImageIds.add(place.id);
+  render();
+  try {
+    const media = await enrichmentService.refreshMedia(place, { force: true });
+    state.placeImageCache[getPlaceImageKey(place)] = media;
+    writeCachedPlaceImages(state.placeImageCache);
+  } catch {
+    state.placeImageCache[getPlaceImageKey(place)] = {
+      ...(state.placeImageCache[getPlaceImageKey(place)] || {}),
+      providerStatus: [{ provider: "trip-worker-media", status: "error", error: "manual-refresh-failed", count: 0 }],
+    };
+  } finally {
+    state.refreshingImageIds.delete(place.id);
     render();
   }
 }
