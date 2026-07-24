@@ -855,7 +855,34 @@ h3 {
 
 .map-shell {
   position: relative;
-  min-height: inherit;
+  min-height: 420px;
+  height: 100%;
+}
+
+.map-shell.is-map-fullscreen,
+.map-shell:fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 900;
+  width: 100vw;
+  height: 100dvh;
+  min-height: 100dvh;
+  border-radius: 0;
+  background: #e9e0cf;
+}
+
+.map-shell.is-map-fullscreen .leaflet-map,
+.map-shell:fullscreen .leaflet-map {
+  height: 100%;
+  min-height: 100%;
+}
+
+.live-map-card .map-shell {
+  min-height: 520px;
+}
+
+.trip-map-shell {
+  min-height: min(68vh, 620px);
 }
 
 .leaflet-home-map {
@@ -2109,19 +2136,32 @@ h3 {
 
 .live-map-card {
   position: relative;
+  min-height: 520px;
+  height: 520px;
   padding: 0;
   overflow: hidden;
 }
 
 .live-map-shell {
   position: relative;
+  height: 100%;
 }
 
-.map-locate-button {
+.map-locate-button,
+.map-control-stack {
   position: absolute;
   right: 14px;
   top: 14px;
-  z-index: 390;
+  z-index: 360;
+}
+
+.map-control-stack {
+  display: grid;
+  gap: 6px;
+}
+
+.map-locate-button,
+.map-control-stack button {
   display: grid;
   width: 46px;
   height: 46px;
@@ -2131,19 +2171,50 @@ h3 {
   color: var(--ink);
   background: rgba(255, 253, 248, .94);
   box-shadow: 0 12px 26px rgba(23, 24, 23, .18);
+  font-size: 24px;
+  font-weight: 900;
 }
 
-.map-locate-button .app-icon {
+.map-locate-button .app-icon,
+.map-control-stack .app-icon {
   width: 22px;
   height: 22px;
 }
 
 .map-locate-button:hover,
 .map-locate-button:focus-visible,
-.map-locate-button.is-locating {
+.map-locate-button.is-locating,
+.map-control-stack button:hover,
+.map-control-stack button:focus-visible,
+.map-control-stack button.is-locating {
   color: var(--red);
   border-color: rgba(217, 74, 58, .34);
   background: var(--white);
+}
+
+.map-fullscreen-toggle .exit-fullscreen {
+  display: none;
+  width: 100%;
+  height: 100%;
+  place-items: center;
+}
+
+.map-fullscreen-toggle .exit-fullscreen .app-icon {
+  width: 30px;
+  height: 30px;
+  stroke-width: 2.15;
+}
+
+.map-fullscreen-toggle.is-fullscreen .enter-fullscreen,
+.map-shell.is-map-fullscreen .map-fullscreen-toggle .enter-fullscreen,
+.map-shell:fullscreen .map-fullscreen-toggle .enter-fullscreen {
+  display: none;
+}
+
+.map-fullscreen-toggle.is-fullscreen .exit-fullscreen,
+.map-shell.is-map-fullscreen .map-fullscreen-toggle .exit-fullscreen,
+.map-shell:fullscreen .map-fullscreen-toggle .exit-fullscreen {
+  display: grid;
 }
 
 .position-panel {
@@ -3867,9 +3938,14 @@ button:focus-visible {
     min-height: 360px;
   }
 
-  .map-locate-button {
+  .map-locate-button,
+  .map-control-stack {
     right: 12px;
     top: 12px;
+  }
+
+  .map-locate-button,
+  .map-control-stack button {
     width: 50px;
     height: 50px;
     border-radius: 16px;
@@ -4033,6 +4109,18 @@ button:focus-visible {
     min-height: 360px;
   }
 
+  .live-map-card,
+  .live-map-card .map-shell {
+    min-height: 360px;
+    height: 360px;
+  }
+
+  .map-shell.is-map-fullscreen,
+  .map-shell:fullscreen {
+    height: 100dvh;
+    min-height: 100dvh;
+  }
+
   .moment-composer {
     grid-template-columns: 1fr;
   }
@@ -4052,7 +4140,7 @@ button:focus-visible {
     align-items: center;
     gap: 0;
     min-height: 88px;
-    padding: 12px 18px;
+    padding: 12px 10px;
     border: 1px solid var(--line);
     border-radius: 26px;
     background: rgba(255, 253, 248, .92);
@@ -4066,17 +4154,17 @@ button:focus-visible {
     place-items: center;
     align-content: center;
     gap: 6px;
-    padding: 7px 0;
+    padding: 9px 0;
     border-radius: 14px;
     color: var(--muted);
     font-size: 14px;
   }
 
   .mobile-nav .nav-icon {
-    width: 38px;
-    height: 38px;
+    width: 42px;
+    height: 42px;
     border: 0;
-    border-radius: 13px;
+    border-radius: 12px;
     color: var(--ink);
     background: transparent;
   }
@@ -4089,7 +4177,7 @@ button:focus-visible {
 
   .mobile-nav .is-active {
     color: var(--red);
-    background: rgba(217, 74, 58, .1);
+    background: transparent;
   }
 
   .mobile-nav .is-active .nav-icon {

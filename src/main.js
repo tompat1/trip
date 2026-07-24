@@ -43,6 +43,7 @@ let liveDeviceHooksReady = false;
 let imageLookupInFlight = false;
 let isRendering = false;
 let pendingRender = false;
+let mapStatusDismissTimer = null;
 
 const state = {
   activeView: "home",
@@ -223,6 +224,7 @@ const icons = {
   saved: `<path d="M12 20.2s-7-4.3-7-10.1A4 4 0 0 1 12 7.4a4 4 0 0 1 7 2.7c0 5.8-7 10.1-7 10.1Z"/><path d="m9.7 12.1 1.5 1.5 3.4-3.7"/>`,
   chevron: `<path d="m9 5 7 7-7 7"/>`,
   locate: `<path d="M12 2.8v3.1"/><path d="M12 18.1v3.1"/><path d="M2.8 12h3.1"/><path d="M18.1 12h3.1"/><circle cx="12" cy="12" r="5.2"/><circle cx="12" cy="12" r="1.8"/>`,
+  fullscreenExit: `<path d="M9.3 5.2v4.5H4.8"/><path d="M14.7 5.2v4.5h4.5"/><path d="M9.3 18.8v-4.5H4.8"/><path d="M14.7 18.8v-4.5h4.5"/><path d="M9.3 9.7 5.1 5.5"/><path d="m14.7 9.7 4.2-4.2"/><path d="m9.3 14.3-4.2 4.2"/><path d="m14.7 14.3 4.2 4.2"/>`,
   timeline: `<path d="M5 6h5"/><path d="M14 6h5"/><path d="M5 12h14"/><path d="M5 18h5"/><path d="M14 18h5"/><circle cx="12" cy="6" r="2"/><circle cx="12" cy="18" r="2"/>`,
   camera: `<path d="M4.5 8.5h4l1.4-2h4.2l1.4 2h4v10h-15z"/><circle cx="12" cy="13.5" r="3.2"/><path d="M17 11h.1"/>`,
   user: `<circle cx="12" cy="8.2" r="3.5"/><path d="M5.5 20c1.2-3.4 3.4-5.1 6.5-5.1s5.3 1.7 6.5 5.1"/>`,
@@ -268,6 +270,7 @@ function render() {
     initPlaceImageLookup();
     syncLiveClock();
     initLiveDeviceHooks();
+    scheduleMapStatusAutoclose();
   } finally {
     isRendering = false;
   }
@@ -604,7 +607,7 @@ function renderMapStatusCard(weatherPlace, accuracy) {
     <div class="map-status-card">
       <div>
         <strong>${escapeHtml(title)}</strong>
-        <span>Accuracy: ${escapeHtml(accuracy)}</span>
+        <span>${state.locationContext.status === "locating" ? "Updating current position" : `Accuracy: ${accuracy}`}</span>
       </div>
       <div class="map-status-actions">
         <button data-refresh-position aria-label="Refresh current position">${renderIcon("locate")}</button>
@@ -655,20 +658,8 @@ function renderRecommendedNextItem(place) {
 function renderLive() {
   const nearbySaved = state.places.filter((place) => state.savedIds.has(place.id) || place.nearby).slice(0, 5);
   const livePanelPlaces = getClosestNearYouNowPlaces(5);
-  const area = state.locationContext.area;
   return `
     <div class="live-page">
-      <section class="live-hero">
-        <div>
-          <p class="eyebrow">Live journey · ${state.live.lastSync}</p>
-          <h2>${state.live.location}</h2>
-          <p>${area ? `Positioned near ${area.city || area.region || area.country}. Live routing, visit confirmations, saved places, media, and collaborators stay together while you move.` : "Live routing, visit confirmations, saved places, media, and collaborators stay together while you move."}</p>
-        </div>
-        <div class="live-meter" aria-label="Live trip status">
-          <span>${state.live.battery}</span>
-          <small>${state.live.connection} · pack ready</small>
-        </div>
-      </section>
       <section class="live-map-card">
         ${renderLiveMap(nearbySaved)}
       </section>
@@ -1187,12 +1178,7 @@ function renderTinyPlace(place) {
 }
 
 function renderHomeMap() {
-  return `
-    <div class="map-shell">
-      <div id="home-map" class="leaflet-map leaflet-home-map" role="img" aria-label="Live map preview with nearby places"></div>
-      ${renderMapLoadingOverlay("Preparing nearby map")}
-    </div>
-  `;
+  return `<div id="home-map" class="leaflet-map leaflet-home-map" role="img" aria-label="Live map preview with nearby places"></div>`;
 }
 
 function renderHomeChecklist() {
@@ -1683,14 +1669,7 @@ function renderLiveMap(places) {
     <div class="map-shell live-map-shell">
       <div id="live-map" class="leaflet-map leaflet-live-map" role="img" aria-label="Live OpenStreetMap view with current location and saved places"></div>
       ${renderMapLoadingOverlay("Centering your live map")}
-      <button
-        class="map-locate-button"
-        data-center-live-location
-        aria-label="Update and center on current location"
-        title="Update current location"
-      >
-        ${renderIcon("locate")}
-      </button>
+      ${renderMapControls("live-map", { locate: true })}
     </div>
   `;
 }
@@ -1716,14 +1695,18 @@ function renderMapCanvas() {
     <div class="map-shell trip-map-shell">
       <div id="trip-map" class="leaflet-map leaflet-trip-map" role="img" aria-label="OpenStreetMap view of trip places"></div>
       ${renderMapLoadingOverlay("Loading trip map")}
-      <button
-        class="map-locate-button"
-        data-center-map-location
-        aria-label="Update and center on current location"
-        title="Update current location"
-      >
-        ${renderIcon("locate")}
-      </button>
+      ${renderMapControls("trip-map", { locate: true })}
+    </div>
+  `;
+}
+
+function renderMapControls(mapId, { locate = false } = {}) {
+  return `
+    <div class="map-control-stack" aria-label="Map controls">
+      <button data-map-zoom="in" data-map-target="${escapeHtml(mapId)}" aria-label="Zoom in">+</button>
+      <button data-map-zoom="out" data-map-target="${escapeHtml(mapId)}" aria-label="Zoom out">−</button>
+      <button class="map-fullscreen-toggle" data-map-fullscreen="${escapeHtml(mapId)}" aria-label="Toggle fullscreen map"><span class="enter-fullscreen">⛶</span><span class="exit-fullscreen">${renderIcon("fullscreenExit")}</span></button>
+      ${locate ? `<button data-center-map="${escapeHtml(mapId)}" aria-label="Update and center on current location">${renderIcon("locate")}</button>` : ""}
     </div>
   `;
 }
@@ -1743,6 +1726,21 @@ function getMapLoadingMessage() {
   if (!state.locationContext.coordinates) return "Using Heraklion until location is allowed";
   if (state.nearbyDiscovery.status === "loading") return "Scanning nearby places";
   return "Fetching OpenStreetMap tiles";
+}
+
+function scheduleMapStatusAutoclose() {
+  if (mapStatusDismissTimer) {
+    window.clearTimeout(mapStatusDismissTimer);
+    mapStatusDismissTimer = null;
+  }
+  if (state.activeView !== "home" || state.mapStatusDismissed) return;
+
+  mapStatusDismissTimer = window.setTimeout(() => {
+    mapStatusDismissTimer = null;
+    if (state.activeView !== "home" || state.mapStatusDismissed) return;
+    state.mapStatusDismissed = true;
+    render();
+  }, 5000);
 }
 
 function renderMoment(moment) {
@@ -1774,6 +1772,51 @@ function ensureLiveMapStartsAtCurrentLocation() {
   }
   requestCurrentPosition({ force: true, centerLiveMap: true });
 }
+
+function toggleMapFullscreen(mapId) {
+  const map = leafletMaps.get(mapId);
+  const shell = document.querySelector(`#${CSS.escape(mapId)}`)?.closest(".map-shell");
+  const button = document.querySelector(`[data-map-fullscreen="${CSS.escape(mapId)}"]`);
+  if (!map || !shell) return;
+
+  const activeFullscreen = document.fullscreenElement === shell || shell.classList.contains("is-map-fullscreen");
+  if (activeFullscreen) {
+    if (document.fullscreenElement) {
+      document.exitFullscreen?.().catch(() => {});
+    }
+    shell.classList.remove("is-map-fullscreen");
+    button?.classList.remove("is-fullscreen");
+    button?.setAttribute("aria-label", "Toggle fullscreen map");
+    button?.setAttribute("aria-pressed", "false");
+    requestAnimationFrame(() => map.invalidateSize());
+    return;
+  }
+
+  if (shell.requestFullscreen) {
+    shell.requestFullscreen().catch(() => {
+      shell.classList.add("is-map-fullscreen");
+      requestAnimationFrame(() => map.invalidateSize());
+    });
+  } else {
+    shell.classList.add("is-map-fullscreen");
+  }
+  button?.classList.add("is-fullscreen");
+  button?.setAttribute("aria-label", "Exit fullscreen map");
+  button?.setAttribute("aria-pressed", "true");
+  requestAnimationFrame(() => map.invalidateSize());
+}
+
+document.addEventListener("fullscreenchange", () => {
+  document.querySelectorAll(".map-shell").forEach((shell) => {
+    const isActive = document.fullscreenElement === shell || shell.classList.contains("is-map-fullscreen");
+    shell.querySelectorAll("[data-map-fullscreen]").forEach((button) => {
+      button.classList.toggle("is-fullscreen", isActive);
+      button.setAttribute("aria-label", isActive ? "Exit fullscreen map" : "Toggle fullscreen map");
+      button.setAttribute("aria-pressed", String(isActive));
+    });
+  });
+  leafletMaps.forEach((map) => requestAnimationFrame(() => map.invalidateSize()));
+});
 
 function bindEvents() {
   document.querySelectorAll("[data-toggle-trip-mode]").forEach((button) => {
@@ -1938,6 +1981,8 @@ function bindEvents() {
 
   document.querySelectorAll("[data-refresh-position]").forEach((button) => {
     button.addEventListener("click", () => {
+      if (mapStatusDismissTimer) window.clearTimeout(mapStatusDismissTimer);
+      mapStatusDismissTimer = null;
       state.mapStatusDismissed = false;
       requestCurrentPosition({ force: true, centerLiveMap: state.activeView === "live" });
     });
@@ -1945,24 +1990,37 @@ function bindEvents() {
 
   document.querySelectorAll("[data-dismiss-map-status]").forEach((button) => {
     button.addEventListener("click", () => {
+      if (mapStatusDismissTimer) window.clearTimeout(mapStatusDismissTimer);
+      mapStatusDismissTimer = null;
       state.mapStatusDismissed = true;
       render();
     });
   });
 
-  document.querySelectorAll("[data-center-live-location]").forEach((button) => {
+  document.querySelectorAll("[data-map-zoom]").forEach((button) => {
     button.addEventListener("click", () => {
-      button.classList.add("is-locating");
-      if (state.locationContext.coordinates) centerLiveMapOnCurrentLocation();
-      requestCurrentPosition({ force: true, centerLiveMap: true });
+      const map = leafletMaps.get(button.dataset.mapTarget);
+      if (!map) return;
+      button.dataset.mapZoom === "in" ? map.zoomIn() : map.zoomOut();
     });
   });
 
-  document.querySelectorAll("[data-center-map-location]").forEach((button) => {
+  document.querySelectorAll("[data-map-fullscreen]").forEach((button) => {
     button.addEventListener("click", () => {
+      toggleMapFullscreen(button.dataset.mapFullscreen);
+    });
+  });
+
+  document.querySelectorAll("[data-center-map]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const mapId = button.dataset.centerMap;
       button.classList.add("is-locating");
-      if (state.locationContext.coordinates) centerLeafletMapOnCurrentLocation("trip-map");
-      requestCurrentPosition({ force: true, centerMapId: "trip-map" });
+      if (state.locationContext.coordinates) centerLeafletMapOnCurrentLocation(mapId, { openPopup: mapId === "live-map" });
+      requestCurrentPosition({
+        force: true,
+        centerLiveMap: mapId === "live-map",
+        centerMapId: mapId === "live-map" ? "" : mapId,
+      });
     });
   });
 
@@ -3685,8 +3743,6 @@ function createLeafletMap(container, places, options = {}, retry = true) {
     console.warn("Leaflet map could not be initialized", error);
     return null;
   }
-
-  L.control.zoom({ position: "topleft" }).addTo(map);
 
   const tileLayer = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
     maxZoom: 19,
