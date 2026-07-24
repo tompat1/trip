@@ -2786,21 +2786,22 @@ async function fetchNearbyDiscoveries({ force = false } = {}) {
 
   try {
     const [lat, lng] = state.locationContext.coordinates;
-    const query = buildNearbyOverpassQuery(lat, lng);
-    const response = await fetch(OVERPASS_API, {
-      method: "POST",
-      headers: { "Content-Type": "text/plain;charset=UTF-8", Accept: "application/json" },
-      body: query,
+    const discoveredNearby = await enrichmentService.discoverNearby({
+      coordinates: state.locationContext.coordinates,
+      intent: state.travelFocus || "traveler",
+      radiusMeters: state.activeView === "live" ? 1500 : 2200,
+      force,
+      fallback: () => fetchNearbyDiscoveriesFromBrowserOverpass(lat, lng),
     });
-    if (!response.ok) throw new Error("Nearby scan failed");
-
-    const data = await response.json();
-    const places = normalizeNearbyElements(data.elements || [], state.locationContext.coordinates);
+    const places = discoveredNearby.places || [];
     const nextNearby = {
-      status: "ready",
-      updatedAt: new Date().toISOString(),
+      status: discoveredNearby.status || "ready",
+      updatedAt: discoveredNearby.updatedAt || new Date().toISOString(),
       error: places.length ? "" : "No strong nearby traveler places found yet. Try a wider area later.",
       places,
+      providerStatus: discoveredNearby.providerStatus || [],
+      coverage: discoveredNearby.coverage || "partial",
+      source: discoveredNearby.source || "trip-worker",
     };
     state.nearbyDiscovery = nextNearby;
     writeCachedNearbyDiscoveries(nextNearby);
@@ -2813,6 +2814,27 @@ async function fetchNearbyDiscoveries({ force = false } = {}) {
   } finally {
     render();
   }
+}
+
+async function fetchNearbyDiscoveriesFromBrowserOverpass(lat, lng) {
+  const query = buildNearbyOverpassQuery(lat, lng);
+  const response = await fetch(OVERPASS_API, {
+    method: "POST",
+    headers: { "Content-Type": "text/plain;charset=UTF-8", Accept: "application/json" },
+    body: query,
+  });
+  if (!response.ok) throw new Error("Nearby scan failed");
+  const data = await response.json();
+  const places = normalizeNearbyElements(data.elements || [], state.locationContext.coordinates);
+  return {
+    status: "ready",
+    updatedAt: new Date().toISOString(),
+    error: places.length ? "" : "No strong nearby traveler places found yet. Try a wider area later.",
+    places,
+    providerStatus: [{ provider: "browser-overpass", status: "ok", count: places.length, latencyMs: 0, error: "", checkedAt: new Date().toISOString() }],
+    coverage: "partial",
+    source: "browser-overpass",
+  };
 }
 
 function buildNearbyOverpassQuery(lat, lng) {

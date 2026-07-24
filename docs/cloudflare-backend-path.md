@@ -89,7 +89,7 @@ Before enabling persistent storage in production:
 7. Apply `migrations/0003_d1_light_media_bucket.sql`. Done when the temporary D1 light media bucket is needed.
 8. Apply `migrations/0004_seed_crete_poi_cache.sql`. Done as a temporary curated Heraklion POI fallback while live providers are hardened.
 
-After bindings are configured, move provider calls from the local `enrichmentService` implementation into Worker route handlers while preserving the same `PlaceProfile` contract.
+After bindings are configured, move provider calls from the local `enrichmentService` implementation into Worker route handlers while preserving the same `PlaceProfile` contract. Nearby discovery now uses this pattern: `src/main.js` calls `enrichmentService.discoverNearby()`, which calls the Worker first and keeps the browser Overpass path as fallback.
 
 Current deployed health endpoint:
 

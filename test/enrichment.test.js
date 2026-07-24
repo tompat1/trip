@@ -177,3 +177,71 @@ test("enrichment service returns a normalized PlaceProfile when media is supplie
   assert.equal(profile.place.canonicalName, "Heraklion");
   assert.equal(profile.providerStatus[0].provider, "test");
 });
+
+test("enrichment service discovers nearby places through the Worker contract", async () => {
+  let requestedUrl = "";
+  const service = createEnrichmentService({
+    apiBase: "https://trip.test",
+    fetchImpl: async (url) => {
+      requestedUrl = url;
+      return {
+        ok: true,
+        async json() {
+          return {
+            generatedAt: "2026-07-24T12:00:00.000Z",
+            refreshAfter: "2026-07-24T12:30:00.000Z",
+            coverage: "partial",
+            providerStatus: [{ provider: "d1-nearby-cache", status: "ok", count: 1 }],
+            places: [{
+              id: "seed-lions-square",
+              canonicalName: "Lions Square",
+              localName: "Morosini Fountain",
+              category: "Coffee",
+              categories: ["Coffee", "Sight"],
+              coordinates: [35.3391, 25.132],
+              distanceMeters: 0,
+              source: "Trip D1 nearby cache",
+            }],
+          };
+        },
+      };
+    },
+  });
+
+  const result = await service.discoverNearby({
+    coordinates: [35.3391, 25.132],
+    intent: "coffee",
+    radiusMeters: 1500,
+  });
+
+  const url = new URL(requestedUrl);
+  assert.equal(url.origin, "https://trip.test");
+  assert.equal(url.pathname, "/api/places/nearby");
+  assert.equal(url.searchParams.get("intent"), "coffee");
+  assert.equal(result.status, "ready");
+  assert.equal(result.places[0].title, "Lions Square");
+  assert.equal(result.places[0].identity.canonicalName, "Lions Square");
+  assert.equal(result.providerStatus[0].provider, "d1-nearby-cache");
+});
+
+test("enrichment service falls back when the Worker nearby request fails", async () => {
+  const service = createEnrichmentService({
+    apiBase: "https://trip.test",
+    fetchImpl: async () => {
+      throw new Error("network down");
+    },
+  });
+
+  const result = await service.discoverNearby({
+    coordinates: [35.3391, 25.132],
+    fallback: async () => ({
+      status: "ready",
+      places: [{ id: "fallback", title: "Fallback Cafe", coordinates: [35.3392, 25.1321] }],
+      providerStatus: [{ provider: "browser-overpass", status: "ok", count: 1 }],
+    }),
+  });
+
+  assert.equal(result.status, "ready");
+  assert.equal(result.places[0].title, "Fallback Cafe");
+  assert.equal(result.providerStatus[0].provider, "browser-overpass");
+});

@@ -170,6 +170,70 @@ export function normalizeOsmElement(element = {}, origin, helpers = {}) {
   };
 }
 
+export function normalizeWorkerNearbyPlace(place = {}, origin = null) {
+  const coordinates = normalizeCoordinates(place.coordinates);
+  if (!coordinates) return null;
+  const title = place.title || place.canonicalName || place.name || "";
+  if (!title) return null;
+
+  const category = place.category || place.tag || place.categories?.[0] || "Nearby";
+  const meters = Number.isFinite(Number(place.distanceMeters))
+    ? Number(place.distanceMeters)
+    : origin ? Math.round(getDistanceMeters(origin, coordinates)) : null;
+  const sourceUrl = place.officialWebsite || place.sourceUrl || place.website || "";
+  const source = place.source || "Trip Worker";
+  const identity = createResolvedPlaceIdentity({
+    canonicalName: title,
+    localName: place.localName || "",
+    aliases: buildPlaceAliases({
+      canonicalName: title,
+      localName: place.localName || "",
+      namedetails: Object.fromEntries((place.aliases || []).map((alias, index) => [`alt_name:${index}`, alias])),
+    }),
+    latitude: coordinates[0],
+    longitude: coordinates[1],
+    countryCode: place.countryCode || "",
+    region: place.region || "",
+    municipality: place.municipality || "",
+    osmType: place.osmType || "",
+    osmId: place.osmId || "",
+    wikidataId: place.wikidataId || "",
+    wikipediaUrl: place.wikipediaUrl || "",
+    officialWebsite: sourceUrl,
+    categories: place.categories || [category],
+  });
+  const image = createPlaceImage({
+    url: place.imageUrl || "",
+    provider: place.imageProvider || IMAGE_PROVIDERS.fallback,
+    sourceUrl,
+    attribution: place.imageAttribution || source,
+    visualRole: VISUAL_ROLES.approximate,
+  });
+
+  return {
+    ...place,
+    id: place.id || slugify(title),
+    title,
+    canonicalName: identity.canonicalName,
+    localName: identity.localName,
+    aliases: identity.aliases,
+    identity,
+    category,
+    tag: category,
+    coordinates,
+    sourceRole: place.sourceRole || ROUTE_ROLES.osm,
+    source,
+    sourceUrl,
+    openingHours: place.openingHours || "",
+    image,
+    imageUrl: image.url,
+    distanceMeters: meters,
+    distance: place.distance || formatDistance(meters),
+    reason: place.reason || `${category} nearby.`,
+    score: Number(place.score ?? meters ?? 999999),
+  };
+}
+
 export function normalizeUserPlace(place = {}) {
   const image = createPlaceImage({
     url: place.imageUrl || "",
@@ -205,6 +269,22 @@ function normalizeCoordinates(coordinates, fallback = null) {
     if (Number.isFinite(lat) && Number.isFinite(lng)) return [lat, lng];
   }
   return fallback;
+}
+
+function formatDistance(meters) {
+  if (!Number.isFinite(Number(meters))) return "";
+  return meters < 1000 ? `${Math.round(meters / 10) * 10} m` : `${(meters / 1000).toFixed(1)} km`;
+}
+
+function getDistanceMeters(from, to) {
+  const earthRadius = 6371000;
+  const toRadians = (value) => (value * Math.PI) / 180;
+  const lat1 = toRadians(from[0]);
+  const lat2 = toRadians(to[0]);
+  const deltaLat = toRadians(to[0] - from[0]);
+  const deltaLng = toRadians(to[1] - from[1]);
+  const haversine = Math.sin(deltaLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(deltaLng / 2) ** 2;
+  return earthRadius * 2 * Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine));
 }
 
 function inferImageProvider(url = "") {

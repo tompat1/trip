@@ -1,12 +1,15 @@
 import { composeEditorialProfile, createPlaceProfileEnvelope, createVerifiedFactBundle } from "./editorialComposer.js";
 import { enrichPlaceMedia } from "./mediaAggregator.js";
-import { normalizeOsmElement } from "./normalizers.js";
+import { normalizeOsmElement, normalizeWorkerNearbyPlace } from "./normalizers.js";
 import { resolveLocationContext } from "./placeResolver.js";
 import { createPlaceProfileContract, createProviderStatus, PROVIDER_STATUS } from "./schemas.js";
+
+const DEFAULT_WORKER_API_BASE = "https://trip.thomasrynell.workers.dev";
 
 export function createEnrichmentService(options = {}) {
   const fetchImpl = options.fetchImpl || fetch;
   const now = options.now || (() => new Date());
+  const apiBase = options.apiBase ?? getDefaultApiBase();
 
   return {
     async resolveLocation(input = {}) {
@@ -15,6 +18,55 @@ export function createEnrichmentService(options = {}) {
 
     normalizeNearbyElement(element, origin, helpers = {}) {
       return normalizeOsmElement(element, origin, helpers);
+    },
+
+    async discoverNearby(input = {}) {
+      const coordinates = normalizeCoordinates(input.coordinates);
+      if (!coordinates) {
+        return {
+          status: "error",
+          updatedAt: now().toISOString(),
+          error: "Location is needed before scanning nearby places.",
+          places: [],
+          providerStatus: [createProviderStatus({ provider: "trip-worker", status: PROVIDER_STATUS.error, error: "invalid-coordinates" })],
+        };
+      }
+
+      try {
+        const url = buildApiUrl(apiBase, "/api/places/nearby");
+        url.searchParams.set("lat", String(coordinates[0]));
+        url.searchParams.set("lng", String(coordinates[1]));
+        url.searchParams.set("radius", String(input.radiusMeters || 1500));
+        url.searchParams.set("intent", input.intent || "traveler");
+        if (input.force) url.searchParams.set("refresh", "1");
+
+        const response = await fetchImpl(url.href, { headers: { Accept: "application/json" } });
+        if (!response.ok) throw new Error(`worker-nearby-http-${response.status}`);
+        const payload = await response.json();
+        const places = (payload.places || [])
+          .map((place) => normalizeWorkerNearbyPlace(place, coordinates))
+          .filter(Boolean);
+
+        return {
+          status: "ready",
+          updatedAt: payload.generatedAt || now().toISOString(),
+          refreshAfter: payload.refreshAfter || "",
+          error: places.length ? "" : "No strong nearby traveler places found yet. Try a wider area later.",
+          places,
+          providerStatus: payload.providerStatus || [],
+          coverage: payload.coverage || "partial",
+          source: "trip-worker",
+        };
+      } catch (error) {
+        if (typeof input.fallback === "function") return input.fallback(error);
+        return {
+          status: "error",
+          updatedAt: now().toISOString(),
+          error: "Nearby scan could not reach the Trip Worker right now.",
+          places: [],
+          providerStatus: [createProviderStatus({ provider: "trip-worker", status: PROVIDER_STATUS.error, error: error?.message || "worker-nearby-failed" })],
+        };
+      }
     },
 
     createFacts(place, context = {}) {
@@ -54,6 +106,25 @@ export function createEnrichmentService(options = {}) {
 }
 
 export const enrichmentService = createEnrichmentService();
+
+function getDefaultApiBase() {
+  const envBase = import.meta.env?.VITE_TRIP_API_BASE;
+  if (envBase) return envBase;
+  if (typeof window !== "undefined" && /localhost|127\.0\.0\.1/.test(window.location.hostname)) return DEFAULT_WORKER_API_BASE;
+  return "";
+}
+
+function buildApiUrl(base, path) {
+  if (!base) return new URL(path, typeof window !== "undefined" ? window.location.origin : "https://trip.rynell.org");
+  return new URL(path, base.endsWith("/") ? base : `${base}/`);
+}
+
+function normalizeCoordinates(value) {
+  if (!Array.isArray(value) || value.length !== 2) return null;
+  const [lat, lng] = value.map(Number);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  return [lat, lng];
+}
 
 function createMediaFailure(error, now) {
   return {
