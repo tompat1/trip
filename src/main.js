@@ -577,6 +577,7 @@ function renderStoryImage(place) {
       data-image-provider="${escapeHtml(attribution.provider)}"
       data-image-source="${escapeHtml(attribution.sourceUrl)}"
       data-image-attribution="${escapeHtml(attribution.attribution)}"
+      data-visual-role="${escapeHtml(attribution.visualRole)}"
     >
       <img src="${escapeHtml(imageUrl)}" alt="${escapeHtml(label)}" loading="lazy" referrerpolicy="no-referrer" onerror="this.closest('.story-image').classList.add('is-missing'); this.remove();"/>
       <figcaption>${escapeHtml(label)}</figcaption>
@@ -1568,7 +1569,7 @@ function getPlaceImageAttribution(place = {}, imageUrl = "") {
       provider: cachedHero.provider,
       sourceUrl: cachedHero.sourcePageUrl,
       attribution: cachedHero.attributionText || cachedHero.creatorName || cachedHero.provider,
-      visualRole: cachedHero.illustrativeOnly ? "illustrative" : cachedHero.exactLocation ? "exact" : "approximate",
+      visualRole: cachedHero.visualRole || inferPlaceVisualRole(place),
     };
   }
   if (!imageUrl) {
@@ -1584,7 +1585,7 @@ function getPlaceImageAttribution(place = {}, imageUrl = "") {
       provider: "upload",
       sourceUrl: "",
       attribution: "Traveler upload",
-      visualRole: "exact",
+      visualRole: inferPlaceVisualRole(place),
     };
   }
   if (imageUrl.startsWith("/assets/")) {
@@ -1592,7 +1593,7 @@ function getPlaceImageAttribution(place = {}, imageUrl = "") {
       provider: "user",
       sourceUrl: "User-provided reference asset",
       attribution: place.imageAttribution || "Traveler reference",
-      visualRole: "approximate",
+      visualRole: inferPlaceVisualRole(place),
     };
   }
   if (imageUrl.includes("commons.wikimedia.org") || imageUrl.includes("wikimedia.org")) {
@@ -1600,15 +1601,25 @@ function getPlaceImageAttribution(place = {}, imageUrl = "") {
       provider: "commons",
       sourceUrl: imageUrl,
       attribution: "Wikimedia Commons",
-      visualRole: "approximate",
+      visualRole: inferPlaceVisualRole(place),
     };
   }
   return {
     provider: "external",
     sourceUrl: imageUrl,
     attribution: place.source || "External source",
-    visualRole: "approximate",
+    visualRole: inferPlaceVisualRole(place),
   };
+}
+
+function inferPlaceVisualRole(place = {}) {
+  const key = `${place.visualRole || ""} ${place.category || ""} ${place.tag || ""} ${(place.categories || []).join(" ")} ${place.title || ""}`.toLowerCase();
+  if (key.includes("museum") || key.includes("archaeological")) return "museum";
+  if (key.includes("coffee") || key.includes("cafe")) return "coffee";
+  if (key.includes("restaurant") || key.includes("food")) return "food";
+  if (key.includes("beach")) return "beach";
+  if (key.includes("gallery") || key.includes("art")) return "gallery";
+  return place.visualRole || "hero";
 }
 
 function getPlaceEditorial(place = {}) {
