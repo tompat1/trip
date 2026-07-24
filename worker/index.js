@@ -3,6 +3,7 @@ const API_VERSION = "overpass-nearby-v1";
 const NOMINATIM_REVERSE_ENDPOINT = "https://nominatim.openstreetmap.org/reverse";
 const COMMONS_API = "https://commons.wikimedia.org/w/api.php";
 const WIKIDATA_ENTITY_DATA = "https://www.wikidata.org/wiki/Special:EntityData/";
+const OPENVERSE_IMAGES_API = "https://api.openverse.org/v1/images/";
 const OVERPASS_ENDPOINTS = [
   "https://overpass-api.de/api/interpreter",
   "https://overpass.kumi.systems/api/interpreter",
@@ -293,11 +294,11 @@ async function mediaRefreshHandler(context) {
   let mediaProvider = !forceRefresh && storedMedia.hero ? "d1-place-images" : curatedMedia.hero ? "curated-place-media" : "";
 
   if (!media) {
-    const commons = await fetchAndPersistCommonsMedia(context, inputPlace);
-    providerStatus.push(commons.status);
-    if (commons.media.hero) {
-      media = commons.media;
-      mediaProvider = "commons";
+    const providerMedia = await fetchAndPersistProviderMedia(context, inputPlace);
+    providerStatus.push(...providerMedia.providerStatus);
+    if (providerMedia.media.hero) {
+      media = providerMedia.media;
+      mediaProvider = providerMedia.provider;
     }
   }
 
@@ -828,8 +829,7 @@ async function getStoredPlaceMedia(context, placeId) {
   return createMediaPayload(hero, gallery, hero.illustrativeOnly ? "fallback" : gallery.length ? "complete" : "partial");
 }
 
-async function fetchAndPersistCommonsMedia(context, place = {}) {
-  const startedAt = Date.now();
+async function fetchAndPersistProviderMedia(context, place = {}) {
   try {
     const normalizedPlace = createPlaceFromInput({
       ...place,
@@ -839,7 +839,11 @@ async function fetchAndPersistCommonsMedia(context, place = {}) {
       categories: place.categories || [place.category || place.tag].filter(Boolean),
       website: place.website || place.officialWebsite || place.identity?.officialWebsite,
     });
-    const candidates = await searchCommonsMediaForPlace(normalizedPlace, context.request);
+    const providerResults = await Promise.all([
+      runWorkerMediaProvider("commons", () => searchCommonsMediaForPlace(normalizedPlace, context.request)),
+      runWorkerMediaProvider("openverse", () => searchOpenverseMediaForPlace(normalizedPlace, context.request)),
+    ]);
+    const candidates = dedupeWorkerImages(providerResults.flatMap((result) => result.images));
     const ranked = candidates
       .map((image) => rankWorkerImageCandidate(image, normalizedPlace))
       .filter((image) => !image.rejected)
@@ -852,9 +856,9 @@ async function fetchAndPersistCommonsMedia(context, place = {}) {
         facts: createCoreFacts(normalizedPlace),
         editorial: null,
         source: {
-          provider: "commons",
+          provider: "trip-media-router",
           providerId: normalizedPlace.id,
-          name: "Wikimedia Commons",
+          name: "Trip media provider router",
           type: "media",
           url: "",
           confidence: 0.7,
@@ -865,24 +869,56 @@ async function fetchAndPersistCommonsMedia(context, place = {}) {
 
     const hero = ranked.find((image) => image.visualRole === "hero" && image.finalScore >= 58) || ranked[0] || null;
     const gallery = hero ? ranked.filter((image) => image.id !== hero.id).slice(0, 8) : [];
+    const winnerProvider = hero?.provider || providerResults.find((result) => result.images.length)?.provider || "";
     return {
       media: hero ? createMediaPayload(hero, gallery, gallery.length ? "complete" : "partial") : createEmptyMedia("fallback"),
+      provider: winnerProvider,
+      providerStatus: providerResults.map((result) => ({
+        ...result.status,
+        status: result.status.status === "ok" && !ranked.some((image) => image.provider === result.provider) ? "empty" : result.status.status,
+        error: result.status.status === "ok" && !ranked.some((image) => image.provider === result.provider) ? "no-reviewed-candidates" : result.status.error,
+      })),
+    };
+  } catch (error) {
+    return {
+      media: createEmptyMedia("fallback"),
+      provider: "",
+      providerStatus: [{
+        provider: "trip-media-router",
+        status: "error",
+        error: error?.name === "AbortError" ? "timeout" : "media-router-failed",
+        count: 0,
+        latencyMs: 0,
+        checkedAt: new Date().toISOString(),
+      }],
+    };
+  }
+}
+
+async function runWorkerMediaProvider(provider, fn) {
+  const startedAt = Date.now();
+  try {
+    const images = await fn();
+    return {
+      provider,
+      images,
       status: {
-        provider: "commons",
-        status: ranked.length ? "ok" : "empty",
-        error: ranked.length ? "" : "no-reviewed-candidates",
-        count: ranked.length,
+        provider,
+        status: images.length ? "ok" : "empty",
+        error: "",
+        count: images.length,
         latencyMs: Date.now() - startedAt,
         checkedAt: new Date().toISOString(),
       },
     };
   } catch (error) {
     return {
-      media: createEmptyMedia("fallback"),
+      provider,
+      images: [],
       status: {
-        provider: "commons",
+        provider,
         status: "error",
-        error: error?.name === "AbortError" ? "timeout" : "commons-media-failed",
+        error: error?.name === "AbortError" ? "timeout" : `${provider}-media-failed`,
         count: 0,
         latencyMs: Date.now() - startedAt,
         checkedAt: new Date().toISOString(),
@@ -1024,6 +1060,21 @@ async function searchCommonsText(place, request, defaults = {}) {
   return all;
 }
 
+async function searchOpenverseMediaForPlace(place, request) {
+  const all = [];
+  for (const query of getWorkerMediaQueries(place).slice(0, 3)) {
+    const url = new URL(OPENVERSE_IMAGES_API);
+    url.searchParams.set("q", query);
+    url.searchParams.set("page_size", "10");
+    url.searchParams.set("mature", "false");
+    const response = await fetchWithTimeout(url, request, 7000);
+    if (!response.ok) continue;
+    const data = await response.json();
+    all.push(...(data.results || []).map((result) => normalizeOpenverseImage(result, place)));
+  }
+  return dedupeWorkerImages(all);
+}
+
 function normalizeCommonsPages(pages = [], place = {}, defaults = {}) {
   return pages.map((page) => {
     const info = page.imageinfo?.[0];
@@ -1061,6 +1112,39 @@ function normalizeCommonsPages(pages = [], place = {}, defaults = {}) {
       rawTitle: page.title || "",
     };
   }).filter(Boolean);
+}
+
+function normalizeOpenverseImage(result = {}, place = {}) {
+  const width = Number(result.width || 0);
+  const height = Number(result.height || 0);
+  const title = result.title || "";
+  const sourceName = result.source || result.provider || "Openverse";
+  return {
+    id: stableId("openverse-image", [result.id, result.url, result.foreign_landing_url]),
+    placeId: place.id || "",
+    provider: "openverse",
+    providerId: String(result.id || result.url || ""),
+    imageUrl: sanitizeUrl(result.url || result.thumbnail || ""),
+    thumbnailUrl: sanitizeUrl(result.thumbnail || result.url || ""),
+    sourcePageUrl: sanitizeUrl(result.foreign_landing_url || result.url || ""),
+    creatorName: truncateText(result.creator || "", 180),
+    creatorUrl: sanitizeUrl(result.creator_url || ""),
+    licenseCode: truncateText(result.license || "", 80),
+    licenseName: truncateText(result.license || "", 120),
+    licenseUrl: sanitizeUrl(result.license_url || ""),
+    attributionText: truncateText([result.creator, sourceName, result.license].filter(Boolean).join(" · "), 180),
+    width,
+    height,
+    aspectRatio: width && height ? width / height : 0,
+    exactLocation: false,
+    approximateLocation: true,
+    illustrativeOnly: false,
+    visualRole: inferWorkerVisualRole(place, width, height),
+    sourceTrust: 0.72,
+    checkedAt: new Date().toISOString(),
+    reviewStatus: "pending",
+    rawTitle: title,
+  };
 }
 
 function rankWorkerImageCandidate(image, place) {
@@ -1120,13 +1204,21 @@ function dedupeWorkerImages(images = []) {
   const seen = new Map();
   for (const image of images) {
     if (!image?.imageUrl || !image.sourcePageUrl) continue;
-    const key = [image.provider, image.providerId || "", normalizeUrl(image.sourcePageUrl), normalizeUrl(image.imageUrl)].join("|");
+    const key = normalizeMediaIdentity(image);
     const existing = seen.get(key);
     const edge = Math.max(Number(image.width || 0), Number(image.height || 0));
     const existingEdge = Math.max(Number(existing?.width || 0), Number(existing?.height || 0));
-    if (!existing || edge > existingEdge) seen.set(key, image);
+    const trust = Number(image.sourceTrust || 0);
+    const existingTrust = Number(existing?.sourceTrust || 0);
+    if (!existing || trust > existingTrust || (trust === existingTrust && edge > existingEdge)) seen.set(key, image);
   }
   return [...seen.values()];
+}
+
+function normalizeMediaIdentity(image = {}) {
+  const imageUrl = normalizeUrl(image.imageUrl || "");
+  if (imageUrl) return imageUrl;
+  return normalizeUrl(image.sourcePageUrl || image.providerId || "");
 }
 
 function getWorkerNameMatchScore(value = "", place = {}) {

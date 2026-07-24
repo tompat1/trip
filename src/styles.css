@@ -681,8 +681,13 @@ h3 {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: center;
+  object-position: center 42%;
   filter: saturate(1.02) contrast(1.02);
+}
+
+.story-image[data-visual-role="museum"] img,
+.story-image[data-visual-role="gallery"] img {
+  object-position: center 34%;
 }
 
 .story-image.is-missing::before {
@@ -1052,7 +1057,7 @@ h3 {
   display: grid;
   place-items: center;
   min-height: 118px;
-  aspect-ratio: 4 / 3;
+  aspect-ratio: 16 / 10;
   margin-bottom: 10px;
   overflow: hidden;
   border: 1px solid rgba(23, 24, 23, .08);
@@ -1061,11 +1066,16 @@ h3 {
 }
 
 .home-idea-image img {
+  display: block;
   width: 100%;
   height: 100%;
-  object-fit: contain;
-  object-position: center;
-  background: rgba(255, 253, 248, .68);
+  object-fit: cover;
+  object-position: center 42%;
+}
+
+.home-idea-image[data-visual-role="museum"] img,
+.home-idea-image[data-visual-role="gallery"] img {
+  object-position: center 34%;
 }
 
 .place-image-fallback {
@@ -2593,11 +2603,16 @@ h3 {
 }
 
 .recommendation-image img {
+  display: block;
   width: 100%;
   height: 100%;
-  object-fit: contain;
-  object-position: center;
-  background: rgba(255, 253, 248, .72);
+  object-fit: cover;
+  object-position: center 42%;
+}
+
+.recommendation-image[data-visual-role="museum"] img,
+.recommendation-image[data-visual-role="gallery"] img {
+  object-position: center 34%;
 }
 
 .recommendation-image .place-image-fallback .app-icon {
@@ -3151,10 +3166,16 @@ button:focus-visible {
 }
 
 .place-photo img {
+  display: block;
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: center;
+  object-position: center 42%;
+}
+
+.place-photo[data-visual-role="museum"] img,
+.place-photo[data-visual-role="gallery"] img {
+  object-position: center 34%;
 }
 
 .place-photo img + .place-image-fallback {
