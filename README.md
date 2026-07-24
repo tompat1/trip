@@ -34,6 +34,25 @@ npm run deploy
 The repository includes `wrangler.jsonc` with `assets.directory` set to
 `./dist` and SPA fallback enabled.
 
+## Local Development
+
+For UI-only work, run:
+
+```bash
+npm run dev
+```
+
+For Worker-backed features such as admin login and `/api/*` routes, copy
+`.dev.vars.example` to `.dev.vars`, fill in local admin credentials, apply D1
+migrations locally, then run:
+
+```bash
+npx wrangler d1 migrations apply trip --local
+npm run dev:worker
+```
+
+Open `http://localhost:8787` for the Worker-backed local app.
+
 ---
 
 # Agentic Workspace Boilerplate
