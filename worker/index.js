@@ -355,11 +355,58 @@ async function lightMediaGetHandler(context) {
   });
 }
 
-function editorialGenerateHandler(context) {
+async function editorialGenerateHandler(context) {
   const [placeId] = context.params;
+  const body = await readJson(context.request);
+  const place = normalizeEditorialPlace({ ...body.place, id: placeId });
+  const facts = normalizeEditorialFacts(body.facts || createCoreFacts(place));
+  const media = body.media || {};
+  const editorial = createGeneratedEditorial(place, {
+    facts,
+    media,
+    travellerProfile: body.travellerProfile || {},
+    routeContext: body.routeContext || {},
+  });
+
+  if (context.hasDb) {
+    const storedPlace = createPlaceFromInput({
+      ...body.place,
+      id: place.id,
+      title: place.canonicalName,
+      category: place.category,
+      categories: [place.category].filter(Boolean),
+      coordinates: place.coordinates,
+      website: place.website,
+    });
+    await persistPlaceProfile(context, {
+      place: storedPlace,
+      facts,
+      editorial,
+      source: {
+        provider: "worker-editorial",
+        providerId: place.id,
+        name: "Trip Worker Editorial",
+        type: "editorial",
+        url: "",
+        confidence: editorial.confidence,
+      },
+    });
+  }
+
   return json(partialResponse("places.editorialGenerate", {
     placeId,
-    editorial: createPendingEditorial(placeId),
+    editorial,
+    providerStatus: [
+      createStorageStatus(context),
+      {
+        provider: "worker-editorial",
+        status: "ok",
+        error: "",
+        count: 1,
+        latencyMs: 0,
+        checkedAt: new Date().toISOString(),
+      },
+    ],
   }, context));
 }
 
@@ -777,6 +824,177 @@ function createPendingEditorial(name) {
     editorialVersion: "worker-placeholder-v1",
     confidence: 0.2,
   };
+}
+
+function normalizeEditorialPlace(input = {}) {
+  const coordinates = normalizeCoordinates(input.coordinates || [input.latitude, input.longitude]);
+  const title = String(input.canonicalName || input.title || input.name || input.id || "This stop").trim();
+  return {
+    id: input.id || stableId("place", [title, coordinates?.join(",")]),
+    canonicalName: title,
+    title,
+    localName: String(input.localName || ""),
+    category: String(input.category || input.tag || input.categories?.[0] || "place"),
+    tag: String(input.tag || input.category || input.categories?.[0] || "place"),
+    area: String(input.area || input.municipality || input.identity?.municipality || ""),
+    coordinates,
+    openingHours: input.openingHours || "",
+    website: input.website || input.officialWebsite || input.identity?.officialWebsite || "",
+    identity: input.identity || {},
+  };
+}
+
+function normalizeEditorialFacts(facts = []) {
+  return facts.map((fact) => ({
+    id: fact.id || stableId("fact", [fact.key, JSON.stringify(fact.value)]),
+    key: fact.key || "fact",
+    label: fact.label || labelFromKey(fact.key || "fact"),
+    value: fact.value,
+    confidence: Number(fact.confidence ?? 0.5),
+    volatile: Boolean(fact.volatile || fact.volatility === "volatile"),
+    sourceIds: Array.isArray(fact.sourceIds) ? fact.sourceIds : [fact.sourceId].filter(Boolean),
+  })).filter((fact) => fact.value !== undefined && fact.value !== null && fact.value !== "");
+}
+
+function createGeneratedEditorial(place, options = {}) {
+  const facts = normalizeEditorialFacts(options.facts || []);
+  const name = getEditorialFactValue(facts, "name") || place.canonicalName || place.title || "This stop";
+  const category = getEditorialFactValue(facts, "category") || place.category || place.tag || "place";
+  const area = getEditorialFactValue(facts, "area") || place.area || "";
+  const travellerProfile = options.travellerProfile || {};
+  const routeContext = options.routeContext || {};
+  const sourceIds = [...new Set(facts.flatMap((fact) => fact.sourceIds || [fact.id]).filter(Boolean))];
+  const routeRole = inferEditorialRouteRole(category, travellerProfile);
+  const hasRealHero = Boolean(options.media?.hero && !options.media.hero.illustrativeOnly && options.media.hero.imageUrl);
+
+  return {
+    standfirst: [name, area ? `in ${area}` : "", category ? `works as a ${String(category).toLowerCase()} stop` : ""].filter(Boolean).join(" "),
+    whyStop: buildEditorialWhyStop(name, category, area, travellerProfile, routeContext),
+    atmosphere: buildEditorialAtmosphere(category, hasRealHero),
+    essentialExperience: buildEditorialEssentialExperience(name, category),
+    dontMiss: buildEditorialDontMiss(category),
+    hiddenDetails: [
+      place.localName ? `Local name: ${place.localName}` : "",
+      place.identity?.wikidataId ? `Linked identity: ${place.identity.wikidataId}` : "",
+      getEditorialFactValue(facts, "openingHours") ? "Opening hours are volatile; refresh before relying on them." : "",
+    ].filter(Boolean).slice(0, 3),
+    idealFor: buildEditorialIdealFor(category, travellerProfile),
+    skipIf: buildEditorialSkipIf(category),
+    suggestedDurationMinutes: inferEditorialDurationMinutes(category),
+    bestArrivalWindow: inferEditorialBestArrivalWindow(category),
+    routeRole,
+    coffeeSummary: editorialTextIncludes(category, ["coffee", "cafe", "roaster"]) ? `${name} belongs in the coffee shortlist.` : "",
+    foodSummary: editorialTextIncludes(category, ["restaurant", "food", "bakery"]) ? `${name} is useful as a food stop.` : "",
+    nextBestStop: routeContext.nextStop || "",
+    localTip: buildEditorialLocalTip(category, routeContext),
+    practicalWarnings: facts.filter((fact) => fact.volatile).map((fact) => `${labelFromKey(fact.key)} can change; refresh before relying on it.`),
+    sourceIds,
+    generatedAt: new Date().toISOString(),
+    editorialVersion: "worker-deterministic-v1",
+    confidence: calculateWorkerEditorialConfidence(facts, hasRealHero),
+  };
+}
+
+function buildEditorialWhyStop(name, category, area, travellerProfile, routeContext) {
+  const base = editorialTextIncludes(category, ["coffee", "cafe", "roaster"])
+    ? `${name} is a focused coffee stop${area ? ` around ${area}` : ""}.`
+    : editorialTextIncludes(category, ["museum", "gallery", "archaeolog", "historic", "sight"])
+      ? `${name} gives the route a cultural anchor${area ? ` around ${area}` : ""}.`
+      : editorialTextIncludes(category, ["beach", "harbor", "water"])
+        ? `${name} works as a slower coastal pause${area ? ` around ${area}` : ""}.`
+        : `${name} is a practical nearby stop${area ? ` around ${area}` : ""}.`;
+  const focus = getEditorialTravellerAngle(category, travellerProfile);
+  return [base, focus, routeContext.previousStop ? `It can sit after ${routeContext.previousStop}.` : ""].filter(Boolean).join(" ");
+}
+
+function buildEditorialAtmosphere(category, hasRealHero) {
+  if (!hasRealHero) return "Use the map and notes first; imagery may still be waiting for review.";
+  if (editorialTextIncludes(category, ["coffee", "cafe"])) return "Small-scale, useful for a reset and a closer look at the neighbourhood.";
+  if (editorialTextIncludes(category, ["museum", "gallery", "archaeolog"])) return "Quiet, context-rich, and best when you want the place to explain itself.";
+  if (editorialTextIncludes(category, ["beach", "harbor"])) return "Open-air, slower, and shaped by light, wind, and the waterline.";
+  return "A nearby waypoint with enough context to decide quickly.";
+}
+
+function buildEditorialEssentialExperience(name, category) {
+  if (editorialTextIncludes(category, ["coffee", "cafe", "roaster"])) return ["Order coffee", "Check beans or brew style", "Save notes if it fits your taste"];
+  if (editorialTextIncludes(category, ["restaurant", "food", "bakery"])) return ["Check the menu", "Mark it for lunch or dinner", "Save one food note"];
+  if (editorialTextIncludes(category, ["museum", "gallery", "archaeolog"])) return ["Start with the main collection", "Save one detail for the story", "Pair it with a calmer nearby stop"];
+  if (editorialTextIncludes(category, ["beach", "harbor"])) return ["Check wind and shade", "Walk the edge", "Use it as a slower route break"];
+  return [`Visit ${name}`, "Check the map context", "Decide whether to save it"];
+}
+
+function buildEditorialDontMiss(category) {
+  if (editorialTextIncludes(category, ["coffee", "cafe", "roaster"])) return ["Coffee quality", "Beans", "Neighbourhood feel"];
+  if (editorialTextIncludes(category, ["museum", "gallery", "archaeolog"])) return ["Core exhibits", "Architecture", "Context before the next stop"];
+  if (editorialTextIncludes(category, ["beach", "harbor"])) return ["Light", "Waterfront walk", "Shade"];
+  return ["Map position", "Nearby context"];
+}
+
+function buildEditorialIdealFor(category, travellerProfile) {
+  const focus = travellerProfile.focus || "nearby";
+  if (editorialTextIncludes(category, ["coffee", "cafe", "roaster"])) return ["coffee reset", "short detour", focus];
+  if (editorialTextIncludes(category, ["museum", "gallery", "archaeolog"])) return ["culture", "rain-safe planning", focus];
+  if (editorialTextIncludes(category, ["beach", "harbor"])) return ["slow break", "photos", focus];
+  return ["nearby discovery", "quick decision", focus];
+}
+
+function buildEditorialSkipIf(category) {
+  if (editorialTextIncludes(category, ["beach", "harbor"])) return ["weather is rough", "you need an indoor stop"];
+  if (editorialTextIncludes(category, ["museum", "gallery"])) return ["you only want outdoor time"];
+  return ["it pulls you too far off route"];
+}
+
+function buildEditorialLocalTip(category, routeContext) {
+  if (routeContext.availableHours && routeContext.availableHours < 2) return "Keep this as a short stop unless it is already on your route.";
+  if (editorialTextIncludes(category, ["coffee", "cafe"])) return "Save it if the coffee matches your taste; that signal should influence the next scan.";
+  if (editorialTextIncludes(category, ["beach", "harbor"])) return "Check wind and sun before committing time.";
+  return "Open the map first and decide from distance, category, and route fit.";
+}
+
+function getEditorialTravellerAngle(category, travellerProfile) {
+  if (travellerProfile.focus === "coffee" && editorialTextIncludes(category, ["coffee", "cafe", "roaster"])) return "Good fit for the current coffee focus.";
+  if (travellerProfile.focus === "shopper" && editorialTextIncludes(category, ["shop", "market", "bakery"])) return "Good fit for the current shopper focus.";
+  if (travellerProfile.focus === "arty" && editorialTextIncludes(category, ["museum", "gallery", "archaeolog", "art"])) return "Good fit for the current arty focus.";
+  if (travellerProfile.focus === "beachy" && editorialTextIncludes(category, ["beach", "harbor", "water"])) return "Good fit for the current beachy focus.";
+  return "";
+}
+
+function inferEditorialRouteRole(category, travellerProfile) {
+  if (editorialTextIncludes(category, ["coffee", "cafe", "roaster"])) return "coffee-stop";
+  if (editorialTextIncludes(category, ["restaurant", "food", "bakery"])) return "lunch-stop";
+  if (editorialTextIncludes(category, ["beach"])) return "swim-stop";
+  if (editorialTextIncludes(category, ["museum", "archaeolog", "historic"])) return "major-destination";
+  if (travellerProfile.focus === "beachy") return "sunset-stop";
+  return "quick-stop";
+}
+
+function inferEditorialDurationMinutes(category) {
+  if (editorialTextIncludes(category, ["coffee", "cafe", "bakery"])) return 35;
+  if (editorialTextIncludes(category, ["restaurant", "food"])) return 75;
+  if (editorialTextIncludes(category, ["museum", "archaeolog"])) return 120;
+  if (editorialTextIncludes(category, ["beach"])) return 150;
+  return 45;
+}
+
+function inferEditorialBestArrivalWindow(category) {
+  if (editorialTextIncludes(category, ["beach", "harbor"])) return "morning or late afternoon";
+  if (editorialTextIncludes(category, ["coffee", "cafe"])) return "morning or mid-afternoon";
+  if (editorialTextIncludes(category, ["restaurant", "food"])) return "lunch or dinner";
+  return "";
+}
+
+function calculateWorkerEditorialConfidence(facts, hasRealHero) {
+  const factConfidence = facts.length ? facts.reduce((sum, fact) => sum + Number(fact.confidence || 0.5), 0) / facts.length : 0.35;
+  return Math.max(0.2, Math.min(0.96, Number((factConfidence + (hasRealHero ? 0.08 : 0)).toFixed(2))));
+}
+
+function getEditorialFactValue(facts, key) {
+  return facts.find((fact) => fact.key === key)?.value;
+}
+
+function editorialTextIncludes(category = "", terms = []) {
+  const value = String(category || "").toLowerCase();
+  return terms.some((term) => value.includes(term));
 }
 
 function createPlaceFromInput(input = {}) {

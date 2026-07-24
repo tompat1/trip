@@ -95,6 +95,7 @@ Current service-boundary migrations:
 
 - Nearby discovery: `src/main.js` calls `enrichmentService.discoverNearby()`, which calls the Worker first and keeps the browser Overpass path as fallback.
 - Media refresh: `src/main.js` calls `enrichmentService.refreshMedia()`, which calls `POST /api/places/:id/media/refresh` first and keeps the local Commons/Openverse aggregator as fallback when the Worker only has designed fallback media.
+- Editorial generation: `enrichmentService.generateEditorial()` calls `POST /api/places/:id/editorial/generate` first and falls back to the local deterministic composer if the Worker is unavailable. The synchronous `composeEditorial()` path remains available for instant render-time copy.
 
 Current deployed health endpoint:
 
@@ -116,6 +117,7 @@ Current D1-backed endpoints:
 - `POST /api/places/enrich-location` persists a basic `PlaceProfile` with core facts and placeholder editorial.
 - `GET /api/places/enrich?id=<placeId>` reads a stored `PlaceProfile`.
 - `POST /api/places/:id/media/refresh` returns reviewed D1 images when available, otherwise accepts curated/client place media such as `/assets/...` seed images, otherwise returns designed fallback media.
+- `POST /api/places/:id/editorial/generate` creates deterministic editorial from submitted place, facts, media and traveller/route context, upserts the place if needed, and persists the editorial profile to D1.
 - `POST /api/media/light` stores a small D1 light media object.
 - `GET /api/media/light/:key` reads a D1 light media object.
 

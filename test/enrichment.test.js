@@ -310,3 +310,77 @@ test("enrichment service falls back to local media providers after empty Worker 
   assert.ok(media.providerStatus.some((status) => status.provider === "commons"));
   assert.ok(media.providerStatus.some((status) => status.provider === "openverse"));
 });
+
+test("enrichment service generates editorial through the Worker", async () => {
+  let postedBody = null;
+  const service = createEnrichmentService({
+    apiBase: "https://trip.test",
+    fetchImpl: async (url, options = {}) => {
+      assert.match(url, /\/api\/places\/lions-square\/editorial\/generate$/);
+      postedBody = JSON.parse(options.body);
+      return {
+        ok: true,
+        async json() {
+          return {
+            editorial: {
+              standfirst: "Lions Square in Heraklion works as a coffee stop",
+              whyStop: "Lions Square is a focused coffee stop around Heraklion.",
+              atmosphere: "Small-scale.",
+              essentialExperience: ["Order coffee"],
+              dontMiss: ["Coffee quality"],
+              hiddenDetails: [],
+              idealFor: ["coffee reset"],
+              skipIf: ["it pulls you too far off route"],
+              suggestedDurationMinutes: 35,
+              bestArrivalWindow: "morning or mid-afternoon",
+              routeRole: "coffee-stop",
+              coffeeSummary: "Lions Square belongs in the coffee shortlist.",
+              foodSummary: "",
+              nextBestStop: "",
+              localTip: "Save it if the coffee matches your taste.",
+              practicalWarnings: [],
+              sourceIds: ["place:lions-square"],
+              generatedAt: "2026-07-24T12:00:00.000Z",
+              editorialVersion: "worker-deterministic-v1",
+              confidence: 0.82,
+            },
+          };
+        },
+      };
+    },
+  });
+
+  const editorial = await service.generateEditorial({
+    id: "lions-square",
+    title: "Lions Square",
+    category: "Coffee",
+    area: "Heraklion",
+  }, {
+    travellerProfile: { focus: "coffee" },
+  });
+
+  assert.equal(postedBody.place.title, "Lions Square");
+  assert.equal(editorial.routeRole, "coffee-stop");
+  assert.equal(editorial.editorialVersion, "worker-deterministic-v1");
+});
+
+test("enrichment service falls back to local editorial when Worker generation fails", async () => {
+  const service = createEnrichmentService({
+    apiBase: "https://trip.test",
+    fetchImpl: async () => {
+      throw new Error("worker unavailable");
+    },
+  });
+
+  const editorial = await service.generateEditorial({
+    id: "museum",
+    title: "Heraklion Archaeological Museum",
+    category: "Museum",
+    area: "City center",
+  }, {
+    travellerProfile: { focus: "arty" },
+  });
+
+  assert.match(editorial.whyStop, /cultural anchor/);
+  assert.equal(editorial.editorialVersion, "deterministic-v1");
+});

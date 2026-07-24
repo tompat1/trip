@@ -78,6 +78,19 @@ export function createEnrichmentService(options = {}) {
       return composeEditorialProfile(place, { ...options, facts });
     },
 
+    async generateEditorial(place, options = {}) {
+      const facts = options.facts || createVerifiedFactBundle(place, options.locationContext || {});
+      const localEditorial = composeEditorialProfile(place, { ...options, facts });
+      return generateWorkerEditorial(place, {
+        ...options,
+        facts,
+        apiBase,
+        fetchImpl,
+        now,
+        fallbackEditorial: localEditorial,
+      }).catch(() => localEditorial);
+    },
+
     async refreshMedia(place, options = {}) {
       const workerMedia = await refreshWorkerMedia(place, { ...options, apiBase, fetchImpl, now }).catch((error) => ({
         hero: null,
@@ -158,6 +171,25 @@ async function refreshWorkerMedia(place = {}, options = {}) {
     generatedAt: payload.media?.generatedAt || payload.generatedAt || options.now().toISOString(),
     refreshAfter: payload.media?.refreshAfter || payload.refreshAfter || new Date(options.now().getTime() + 1000 * 60 * 30).toISOString(),
   };
+}
+
+async function generateWorkerEditorial(place = {}, options = {}) {
+  const placeId = place.id || place.identity?.id || place.canonicalName || place.title || "place";
+  const url = buildApiUrl(options.apiBase, `/api/places/${encodeURIComponent(placeId)}/editorial/generate`);
+  const response = await options.fetchImpl(url.href, {
+    method: "POST",
+    headers: { Accept: "application/json", "Content-Type": "application/json" },
+    body: JSON.stringify({
+      place,
+      facts: options.facts || [],
+      media: options.media || {},
+      travellerProfile: options.travellerProfile || {},
+      routeContext: options.routeContext || {},
+    }),
+  });
+  if (!response.ok) throw new Error(`worker-editorial-http-${response.status}`);
+  const payload = await response.json();
+  return payload.editorial || options.fallbackEditorial;
 }
 
 function createMediaFailure(error, now) {
