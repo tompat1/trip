@@ -3722,6 +3722,18 @@ button:focus-visible {
   gap: 12px;
 }
 
+.admin-login-form {
+  display: grid;
+  gap: 12px;
+}
+
+.form-error {
+  margin: 0;
+  color: var(--red);
+  font-weight: 800;
+  line-height: 1.45;
+}
+
 .profile-focus-group {
   display: grid;
   gap: 12px;

@@ -5,6 +5,7 @@ import { resolveLocationContext } from "./placeResolver.js";
 import { createPlaceProfileContract, createProviderStatus, PROVIDER_STATUS } from "./schemas.js";
 
 const DEFAULT_WORKER_API_BASE = "https://trip.thomasrynell.workers.dev";
+export const ADMIN_SESSION_STORAGE_KEY = "trip-admin-session-token-v1";
 
 export function createEnrichmentService(options = {}) {
   const fetchImpl = options.fetchImpl || fetch;
@@ -14,8 +15,32 @@ export function createEnrichmentService(options = {}) {
   return {
     async getSession() {
       const url = buildApiUrl(apiBase, "/api/session");
-      const response = await fetchImpl(url.href, { headers: { Accept: "application/json" } });
+      const response = await fetchImpl(url.href, { headers: createApiHeaders() });
       if (!response.ok) throw new Error(`worker-session-http-${response.status}`);
+      return response.json();
+    },
+
+    async loginAdmin(input = {}) {
+      const url = buildApiUrl(apiBase, "/api/admin/session");
+      const response = await fetchImpl(url.href, {
+        method: "POST",
+        headers: createApiHeaders({ "Content-Type": "application/json" }),
+        body: JSON.stringify({
+          email: input.email,
+          password: input.password,
+        }),
+      });
+      if (!response.ok) throw new Error(`worker-admin-login-http-${response.status}`);
+      return response.json();
+    },
+
+    async logoutAdmin() {
+      const url = buildApiUrl(apiBase, "/api/admin/session");
+      const response = await fetchImpl(url.href, {
+        method: "DELETE",
+        headers: createApiHeaders(),
+      });
+      if (!response.ok) throw new Error(`worker-admin-logout-http-${response.status}`);
       return response.json();
     },
 
@@ -281,7 +306,7 @@ async function refreshWorkerMedia(place = {}, options = {}) {
   if (options.force) url.searchParams.set("refresh", "1");
   const response = await options.fetchImpl(url.href, {
     method: "POST",
-    headers: { Accept: "application/json", "Content-Type": "application/json" },
+    headers: createApiHeaders({ "Content-Type": "application/json" }),
     body: JSON.stringify({ place, force: Boolean(options.force) }),
   });
   if (!response.ok) throw new Error(`worker-media-http-${response.status}`);
@@ -292,6 +317,22 @@ async function refreshWorkerMedia(place = {}, options = {}) {
     generatedAt: payload.media?.generatedAt || payload.generatedAt || options.now().toISOString(),
     refreshAfter: payload.media?.refreshAfter || payload.refreshAfter || new Date(options.now().getTime() + 1000 * 60 * 30).toISOString(),
   };
+}
+
+function createApiHeaders(extra = {}) {
+  const headers = { Accept: "application/json", ...extra };
+  const token = getStoredAdminSessionToken();
+  if (token) headers.Authorization = `Bearer ${token}`;
+  return headers;
+}
+
+function getStoredAdminSessionToken() {
+  if (typeof window === "undefined" || !window.localStorage) return "";
+  try {
+    return window.localStorage.getItem(ADMIN_SESSION_STORAGE_KEY) || "";
+  } catch {
+    return "";
+  }
 }
 
 async function generateWorkerEditorial(place = {}, options = {}) {

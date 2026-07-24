@@ -96,7 +96,8 @@ After bindings are configured, move provider calls from the local `enrichmentSer
 
 Current service-boundary migrations:
 
-- Roles/session: the Worker recognizes `anonymous`, `traveler` and `admin` principals. `GET /api/session` exposes the current role. Manual forced media refresh, `PATCH /api/place-images/:id` and `POST /api/places/:id/hero/lock` now require admin. This is a lightweight token/header boundary, not a full user account system.
+- Roles/session: the Worker recognizes `anonymous`, `traveler` and `admin` principals. `GET /api/session` exposes the current role. Admin can be passed through the break-glass `TRIP_ADMIN_TOKEN` bearer token or a D1-backed admin session from `POST /api/admin/session`. Manual forced media refresh, `PATCH /api/place-images/:id` and `POST /api/places/:id/hero/lock` now require admin.
+- Admin bootstrap: set `TRIP_ADMIN_EMAIL` and `TRIP_ADMIN_PASSWORD` as Worker secrets, apply `migrations/0006_admin_accounts.sql`, then sign in from Profile → Admin access. The Worker creates/updates the D1 admin user with a PBKDF2 password hash and stores only hashed browser session tokens.
 - Location resolve: `collectAreaData()` calls `enrichmentService.resolveLocation()`, which calls `POST /api/location/resolve` first and falls back to the local resolver if the Worker is unavailable.
 - Nearby discovery: `src/main.js` calls `enrichmentService.discoverNearby()`, which calls the Worker first and keeps the browser Overpass path as fallback.
 - Media refresh: `src/main.js` calls `enrichmentService.refreshMedia()`, which calls `POST /api/places/:id/media/refresh` first. The Worker now checks reviewed D1 images, curated/client media, then the server-side media provider router: Wikimedia Commons/Wikidata plus Openverse, with D1 `place_images` persistence. Passing `refresh=1` or `{ "force": true }` bypasses stored D1 images for a live recheck, then falls back to stored media if the live pass is empty. The local media aggregator remains as a browser fallback when the Worker is unavailable or only returns designed fallback media.
@@ -115,6 +116,8 @@ Current deployed health endpoint:
 Current D1-backed endpoints:
 
 - `GET /api/session` returns the current principal role and capability flags.
+- `POST /api/admin/session` accepts the configured admin email/password, bootstraps the D1 admin account if needed, and returns a 12-hour bearer session token.
+- `DELETE /api/admin/session` revokes the current admin session token.
 - `POST /api/location/resolve` reverse-geocodes coordinates through Nominatim, persists a place profile, source row and core facts.
 - `GET /api/places/nearby` returns normalized nearby places for `lat`, `lng`, `radius` and `intent`.
   - Default behavior is stale-while-revalidate: if D1 has POIs near the coordinates, it returns them immediately and refreshes Overpass in the background.

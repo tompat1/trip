@@ -17,7 +17,7 @@ const JSON_HEADERS = {
   "Content-Type": "application/json; charset=utf-8",
   "Cache-Control": "no-store",
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET,POST,PATCH,OPTIONS",
+  "Access-Control-Allow-Methods": "GET,POST,PATCH,DELETE,OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type,Accept,Authorization,X-Trip-User-Id",
 };
 
@@ -40,7 +40,7 @@ async function handleApiRequest(request, env, ctx) {
   if (request.method === "OPTIONS") return json({}, 204);
   if (!route) return jsonError("not_found", "API route not found", 404);
 
-  const context = createApiContext(request, env, ctx, route.params);
+  const context = await createApiContext(request, env, ctx, route.params);
   return route.handler(context);
 }
 
@@ -48,6 +48,8 @@ function matchRoute(method, pathname) {
   const routes = [
     ["GET", /^\/api\/health$/, healthHandler],
     ["GET", /^\/api\/session$/, sessionHandler],
+    ["POST", /^\/api\/admin\/session$/, adminSessionCreateHandler],
+    ["DELETE", /^\/api\/admin\/session$/, adminSessionDeleteHandler],
     ["POST", /^\/api\/location\/resolve$/, locationResolveHandler],
     ["GET", /^\/api\/places\/nearby$/, nearbyPlacesHandler],
     ["POST", /^\/api\/places\/enrich-location$/, enrichLocationHandler],
@@ -71,13 +73,13 @@ function matchRoute(method, pathname) {
   return null;
 }
 
-function createApiContext(request, env, ctx, params) {
+async function createApiContext(request, env, ctx, params) {
   return {
     request,
     env,
     ctx,
     params,
-    principal: createRequestPrincipal(request, env),
+    principal: await createRequestPrincipalWithSession(request, env),
     hasDb: Boolean(env.TRIP_DB),
     hasCache: Boolean(env.TRIP_CACHE),
     hasMedia: Boolean(env.TRIP_MEDIA),
@@ -108,6 +110,44 @@ function sessionHandler(context) {
       canLockHero: isAdmin(context.principal),
       canUseTravelerFeatures: [ROLE.traveler, ROLE.admin].includes(context.principal.role),
     },
+  }, context));
+}
+
+async function adminSessionCreateHandler(context) {
+  if (!context.hasDb) return jsonError("missing_d1", "TRIP_DB is required for admin sessions.", 503);
+  const body = await readJson(context.request);
+  const email = normalizeEmail(body.email);
+  const password = String(body.password || "");
+  if (!email || !password) return jsonError("invalid_credentials", "Email and password are required.", 400);
+
+  const user = await findAdminUserByEmail(context, email) || await maybeBootstrapAdminUser(context, email, password);
+  if (!user || user.role !== ROLE.admin || !user.active) {
+    return jsonError("invalid_credentials", "Admin credentials were not accepted.", 401);
+  }
+
+  const ok = await verifyPassword(password, user.passwordHash);
+  if (!ok) return jsonError("invalid_credentials", "Admin credentials were not accepted.", 401);
+
+  const session = await createAdminSession(context, user);
+  return json(partialResponse("admin.sessionCreate", {
+    principal: {
+      role: ROLE.admin,
+      userId: user.email,
+      authType: "admin-session",
+    },
+    session: {
+      token: session.token,
+      expiresAt: session.expiresAt,
+    },
+  }, context));
+}
+
+async function adminSessionDeleteHandler(context) {
+  if (!context.hasDb) return jsonError("missing_d1", "TRIP_DB is required for admin sessions.", 503);
+  const bearer = getBearerToken(context.request);
+  if (bearer) await revokeAdminSession(context, bearer);
+  return json(partialResponse("admin.sessionDelete", {
+    revoked: Boolean(bearer),
   }, context));
 }
 
@@ -540,8 +580,7 @@ function createStorageStatus(context) {
 }
 
 export function createRequestPrincipal(request, env = {}) {
-  const authorization = request.headers.get("authorization") || "";
-  const bearer = authorization.match(/^Bearer\s+(.+)$/i)?.[1] || "";
+  const bearer = getBearerToken(request);
   const adminToken = env.TRIP_ADMIN_TOKEN || "";
   if (adminToken && bearer && constantTimeStringEqual(bearer, adminToken)) {
     return {
@@ -565,6 +604,17 @@ export function createRequestPrincipal(request, env = {}) {
     userId: "",
     authType: "none",
   };
+}
+
+async function createRequestPrincipalWithSession(request, env = {}) {
+  const principal = createRequestPrincipal(request, env);
+  if (principal.role === ROLE.admin || !env.TRIP_DB) return principal;
+
+  const bearer = getBearerToken(request);
+  if (!bearer) return principal;
+
+  const sessionPrincipal = await findAdminSessionPrincipal(env.TRIP_DB, bearer).catch(() => null);
+  return sessionPrincipal || principal;
 }
 
 function requireAdmin(context) {
@@ -599,6 +649,154 @@ function constantTimeStringEqual(a = "", b = "") {
     mismatch |= (left[index] || 0) ^ (right[index] || 0);
   }
   return mismatch === 0;
+}
+
+function getBearerToken(request) {
+  const authorization = request.headers.get("authorization") || "";
+  return authorization.match(/^Bearer\s+(.+)$/i)?.[1] || "";
+}
+
+function normalizeEmail(value = "") {
+  const email = String(value || "").trim().toLowerCase();
+  if (!email || email.length > 180) return "";
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? email : "";
+}
+
+async function findAdminUserByEmail(context, email) {
+  const row = await context.env.TRIP_DB.prepare(`
+    SELECT * FROM admin_users WHERE email = ? LIMIT 1
+  `).bind(email).first();
+  return row ? normalizeAdminUser(row) : null;
+}
+
+async function maybeBootstrapAdminUser(context, email, password) {
+  const bootstrapEmail = normalizeEmail(context.env.TRIP_ADMIN_EMAIL || "");
+  const bootstrapPassword = String(context.env.TRIP_ADMIN_PASSWORD || "");
+  if (!bootstrapEmail || !bootstrapPassword) return null;
+  if (email !== bootstrapEmail || password !== bootstrapPassword) return null;
+
+  const now = new Date().toISOString();
+  const user = {
+    id: stableId("admin-user", [email]),
+    email,
+    role: ROLE.admin,
+    passwordHash: await hashPassword(password),
+    active: true,
+    createdAt: now,
+    updatedAt: now,
+  };
+  await context.env.TRIP_DB.prepare(`
+    INSERT INTO admin_users (id, email, password_hash, role, active, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(email) DO UPDATE SET
+      password_hash = excluded.password_hash,
+      role = excluded.role,
+      active = excluded.active,
+      updated_at = excluded.updated_at
+  `).bind(user.id, user.email, user.passwordHash, user.role, 1, now, now).run();
+  return user;
+}
+
+function normalizeAdminUser(row = {}) {
+  return {
+    id: row.id || "",
+    email: row.email || "",
+    passwordHash: row.password_hash || "",
+    password_hash: row.password_hash || "",
+    role: row.role || "",
+    active: Boolean(row.active),
+    createdAt: row.created_at || "",
+    updatedAt: row.updated_at || "",
+  };
+}
+
+async function createAdminSession(context, user) {
+  const token = createOpaqueToken();
+  const tokenHash = await sha256Base64Url(token);
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + 1000 * 60 * 60 * 12).toISOString();
+  await context.env.TRIP_DB.prepare(`
+    INSERT INTO admin_sessions (id, user_id, token_hash, expires_at, created_at, last_seen_at, revoked_at)
+    VALUES (?, ?, ?, ?, ?, ?, '')
+  `).bind(stableId("admin-session", [tokenHash]), user.id, tokenHash, expiresAt, now.toISOString(), now.toISOString()).run();
+  return { token, expiresAt };
+}
+
+async function revokeAdminSession(context, token) {
+  const tokenHash = await sha256Base64Url(token);
+  await context.env.TRIP_DB.prepare(`
+    UPDATE admin_sessions SET revoked_at = ? WHERE token_hash = ? AND revoked_at = ''
+  `).bind(new Date().toISOString(), tokenHash).run();
+}
+
+async function findAdminSessionPrincipal(db, token) {
+  const tokenHash = await sha256Base64Url(token);
+  const now = new Date().toISOString();
+  const row = await db.prepare(`
+    SELECT u.email, u.role
+    FROM admin_sessions s
+    JOIN admin_users u ON u.id = s.user_id
+    WHERE s.token_hash = ?
+      AND s.revoked_at = ''
+      AND s.expires_at > ?
+      AND u.active = 1
+    LIMIT 1
+  `).bind(tokenHash, now).first();
+  if (!row || row.role !== ROLE.admin) return null;
+  await db.prepare(`
+    UPDATE admin_sessions SET last_seen_at = ? WHERE token_hash = ?
+  `).bind(now, tokenHash).run();
+  return {
+    role: ROLE.admin,
+    userId: row.email || "admin",
+    authType: "admin-session",
+  };
+}
+
+async function hashPassword(password) {
+  const salt = createOpaqueToken(18);
+  const iterations = 100000;
+  const digest = await pbkdf2Digest(password, salt, iterations);
+  return `pbkdf2$${iterations}$${salt}$${digest}`;
+}
+
+async function verifyPassword(password, storedHash = "") {
+  const [scheme, iterations, salt, digest] = String(storedHash || "").split("$");
+  if (scheme !== "pbkdf2" || !iterations || !salt || !digest) return false;
+  const candidate = await pbkdf2Digest(password, salt, Number(iterations));
+  return constantTimeStringEqual(candidate, digest);
+}
+
+async function pbkdf2Digest(password, salt, iterations) {
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey("raw", encoder.encode(password), "PBKDF2", false, ["deriveBits"]);
+  const bits = await crypto.subtle.deriveBits({
+    name: "PBKDF2",
+    hash: "SHA-256",
+    salt: encoder.encode(salt),
+    iterations: Number.isFinite(iterations) ? iterations : 100000,
+  }, key, 256);
+  return base64UrlEncode(new Uint8Array(bits));
+}
+
+async function sha256Base64Url(value = "") {
+  const bytes = new TextEncoder().encode(String(value));
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  return base64UrlEncode(new Uint8Array(digest));
+}
+
+function createOpaqueToken(byteLengthValue = 32) {
+  const bytes = new Uint8Array(byteLengthValue);
+  crypto.getRandomValues(bytes);
+  return base64UrlEncode(bytes);
+}
+
+function base64UrlEncode(bytes) {
+  let binary = "";
+  bytes.forEach((byte) => {
+    binary += String.fromCharCode(byte);
+  });
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
 }
 
 function createCoordinatesOnlyProfile({ id = "coordinates-only", title = "Current location", coordinates = null } = {}) {

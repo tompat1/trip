@@ -1,7 +1,7 @@
 import * as L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { creteSeed } from "./data/creteSeed.js";
-import { enrichmentService } from "./enrichment/enrichmentService.js";
+import { ADMIN_SESSION_STORAGE_KEY, enrichmentService } from "./enrichment/enrichmentService.js";
 import { normalizeSeedPlace, normalizeUserPlace } from "./enrichment/normalizers.js";
 import "./styles.css";
 
@@ -104,14 +104,14 @@ const state = {
     current: null,
   },
   placeEditorOpen: false,
-  session: {
+  adminAuth: {
+    email: "",
+    password: "",
     status: "idle",
-    principal: { role: "anonymous", userId: "", authType: "none" },
-    roles: {
-      canReviewMedia: false,
-      canLockHero: false,
-      canUseTravelerFeatures: false,
-    },
+    error: "",
+  },
+  session: {
+    ...createAnonymousSession("idle"),
   },
   placeImageCache: readCachedPlaceImages(),
   refreshingImageIds: new Set(),
@@ -1200,12 +1200,13 @@ function renderMoments() {
 
 function renderProfile() {
   const activeFocus = travelFocusOptions.find((option) => option.id === state.travelFocus) || travelFocusOptions[0];
+  const isAdmin = canRefreshPlaceImages();
   return `
     <div class="profile-page">
       <section class="profile-panel">
         <span class="avatar big">TR</span>
         <h2>${state.trip.profile}</h2>
-        <p>${state.trip.handle} · ${escapeHtml(activeFocus.label)} focus</p>
+        <p>${state.trip.handle} · ${escapeHtml(activeFocus.label)} focus · ${isAdmin ? "Admin" : "Traveler"}</p>
         <div class="stats">
           <span><strong>1</strong> trip</span>
           <span><strong>${state.savedIds.size}</strong> saved</span>
@@ -1236,7 +1237,32 @@ function renderProfile() {
           </div>
         </div>
       </section>
+      ${renderAdminAccessPanel()}
     </div>
+  `;
+}
+
+function renderAdminAccessPanel() {
+  if (canRefreshPlaceImages()) {
+    return `
+      <section class="preferences-panel">
+        <h2>Admin access</h2>
+        <p class="panel-note">Signed in as ${escapeHtml(state.session.principal.userId || "admin")}. Media refresh and review controls are unlocked.</p>
+        <button class="ghost-button" data-admin-logout>Sign out admin</button>
+      </section>
+    `;
+  }
+
+  return `
+    <section class="preferences-panel">
+      <h2>Admin access</h2>
+      <form class="admin-login-form" data-admin-login>
+        <label>Email<input name="email" type="email" autocomplete="username" value="${escapeHtml(state.adminAuth.email)}" aria-label="Admin email"/></label>
+        <label>Password<input name="password" type="password" autocomplete="current-password" value="${escapeHtml(state.adminAuth.password)}" aria-label="Admin password"/></label>
+        ${state.adminAuth.error ? `<p class="form-error">${escapeHtml(state.adminAuth.error)}</p>` : ""}
+        <button class="primary-button" type="submit" ${state.adminAuth.status === "loading" ? "disabled" : ""}>${state.adminAuth.status === "loading" ? "Signing in" : "Sign in as admin"}</button>
+      </form>
+    </section>
   `;
 }
 
@@ -2046,6 +2072,51 @@ function bindEvents() {
     });
   });
 
+  document.querySelectorAll("[data-admin-login]").forEach((form) => {
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const formData = new FormData(form);
+      state.adminAuth = {
+        email: String(formData.get("email") || "").trim(),
+        password: String(formData.get("password") || ""),
+        status: "loading",
+        error: "",
+      };
+      render();
+
+      try {
+        const payload = await enrichmentService.loginAdmin(state.adminAuth);
+        if (payload.session?.token) {
+          localStorage.setItem(ADMIN_SESSION_STORAGE_KEY, payload.session.token);
+        }
+        state.adminAuth = { email: state.adminAuth.email, password: "", status: "idle", error: "" };
+        initSessionContext({ force: true });
+      } catch {
+        state.adminAuth = {
+          ...state.adminAuth,
+          password: "",
+          status: "error",
+          error: "Admin sign-in failed. Check the email and password.",
+        };
+        render();
+      }
+    });
+  });
+
+  document.querySelectorAll("[data-admin-logout]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      button.disabled = true;
+      try {
+        await enrichmentService.logoutAdmin();
+      } catch {
+        // Clearing the local token is enough to lock admin UI for this browser.
+      }
+      localStorage.removeItem(ADMIN_SESSION_STORAGE_KEY);
+      state.session = createAnonymousSession("idle");
+      render();
+    });
+  });
+
   document.querySelectorAll("[data-day]").forEach((button) => {
     button.addEventListener("click", () => {
       state.activeDay = Number(button.dataset.day);
@@ -2592,8 +2663,20 @@ function getCommonsImageUrl(fileName) {
   return `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(fileName)}`;
 }
 
-function initSessionContext() {
-  if (state.session.status !== "idle" || sessionLookupInFlight) return;
+function createAnonymousSession(status = "idle") {
+  return {
+    status,
+    principal: { role: "anonymous", userId: "", authType: "none" },
+    roles: {
+      canReviewMedia: false,
+      canLockHero: false,
+      canUseTravelerFeatures: false,
+    },
+  };
+}
+
+function initSessionContext({ force = false } = {}) {
+  if (!force && (state.session.status !== "idle" || sessionLookupInFlight)) return;
   sessionLookupInFlight = true;
   state.session = { ...state.session, status: "loading" };
   enrichmentService.getSession()
@@ -2613,7 +2696,7 @@ function initSessionContext() {
       };
     })
     .catch(() => {
-      state.session = { ...state.session, status: "error" };
+      state.session = createAnonymousSession("error");
     })
     .finally(() => {
       sessionLookupInFlight = false;
