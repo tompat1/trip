@@ -64,6 +64,7 @@ const state = {
   routeOptimized: false,
   acknowledgedAlerts: new Set(),
   selectedMapPlaceId: null,
+  mapStatusDismissed: false,
   locationContext: {
     automatic: true,
     attempted: false,
@@ -493,10 +494,7 @@ function renderHome() {
 
       <section class="home-map-card">
         ${renderHomeMap()}
-        <div class="map-status-card">
-          <strong>${state.locationContext.coordinates ? `Near ${escapeHtml(weatherPlace)}` : "Location pending"}</strong>
-          <span>Accuracy: ${accuracy}</span>
-        </div>
+        ${state.mapStatusDismissed ? "" : renderMapStatusCard(weatherPlace, accuracy)}
       </section>
 
       <section class="weather-card">
@@ -595,6 +593,25 @@ function renderCompactWeatherCard(weather, weatherPlace) {
       ${forecast.map((day) => `<span><em>${escapeHtml(day.day)}</em><strong>${escapeHtml(day.temp)}</strong><small>${escapeHtml(day.label)}</small></span>`).join("")}
     </div>
     <small class="weather-source">${weather ? `${Math.round(weather.windSpeed)} km/h wind · Open-Meteo` : "Allow location to load the forecast"}</small>
+  `;
+}
+
+function renderMapStatusCard(weatherPlace, accuracy) {
+  const hasLocation = Boolean(state.locationContext.coordinates);
+  const title = hasLocation ? `Near ${weatherPlace}` : "Location pending";
+  const actionLabel = state.locationContext.status === "locating" ? "Updating" : hasLocation ? "Refresh" : "Locate";
+  return `
+    <div class="map-status-card">
+      <div>
+        <strong>${escapeHtml(title)}</strong>
+        <span>Accuracy: ${escapeHtml(accuracy)}</span>
+      </div>
+      <div class="map-status-actions">
+        <button data-refresh-position aria-label="Refresh current position">${renderIcon("locate")}</button>
+        <button data-dismiss-map-status aria-label="Remove map status panel">×</button>
+      </div>
+      <small>${escapeHtml(actionLabel)}</small>
+    </div>
   `;
 }
 
@@ -1170,7 +1187,12 @@ function renderTinyPlace(place) {
 }
 
 function renderHomeMap() {
-  return `<div id="home-map" class="leaflet-map leaflet-home-map" role="img" aria-label="Live map preview with nearby places"></div>`;
+  return `
+    <div class="map-shell">
+      <div id="home-map" class="leaflet-map leaflet-home-map" role="img" aria-label="Live map preview with nearby places"></div>
+      ${renderMapLoadingOverlay("Preparing nearby map")}
+    </div>
+  `;
 }
 
 function renderHomeChecklist() {
@@ -1658,8 +1680,9 @@ function renderSavedPlace(place) {
 
 function renderLiveMap(places) {
   return `
-    <div class="live-map-shell">
+    <div class="map-shell live-map-shell">
       <div id="live-map" class="leaflet-map leaflet-live-map" role="img" aria-label="Live OpenStreetMap view with current location and saved places"></div>
+      ${renderMapLoadingOverlay("Centering your live map")}
       <button
         class="map-locate-button"
         data-center-live-location
@@ -1690,8 +1713,36 @@ function renderAgendaItems(dayIndex) {
 
 function renderMapCanvas() {
   return `
-    <div id="trip-map" class="leaflet-map leaflet-trip-map" role="img" aria-label="OpenStreetMap view of trip places"></div>
+    <div class="map-shell trip-map-shell">
+      <div id="trip-map" class="leaflet-map leaflet-trip-map" role="img" aria-label="OpenStreetMap view of trip places"></div>
+      ${renderMapLoadingOverlay("Loading trip map")}
+      <button
+        class="map-locate-button"
+        data-center-map-location
+        aria-label="Update and center on current location"
+        title="Update current location"
+      >
+        ${renderIcon("locate")}
+      </button>
+    </div>
   `;
+}
+
+function renderMapLoadingOverlay(label) {
+  return `
+    <div class="map-loading-overlay" aria-live="polite">
+      <span></span>
+      <strong>${escapeHtml(label)}</strong>
+      <small>${escapeHtml(getMapLoadingMessage())}</small>
+    </div>
+  `;
+}
+
+function getMapLoadingMessage() {
+  if (state.locationContext.status === "locating") return "Updating current position";
+  if (!state.locationContext.coordinates) return "Using Heraklion until location is allowed";
+  if (state.nearbyDiscovery.status === "loading") return "Scanning nearby places";
+  return "Fetching OpenStreetMap tiles";
 }
 
 function renderMoment(moment) {
@@ -1871,7 +1922,15 @@ function bindEvents() {
 
   document.querySelectorAll("[data-refresh-position]").forEach((button) => {
     button.addEventListener("click", () => {
+      state.mapStatusDismissed = false;
       requestCurrentPosition({ force: true, centerLiveMap: state.activeView === "live" });
+    });
+  });
+
+  document.querySelectorAll("[data-dismiss-map-status]").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.mapStatusDismissed = true;
+      render();
     });
   });
 
@@ -1880,6 +1939,14 @@ function bindEvents() {
       button.classList.add("is-locating");
       if (state.locationContext.coordinates) centerLiveMapOnCurrentLocation();
       requestCurrentPosition({ force: true, centerLiveMap: true });
+    });
+  });
+
+  document.querySelectorAll("[data-center-map-location]").forEach((button) => {
+    button.addEventListener("click", () => {
+      button.classList.add("is-locating");
+      if (state.locationContext.coordinates) centerLeafletMapOnCurrentLocation("trip-map");
+      requestCurrentPosition({ force: true, centerMapId: "trip-map" });
     });
   });
 
@@ -2992,7 +3059,7 @@ async function fetchCountryIntel(countryName) {
   };
 }
 
-function requestCurrentPosition({ force = false, centerLiveMap = false } = {}) {
+function requestCurrentPosition({ force = false, centerLiveMap = false, centerMapId = "" } = {}) {
   if (!navigator.geolocation) {
     state.locationContext = {
       ...state.locationContext,
@@ -3027,6 +3094,7 @@ function requestCurrentPosition({ force = false, centerLiveMap = false } = {}) {
       };
       render();
       if (centerLiveMap) scheduleLiveMapCenter(coordinates);
+      if (centerMapId) scheduleMapCenter(centerMapId, coordinates);
 
       if (cached) {
         applyLocationContext({
@@ -3037,10 +3105,11 @@ function requestCurrentPosition({ force = false, centerLiveMap = false } = {}) {
         });
         render();
         if (centerLiveMap) scheduleLiveMapCenter(coordinates);
+        if (centerMapId) scheduleMapCenter(centerMapId, coordinates);
         return;
       }
 
-      collectAreaData(coordinates, position.coords.accuracy, { centerLiveMap });
+      collectAreaData(coordinates, position.coords.accuracy, { centerLiveMap, centerMapId });
     },
     (error) => {
       const denied = error.code === error.PERMISSION_DENIED;
@@ -3059,7 +3128,7 @@ function requestCurrentPosition({ force = false, centerLiveMap = false } = {}) {
   );
 }
 
-async function collectAreaData(coordinates, accuracy, { centerLiveMap = false } = {}) {
+async function collectAreaData(coordinates, accuracy, { centerLiveMap = false, centerMapId = "" } = {}) {
   const cacheKey = getLocationCacheKey(coordinates);
   const url = new URL(NOMINATIM_REVERSE_ENDPOINT);
   url.searchParams.set("format", "jsonv2");
@@ -3099,6 +3168,7 @@ async function collectAreaData(coordinates, accuracy, { centerLiveMap = false } 
     writeCachedLocation(context);
     applyLocationContext(context);
     if (centerLiveMap) scheduleLiveMapCenter(coordinates);
+    if (centerMapId) scheduleMapCenter(centerMapId, coordinates);
   } catch (error) {
     state.locationContext = {
       ...state.locationContext,
@@ -3537,23 +3607,31 @@ function initLeafletMaps() {
 }
 
 function centerLiveMapOnCurrentLocation() {
+  return centerLeafletMapOnCurrentLocation("live-map", { zoom: 17, openPopup: true });
+}
+
+function centerLeafletMapOnCurrentLocation(mapId, { zoom = 17, openPopup = false } = {}) {
   const coordinates = state.locationContext.coordinates;
-  const liveMap = leafletMaps.get("live-map");
-  if (!liveMap || !coordinates) return false;
-  liveMap.setView(coordinates, Math.max(liveMap.getZoom(), 17), { animate: true });
-  liveMap.eachLayer((layer) => {
+  const map = leafletMaps.get(mapId);
+  if (!map || !coordinates) return false;
+  map.setView(coordinates, Math.max(map.getZoom(), zoom), { animate: true });
+  if (openPopup) map.eachLayer((layer) => {
     if (layer.options?.tripRole === "current-location") layer.openPopup?.();
   });
   return true;
 }
 
 function scheduleLiveMapCenter(coordinates = state.locationContext.coordinates) {
+  scheduleMapCenter("live-map", coordinates, { zoom: 17, openPopup: true });
+}
+
+function scheduleMapCenter(mapId, coordinates = state.locationContext.coordinates, options = {}) {
   if (!coordinates) return;
   requestAnimationFrame(() => {
-    const centered = centerLiveMapOnCurrentLocation();
-    if (!centered && document.querySelector("#live-map")) {
+    const centered = centerLeafletMapOnCurrentLocation(mapId, options);
+    if (!centered && document.querySelector(`#${CSS.escape(mapId)}`)) {
       scheduleLeafletMaps();
-      requestAnimationFrame(centerLiveMapOnCurrentLocation);
+      requestAnimationFrame(() => centerLeafletMapOnCurrentLocation(mapId, options));
     }
   });
 }
@@ -3580,7 +3658,7 @@ function createLeafletMap(container, places, options = {}, retry = true) {
   try {
     map = L.map(container, {
       scrollWheelZoom: false,
-      zoomControl: true,
+      zoomControl: false,
     });
   } catch (error) {
     if (retry && /already initialized/i.test(error.message || "")) {
@@ -3592,10 +3670,19 @@ function createLeafletMap(container, places, options = {}, retry = true) {
     return null;
   }
 
-  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+  L.control.zoom({ position: "topleft" }).addTo(map);
+
+  const tileLayer = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
     maxZoom: 19,
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-  }).addTo(map);
+  });
+
+  tileLayer
+    .on("load", () => markMapLoaded(container))
+    .on("tileerror", () => markMapLoaded(container, { delayed: true }))
+    .addTo(map);
+
+  window.setTimeout(() => markMapLoaded(container, { delayed: true }), 4500);
 
   map.on("popupopen", (event) => {
     event.popup.getElement()?.querySelectorAll("[data-edit-user-place]").forEach((button) => {
@@ -3731,6 +3818,13 @@ function resetLeafletContainer(container) {
     "leaflet-touch-drag",
     "leaflet-touch-zoom"
   );
+}
+
+function markMapLoaded(container, { delayed = false } = {}) {
+  const shell = container?.closest(".map-shell");
+  if (!shell) return;
+  shell.classList.add("is-loaded");
+  if (delayed) shell.classList.add("is-delayed");
 }
 
 if ("serviceWorker" in navigator && import.meta.env.PROD) {
