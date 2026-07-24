@@ -1,6 +1,8 @@
 const API_PREFIX = "/api/";
 const API_VERSION = "overpass-nearby-v1";
 const NOMINATIM_REVERSE_ENDPOINT = "https://nominatim.openstreetmap.org/reverse";
+const COMMONS_API = "https://commons.wikimedia.org/w/api.php";
+const WIKIDATA_ENTITY_DATA = "https://www.wikidata.org/wiki/Special:EntityData/";
 const OVERPASS_ENDPOINTS = [
   "https://overpass-api.de/api/interpreter",
   "https://overpass.kumi.systems/api/interpreter",
@@ -273,17 +275,34 @@ async function enrichPlaceHandler(context) {
 async function mediaRefreshHandler(context) {
   const [placeId] = context.params;
   const body = await readJson(context.request);
+  const inputPlace = { ...body.place, id: placeId };
   const storedMedia = await getStoredPlaceMedia(context, placeId);
-  const curatedMedia = storedMedia.hero ? storedMedia : createCuratedPlaceMedia({ ...body.place, id: placeId }, context);
-  const media = curatedMedia.hero ? curatedMedia : createFallbackPlaceMedia({ ...body.place, id: placeId }, context);
+  const curatedMedia = storedMedia.hero ? storedMedia : createCuratedPlaceMedia(inputPlace, context);
+  const providerStatus = [createStorageStatus(context)];
+  let media = storedMedia.hero ? storedMedia : curatedMedia.hero ? curatedMedia : null;
+  let mediaProvider = storedMedia.hero ? "d1-place-images" : curatedMedia.hero ? "curated-place-media" : "";
+
+  if (!media) {
+    const commons = await fetchAndPersistCommonsMedia(context, inputPlace);
+    providerStatus.push(commons.status);
+    if (commons.media.hero) {
+      media = commons.media;
+      mediaProvider = "commons";
+    }
+  }
+
+  if (!media) {
+    media = createFallbackPlaceMedia(inputPlace, context);
+    mediaProvider = "designed-fallback-media";
+  }
 
   return json(partialResponse("places.mediaRefresh", {
     placeId,
     media,
     providerStatus: [
-      createStorageStatus(context),
+      ...providerStatus,
       {
-        provider: storedMedia.hero ? "d1-place-images" : media.hero?.imageUrl ? "curated-place-media" : "designed-fallback-media",
+        provider: mediaProvider,
         status: storedMedia.hero || media.hero ? "ok" : "empty",
         error: "",
         count: [media.hero, ...(media.gallery || [])].filter((image) => image?.imageUrl).length,
@@ -784,6 +803,405 @@ async function getStoredPlaceMedia(context, placeId) {
   const hero = images.find((image) => image.visualRole === "hero") || images[0];
   const gallery = images.filter((image) => image.id !== hero.id);
   return createMediaPayload(hero, gallery, hero.illustrativeOnly ? "fallback" : gallery.length ? "complete" : "partial");
+}
+
+async function fetchAndPersistCommonsMedia(context, place = {}) {
+  const startedAt = Date.now();
+  try {
+    const normalizedPlace = createPlaceFromInput({
+      ...place,
+      title: place.canonicalName || place.title || place.name || place.id,
+      coordinates: place.coordinates || place.identity?.coordinates,
+      wikidataId: place.wikidataId || place.identity?.wikidataId,
+      categories: place.categories || [place.category || place.tag].filter(Boolean),
+      website: place.website || place.officialWebsite || place.identity?.officialWebsite,
+    });
+    const candidates = await searchCommonsMediaForPlace(normalizedPlace, context.request);
+    const ranked = candidates
+      .map((image) => rankWorkerImageCandidate(image, normalizedPlace))
+      .filter((image) => !image.rejected)
+      .sort((a, b) => b.finalScore - a.finalScore)
+      .slice(0, 10);
+
+    if (context.hasDb && ranked.length) {
+      await persistPlaceProfile(context, {
+        place: normalizedPlace,
+        facts: createCoreFacts(normalizedPlace),
+        editorial: null,
+        source: {
+          provider: "commons",
+          providerId: normalizedPlace.id,
+          name: "Wikimedia Commons",
+          type: "media",
+          url: "",
+          confidence: 0.7,
+        },
+      });
+      await persistPlaceImages(context, normalizedPlace.id, ranked);
+    }
+
+    const hero = ranked.find((image) => image.visualRole === "hero" && image.finalScore >= 58) || ranked[0] || null;
+    const gallery = hero ? ranked.filter((image) => image.id !== hero.id).slice(0, 8) : [];
+    return {
+      media: hero ? createMediaPayload(hero, gallery, gallery.length ? "complete" : "partial") : createEmptyMedia("fallback"),
+      status: {
+        provider: "commons",
+        status: ranked.length ? "ok" : "empty",
+        error: ranked.length ? "" : "no-reviewed-candidates",
+        count: ranked.length,
+        latencyMs: Date.now() - startedAt,
+        checkedAt: new Date().toISOString(),
+      },
+    };
+  } catch (error) {
+    return {
+      media: createEmptyMedia("fallback"),
+      status: {
+        provider: "commons",
+        status: "error",
+        error: error?.name === "AbortError" ? "timeout" : "commons-media-failed",
+        count: 0,
+        latencyMs: Date.now() - startedAt,
+        checkedAt: new Date().toISOString(),
+      },
+    };
+  }
+}
+
+async function persistPlaceImages(context, placeId, images = []) {
+  const now = new Date().toISOString();
+  for (const image of images) {
+    await context.env.TRIP_DB.prepare(`
+      INSERT INTO place_images (
+        id, place_id, provider, provider_id, image_url, thumbnail_url, source_page_url,
+        creator_name, creator_url, license_code, license_name, license_url, attribution_text,
+        width, height, exact_location, approximate_location, illustrative_only, visual_role,
+        relevance_score, quality_score, final_score, perceptual_hash, review_status,
+        hero_locked, checked_at, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(id) DO UPDATE SET
+        image_url = excluded.image_url,
+        thumbnail_url = excluded.thumbnail_url,
+        source_page_url = excluded.source_page_url,
+        creator_name = excluded.creator_name,
+        creator_url = excluded.creator_url,
+        license_code = excluded.license_code,
+        license_name = excluded.license_name,
+        license_url = excluded.license_url,
+        attribution_text = excluded.attribution_text,
+        width = excluded.width,
+        height = excluded.height,
+        exact_location = excluded.exact_location,
+        approximate_location = excluded.approximate_location,
+        illustrative_only = excluded.illustrative_only,
+        visual_role = excluded.visual_role,
+        relevance_score = excluded.relevance_score,
+        quality_score = excluded.quality_score,
+        final_score = excluded.final_score,
+        review_status = excluded.review_status,
+        checked_at = excluded.checked_at,
+        updated_at = excluded.updated_at
+    `).bind(
+      image.id,
+      placeId,
+      image.provider,
+      image.providerId || "",
+      image.imageUrl || "",
+      image.thumbnailUrl || image.imageUrl || "",
+      image.sourcePageUrl || "",
+      image.creatorName || "",
+      image.creatorUrl || "",
+      image.licenseCode || "",
+      image.licenseName || "",
+      image.licenseUrl || "",
+      image.attributionText || "",
+      Number(image.width || 0),
+      Number(image.height || 0),
+      image.exactLocation ? 1 : 0,
+      image.approximateLocation ? 1 : 0,
+      image.illustrativeOnly ? 1 : 0,
+      image.visualRole || "illustrative",
+      Number(image.relevanceScore || 0),
+      Number(image.qualityScore || 0),
+      Number(image.finalScore || 0),
+      image.perceptualHash || "",
+      image.reviewStatus || "pending",
+      image.heroLocked ? 1 : 0,
+      image.checkedAt || now,
+      now,
+      now
+    ).run();
+  }
+}
+
+async function searchCommonsMediaForPlace(place, request) {
+  const fromWikidata = await searchCommonsFromWikidata(place, request);
+  const fromGeo = await searchCommonsGeosearch(place, request);
+  const fromText = await searchCommonsText(place, request);
+  return dedupeWorkerImages([...fromWikidata, ...fromGeo, ...fromText]);
+}
+
+async function searchCommonsFromWikidata(place, request) {
+  const wikidataId = normalizeWikidataId(place.wikidataId || "");
+  if (!wikidataId) return [];
+  const response = await fetchWithTimeout(`${WIKIDATA_ENTITY_DATA}${wikidataId}.json`, request, 6500);
+  if (!response.ok) return [];
+  const data = await response.json();
+  const entity = data.entities?.[wikidataId];
+  const claims = entity?.claims || {};
+  const p18 = claims.P18?.[0]?.mainsnak?.datavalue?.value;
+  const p373 = claims.P373?.[0]?.mainsnak?.datavalue?.value;
+  const images = [];
+  if (p18) images.push(...await searchCommonsText({ ...place, mediaQueries: [`File:${p18}`] }, request, { sourceTrust: 0.94, visualRole: "hero" }));
+  if (p373) images.push(...await searchCommonsText({ ...place, mediaQueries: [`incategory:"${p373}"`] }, request, { sourceTrust: 0.88 }));
+  return images;
+}
+
+async function searchCommonsGeosearch(place, request) {
+  if (!Array.isArray(place.coordinates)) return [];
+  const [lat, lng] = place.coordinates;
+  const url = new URL(COMMONS_API);
+  url.searchParams.set("origin", "*");
+  url.searchParams.set("action", "query");
+  url.searchParams.set("format", "json");
+  url.searchParams.set("generator", "geosearch");
+  url.searchParams.set("ggsprimary", "all");
+  url.searchParams.set("ggsnamespace", "6");
+  url.searchParams.set("ggsradius", String(getWorkerImageSearchRadius(place)));
+  url.searchParams.set("ggscoord", `${lat}|${lng}`);
+  url.searchParams.set("ggslimit", "24");
+  url.searchParams.set("prop", "imageinfo|coordinates");
+  url.searchParams.set("iiprop", "url|size|mime|extmetadata");
+  url.searchParams.set("iiurlwidth", "1600");
+  const response = await fetchWithTimeout(url, request, 7000);
+  if (!response.ok) return [];
+  const data = await response.json();
+  return normalizeCommonsPages(Object.values(data.query?.pages || {}), place, { sourceTrust: 0.92 });
+}
+
+async function searchCommonsText(place, request, defaults = {}) {
+  const all = [];
+  for (const query of getWorkerMediaQueries(place).slice(0, 4)) {
+    const url = new URL(COMMONS_API);
+    url.searchParams.set("origin", "*");
+    url.searchParams.set("action", "query");
+    url.searchParams.set("format", "json");
+    url.searchParams.set("generator", "search");
+    url.searchParams.set("gsrnamespace", "6");
+    url.searchParams.set("gsrlimit", "10");
+    url.searchParams.set("gsrsearch", query);
+    url.searchParams.set("prop", "imageinfo|coordinates");
+    url.searchParams.set("iiprop", "url|size|mime|extmetadata");
+    url.searchParams.set("iiurlwidth", "1600");
+    const response = await fetchWithTimeout(url, request, 7000);
+    if (!response.ok) continue;
+    const data = await response.json();
+    all.push(...normalizeCommonsPages(Object.values(data.query?.pages || {}), place, defaults));
+  }
+  return all;
+}
+
+function normalizeCommonsPages(pages = [], place = {}, defaults = {}) {
+  return pages.map((page) => {
+    const info = page.imageinfo?.[0];
+    if (!info?.url || !/^image\//.test(info.mime || "")) return null;
+    const metadata = info.extmetadata || {};
+    const width = Number(info.width || 0);
+    const height = Number(info.height || 0);
+    const sourcePageUrl = info.descriptionurl || "";
+    return {
+      id: stableId("commons-image", [page.pageid, page.title, info.url]),
+      placeId: place.id || "",
+      provider: "commons",
+      providerId: String(page.pageid || page.title || ""),
+      imageUrl: info.url,
+      thumbnailUrl: info.thumburl || info.url,
+      sourcePageUrl,
+      creatorName: truncateText(stripHtml(metadata.Artist?.value || metadata.Credit?.value || ""), 180),
+      creatorUrl: "",
+      licenseCode: truncateText(stripHtml(metadata.LicenseShortName?.value || ""), 80),
+      licenseName: truncateText(stripHtml(metadata.License?.value || metadata.UsageTerms?.value || ""), 120),
+      licenseUrl: sanitizeUrl(metadata.LicenseUrl?.value || ""),
+      attributionText: truncateText(stripHtml(metadata.Attribution?.value || metadata.Credit?.value || metadata.Artist?.value || "Wikimedia Commons"), 180),
+      width,
+      height,
+      aspectRatio: width && height ? width / height : 0,
+      exactLocation: Boolean(page.coordinates?.length),
+      approximateLocation: !page.coordinates?.length,
+      illustrativeOnly: false,
+      latitude: page.coordinates?.[0]?.lat,
+      longitude: page.coordinates?.[0]?.lon,
+      visualRole: defaults.visualRole || inferWorkerVisualRole(place, width, height),
+      sourceTrust: defaults.sourceTrust || 0.84,
+      checkedAt: new Date().toISOString(),
+      reviewStatus: "pending",
+      rawTitle: page.title || "",
+    };
+  }).filter(Boolean);
+}
+
+function rankWorkerImageCandidate(image, place) {
+  const longEdge = Math.max(Number(image.width || 0), Number(image.height || 0));
+  const aspect = image.aspectRatio || (image.width && image.height ? image.width / image.height : 0);
+  const exactNameMatch = getWorkerNameMatchScore(image.rawTitle || image.sourcePageUrl, place);
+  const distanceMeters = getWorkerImageDistanceMeters(image, place);
+  const nearbyRadius = getWorkerImageSearchRadius(place);
+  const weakNameMatch = exactNameMatch < 0.25;
+  const possibleMismatch = weakNameMatch && (!image.exactLocation || distanceMeters > nearbyRadius) ? 1 : 0;
+  const genericStockPenalty = isGenericWorkerRegionalImage(image, place) ? 1 : 0;
+  const rejectionReason = getWorkerImageRejectionReason(image, longEdge, { weakNameMatch, distanceMeters, nearbyRadius });
+  const finalScore = clampNumber(
+    exactNameMatch * 30 +
+    getWorkerGeotagScore(distanceMeters, image.exactLocation) * 25 +
+    exactNameMatch * 15 +
+    (image.sourceTrust || 0.7) * 10 +
+    Math.min(1, longEdge / 1800) * 8 +
+    (aspect >= 1.2 && aspect <= 2.5 ? 1 : 0.35) * 5 +
+    0.75 * 5 +
+    0.3 * 2 -
+    genericStockPenalty * 20 -
+    possibleMismatch * 50,
+    0,
+    100,
+    0
+  );
+
+  return {
+    ...image,
+    visualRole: image.visualRole === "hero" || (aspect >= 1.2 && aspect <= 2.5 && longEdge >= 1200) ? "hero" : image.visualRole,
+    relevanceScore: exactNameMatch,
+    qualityScore: Math.min(1, longEdge / 1800),
+    finalScore: Math.round(finalScore),
+    distanceMeters,
+    rejected: Boolean(rejectionReason),
+    rejectionReason,
+    illustrativeOnly: Boolean(image.illustrativeOnly || genericStockPenalty),
+    approximateLocation: !image.exactLocation,
+  };
+}
+
+function getWorkerMediaQueries(place = {}) {
+  if (Array.isArray(place.mediaQueries) && place.mediaQueries.length) return place.mediaQueries;
+  const title = place.canonicalName || place.title || "";
+  const aliases = place.aliases || [];
+  const area = place.municipality || place.region || "";
+  return [
+    [title, area].filter(Boolean).join(" "),
+    [title, "Crete"].filter(Boolean).join(" "),
+    ...aliases.slice(0, 3).map((alias) => [alias, area || "Crete"].filter(Boolean).join(" ")),
+    title,
+  ].filter(Boolean).filter((query, index, all) => all.indexOf(query) === index);
+}
+
+function dedupeWorkerImages(images = []) {
+  const seen = new Map();
+  for (const image of images) {
+    if (!image?.imageUrl || !image.sourcePageUrl) continue;
+    const key = [image.provider, image.providerId || "", normalizeUrl(image.sourcePageUrl), normalizeUrl(image.imageUrl)].join("|");
+    const existing = seen.get(key);
+    const edge = Math.max(Number(image.width || 0), Number(image.height || 0));
+    const existingEdge = Math.max(Number(existing?.width || 0), Number(existing?.height || 0));
+    if (!existing || edge > existingEdge) seen.set(key, image);
+  }
+  return [...seen.values()];
+}
+
+function getWorkerNameMatchScore(value = "", place = {}) {
+  const haystack = normalizeSearchText(value);
+  const aliases = [place.canonicalName, place.title, ...(place.aliases || [])].filter(Boolean);
+  const tokens = aliases.flatMap((alias) => normalizeSearchText(alias).split(" ").filter((token) => token.length > 3));
+  if (!tokens.length) return 0;
+  const unique = [...new Set(tokens)];
+  const matches = unique.filter((token) => haystack.includes(token)).length;
+  return Math.min(1, matches / Math.min(3, unique.length));
+}
+
+function getWorkerImageRejectionReason(image, longEdge, context = {}) {
+  const visualText = `${image.rawTitle || ""} ${image.sourcePageUrl || ""}`;
+  if (!image.imageUrl || !image.sourcePageUrl) return "missing-source-provenance";
+  if (longEdge && longEdge < 900) return "too-small";
+  if (/watermark|screenshot|map/i.test(visualText)) return "blocked-visual-type";
+  if (/\b(parking|car park|carpark|automobile|vehicle|rental car|garage|traffic)\b/i.test(visualText)) return "irrelevant-vehicle-or-parking";
+  if (context.weakNameMatch && Number.isFinite(context.distanceMeters) && context.distanceMeters > context.nearbyRadius) return "nearby-but-not-this-place";
+  return "";
+}
+
+function getWorkerImageDistanceMeters(image, place) {
+  if (!Number.isFinite(image.latitude) || !Number.isFinite(image.longitude) || !Array.isArray(place.coordinates)) return Infinity;
+  return getDistanceMeters(place.coordinates, [image.latitude, image.longitude]);
+}
+
+function getWorkerImageSearchRadius(place = {}) {
+  const key = `${place.categories?.join(" ") || ""} ${place.category || ""} ${place.canonicalName || ""}`.toLowerCase();
+  if (key.includes("coffee") || key.includes("cafe") || key.includes("restaurant") || key.includes("shop")) return 160;
+  if (key.includes("museum") || key.includes("fountain")) return 260;
+  if (key.includes("beach") || key.includes("wall") || key.includes("fortress") || key.includes("harbor")) return 900;
+  return 360;
+}
+
+function getWorkerGeotagScore(distanceMeters, exactLocation) {
+  if (!exactLocation || !Number.isFinite(distanceMeters)) return 0.25;
+  if (distanceMeters <= 90) return 1;
+  if (distanceMeters <= 260) return 0.82;
+  if (distanceMeters <= 900) return 0.56;
+  if (distanceMeters <= 1500) return 0.28;
+  return 0.08;
+}
+
+function isGenericWorkerRegionalImage(image, place) {
+  const haystack = normalizeSearchText(`${image.rawTitle || ""} ${image.sourcePageUrl || ""}`);
+  const placeName = normalizeSearchText(place.canonicalName || "");
+  return haystack.includes("crete") && placeName && !placeName.split(" ").some((token) => token.length > 3 && haystack.includes(token));
+}
+
+function inferWorkerVisualRole(place, width, height) {
+  const key = `${place.categories?.join(" ") || ""} ${place.category || ""}`.toLowerCase();
+  if (key.includes("coffee") || key.includes("cafe")) return "coffee";
+  if (key.includes("beach")) return "beach";
+  if (key.includes("museum")) return "museum";
+  if (key.includes("restaurant") || key.includes("food")) return "food";
+  return width > height ? "hero" : "gallery";
+}
+
+async function fetchWithTimeout(url, request, timeoutMs) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, {
+      headers: {
+        Accept: "application/json",
+        Referer: new URL(request.url).origin,
+        "User-Agent": "Trip Planner Deluxe/0.1 (https://trip.rynell.org)",
+      },
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+function stripHtml(value = "") {
+  return String(value || "").replace(/<[^>]*>/g, "").trim();
+}
+
+function truncateText(value = "", maxLength = 180) {
+  const text = String(value || "").replace(/\s+/g, " ").trim();
+  return text.length > maxLength ? `${text.slice(0, maxLength - 1).trim()}…` : text;
+}
+
+function normalizeUrl(value = "") {
+  return String(value || "").split("?")[0].toLowerCase();
+}
+
+function normalizeSearchText(value = "") {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[_-]/g, " ")
+    .replace(/[^a-z0-9α-ωάέήίόύώϊϋΐΰ ]/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function createCuratedPlaceMedia(place = {}, context = {}) {

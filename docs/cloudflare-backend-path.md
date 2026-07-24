@@ -99,7 +99,7 @@ Current service-boundary migrations:
 - Roles/session: the Worker recognizes `anonymous`, `traveler` and `admin` principals. `GET /api/session` exposes the current role. `PATCH /api/place-images/:id` and `POST /api/places/:id/hero/lock` now require admin. This is a lightweight token/header boundary, not a full user account system.
 - Location resolve: `collectAreaData()` calls `enrichmentService.resolveLocation()`, which calls `POST /api/location/resolve` first and falls back to the local resolver if the Worker is unavailable.
 - Nearby discovery: `src/main.js` calls `enrichmentService.discoverNearby()`, which calls the Worker first and keeps the browser Overpass path as fallback.
-- Media refresh: `src/main.js` calls `enrichmentService.refreshMedia()`, which calls `POST /api/places/:id/media/refresh` first and keeps the local Commons/Openverse aggregator as fallback when the Worker only has designed fallback media.
+- Media refresh: `src/main.js` calls `enrichmentService.refreshMedia()`, which calls `POST /api/places/:id/media/refresh` first. The Worker now checks reviewed D1 images, curated/client media, then server-side Wikimedia Commons/Wikidata lookup with D1 `place_images` persistence. The local Commons/Openverse aggregator remains as fallback when the Worker only has designed fallback media.
 - Editorial generation: `enrichmentService.generateEditorial()` calls `POST /api/places/:id/editorial/generate` first and falls back to the local deterministic composer if the Worker is unavailable. The synchronous `composeEditorial()` path remains available for instant render-time copy.
 - Place profile enrichment: `enrichmentService.enrichPlace()` calls `GET /api/places/enrich?id=...` first and falls back to the local profile composer when D1 only has a coordinates-only shell.
 
@@ -123,7 +123,7 @@ Current D1-backed endpoints:
   - The current temporary seed contains curated Heraklion POIs from `src/data/creteSeed.js`: Lions Square, Peskesi, Venetian Walls, Heraklion Archaeological Museum, Koules Fortress and Ammoudara Beach.
 - `POST /api/places/enrich-location` persists a basic `PlaceProfile` with core facts and placeholder editorial.
 - `GET /api/places/enrich?id=<placeId>` reads a stored `PlaceProfile`.
-- `POST /api/places/:id/media/refresh` returns reviewed D1 images when available, otherwise accepts curated/client place media such as `/assets/...` seed images, otherwise returns designed fallback media.
+- `POST /api/places/:id/media/refresh` returns reviewed D1 images when available, otherwise accepts curated/client place media such as `/assets/...` seed images, otherwise runs server-side Wikimedia Commons/Wikidata lookup, persists candidates to `place_images`, and only then returns designed fallback media.
 - `POST /api/places/:id/editorial/generate` creates deterministic editorial from submitted place, facts, media and traveller/route context, upserts the place if needed, and persists the editorial profile to D1.
 - `POST /api/media/light` stores a small D1 light media object.
 - `GET /api/media/light/:key` reads a D1 light media object.
@@ -131,3 +131,4 @@ Current D1-backed endpoints:
 Known provider note:
 
 - Public Overpass endpoints can time out from Cloudflare or under load. The Worker now avoids blocking the UI on those provider waits when cached POIs are available.
+- Wikimedia Commons media refresh is now server-side for the Worker route. Verified with Koules Fortress: first refresh found/persisted Commons candidates; subsequent refresh returned `d1-place-images` with a Commons hero and gallery.
