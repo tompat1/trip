@@ -245,3 +245,68 @@ test("enrichment service falls back when the Worker nearby request fails", async
   assert.equal(result.places[0].title, "Fallback Cafe");
   assert.equal(result.providerStatus[0].provider, "browser-overpass");
 });
+
+test("enrichment service refreshes media through the Worker first", async () => {
+  const service = createEnrichmentService({
+    apiBase: "https://trip.test",
+    fetchImpl: async (url, options = {}) => {
+      assert.match(url, /\/api\/places\/koules\/media\/refresh$/);
+      assert.equal(options.method, "POST");
+      return {
+        ok: true,
+        async json() {
+          return {
+            media: {
+              hero: {
+                id: "hero-koules",
+                provider: "trip-curated-asset",
+                imageUrl: "/assets/crete/koules.webp",
+                thumbnailUrl: "/assets/crete/koules.webp",
+                sourcePageUrl: "",
+                visualRole: "hero",
+                illustrativeOnly: false,
+              },
+              gallery: [],
+              coverage: { images: "partial" },
+            },
+            providerStatus: [{ provider: "curated-place-media", status: "ok", count: 1 }],
+          };
+        },
+      };
+    },
+  });
+
+  const media = await service.refreshMedia({ id: "koules", title: "Koules Fortress" });
+  assert.equal(media.hero.imageUrl, "/assets/crete/koules.webp");
+  assert.equal(media.providerStatus[0].provider, "curated-place-media");
+});
+
+test("enrichment service falls back to local media providers after empty Worker media", async () => {
+  const service = createEnrichmentService({
+    apiBase: "https://trip.test",
+    fetchImpl: async (url) => {
+      if (String(url).includes("/api/places/")) {
+        return {
+          ok: true,
+          async json() {
+            return {
+              media: {
+                hero: { id: "fallback", imageUrl: "", illustrativeOnly: true, visualRole: "hero" },
+                gallery: [],
+                coverage: { images: "fallback" },
+              },
+              providerStatus: [{ provider: "designed-fallback-media", status: "ok", count: 0 }],
+            };
+          },
+        };
+      }
+      throw new Error("local providers unavailable");
+    },
+  });
+
+  const media = await service.refreshMedia({ id: "missing", title: "Missing Place" });
+  assert.equal(media.hero.illustrativeOnly, true);
+  assert.equal(media.providerStatus[0].provider, "designed-fallback-media");
+  assert.ok(media.providerStatus.some((status) => status.provider === "commons"));
+  assert.ok(media.providerStatus.some((status) => status.provider === "openverse"));
+});

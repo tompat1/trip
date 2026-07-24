@@ -252,15 +252,27 @@ async function enrichPlaceHandler(context) {
   }, context));
 }
 
-function mediaRefreshHandler(context) {
+async function mediaRefreshHandler(context) {
   const [placeId] = context.params;
+  const body = await readJson(context.request);
+  const storedMedia = await getStoredPlaceMedia(context, placeId);
+  const curatedMedia = storedMedia.hero ? storedMedia : createCuratedPlaceMedia({ ...body.place, id: placeId }, context);
+  const media = curatedMedia.hero ? curatedMedia : createFallbackPlaceMedia({ ...body.place, id: placeId }, context);
+
   return json(partialResponse("places.mediaRefresh", {
     placeId,
-    media: {
-      hero: null,
-      gallery: [],
-      coverage: { images: context.hasLightMedia ? "partial" : "fallback" },
-    },
+    media,
+    providerStatus: [
+      createStorageStatus(context),
+      {
+        provider: storedMedia.hero ? "d1-place-images" : media.hero?.imageUrl ? "curated-place-media" : "designed-fallback-media",
+        status: storedMedia.hero || media.hero ? "ok" : "empty",
+        error: "",
+        count: [media.hero, ...(media.gallery || [])].filter((image) => image?.imageUrl).length,
+        latencyMs: 0,
+        checkedAt: new Date().toISOString(),
+      },
+    ],
   }, context));
 }
 
@@ -623,6 +635,122 @@ async function getStoredPlaceProfile(context, placeId) {
     coverage: "partial",
     generatedAt: new Date().toISOString(),
     refreshAfter: new Date(Date.now() + 1000 * 60 * 30).toISOString(),
+  };
+}
+
+async function getStoredPlaceMedia(context, placeId) {
+  if (!context.hasDb || !placeId) return createEmptyMedia("fallback");
+  const imagesResult = await context.env.TRIP_DB.prepare(`
+    SELECT * FROM place_images
+    WHERE place_id = ?
+    ORDER BY hero_locked DESC, final_score DESC
+    LIMIT 12
+  `).bind(placeId).all();
+  const images = (imagesResult.results || []).map(normalizeStoredImage);
+  if (!images.length) return createEmptyMedia("fallback");
+  const hero = images.find((image) => image.visualRole === "hero") || images[0];
+  const gallery = images.filter((image) => image.id !== hero.id);
+  return createMediaPayload(hero, gallery, hero.illustrativeOnly ? "fallback" : gallery.length ? "complete" : "partial");
+}
+
+function createCuratedPlaceMedia(place = {}, context = {}) {
+  const imageUrl = sanitizeMediaUrl(place.imageUrl || place.image?.url || "");
+  if (!imageUrl) return createEmptyMedia("fallback");
+  const title = place.title || place.canonicalName || place.name || place.id || "Place";
+  const provider = imageUrl.startsWith("/assets/") ? "trip-curated-asset" : inferMediaProvider(imageUrl);
+  const hero = {
+    id: stableId("image", [place.id, imageUrl]),
+    placeId: place.id || "",
+    provider,
+    providerId: imageUrl,
+    imageUrl,
+    thumbnailUrl: imageUrl,
+    sourcePageUrl: sanitizeUrl(place.imageSourceUrl || place.website || place.officialWebsite || place.sourceUrl || ""),
+    creatorName: place.imageCreator || "",
+    creatorUrl: "",
+    licenseCode: "",
+    licenseName: provider === "trip-curated-asset" ? "Curated reference asset" : "",
+    licenseUrl: "",
+    attributionText: place.imageAttribution || place.source || (provider === "trip-curated-asset" ? "Curated traveler reference" : provider),
+    width: 0,
+    height: 0,
+    exactLocation: Boolean(place.userAdded || place.sourceRole === "user"),
+    approximateLocation: !place.userAdded,
+    illustrativeOnly: false,
+    visualRole: "hero",
+    relevanceScore: 0.82,
+    qualityScore: 0.7,
+    finalScore: 82,
+    reviewStatus: "pending",
+    checkedAt: new Date().toISOString(),
+    caption: title,
+  };
+  return createMediaPayload(hero, [], context.hasLightMedia ? "partial" : "fallback");
+}
+
+function createFallbackPlaceMedia(place = {}, context = {}) {
+  const title = place.title || place.canonicalName || place.name || place.id || "Place";
+  const hero = {
+    id: stableId("fallback-image", [place.id || title]),
+    placeId: place.id || "",
+    provider: "editorial",
+    providerId: "designed-fallback",
+    imageUrl: "",
+    thumbnailUrl: "",
+    sourcePageUrl: "",
+    creatorName: "Trip Planner Deluxe",
+    creatorUrl: "",
+    licenseCode: "",
+    licenseName: "Designed fallback",
+    licenseUrl: "",
+    attributionText: "Designed fallback, no reviewed photo available",
+    width: 0,
+    height: 0,
+    exactLocation: false,
+    approximateLocation: false,
+    illustrativeOnly: true,
+    visualRole: "hero",
+    relevanceScore: 0,
+    qualityScore: 0,
+    finalScore: 0,
+    reviewStatus: "pending",
+    checkedAt: new Date().toISOString(),
+    caption: title,
+  };
+  return createMediaPayload(hero, [], context.hasLightMedia ? "fallback" : "fallback");
+}
+
+function createEmptyMedia(images = "fallback") {
+  return {
+    hero: null,
+    gallery: [],
+    roles: {},
+    attributions: [],
+    coverage: { images },
+    generatedAt: new Date().toISOString(),
+    refreshAfter: new Date(Date.now() + 1000 * 60 * 60 * 24 * 7).toISOString(),
+  };
+}
+
+function createMediaPayload(hero, gallery = [], imagesCoverage = "partial") {
+  const images = [hero, ...gallery].filter(Boolean);
+  return {
+    hero,
+    gallery,
+    roles: images.reduce((roles, image) => {
+      const role = image.visualRole || "illustrative";
+      roles[role] = [...(roles[role] || []), image];
+      return roles;
+    }, {}),
+    attributions: images.filter((image) => image.sourcePageUrl || image.attributionText).map((image) => ({
+      imageId: image.id,
+      text: image.attributionText || image.provider,
+      sourcePageUrl: image.sourcePageUrl || "",
+      licenseUrl: image.licenseUrl || "",
+    })),
+    coverage: { images: imagesCoverage },
+    generatedAt: new Date().toISOString(),
+    refreshAfter: new Date(Date.now() + 1000 * 60 * 60 * 24 * 7).toISOString(),
   };
 }
 
@@ -1339,6 +1467,21 @@ function sanitizeUrl(value = "") {
   } catch {
     return "";
   }
+}
+
+function sanitizeMediaUrl(value = "") {
+  const url = String(value || "").trim();
+  if (!url) return "";
+  if (url.startsWith("/assets/")) return url;
+  return sanitizeUrl(url);
+}
+
+function inferMediaProvider(url = "") {
+  if (url.includes("commons.wikimedia.org") || url.includes("wikimedia.org")) return "commons";
+  if (url.startsWith("data:image/")) return "upload";
+  if (url.startsWith("http")) return "external";
+  if (url.startsWith("/assets/")) return "trip-curated-asset";
+  return "unknown";
 }
 
 function normalizeMediaKey(value = "") {

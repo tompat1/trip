@@ -79,7 +79,23 @@ export function createEnrichmentService(options = {}) {
     },
 
     async refreshMedia(place, options = {}) {
-      return enrichPlaceMedia(place, { ...options, fetchImpl });
+      const workerMedia = await refreshWorkerMedia(place, { ...options, apiBase, fetchImpl, now }).catch((error) => ({
+        hero: null,
+        gallery: [],
+        roles: {},
+        attributions: [],
+        coverage: { images: "fallback" },
+        providerStatus: [createProviderStatus({ provider: "trip-worker-media", status: PROVIDER_STATUS.error, error: error?.message || "worker-media-failed" })],
+        generatedAt: now().toISOString(),
+        refreshAfter: new Date(now().getTime() + 1000 * 60 * 30).toISOString(),
+      }));
+      if (workerMedia.hero?.imageUrl || options.workerOnly) return workerMedia;
+
+      const fallbackMedia = await enrichPlaceMedia(place, { ...options, fetchImpl }).catch((error) => createMediaFailure(error, now));
+      return {
+        ...fallbackMedia,
+        providerStatus: [...(workerMedia.providerStatus || []), ...(fallbackMedia.providerStatus || [])],
+      };
     },
 
     async enrichPlace(place, options = {}) {
@@ -124,6 +140,24 @@ function normalizeCoordinates(value) {
   const [lat, lng] = value.map(Number);
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
   return [lat, lng];
+}
+
+async function refreshWorkerMedia(place = {}, options = {}) {
+  const placeId = place.id || place.identity?.id || place.canonicalName || place.title || "place";
+  const url = buildApiUrl(options.apiBase, `/api/places/${encodeURIComponent(placeId)}/media/refresh`);
+  const response = await options.fetchImpl(url.href, {
+    method: "POST",
+    headers: { Accept: "application/json", "Content-Type": "application/json" },
+    body: JSON.stringify({ place }),
+  });
+  if (!response.ok) throw new Error(`worker-media-http-${response.status}`);
+  const payload = await response.json();
+  return {
+    ...(payload.media || {}),
+    providerStatus: payload.providerStatus || payload.media?.providerStatus || [],
+    generatedAt: payload.media?.generatedAt || payload.generatedAt || options.now().toISOString(),
+    refreshAfter: payload.media?.refreshAfter || payload.refreshAfter || new Date(options.now().getTime() + 1000 * 60 * 30).toISOString(),
+  };
 }
 
 function createMediaFailure(error, now) {

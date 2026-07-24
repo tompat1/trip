@@ -89,7 +89,12 @@ Before enabling persistent storage in production:
 7. Apply `migrations/0003_d1_light_media_bucket.sql`. Done when the temporary D1 light media bucket is needed.
 8. Apply `migrations/0004_seed_crete_poi_cache.sql`. Done as a temporary curated Heraklion POI fallback while live providers are hardened.
 
-After bindings are configured, move provider calls from the local `enrichmentService` implementation into Worker route handlers while preserving the same `PlaceProfile` contract. Nearby discovery now uses this pattern: `src/main.js` calls `enrichmentService.discoverNearby()`, which calls the Worker first and keeps the browser Overpass path as fallback.
+After bindings are configured, move provider calls from the local `enrichmentService` implementation into Worker route handlers while preserving the same `PlaceProfile` contract.
+
+Current service-boundary migrations:
+
+- Nearby discovery: `src/main.js` calls `enrichmentService.discoverNearby()`, which calls the Worker first and keeps the browser Overpass path as fallback.
+- Media refresh: `src/main.js` calls `enrichmentService.refreshMedia()`, which calls `POST /api/places/:id/media/refresh` first and keeps the local Commons/Openverse aggregator as fallback when the Worker only has designed fallback media.
 
 Current deployed health endpoint:
 
@@ -110,6 +115,7 @@ Current D1-backed endpoints:
   - The current temporary seed contains curated Heraklion POIs from `src/data/creteSeed.js`: Lions Square, Peskesi, Venetian Walls, Heraklion Archaeological Museum, Koules Fortress and Ammoudara Beach.
 - `POST /api/places/enrich-location` persists a basic `PlaceProfile` with core facts and placeholder editorial.
 - `GET /api/places/enrich?id=<placeId>` reads a stored `PlaceProfile`.
+- `POST /api/places/:id/media/refresh` returns reviewed D1 images when available, otherwise accepts curated/client place media such as `/assets/...` seed images, otherwise returns designed fallback media.
 - `POST /api/media/light` stores a small D1 light media object.
 - `GET /api/media/light/:key` reads a D1 light media object.
 
