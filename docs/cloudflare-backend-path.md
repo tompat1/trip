@@ -93,6 +93,16 @@ After bindings are configured, move provider calls from the local `enrichmentSer
 Current deployed health endpoint:
 
 - `https://trip.thomasrynell.workers.dev/api/health`
+- API version: `d1-profile-v1`
 - D1: ready
 - KV: ready
 - R2: missing
+- D1 light media: ready
+
+Current D1-backed endpoints:
+
+- `POST /api/location/resolve` persists a coordinates-first place profile.
+- `POST /api/places/enrich-location` persists a basic `PlaceProfile` with core facts and placeholder editorial.
+- `GET /api/places/enrich?id=<placeId>` reads a stored `PlaceProfile`.
+- `POST /api/media/light` stores a small D1 light media object.
+- `GET /api/media/light/:key` reads a D1 light media object.

@@ -1,4 +1,5 @@
 const API_PREFIX = "/api/";
+const API_VERSION = "d1-profile-v1";
 const JSON_HEADERS = {
   "Content-Type": "application/json; charset=utf-8",
   "Cache-Control": "no-store",
@@ -70,6 +71,7 @@ function healthHandler({ hasDb, hasCache, hasMedia, hasLightMedia }) {
   return json({
     ok: true,
     service: "trip-enrichment-api",
+    apiVersion: API_VERSION,
     bindings: {
       d1: hasDb ? "ready" : "missing",
       kv: hasCache ? "ready" : "missing",
@@ -84,13 +86,24 @@ async function locationResolveHandler(context) {
   const body = await readJson(context.request);
   const coordinates = normalizeCoordinates(body.coordinates || [body.latitude, body.longitude]);
   if (!coordinates) return jsonError("invalid_coordinates", "Provide latitude/longitude or coordinates.", 400);
+  const title = body.title || body.name || "Current location";
+  const place = createPlaceFromInput({ ...body, title, coordinates });
+  if (context.hasDb) {
+    await persistPlaceProfile(context, {
+      place,
+      facts: createCoreFacts(place, { accuracyMeters: body.accuracyMeters }),
+      editorial: createPendingEditorial(place.canonicalName),
+    });
+  }
 
   return json(partialResponse("location.resolve", {
     location: {
+      placeId: place.id,
       coordinates,
       confidence: body.accuracyMeters ? Math.max(0.2, Math.min(1, 1 - Number(body.accuracyMeters) / 5000)) : 0.65,
       matchLevel: "coordinates-only",
     },
+    placeProfile: await getStoredPlaceProfile(context, place.id) || createCoordinatesOnlyProfile({ id: place.id, coordinates, title }),
   }, context));
 }
 
@@ -113,16 +126,27 @@ async function enrichLocationHandler(context) {
   const body = await readJson(context.request);
   const coordinates = normalizeCoordinates(body.coordinates || [body.latitude, body.longitude]);
   if (!coordinates) return jsonError("invalid_coordinates", "Provide coordinates for enrichment.", 400);
+  const place = createPlaceFromInput({ ...body, coordinates, title: body.title || body.name || "Current location" });
+  const facts = createCoreFacts(place, { accuracyMeters: body.accuracyMeters });
+  const editorial = createPendingEditorial(place.canonicalName);
+
+  if (context.hasDb) await persistPlaceProfile(context, { place, facts, editorial });
 
   return json(partialResponse("places.enrichLocation", {
-    placeProfile: createCoordinatesOnlyProfile({ coordinates, title: body.title || "Current location" }),
+    placeProfile: await getStoredPlaceProfile(context, place.id) || createCoordinatesOnlyProfile({ id: place.id, coordinates, title: place.canonicalName }),
   }, context));
 }
 
-function enrichPlaceHandler(context) {
+async function enrichPlaceHandler(context) {
   const url = new URL(context.request.url);
   const placeId = url.searchParams.get("id") || "";
   if (!placeId) return jsonError("missing_place_id", "Provide a place id.", 400);
+  const profile = await getStoredPlaceProfile(context, placeId);
+  if (profile) {
+    return json(partialResponse("places.enrich", {
+      placeProfile: profile,
+    }, context));
+  }
 
   return json(partialResponse("places.enrich", {
     placeProfile: createCoordinatesOnlyProfile({ id: placeId, title: placeId }),
@@ -304,6 +328,198 @@ function createCoordinatesOnlyProfile({ id = "coordinates-only", title = "Curren
   };
 }
 
+async function persistPlaceProfile(context, { place, facts = [], editorial = null }) {
+  if (!context.hasDb) return;
+  const now = new Date().toISOString();
+  await context.env.TRIP_DB.prepare(`
+    INSERT INTO places (
+      id, canonical_name, local_name, country_code, region, municipality, latitude, longitude,
+      osm_type, osm_id, wikidata_id, wikipedia_url, official_website, categories, confidence, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(id) DO UPDATE SET
+      canonical_name = excluded.canonical_name,
+      local_name = excluded.local_name,
+      country_code = excluded.country_code,
+      region = excluded.region,
+      municipality = excluded.municipality,
+      latitude = excluded.latitude,
+      longitude = excluded.longitude,
+      categories = excluded.categories,
+      confidence = excluded.confidence,
+      updated_at = excluded.updated_at
+  `).bind(
+    place.id,
+    place.canonicalName,
+    place.localName || "",
+    place.countryCode || "",
+    place.region || "",
+    place.municipality || "",
+    place.coordinates?.[0] ?? null,
+    place.coordinates?.[1] ?? null,
+    place.osmType || "",
+    place.osmId || "",
+    place.wikidataId || "",
+    place.wikipediaUrl || "",
+    place.officialWebsite || "",
+    JSON.stringify(place.categories || []),
+    place.confidence ?? 0.55,
+    now,
+    now
+  ).run();
+
+  await persistAliases(context, place, now);
+  const source = await persistSource(context, place, {
+    provider: "trip-worker",
+    providerId: place.id,
+    name: "Trip Worker",
+    type: "system",
+    url: "",
+    confidence: 0.55,
+    retrievedAt: now,
+  });
+  await persistFacts(context, place.id, facts, source.id, now);
+  if (editorial) await persistEditorial(context, place.id, editorial, now);
+}
+
+async function persistAliases(context, place, now) {
+  const aliases = [...new Set([place.canonicalName, place.localName, ...(place.aliases || [])].filter(Boolean))];
+  for (const alias of aliases) {
+    await context.env.TRIP_DB.prepare(`
+      INSERT OR IGNORE INTO place_aliases (id, place_id, alias, language, normalized_alias, source_id, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).bind(
+      stableId("alias", [place.id, alias]),
+      place.id,
+      alias,
+      "",
+      normalizeLookupText(alias),
+      "",
+      now
+    ).run();
+  }
+}
+
+async function persistSource(context, place, source) {
+  const id = stableId("source", [place.id, source.provider, source.providerId, source.url]);
+  await context.env.TRIP_DB.prepare(`
+    INSERT INTO place_sources (id, place_id, provider, provider_id, name, type, url, confidence, retrieved_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(id) DO UPDATE SET
+      name = excluded.name,
+      type = excluded.type,
+      url = excluded.url,
+      confidence = excluded.confidence,
+      retrieved_at = excluded.retrieved_at
+  `).bind(
+    id,
+    place.id,
+    source.provider,
+    source.providerId || "",
+    source.name || source.provider,
+    source.type || "external",
+    source.url || "",
+    source.confidence ?? 0.5,
+    source.retrievedAt || new Date().toISOString()
+  ).run();
+  return { ...source, id };
+}
+
+async function persistFacts(context, placeId, facts, sourceId, now) {
+  for (const fact of facts) {
+    await context.env.TRIP_DB.prepare(`
+      INSERT INTO place_facts (id, place_id, key, label, value_json, source_id, confidence, volatility, retrieved_at, refresh_after)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(id) DO UPDATE SET
+        value_json = excluded.value_json,
+        confidence = excluded.confidence,
+        volatility = excluded.volatility,
+        retrieved_at = excluded.retrieved_at,
+        refresh_after = excluded.refresh_after
+    `).bind(
+      fact.id || stableId("fact", [placeId, fact.key, JSON.stringify(fact.value)]),
+      placeId,
+      fact.key,
+      fact.label || labelFromKey(fact.key),
+      JSON.stringify(fact.value),
+      sourceId,
+      fact.confidence ?? 0.55,
+      fact.volatile ? "volatile" : "stable",
+      fact.retrievedAt || now,
+      fact.refreshAfter || null
+    ).run();
+  }
+}
+
+async function persistEditorial(context, placeId, editorial, now) {
+  const id = stableId("editorial", [placeId, editorial.editorialVersion || "worker", editorial.generatedAt || now]);
+  await context.env.TRIP_DB.prepare(`
+    INSERT INTO place_editorial_profiles (
+      id, place_id, editorial_json, source_ids_json, validation_json, route_context_hash,
+      traveller_context_hash, confidence, editorial_version, review_status, generated_at, refresh_after
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).bind(
+    id,
+    placeId,
+    JSON.stringify(editorial),
+    JSON.stringify(editorial.sourceIds || []),
+    "{}",
+    "",
+    "",
+    editorial.confidence ?? 0.2,
+    editorial.editorialVersion || "worker-placeholder-v1",
+    "generated",
+    editorial.generatedAt || now,
+    new Date(Date.now() + 1000 * 60 * 60 * 24 * 14).toISOString()
+  ).run();
+}
+
+async function getStoredPlaceProfile(context, placeId) {
+  if (!context.hasDb || !placeId) return null;
+  const place = await context.env.TRIP_DB.prepare(`
+    SELECT * FROM places WHERE id = ?
+  `).bind(placeId).first();
+  if (!place) return null;
+
+  const factsResult = await context.env.TRIP_DB.prepare(`
+    SELECT f.*, s.provider, s.name AS source_name, s.type AS source_type, s.url AS source_url
+    FROM place_facts f
+    LEFT JOIN place_sources s ON s.id = f.source_id
+    WHERE f.place_id = ?
+    ORDER BY f.created_at ASC
+  `).bind(placeId).all();
+  const imagesResult = await context.env.TRIP_DB.prepare(`
+    SELECT * FROM place_images WHERE place_id = ? ORDER BY final_score DESC LIMIT 12
+  `).bind(placeId).all();
+  const editorial = await context.env.TRIP_DB.prepare(`
+    SELECT editorial_json FROM place_editorial_profiles
+    WHERE place_id = ?
+    ORDER BY generated_at DESC
+    LIMIT 1
+  `).bind(placeId).first();
+
+  const images = imagesResult.results || [];
+  const hero = images.find((image) => image.visual_role === "hero") || null;
+  const gallery = images.filter((image) => image.id !== hero?.id);
+  return {
+    schemaVersion: "place-profile-v1",
+    place: normalizeStoredPlace(place),
+    facts: (factsResult.results || []).map(normalizeStoredFact),
+    editorial: parseJson(editorial?.editorial_json, createPendingEditorial(place.canonical_name)),
+    media: {
+      hero: hero ? normalizeStoredImage(hero) : null,
+      gallery: gallery.map(normalizeStoredImage),
+      roles: {},
+      coverage: { images: hero ? "partial" : "fallback" },
+    },
+    sources: [],
+    attributions: [],
+    providerStatus: [],
+    coverage: "partial",
+    generatedAt: new Date().toISOString(),
+    refreshAfter: new Date(Date.now() + 1000 * 60 * 30).toISOString(),
+  };
+}
+
 function createPendingEditorial(name) {
   return {
     standfirst: `${name} is ready for enrichment once providers are configured.`,
@@ -329,6 +545,122 @@ function createPendingEditorial(name) {
   };
 }
 
+function createPlaceFromInput(input = {}) {
+  const coordinates = normalizeCoordinates(input.coordinates || [input.latitude, input.longitude]);
+  const canonicalName = String(input.canonicalName || input.title || input.name || "Current location").trim() || "Current location";
+  const id = input.id || stableId("place", [
+    input.wikidataId,
+    input.osmType,
+    input.osmId,
+    canonicalName,
+    coordinates?.map((value) => Number(value).toFixed(5)).join(","),
+  ]);
+  return {
+    id,
+    canonicalName,
+    localName: String(input.localName || ""),
+    aliases: Array.isArray(input.aliases) ? input.aliases.map(String) : [],
+    countryCode: String(input.countryCode || ""),
+    region: String(input.region || ""),
+    municipality: String(input.municipality || input.city || ""),
+    coordinates,
+    osmType: String(input.osmType || ""),
+    osmId: String(input.osmId || ""),
+    wikidataId: String(input.wikidataId || ""),
+    wikipediaUrl: sanitizeUrl(input.wikipediaUrl || ""),
+    officialWebsite: sanitizeUrl(input.officialWebsite || input.website || ""),
+    categories: Array.isArray(input.categories) ? input.categories.map(String) : [input.category || "coordinates"].filter(Boolean),
+    confidence: Number(input.confidence || 0.55),
+  };
+}
+
+function createCoreFacts(place, options = {}) {
+  const now = new Date().toISOString();
+  return [
+    createFact("name", place.canonicalName, 0.82, false, now),
+    createFact("coordinates", place.coordinates, 0.78, false, now),
+    createFact("category", place.categories?.[0] || "coordinates", 0.62, false, now),
+    options.accuracyMeters ? createFact("accuracyMeters", Number(options.accuracyMeters), 0.58, true, now) : null,
+  ].filter(Boolean);
+}
+
+function createFact(key, value, confidence, volatile, retrievedAt) {
+  return {
+    id: stableId("fact", [key, JSON.stringify(value), retrievedAt.slice(0, 10)]),
+    key,
+    label: labelFromKey(key),
+    value,
+    confidence,
+    volatile,
+    retrievedAt,
+  };
+}
+
+function normalizeStoredPlace(row) {
+  return {
+    id: row.id,
+    canonicalName: row.canonical_name,
+    localName: row.local_name || "",
+    countryCode: row.country_code || "",
+    region: row.region || "",
+    municipality: row.municipality || "",
+    coordinates: normalizeCoordinates([row.latitude, row.longitude]),
+    osmType: row.osm_type || "",
+    osmId: row.osm_id || "",
+    wikidataId: row.wikidata_id || "",
+    wikipediaUrl: row.wikipedia_url || "",
+    officialWebsite: row.official_website || "",
+    categories: parseJson(row.categories, []),
+    confidence: Number(row.confidence || 0.5),
+  };
+}
+
+function normalizeStoredFact(row) {
+  return {
+    id: row.id,
+    key: row.key,
+    label: row.label || labelFromKey(row.key),
+    value: parseJson(row.value_json, row.value_json),
+    sourceId: row.source_id || "",
+    sourceName: row.source_name || "Trip Worker",
+    sourceType: row.source_type || "system",
+    sourceUrl: row.source_url || "",
+    confidence: Number(row.confidence || 0.5),
+    volatility: row.volatility || "stable",
+    volatile: row.volatility === "volatile",
+    retrievedAt: row.retrieved_at,
+  };
+}
+
+function normalizeStoredImage(row) {
+  return {
+    id: row.id,
+    placeId: row.place_id,
+    provider: row.provider,
+    providerId: row.provider_id || "",
+    imageUrl: row.image_url || "",
+    thumbnailUrl: row.thumbnail_url || row.image_url || "",
+    sourcePageUrl: row.source_page_url || "",
+    creatorName: row.creator_name || "",
+    creatorUrl: row.creator_url || "",
+    licenseCode: row.license_code || "",
+    licenseName: row.license_name || "",
+    licenseUrl: row.license_url || "",
+    attributionText: row.attribution_text || "",
+    width: Number(row.width || 0),
+    height: Number(row.height || 0),
+    exactLocation: Boolean(row.exact_location),
+    approximateLocation: Boolean(row.approximate_location),
+    illustrativeOnly: Boolean(row.illustrative_only),
+    visualRole: row.visual_role || "illustrative",
+    relevanceScore: Number(row.relevance_score || 0),
+    qualityScore: Number(row.quality_score || 0),
+    finalScore: Number(row.final_score || 0),
+    reviewStatus: row.review_status || "pending",
+    checkedAt: row.checked_at || "",
+  };
+}
+
 async function readJson(request) {
   if (!request.headers.get("content-type")?.includes("application/json")) return {};
   return request.json().catch(() => ({}));
@@ -340,6 +672,17 @@ function normalizeCoordinates(value) {
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
   if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return null;
   return [lat, lng];
+}
+
+function sanitizeUrl(value = "") {
+  const url = String(value || "").trim();
+  if (!url) return "";
+  try {
+    const parsed = new URL(url);
+    return ["http:", "https:"].includes(parsed.protocol) ? parsed.href : "";
+  } catch {
+    return "";
+  }
 }
 
 function normalizeMediaKey(value = "") {
@@ -357,6 +700,39 @@ function inferContentType(value = "") {
 
 function byteLength(value = "") {
   return new TextEncoder().encode(String(value)).byteLength;
+}
+
+function parseJson(value, fallback) {
+  try {
+    return JSON.parse(value);
+  } catch {
+    return fallback;
+  }
+}
+
+function stableId(prefix, parts = []) {
+  return `${prefix}-${hashValue(parts.filter(Boolean).join("|"))}`;
+}
+
+function normalizeLookupText(value = "") {
+  return String(value)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9α-ωάέήίόύώϊϋΐΰ]+/gi, " ")
+    .trim();
+}
+
+function labelFromKey(key = "") {
+  return String(key).replace(/([A-Z])/g, " $1").replace(/^./, (char) => char.toUpperCase());
+}
+
+function hashValue(value = "") {
+  let hash = 0;
+  for (let index = 0; index < value.length; index += 1) {
+    hash = ((hash << 5) - hash + value.charCodeAt(index)) | 0;
+  }
+  return Math.abs(hash).toString(36);
 }
 
 function json(body, status = 200) {
