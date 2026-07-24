@@ -1,5 +1,6 @@
 const API_PREFIX = "/api/";
-const API_VERSION = "d1-profile-v1";
+const API_VERSION = "nominatim-location-v1";
+const NOMINATIM_REVERSE_ENDPOINT = "https://nominatim.openstreetmap.org/reverse";
 const JSON_HEADERS = {
   "Content-Type": "application/json; charset=utf-8",
   "Cache-Control": "no-store",
@@ -86,24 +87,48 @@ async function locationResolveHandler(context) {
   const body = await readJson(context.request);
   const coordinates = normalizeCoordinates(body.coordinates || [body.latitude, body.longitude]);
   if (!coordinates) return jsonError("invalid_coordinates", "Provide latitude/longitude or coordinates.", 400);
-  const title = body.title || body.name || "Current location";
-  const place = createPlaceFromInput({ ...body, title, coordinates });
+  const nominatimResult = await reverseGeocodeCoordinates(coordinates, context.request);
+  const nominatim = nominatimResult.data;
+  const place = nominatim
+    ? createPlaceFromNominatim(nominatim, { ...body, coordinates })
+    : createPlaceFromInput({ ...body, title: body.title || body.name || "Current location", coordinates });
+  const facts = [
+    ...createCoreFacts(place, { accuracyMeters: body.accuracyMeters }),
+    ...createNominatimFacts(place, nominatim),
+  ];
   if (context.hasDb) {
     await persistPlaceProfile(context, {
       place,
-      facts: createCoreFacts(place, { accuracyMeters: body.accuracyMeters }),
+      facts,
       editorial: createPendingEditorial(place.canonicalName),
+      source: createNominatimSource(place, nominatim),
     });
   }
+  const profile = await getStoredPlaceProfile(context, place.id);
 
   return json(partialResponse("location.resolve", {
     location: {
       placeId: place.id,
       coordinates,
       confidence: body.accuracyMeters ? Math.max(0.2, Math.min(1, 1 - Number(body.accuracyMeters) / 5000)) : 0.65,
-      matchLevel: "coordinates-only",
+      matchLevel: nominatim ? getNominatimMatchLevel(nominatim) : "coordinates-only",
+      city: place.municipality || "",
+      region: place.region || "",
+      countryCode: place.countryCode || "",
+      provider: nominatim ? "nominatim" : "coordinates",
     },
-    placeProfile: await getStoredPlaceProfile(context, place.id) || createCoordinatesOnlyProfile({ id: place.id, coordinates, title }),
+    providerStatus: [
+      createStorageStatus(context),
+      {
+        provider: "nominatim",
+        status: nominatim ? "ok" : "error",
+        error: nominatim ? "" : nominatimResult.error || "reverse-geocode-unavailable",
+        count: nominatim ? 1 : 0,
+        latencyMs: nominatimResult.latencyMs,
+        checkedAt: new Date().toISOString(),
+      },
+    ],
+    placeProfile: profile || createCoordinatesOnlyProfile({ id: place.id, coordinates, title: place.canonicalName }),
   }, context));
 }
 
@@ -287,19 +312,26 @@ function partialResponse(operation, payload, context) {
     ok: true,
     operation,
     coverage: missingBindings.length ? "coordinates-only" : "partial",
-    providerStatus: [
-      {
-        provider: "worker-storage",
-        status: missingBindings.length ? "disabled" : "ok",
-        error: missingBindings.length ? `Missing bindings: ${missingBindings.join(", ")}` : "",
-        count: 0,
-        latencyMs: 0,
-        checkedAt: new Date().toISOString(),
-      },
-    ],
+    providerStatus: [createStorageStatus(context)],
     generatedAt: new Date().toISOString(),
     refreshAfter: new Date(Date.now() + 1000 * 60 * 30).toISOString(),
     ...payload,
+  };
+}
+
+function createStorageStatus(context) {
+  const missingBindings = [];
+  if (!context.hasDb) missingBindings.push("TRIP_DB");
+  if (!context.hasCache) missingBindings.push("TRIP_CACHE");
+  if (!context.hasMedia && !context.hasLightMedia) missingBindings.push("TRIP_MEDIA");
+
+  return {
+    provider: "worker-storage",
+    status: missingBindings.length ? "disabled" : "ok",
+    error: missingBindings.length ? `Missing bindings: ${missingBindings.join(", ")}` : "",
+    count: 0,
+    latencyMs: 0,
+    checkedAt: new Date().toISOString(),
   };
 }
 
@@ -328,7 +360,7 @@ function createCoordinatesOnlyProfile({ id = "coordinates-only", title = "Curren
   };
 }
 
-async function persistPlaceProfile(context, { place, facts = [], editorial = null }) {
+async function persistPlaceProfile(context, { place, facts = [], editorial = null, source: inputSource = null }) {
   if (!context.hasDb) return;
   const now = new Date().toISOString();
   await context.env.TRIP_DB.prepare(`
@@ -368,7 +400,7 @@ async function persistPlaceProfile(context, { place, facts = [], editorial = nul
   ).run();
 
   await persistAliases(context, place, now);
-  const source = await persistSource(context, place, {
+  const source = await persistSource(context, place, inputSource || {
     provider: "trip-worker",
     providerId: place.id,
     name: "Trip Worker",
@@ -574,19 +606,219 @@ function createPlaceFromInput(input = {}) {
   };
 }
 
+async function reverseGeocodeCoordinates(coordinates, request) {
+  const startedAt = Date.now();
+  const [lat, lng] = coordinates;
+  const url = new URL(NOMINATIM_REVERSE_ENDPOINT);
+  url.searchParams.set("format", "jsonv2");
+  url.searchParams.set("lat", String(lat));
+  url.searchParams.set("lon", String(lng));
+  url.searchParams.set("zoom", "12");
+  url.searchParams.set("addressdetails", "1");
+  url.searchParams.set("extratags", "1");
+  url.searchParams.set("namedetails", "1");
+  url.searchParams.set("accept-language", "en");
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8500);
+  try {
+    const response = await fetch(url, {
+      headers: {
+        Accept: "application/json",
+        "Accept-Language": "en",
+        Referer: new URL(request.url).origin,
+        "User-Agent": "Trip Planner Deluxe/0.1 (https://trip.rynell.org)",
+      },
+      signal: controller.signal,
+    });
+    if (!response.ok) {
+      return {
+        data: null,
+        error: `nominatim-http-${response.status}`,
+        latencyMs: Date.now() - startedAt,
+      };
+    }
+    return {
+      data: await response.json(),
+      error: "",
+      latencyMs: Date.now() - startedAt,
+    };
+  } catch (error) {
+    return {
+      data: null,
+      error: error?.name === "AbortError" ? "nominatim-timeout" : "nominatim-fetch-failed",
+      latencyMs: Date.now() - startedAt,
+    };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+function createPlaceFromNominatim(data = {}, input = {}) {
+  const address = data.address || {};
+  const extratags = data.extratags || {};
+  const namedetails = data.namedetails || {};
+  const coordinates = normalizeCoordinates(input.coordinates || [data.lat, data.lon]);
+  const canonicalName = cleanAreaName(
+    input.title ||
+    getAddressCity(address) ||
+    namedetails.name ||
+    data.name ||
+    String(data.display_name || "").split(",")[0] ||
+    "Current location"
+  );
+  const localName = cleanAreaName(namedetails["name:el"] || namedetails.name || data.name || "");
+  const osmType = normalizeOsmType(data.osm_type);
+  const osmId = data.osm_id ? String(data.osm_id) : "";
+  const wikidataId = normalizeWikidataId(extratags.wikidata);
+
+  return {
+    id: input.id || stableId("place", [wikidataId, osmType, osmId, canonicalName, coordinates?.join(",")]),
+    canonicalName,
+    localName,
+    aliases: buildNominatimAliases({ canonicalName, localName, namedetails, address }),
+    countryCode: String(address.country_code || input.countryCode || "").toUpperCase(),
+    region: cleanAreaName(address.state || address.region || address.county || input.region || ""),
+    municipality: cleanAreaName(getAddressCity(address) || input.municipality || input.city || ""),
+    coordinates,
+    osmType,
+    osmId,
+    wikidataId,
+    wikipediaUrl: getWikipediaUrl(extratags),
+    officialWebsite: sanitizeUrl(extratags.website || extratags.url || input.officialWebsite || input.website || ""),
+    categories: [data.category, data.type, input.category].filter(Boolean).map(String),
+    confidence: getNominatimConfidence(data, input.accuracyMeters),
+  };
+}
+
+function createNominatimSource(place, data) {
+  if (!data) {
+    return {
+      provider: "trip-worker",
+      providerId: place.id,
+      name: "Trip Worker",
+      type: "system",
+      url: "",
+      confidence: 0.55,
+    };
+  }
+
+  return {
+    provider: "nominatim",
+    providerId: [data.osm_type, data.osm_id].filter(Boolean).join(":"),
+    name: "OpenStreetMap Nominatim",
+    type: "geocoder",
+    url: getOpenStreetMapObjectUrl(data),
+    confidence: getNominatimConfidence(data),
+  };
+}
+
+function createNominatimFacts(place, data) {
+  if (!data) return [];
+  const address = data.address || {};
+  const extratags = data.extratags || {};
+  const now = new Date().toISOString();
+  return [
+    createFact(place.id, "displayName", data.display_name || "", 0.74, false, now),
+    createFact(place.id, "city", cleanAreaName(getAddressCity(address)), 0.76, false, now),
+    createFact(place.id, "region", cleanAreaName(address.state || address.region || address.county || ""), 0.72, false, now),
+    createFact(place.id, "country", address.country || "", 0.78, false, now),
+    createFact(place.id, "countryCode", String(address.country_code || "").toUpperCase(), 0.78, false, now),
+    createFact(place.id, "osmObject", [data.osm_type, data.osm_id].filter(Boolean).join(":"), 0.82, false, now),
+    createFact(place.id, "wikidataId", normalizeWikidataId(extratags.wikidata), 0.7, false, now),
+    createFact(place.id, "website", extratags.website || extratags.url || "", 0.58, true, now),
+  ].filter((fact) => fact.value !== "");
+}
+
+function buildNominatimAliases({ canonicalName, localName, namedetails = {}, address = {} }) {
+  return [...new Set([
+    canonicalName,
+    localName,
+    address.city,
+    address.town,
+    address.village,
+    address.municipality,
+    address.suburb,
+    ...Object.entries(namedetails)
+      .filter(([key]) => key === "name" || key.startsWith("name:") || key.includes("alt_name"))
+      .map(([, value]) => value),
+  ].filter(Boolean).map((value) => cleanAreaName(value)))];
+}
+
+function getAddressCity(address = {}) {
+  return address.city || address.town || address.village || address.municipality || address.suburb || "";
+}
+
+function getNominatimMatchLevel(data = {}) {
+  if (["amenity", "tourism", "historic", "shop"].includes(data.category)) return "exact-poi";
+  if (["city", "town", "village", "suburb"].includes(data.type)) return "exact-locality";
+  if (data.address?.city || data.address?.town || data.address?.village || data.address?.municipality) return "nearby-locality";
+  if (data.address?.state || data.address?.country) return "regional-context";
+  return "coordinates-only";
+}
+
+function getNominatimConfidence(data = {}, accuracyMeters) {
+  const accuracyScore = Number.isFinite(Number(accuracyMeters)) ? Math.max(0, Math.min(1, 1 - Number(accuracyMeters) / 5000)) : 0.65;
+  const sourceScore = data.osm_id ? 0.22 : 0;
+  const displayScore = data.display_name ? 0.1 : 0;
+  return Math.max(0.2, Math.min(1, accuracyScore * 0.68 + sourceScore + displayScore));
+}
+
+function getOpenStreetMapObjectUrl(data = {}) {
+  const osmType = normalizeOsmType(data.osm_type);
+  if (!osmType || !data.osm_id) return "";
+  return `https://www.openstreetmap.org/${osmType}/${data.osm_id}`;
+}
+
+function normalizeOsmType(value = "") {
+  const key = String(value || "").toLowerCase();
+  if (key === "n") return "node";
+  if (key === "w") return "way";
+  if (key === "r") return "relation";
+  if (["node", "way", "relation"].includes(key)) return key;
+  return "";
+}
+
+function normalizeWikidataId(value = "") {
+  const match = String(value || "").match(/Q\d+/i);
+  return match ? match[0].toUpperCase() : "";
+}
+
+function getWikipediaUrl(tags = {}) {
+  if (!tags.wikipedia) return "";
+  const [language, ...titleParts] = String(tags.wikipedia).split(":");
+  const title = titleParts.join(":");
+  if (!language || !title) return "";
+  return `https://${language}.wikipedia.org/wiki/${encodeURIComponent(title.replace(/ /g, "_"))}`;
+}
+
+function cleanAreaName(value = "") {
+  return String(value || "")
+    .replace(/^municipal unit of\s+/i, "")
+    .replace(/^municipality of\s+/i, "")
+    .replace(/\s+municipal unit$/i, "")
+    .replace(/^region of\s+/i, "")
+    .replace(/\s+regional unit$/i, "")
+    .replace(/^municipality of\s+/i, "")
+    .replace(/\s+municipality$/i, "")
+    .replace(/\bmunicipal unit\b/gi, "city")
+    .replace(/\bmunicipality\b/gi, "city")
+    .trim();
+}
+
 function createCoreFacts(place, options = {}) {
   const now = new Date().toISOString();
   return [
-    createFact("name", place.canonicalName, 0.82, false, now),
-    createFact("coordinates", place.coordinates, 0.78, false, now),
-    createFact("category", place.categories?.[0] || "coordinates", 0.62, false, now),
-    options.accuracyMeters ? createFact("accuracyMeters", Number(options.accuracyMeters), 0.58, true, now) : null,
+    createFact(place.id, "name", place.canonicalName, 0.82, false, now),
+    createFact(place.id, "coordinates", place.coordinates, 0.78, false, now),
+    createFact(place.id, "category", place.categories?.[0] || "coordinates", 0.62, false, now),
+    options.accuracyMeters ? createFact(place.id, "accuracyMeters", Number(options.accuracyMeters), 0.58, true, now) : null,
   ].filter(Boolean);
 }
 
-function createFact(key, value, confidence, volatile, retrievedAt) {
+function createFact(placeId, key, value, confidence, volatile, retrievedAt) {
   return {
-    id: stableId("fact", [key, JSON.stringify(value), retrievedAt.slice(0, 10)]),
+    id: stableId("fact", [placeId, key, JSON.stringify(value), retrievedAt.slice(0, 10)]),
     key,
     label: labelFromKey(key),
     value,
