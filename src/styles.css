@@ -3349,6 +3349,26 @@ button:focus-visible {
     padding: 28px 18px 18px;
   }
 
+  h1 {
+    font-size: 28px;
+    line-height: 1.02;
+  }
+
+  h2 {
+    font-size: 22px;
+    line-height: 1.12;
+  }
+
+  h3 {
+    font-size: 15px;
+    line-height: 1.18;
+  }
+
+  .eyebrow {
+    font-size: 10px;
+    letter-spacing: .11em;
+  }
+
   .workspace--home {
     padding-top: 18px;
   }
@@ -3367,7 +3387,8 @@ button:focus-visible {
   }
 
   .topbar h1 {
-    font-size: 32px;
+    font-size: 28px;
+    line-height: 1.02;
   }
 
   .topbar > div:first-child {
@@ -3405,6 +3426,52 @@ button:focus-visible {
   .hero-panel {
     min-height: 340px;
     padding: 22px;
+  }
+
+  .hero-panel h2,
+  .live-hero h2,
+  .guide-hero h2 {
+    font-size: 30px;
+    line-height: 1.04;
+  }
+
+  .home-greeting-panel h2,
+  .upcoming-panel h2,
+  .profile-panel h2,
+  .personalise-panel h2,
+  .position-panel h2,
+  .recommendation-panel h2,
+  .nearby-panel h2,
+  .media-panel h2,
+  .story-panel h2,
+  .offline-panel h2,
+  .collab-panel h2,
+  .search-panel h2,
+  .map-panel h2,
+  .saved-panel h2,
+  .form-panel h2,
+  .itinerary-panel h2,
+  .notes-panel h2,
+  .upload-panel h2,
+  .preferences-panel h2 {
+    font-size: 22px;
+    line-height: 1.12;
+  }
+
+  .section-head h2,
+  .section-head h3,
+  .weather-card-head h3,
+  .intel-card h3,
+  .source-card h3,
+  .guide-pick h3,
+  .summary-card h3,
+  .route-stop h3,
+  .guide-alert h3,
+  .recommendation-card h3,
+  .visit-row h3,
+  .nearby-place h3 {
+    font-size: 15px;
+    line-height: 1.18;
   }
 
   .live-hero,
@@ -3544,8 +3611,8 @@ button:focus-visible {
 
   .home-trip-banner h2 {
     max-width: 100%;
-    font-size: clamp(34px, 12vw, 48px);
-    line-height: .98;
+    font-size: 31px;
+    line-height: 1.02;
     overflow-wrap: anywhere;
   }
 
@@ -3581,8 +3648,8 @@ button:focus-visible {
   }
 
   .story-copy h2 {
-    font-size: clamp(34px, 11vw, 46px);
-    line-height: .98;
+    font-size: 30px;
+    line-height: 1.04;
   }
 
   .story-copy p {
@@ -3817,6 +3884,62 @@ button:focus-visible {
 
   .mobile-nav span {
     font-size: 16px;
+  }
+}
+
+@media (max-width: 430px) {
+  h1,
+  .topbar h1 {
+    font-size: 25px;
+  }
+
+  h2,
+  .home-greeting-panel h2,
+  .upcoming-panel h2,
+  .profile-panel h2,
+  .personalise-panel h2,
+  .position-panel h2,
+  .recommendation-panel h2,
+  .nearby-panel h2,
+  .media-panel h2,
+  .story-panel h2,
+  .offline-panel h2,
+  .collab-panel h2,
+  .search-panel h2,
+  .map-panel h2,
+  .saved-panel h2,
+  .form-panel h2,
+  .itinerary-panel h2,
+  .notes-panel h2,
+  .upload-panel h2,
+  .preferences-panel h2,
+  .visual-day-card h2 {
+    font-size: 20px;
+  }
+
+  .home-trip-banner h2,
+  .story-copy h2,
+  .hero-panel h2,
+  .live-hero h2,
+  .guide-hero h2 {
+    font-size: 27px;
+  }
+
+  h3,
+  .section-head h2,
+  .section-head h3,
+  .weather-card-head h3,
+  .intel-card h3,
+  .source-card h3,
+  .guide-pick h3,
+  .summary-card h3,
+  .route-stop h3,
+  .guide-alert h3,
+  .recommendation-card h3,
+  .visit-row h3,
+  .nearby-place h3,
+  .place-result h3 {
+    font-size: 14px;
   }
 }
 
