@@ -40,6 +40,7 @@ let leafletInitFrame = null;
 let liveClockTimer = null;
 let liveDeviceHooksReady = false;
 let imageLookupInFlight = false;
+let sessionLookupInFlight = false;
 let isRendering = false;
 let pendingRender = false;
 let mapStatusDismissTimer = null;
@@ -103,6 +104,15 @@ const state = {
     current: null,
   },
   placeEditorOpen: false,
+  session: {
+    status: "idle",
+    principal: { role: "anonymous", userId: "", authType: "none" },
+    roles: {
+      canReviewMedia: false,
+      canLockHero: false,
+      canUseTravelerFeatures: false,
+    },
+  },
   placeImageCache: readCachedPlaceImages(),
   refreshingImageIds: new Set(),
   userPlaces: readStoredUserPlaces(),
@@ -266,6 +276,7 @@ function render() {
     `;
     bindEvents();
     scheduleLeafletMaps();
+    initSessionContext();
     initAutomaticPositioning();
     initWeatherContext();
     initNearbyDiscovery();
@@ -1319,12 +1330,15 @@ function renderHomeChecklist() {
 function renderHomeIdeaCard(place) {
   const editorial = getPlaceEditorial(place);
   return `
-    <a class="home-idea-card" href="#map" data-map-focus="${escapeHtml(place.id)}" data-native-map-url="${escapeHtml(getMobileMapUrl(place))}" aria-label="Focus ${escapeHtml(place.title)} on the trip map">
-      ${renderPlaceImage(place, "home-idea-image")}
-      <h3>${escapeHtml(place.title)}</h3>
-      <p>${escapeHtml(editorial.whyStop || place.reason)}</p>
-      <small>★ ${escapeHtml(place.tag)} · ${escapeHtml(place.distance)}</small>
-    </a>
+    <article class="home-idea-card">
+      <a class="home-idea-link" href="#map" data-map-focus="${escapeHtml(place.id)}" data-native-map-url="${escapeHtml(getMobileMapUrl(place))}" aria-label="Focus ${escapeHtml(place.title)} on the trip map">
+        ${renderPlaceImage(place, "home-idea-image")}
+        <h3>${escapeHtml(place.title)}</h3>
+        <p>${escapeHtml(editorial.whyStop || place.reason)}</p>
+        <small>★ ${escapeHtml(place.tag)} · ${escapeHtml(place.distance)}</small>
+      </a>
+      ${renderImageRefreshButton(place, "image-refresh-button")}
+    </article>
   `;
 }
 
@@ -1394,7 +1408,6 @@ function renderPlaceResult(place) {
   const editorial = getPlaceEditorial(place);
   const distance = place.distance ? `<em>${escapeHtml(place.distance)}</em>` : "";
   const price = renderPriceLevel(place.priceLevel);
-  const imageRefreshing = state.refreshingImageIds.has(place.id);
   return `
     <article class="place-result">
       ${renderPlaceImage(place, "place-photo")}
@@ -1406,7 +1419,7 @@ function renderPlaceResult(place) {
       </div>
       <div class="place-actions">
         <button class="save-button ${saved ? "is-saved" : ""}" data-save="${place.id}">${saved ? "Saved" : "Save"}</button>
-        <button class="bookmark-button ${imageRefreshing ? "is-loading" : ""}" data-refresh-place-image="${escapeHtml(place.id)}" aria-label="Refresh image for ${escapeHtml(place.title)}" ${imageRefreshing ? "disabled" : ""}>${renderIcon("refresh")}</button>
+        ${renderImageRefreshButton(place, "bookmark-button")}
         <button class="bookmark-button ${saved ? "is-saved" : ""}" data-save="${place.id}" aria-label="${saved ? "Remove" : "Save"} ${place.title}">${renderIcon("bookmark")}</button>
       </div>
     </article>
@@ -1520,7 +1533,6 @@ function renderRecommendation(item) {
   const source = item.source ? `<small>${escapeHtml(item.source)}</small>` : "";
   const iconName = getPlaceIconName(item);
   const editorial = getPlaceEditorial(item);
-  const imageRefreshing = state.refreshingImageIds.has(item.id);
   return `
     <article class="recommendation-card">
       <a class="recommendation-link" href="#map" data-map-focus="${escapeHtml(item.id)}" data-native-map-url="${escapeHtml(getMobileMapUrl(item))}" aria-label="Focus ${escapeHtml(item.title)} on the trip map">
@@ -1537,12 +1549,23 @@ function renderRecommendation(item) {
       <strong>${item.distance}</strong>
       </a>
       <div class="recommendation-actions">
-        <button class="${imageRefreshing ? "is-loading" : ""}" data-refresh-place-image="${escapeHtml(item.id)}" aria-label="Refresh image for ${escapeHtml(item.title)}" ${imageRefreshing ? "disabled" : ""}>${renderIcon("refresh")}</button>
+        ${renderImageRefreshButton(item)}
         <button data-edit-user-place="${escapeHtml(item.id)}" aria-label="Edit ${escapeHtml(item.title)}">${renderIcon("note")}</button>
         <button data-hide-nearby="${escapeHtml(item.id)}" aria-label="Remove ${escapeHtml(item.title)} as not relevant">−</button>
       </div>
     </article>
   `;
+}
+
+function renderImageRefreshButton(place, className = "") {
+  if (!canRefreshPlaceImages()) return "";
+  const imageRefreshing = state.refreshingImageIds.has(place.id);
+  const classAttr = [className, imageRefreshing ? "is-loading" : ""].filter(Boolean).join(" ");
+  return `<button class="${escapeHtml(classAttr)}" data-refresh-place-image="${escapeHtml(place.id)}" aria-label="Refresh image for ${escapeHtml(place.title)}" ${imageRefreshing ? "disabled" : ""}>${renderIcon("refresh")}</button>`;
+}
+
+function canRefreshPlaceImages() {
+  return Boolean(state.session.roles.canReviewMedia || state.session.principal.role === "admin");
 }
 
 function renderPlaceImage(place, className) {
@@ -2183,6 +2206,7 @@ function bindEvents() {
     button.addEventListener("click", (event) => {
       event.preventDefault();
       event.stopPropagation();
+      if (!canRefreshPlaceImages()) return;
       refreshPlaceImage(button.dataset.refreshPlaceImage);
     });
   });
@@ -2568,6 +2592,35 @@ function getCommonsImageUrl(fileName) {
   return `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(fileName)}`;
 }
 
+function initSessionContext() {
+  if (state.session.status !== "idle" || sessionLookupInFlight) return;
+  sessionLookupInFlight = true;
+  state.session = { ...state.session, status: "loading" };
+  enrichmentService.getSession()
+    .then((session) => {
+      state.session = {
+        status: "ready",
+        principal: {
+          role: session.principal?.role || "anonymous",
+          userId: session.principal?.userId || "",
+          authType: session.principal?.authType || "none",
+        },
+        roles: {
+          canReviewMedia: Boolean(session.roles?.canReviewMedia),
+          canLockHero: Boolean(session.roles?.canLockHero),
+          canUseTravelerFeatures: Boolean(session.roles?.canUseTravelerFeatures),
+        },
+      };
+    })
+    .catch(() => {
+      state.session = { ...state.session, status: "error" };
+    })
+    .finally(() => {
+      sessionLookupInFlight = false;
+      render();
+    });
+}
+
 function initPlaceImageLookup() {
   if (!["home", "live", "search"].includes(state.activeView)) return;
   if (imageLookupInFlight) return;
@@ -2606,6 +2659,7 @@ async function fetchRelevantPlaceImages(places) {
 
 async function refreshPlaceImage(placeId) {
   const place = findEditableSourcePlace(placeId);
+  if (!canRefreshPlaceImages()) return;
   if (!place || state.refreshingImageIds.has(place.id)) return;
 
   state.refreshingImageIds.add(place.id);

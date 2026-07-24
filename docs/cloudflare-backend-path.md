@@ -96,7 +96,7 @@ After bindings are configured, move provider calls from the local `enrichmentSer
 
 Current service-boundary migrations:
 
-- Roles/session: the Worker recognizes `anonymous`, `traveler` and `admin` principals. `GET /api/session` exposes the current role. `PATCH /api/place-images/:id` and `POST /api/places/:id/hero/lock` now require admin. This is a lightweight token/header boundary, not a full user account system.
+- Roles/session: the Worker recognizes `anonymous`, `traveler` and `admin` principals. `GET /api/session` exposes the current role. Manual forced media refresh, `PATCH /api/place-images/:id` and `POST /api/places/:id/hero/lock` now require admin. This is a lightweight token/header boundary, not a full user account system.
 - Location resolve: `collectAreaData()` calls `enrichmentService.resolveLocation()`, which calls `POST /api/location/resolve` first and falls back to the local resolver if the Worker is unavailable.
 - Nearby discovery: `src/main.js` calls `enrichmentService.discoverNearby()`, which calls the Worker first and keeps the browser Overpass path as fallback.
 - Media refresh: `src/main.js` calls `enrichmentService.refreshMedia()`, which calls `POST /api/places/:id/media/refresh` first. The Worker now checks reviewed D1 images, curated/client media, then the server-side media provider router: Wikimedia Commons/Wikidata plus Openverse, with D1 `place_images` persistence. Passing `refresh=1` or `{ "force": true }` bypasses stored D1 images for a live recheck, then falls back to stored media if the live pass is empty. The local media aggregator remains as a browser fallback when the Worker is unavailable or only returns designed fallback media.
@@ -123,7 +123,7 @@ Current D1-backed endpoints:
   - The current temporary seed contains curated Heraklion POIs from `src/data/creteSeed.js`: Lions Square, Peskesi, Venetian Walls, Heraklion Archaeological Museum, Koules Fortress and Ammoudara Beach.
 - `POST /api/places/enrich-location` persists a basic `PlaceProfile` with core facts and placeholder editorial.
 - `GET /api/places/enrich?id=<placeId>` reads a stored `PlaceProfile`.
-- `POST /api/places/:id/media/refresh` returns reviewed D1 images when available, otherwise accepts curated/client place media such as `/assets/...` seed images, otherwise runs the server-side media provider router, persists candidates to `place_images`, and only then returns designed fallback media. Add `refresh=1` or body `force: true` to bypass D1 for a fresh provider pass.
+- `POST /api/places/:id/media/refresh` returns reviewed D1 images when available, otherwise accepts curated/client place media such as `/assets/...` seed images, otherwise runs the server-side media provider router, persists candidates to `place_images`, and only then returns designed fallback media. Add `refresh=1` or body `force: true` to bypass D1 for a fresh provider pass; forced refresh requires admin.
 - `POST /api/places/:id/editorial/generate` creates deterministic editorial from submitted place, facts, media and traveller/route context, upserts the place if needed, and persists the editorial profile to D1.
 - `POST /api/media/light` stores a small D1 light media object.
 - `GET /api/media/light/:key` reads a D1 light media object.

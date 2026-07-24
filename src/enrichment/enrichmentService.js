@@ -12,6 +12,13 @@ export function createEnrichmentService(options = {}) {
   const apiBase = options.apiBase ?? getDefaultApiBase();
 
   return {
+    async getSession() {
+      const url = buildApiUrl(apiBase, "/api/session");
+      const response = await fetchImpl(url.href, { headers: { Accept: "application/json" } });
+      if (!response.ok) throw new Error(`worker-session-http-${response.status}`);
+      return response.json();
+    },
+
     async resolveLocation(input = {}) {
       const workerLocation = await resolveWorkerLocation(input, { apiBase, fetchImpl, now }).catch(() => null);
       if (workerLocation) return workerLocation;

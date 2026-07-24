@@ -5,7 +5,7 @@ import { createEnrichmentService } from "../src/enrichment/enrichmentService.js"
 import { calculateImageScore, dedupeImages } from "../src/enrichment/mediaAggregator.js";
 import { areAliasesEquivalent, buildPlaceAliases, createResolvedPlaceIdentity } from "../src/enrichment/placeResolver.js";
 import { createNormalizedFact, createNormalizedImage, createPlaceProfileContract, ENRICHMENT_COVERAGE } from "../src/enrichment/schemas.js";
-import { createRequestPrincipal } from "../worker/index.js";
+import worker, { createRequestPrincipal } from "../worker/index.js";
 
 const heraklionPlace = {
   id: "heraklion-test",
@@ -55,6 +55,21 @@ test("Worker request principal distinguishes anonymous, traveler, and admin", ()
   }), { TRIP_ADMIN_TOKEN: "secret" });
   assert.equal(admin.role, "admin");
   assert.equal(admin.authType, "admin-token");
+});
+
+test("Worker force media refresh requires admin", async () => {
+  const response = await worker.fetch(new Request("https://trip.test/api/places/lions-square/media/refresh?refresh=1", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Trip-User-Id": "thomas",
+    },
+    body: JSON.stringify({ place: { id: "lions-square", title: "Lions Square" }, force: true }),
+  }), { TRIP_ADMIN_TOKEN: "secret" }, {});
+
+  assert.equal(response.status, 403);
+  const payload = await response.json();
+  assert.equal(payload.error.code, "forbidden");
 });
 
 test("image scoring rewards strong candidates and penalizes mismatch signals", () => {

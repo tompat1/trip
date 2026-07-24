@@ -278,6 +278,10 @@ async function mediaRefreshHandler(context) {
   const url = new URL(context.request.url);
   const body = await readJson(context.request);
   const forceRefresh = url.searchParams.get("refresh") === "1" || body.force === true;
+  if (forceRefresh) {
+    const forbidden = requireAdmin(context);
+    if (forbidden) return forbidden;
+  }
   const inputPlace = { ...body.place, id: placeId };
   const storedMedia = await getStoredPlaceMedia(context, placeId);
   const curatedMedia = forceRefresh || storedMedia.hero ? createEmptyMedia("fallback") : createCuratedPlaceMedia(inputPlace, context);
