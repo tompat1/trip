@@ -224,6 +224,65 @@ test("enrichment service discovers nearby places through the Worker contract", a
   assert.equal(result.providerStatus[0].provider, "d1-nearby-cache");
 });
 
+test("enrichment service resolves location through the Worker contract", async () => {
+  let requestedBody = null;
+  const service = createEnrichmentService({
+    apiBase: "https://trip.test",
+    fetchImpl: async (url, options = {}) => {
+      assert.match(url, /\/api\/location\/resolve$/);
+      requestedBody = JSON.parse(options.body);
+      return {
+        ok: true,
+        async json() {
+          return {
+            location: {
+              placeId: "place-heraklion",
+              coordinates: [35.3391, 25.132],
+              confidence: 0.92,
+              matchLevel: "nearby-locality",
+              city: "Heraklion",
+              region: "Crete",
+              countryCode: "GR",
+              provider: "nominatim",
+            },
+            providerStatus: [{ provider: "nominatim", status: "ok", count: 1 }],
+            placeProfile: {
+              place: {
+                id: "place-heraklion",
+                canonicalName: "Heraklion",
+                localName: "Ηράκλειο",
+                countryCode: "GR",
+                region: "Crete",
+                municipality: "Heraklion",
+                coordinates: [35.3391, 25.132],
+                categories: ["boundary", "administrative"],
+              },
+              facts: [
+                { key: "displayName", value: "Heraklion, Crete, Greece" },
+                { key: "country", value: "Greece" },
+              ],
+              sources: [],
+            },
+          };
+        },
+      };
+    },
+  });
+
+  const resolved = await service.resolveLocation({
+    coordinates: [35.3391, 25.132],
+    accuracyMeters: 12,
+  });
+
+  assert.deepEqual(requestedBody.coordinates, [35.3391, 25.132]);
+  assert.equal(requestedBody.accuracyMeters, 12);
+  assert.equal(resolved.locality, "Heraklion");
+  assert.equal(resolved.region, "Crete");
+  assert.equal(resolved.area.city, "Heraklion");
+  assert.equal(resolved.area.island, "Crete");
+  assert.equal(resolved.place.canonicalName, "Heraklion");
+});
+
 test("enrichment service falls back when the Worker nearby request fails", async () => {
   const service = createEnrichmentService({
     apiBase: "https://trip.test",

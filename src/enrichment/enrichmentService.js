@@ -13,6 +13,8 @@ export function createEnrichmentService(options = {}) {
 
   return {
     async resolveLocation(input = {}) {
+      const workerLocation = await resolveWorkerLocation(input, { apiBase, fetchImpl, now }).catch(() => null);
+      if (workerLocation) return workerLocation;
       return resolveLocationContext({ ...input, fetchImpl });
     },
 
@@ -153,6 +155,109 @@ function normalizeCoordinates(value) {
   const [lat, lng] = value.map(Number);
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
   return [lat, lng];
+}
+
+async function resolveWorkerLocation(input = {}, options = {}) {
+  const coordinates = normalizeCoordinates(input.coordinates);
+  if (!coordinates) return null;
+  const url = buildApiUrl(options.apiBase, "/api/location/resolve");
+  const response = await options.fetchImpl(url.href, {
+    method: "POST",
+    headers: { Accept: "application/json", "Content-Type": "application/json" },
+    body: JSON.stringify({
+      coordinates,
+      accuracyMeters: input.accuracyMeters,
+      title: input.title,
+      category: input.category,
+    }),
+  });
+  if (!response.ok) throw new Error(`worker-location-http-${response.status}`);
+  const payload = await response.json();
+  return normalizeWorkerLocationPayload(payload, coordinates);
+}
+
+function normalizeWorkerLocationPayload(payload = {}, coordinates) {
+  const location = payload.location || {};
+  const profilePlace = payload.placeProfile?.place || {};
+  const city = cleanAreaName(location.city || profilePlace.municipality || profilePlace.canonicalName || "");
+  const region = cleanAreaName(location.region || profilePlace.region || "");
+  const countryCode = String(location.countryCode || profilePlace.countryCode || "").toUpperCase();
+  return {
+    latitude: coordinates[0],
+    longitude: coordinates[1],
+    countryCode,
+    countryName: getFactValue(payload.placeProfile?.facts, "country") || "",
+    region,
+    county: "",
+    municipality: city,
+    locality: city,
+    neighbourhood: "",
+    postcode: "",
+    timezone: "",
+    primaryLanguage: countryCode === "GR" ? "el" : "en",
+    localLanguages: countryCode === "GR" ? ["el", "en"] : ["en"],
+    confidence: Number(location.confidence || profilePlace.confidence || 0.65),
+    matchLevel: location.matchLevel || "",
+    sourceIds: (payload.placeProfile?.sources || []).map((source) => source.id).filter(Boolean),
+    providerStatus: payload.providerStatus || [],
+    placeProfile: payload.placeProfile || null,
+    area: {
+      city,
+      town: "",
+      village: "",
+      suburb: "",
+      county: "",
+      region,
+      island: inferIsland(region),
+      country: getFactValue(payload.placeProfile?.facts, "country") || "",
+      countryCode,
+      locality: city,
+      neighbourhood: "",
+      postcode: "",
+      displayName: getFactValue(payload.placeProfile?.facts, "displayName") || [city, region].filter(Boolean).join(", "),
+      osmId: profilePlace.osmId || "",
+      osmType: cleanAreaType(profilePlace.categories?.[0] || profilePlace.osmType || "OpenStreetMap area"),
+      placeType: profilePlace.categories?.[0] || "",
+      boundingBox: [],
+      resolvedPlaceId: location.placeId || profilePlace.id || "",
+      canonicalName: profilePlace.canonicalName || city,
+      localName: profilePlace.localName || "",
+      aliases: profilePlace.aliases || [],
+      wikidataId: profilePlace.wikidataId || "",
+      wikipediaUrl: profilePlace.wikipediaUrl || "",
+      matchLevel: location.matchLevel || "",
+      confidence: Number(location.confidence || profilePlace.confidence || 0.65),
+    },
+    place: {
+      ...profilePlace,
+      id: profilePlace.id || location.placeId || "current-location",
+      canonicalName: profilePlace.canonicalName || city || "Current location",
+      coordinates,
+    },
+  };
+}
+
+function getFactValue(facts = [], key) {
+  return (facts || []).find((fact) => fact.key === key)?.value || "";
+}
+
+function cleanAreaName(value = "") {
+  return String(value || "")
+    .replace(/^municipal unit of\s+/i, "")
+    .replace(/^municipality of\s+/i, "")
+    .replace(/\bmunicipal unit\b/gi, "city")
+    .replace(/\bmunicipality\b/gi, "city")
+    .trim();
+}
+
+function cleanAreaType(value = "") {
+  const normalized = String(value || "");
+  if (/municipal/i.test(normalized)) return "City";
+  return normalized || "OpenStreetMap area";
+}
+
+function inferIsland(region = "") {
+  return /crete/i.test(String(region)) ? "Crete" : "";
 }
 
 async function refreshWorkerMedia(place = {}, options = {}) {

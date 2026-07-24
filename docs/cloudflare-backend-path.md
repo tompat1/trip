@@ -93,6 +93,7 @@ After bindings are configured, move provider calls from the local `enrichmentSer
 
 Current service-boundary migrations:
 
+- Location resolve: `collectAreaData()` calls `enrichmentService.resolveLocation()`, which calls `POST /api/location/resolve` first and falls back to the local resolver if the Worker is unavailable.
 - Nearby discovery: `src/main.js` calls `enrichmentService.discoverNearby()`, which calls the Worker first and keeps the browser Overpass path as fallback.
 - Media refresh: `src/main.js` calls `enrichmentService.refreshMedia()`, which calls `POST /api/places/:id/media/refresh` first and keeps the local Commons/Openverse aggregator as fallback when the Worker only has designed fallback media.
 - Editorial generation: `enrichmentService.generateEditorial()` calls `POST /api/places/:id/editorial/generate` first and falls back to the local deterministic composer if the Worker is unavailable. The synchronous `composeEditorial()` path remains available for instant render-time copy.

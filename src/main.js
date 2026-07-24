@@ -3359,39 +3359,19 @@ function requestCurrentPosition({ force = false, centerLiveMap = false, centerMa
 
 async function collectAreaData(coordinates, accuracy, { centerLiveMap = false, centerMapId = "" } = {}) {
   const cacheKey = getLocationCacheKey(coordinates);
-  const url = new URL(NOMINATIM_REVERSE_ENDPOINT);
-  url.searchParams.set("format", "jsonv2");
-  url.searchParams.set("lat", coordinates[0]);
-  url.searchParams.set("lon", coordinates[1]);
-  url.searchParams.set("addressdetails", "1");
-  url.searchParams.set("extratags", "1");
-  url.searchParams.set("zoom", "12");
-  url.searchParams.set("accept-language", "en");
-
-  const controller = new AbortController();
-  const timeout = window.setTimeout(() => controller.abort(), 9000);
 
   try {
-    url.searchParams.set("namedetails", "1");
-
-    const response = await fetch(url, {
-      headers: { Accept: "application/json" },
-      signal: controller.signal,
-    });
-    if (!response.ok) throw new Error("Reverse geocoding failed");
-
-    const data = await response.json();
     const resolved = await enrichmentService.resolveLocation({
       coordinates,
       accuracyMeters: accuracy,
-      nominatimData: data,
-    }).catch(() => null);
+    });
+    if (!resolved) throw new Error("Location resolver failed");
     const context = {
       cacheKey,
       coordinates,
       accuracy,
       updatedAt: new Date().toISOString(),
-      area: normalizeAreaData(data, resolved),
+      area: resolved.area || normalizeAreaFromResolvedLocation(resolved),
       resolved,
     };
     writeCachedLocation(context);
@@ -3405,9 +3385,40 @@ async function collectAreaData(coordinates, accuracy, { centerLiveMap = false, c
       error: "Position found, but area data could not be collected yet.",
     };
   } finally {
-    window.clearTimeout(timeout);
     render();
   }
+}
+
+function normalizeAreaFromResolvedLocation(resolved = {}) {
+  const city = cleanAreaName(resolved.locality || resolved.municipality || resolved.place?.canonicalName || "");
+  const region = cleanAreaName(resolved.region || "");
+  return {
+    city,
+    town: "",
+    village: "",
+    suburb: "",
+    county: cleanAreaName(resolved.county || ""),
+    region,
+    island: /crete/i.test(region) ? "Crete" : "",
+    country: cleanAreaName(resolved.countryName || ""),
+    countryCode: resolved.countryCode || "",
+    locality: city,
+    neighbourhood: cleanAreaName(resolved.neighbourhood || ""),
+    postcode: resolved.postcode || "",
+    displayName: [city, region, resolved.countryName].filter(Boolean).join(", "),
+    osmId: resolved.place?.osmId || "",
+    osmType: cleanAreaType(resolved.place?.categories?.[0] || "OpenStreetMap area"),
+    placeType: resolved.place?.categories?.[0] || "",
+    boundingBox: [],
+    resolvedPlaceId: resolved.place?.id || "",
+    canonicalName: resolved.place?.canonicalName || city,
+    localName: resolved.place?.localName || "",
+    aliases: resolved.place?.aliases || [],
+    wikidataId: resolved.place?.wikidataId || "",
+    wikipediaUrl: resolved.place?.wikipediaUrl || "",
+    matchLevel: resolved.matchLevel || "",
+    confidence: resolved.confidence || 0,
+  };
 }
 
 function normalizeAreaData(data, resolved = null) {
