@@ -285,6 +285,23 @@ class AppState {
     }
   }
 
+  updateCalendarEvent(tripId, eventId, updates) {
+    const trip = tripsData[tripId];
+    if (!trip || !trip.calendarEvents) return;
+    const evt = trip.calendarEvents.find((e) => e.id === eventId);
+    if (evt) {
+      Object.assign(evt, updates);
+      this.notify();
+    }
+  }
+
+  deleteCalendarEvent(tripId, eventId) {
+    const trip = tripsData[tripId];
+    if (!trip || !trip.calendarEvents) return;
+    trip.calendarEvents = trip.calendarEvents.filter((e) => e.id !== eventId);
+    this.notify();
+  }
+
   async toggleSavedPlace(placeId) {
     if (this.savedPlaceIds.has(placeId)) {
       this.savedPlaceIds.delete(placeId);

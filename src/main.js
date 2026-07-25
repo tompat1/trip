@@ -216,6 +216,31 @@ document.addEventListener("click", (e) => {
         });
       }
     }
+    else if (action === "edit-calendar-event") {
+      const eventId = target.dataset.eventId;
+      const trip = state.activeTrip;
+      const evt = (trip.calendarEvents || []).find((e) => e.id === eventId);
+      if (evt) {
+        const title = prompt("Edit activity title:", evt.title);
+        if (title) {
+          const startTime = prompt("Start time (e.g. 10:00):", evt.startTime);
+          const endTime = prompt("End time (e.g. 12:00):", evt.endTime);
+          const location = prompt("Location:", evt.location || "");
+          state.updateCalendarEvent(state.activeTripId, eventId, {
+            title: title.trim(),
+            startTime: startTime || evt.startTime,
+            endTime: endTime || evt.endTime,
+            location: location || evt.location
+          });
+        }
+      }
+    }
+    else if (action === "delete-calendar-event") {
+      const eventId = target.dataset.eventId;
+      if (eventId && confirm("Delete this itinerary activity?")) {
+        state.deleteCalendarEvent(state.activeTripId, eventId);
+      }
+    }
     else if (action === "share-trip") {
       const trip = state.activeTrip;
       const shareUrl = `${window.location.origin}?trip=${encodeURIComponent(state.activeTripId)}`;
@@ -329,6 +354,59 @@ document.addEventListener("change", (e) => {
       alert(`📸 ${file.name} uploaded & recorded to your trip memory timeline!`);
     };
     reader.readAsDataURL(file);
+  }
+});
+
+// Calendar Drag & Drop Handlers (HTML5 & Mobile Touch)
+document.addEventListener("dragstart", (e) => {
+  const card = e.target.closest(".event-card");
+  if (card && card.dataset.eventId) {
+    e.dataTransfer.setData("text/plain", card.dataset.eventId);
+    card.classList.add("is-dragging");
+  }
+});
+
+document.addEventListener("dragend", (e) => {
+  const card = e.target.closest(".event-card");
+  if (card) card.classList.remove("is-dragging");
+});
+
+document.addEventListener("dragover", (e) => {
+  const col = e.target.closest(".calendar-col");
+  if (col) {
+    e.preventDefault();
+    col.classList.add("drag-hover");
+  }
+});
+
+document.addEventListener("dragleave", (e) => {
+  const col = e.target.closest(".calendar-col");
+  if (col) col.classList.remove("drag-hover");
+});
+
+document.addEventListener("drop", (e) => {
+  const col = e.target.closest(".calendar-col");
+  if (col) {
+    e.preventDefault();
+    col.classList.remove("drag-hover");
+    const eventId = e.dataTransfer.getData("text/plain");
+    if (!eventId) return;
+
+    const targetDayIndex = parseInt(col.dataset.colDay, 10);
+    const rect = col.getBoundingClientRect();
+    const offsetY = Math.max(0, Math.min(rect.height, e.clientY - rect.top));
+    const percentY = offsetY / rect.height;
+    const hourFloat = 8 + percentY * 15;
+    const startH = Math.floor(hourFloat);
+    const startM = Math.round(((hourFloat - startH) * 60) / 30) * 30;
+    const startTime = `${String(startH).padStart(2, '0')}:${String(startM % 60).padStart(2, '0')}`;
+    const endTime = `${String(startH + 2).padStart(2, '0')}:${String(startM % 60).padStart(2, '0')}`;
+
+    state.updateCalendarEvent(state.activeTripId, eventId, {
+      dayIndex: targetDayIndex,
+      startTime,
+      endTime
+    });
   }
 });
 

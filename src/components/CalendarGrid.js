@@ -38,12 +38,12 @@ export function renderCalendarGrid() {
               ${TIME_SLOTS.map(() => `<div class="grid-horizontal-line"></div>`).join("")}
             </div>
 
-            <!-- Columns for events -->
+            <!-- Columns for events (Interactive Dropzones & Slot Clickers) -->
             <div class="calendar-columns">
               ${DAYS_HEADER.map((_, dayIndex) => {
                 const dayEvents = events.filter((e) => e.dayIndex === dayIndex);
                 return `
-                  <div class="calendar-col" data-col-day="${dayIndex}">
+                  <div class="calendar-col" data-col-day="${dayIndex}" data-action="click-calendar-col">
                     ${dayEvents.map((evt) => renderEventCard(evt)).join("")}
                   </div>
                 `;
@@ -53,16 +53,19 @@ export function renderCalendarGrid() {
         </div>
       </div>
 
-      <!-- View settings button -->
-      <button class="calendar-settings-fab" title="Filter calendar events" data-action="calendar-filter">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/>
-          <line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/>
-          <line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/>
-          <line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/>
-          <line x1="17" y1="16" x2="23" y2="16"/>
-        </svg>
-      </button>
+      <!-- Quick Add & Filter FABs -->
+      <div class="calendar-fabs-group">
+        <button class="calendar-fab-btn fab-add" title="Add new event" data-action="add-event">
+          <span>+ Add</span>
+        </button>
+        <button class="calendar-fab-btn fab-filter" title="Filter calendar events" data-action="calendar-filter">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/>
+            <line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/>
+            <line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/>
+          </svg>
+        </button>
+      </div>
     </div>
   `;
 }
@@ -79,6 +82,9 @@ function renderEventCard(evt) {
 
   return `
     <div class="event-card event-card--${evt.colorScheme || 'peach'}" 
+         draggable="true"
+         data-event-id="${evt.id}"
+         data-day-index="${evt.dayIndex}"
          style="top: ${Math.max(0, topPercent)}%; height: ${Math.min(100, heightPercent)}%;"
          title="${escapeHtml(evt.title)} (${evt.startTime} - ${evt.endTime})">
       <div class="event-card__header">
@@ -87,6 +93,10 @@ function renderEventCard(evt) {
       </div>
       <div class="event-card__time">${evt.startTime} – ${evt.endTime}</div>
       ${evt.location ? `<div class="event-card__location">📍 ${escapeHtml(evt.location)}</div>` : ''}
+      <div class="event-card-actions">
+        <button class="btn btn--icon btn--ghost event-action-btn" data-action="edit-calendar-event" data-event-id="${evt.id}" title="Edit event">✏️</button>
+        <button class="btn btn--icon btn--ghost event-action-btn" data-action="delete-calendar-event" data-event-id="${evt.id}" title="Delete event">🗑️</button>
+      </div>
     </div>
   `;
 }

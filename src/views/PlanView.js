@@ -67,6 +67,9 @@ export function renderPlanView() {
 function renderSubtabContent(trip) {
   const tab = state.planSubTab;
 
+  if (tab === "overview") {
+    return renderOverviewSubTab(trip);
+  }
   if (tab === "journal") {
     return renderJournalSubTab();
   }
@@ -74,7 +77,7 @@ function renderSubtabContent(trip) {
     return renderStorySubTab(trip);
   }
 
-  // Default "plan" / "overview" / "explore" layout with View Mode controls
+  // Default "plan" / "explore" layout with View Mode controls
   return `
     <!-- View Mode Switcher Pills -->
     <div class="view-mode-bar">
@@ -262,6 +265,50 @@ function renderAlternativePlanView() {
             </div>
           </div>
         `).join('')}
+      </div>
+    </div>
+  `;
+}
+
+function renderOverviewSubTab(trip) {
+  const checklist = state.checklists[trip.id] || trip.checklist || [];
+  const completedCount = checklist.filter(i => i.completed).length;
+  const progressPct = checklist.length ? Math.round((completedCount / checklist.length) * 100) : 0;
+
+  return `
+    <div class="overview-subtab-view">
+      <!-- Planning Progress Summary Card -->
+      <div class="dashboard-card mb-md">
+        <div class="dashboard-card__header">
+          <h3 class="dashboard-card__title">Planning Progress</h3>
+          <span class="badge ${progressPct === 100 ? 'badge--success' : 'badge--info'}">${completedCount} of ${checklist.length} tasks (${progressPct}%)</span>
+        </div>
+        <div class="progress-bar-wrap mb-sm">
+          <div class="progress-bar-fill" style="width: ${progressPct}%"></div>
+        </div>
+        <p class="greeting-status">${progressPct === 100 ? '🎉 All planning tasks completed!' : 'Keep going! Your checklist updates stay synced across Home & Trips.'}</p>
+      </div>
+
+      <!-- Synced Planning Checklist (Full CRUD) -->
+      <div class="dashboard-card planning-widget mb-md">
+        <div class="dashboard-card__header">
+          <h3 class="dashboard-card__title">Trip Checklist</h3>
+          <button class="btn btn--outline btn--xs" data-action="add-checklist-item" title="Add planning task">+ Add task</button>
+        </div>
+        <ul class="checklist-items">
+          ${checklist.map(item => `
+            <li class="checklist-item ${item.completed ? 'is-completed' : ''}">
+              <span class="checkbox-circle ${item.completed ? 'is-checked' : ''}" data-action="toggle-check" data-item-id="${item.id}">
+                ${item.completed ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>' : ''}
+              </span>
+              <span class="checklist-label" data-action="toggle-check" data-item-id="${item.id}">${escapeHtml(item.label)}</span>
+              <div class="checklist-item-actions">
+                <button class="btn btn--icon btn--ghost item-action-btn" data-action="edit-checklist-item" data-item-id="${item.id}" data-label="${escapeHtml(item.label)}" title="Edit task">✏️</button>
+                <button class="btn btn--icon btn--ghost item-action-btn" data-action="delete-checklist-item" data-item-id="${item.id}" title="Delete task">🗑️</button>
+              </div>
+            </li>
+          `).join('')}
+        </ul>
       </div>
     </div>
   `;
