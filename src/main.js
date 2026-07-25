@@ -2312,11 +2312,11 @@ function bindEvents() {
   });
 
   document.querySelectorAll("[data-revert-place-image]").forEach((button) => {
-    button.addEventListener("click", (event) => {
+    button.addEventListener("click", async (event) => {
       event.preventDefault();
       event.stopPropagation();
       if (!canRefreshPlaceImages()) return;
-      revertPlaceImage(button.dataset.revertPlaceImage);
+      await revertPlaceImage(button.dataset.revertPlaceImage);
     });
   });
 
@@ -2857,15 +2857,19 @@ async function persistSelectedPlaceImage(place, selected) {
   }
 }
 
-function revertPlaceImage(placeId) {
+async function revertPlaceImage(placeId) {
   const place = findEditableSourcePlace(placeId);
   if (!place || !canRefreshPlaceImages()) return;
   const key = getPlaceImageKey(place);
   const previousMedia = getPreviousPlaceMedia(place);
   if (!previousMedia) return;
+  const persisted = await persistSelectedPlaceImage(place, previousMedia.hero);
+  const restoredMedia = (persisted || previousMedia.hero)
+    ? createSelectedPlaceMedia(stripMediaHistory(previousMedia), persisted || previousMedia.hero)
+    : stripMediaHistory(previousMedia);
 
   state.placeImageCache[key] = {
-    ...stripMediaHistory(previousMedia),
+    ...restoredMedia,
     updatedAt: new Date().toISOString(),
   };
   delete state.imageChoicePanels[key];
