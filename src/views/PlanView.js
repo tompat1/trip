@@ -1,12 +1,13 @@
 import { state } from "../state.js";
 import { renderCalendarGrid } from "../components/CalendarGrid.js";
+import { renderIcon } from "../utils/icons.js";
 
 const SUB_TABS = [
-  { id: "overview", label: "Overview", icon: "🏠" },
-  { id: "plan", label: "Plan", icon: "🗺️" },
-  { id: "explore", label: "Explore", icon: "💡" },
-  { id: "journal", label: "Journal", icon: "🔖" },
-  { id: "story", label: "Story", icon: "🏆" }
+  { id: "overview", label: "Overview", icon: renderIcon("compass") },
+  { id: "plan", label: "Plan", icon: renderIcon("calendar") },
+  { id: "explore", label: "Explore", icon: renderIcon("sparkles") },
+  { id: "journal", label: "Journal", icon: renderIcon("bookOpen") },
+  { id: "story", label: "Story", icon: renderIcon("award") }
 ];
 
 const VIEW_MODES = [
@@ -241,13 +242,13 @@ function renderVerticalTimeline(trip) {
         return `
           <div class="timeline-day-group">
             <div class="timeline-day-node">
-              <span class="timeline-day-badge">📍 Day ${dayIdx + 1} &bull; ${dayLabel}</span>
+              <span class="timeline-day-badge">${renderIcon("pin")} Day ${dayIdx + 1} &bull; ${dayLabel}</span>
             </div>
 
             <div class="timeline-day-events">
               ${dayEvents.length === 0 ? `
                 <div class="timeline-empty-slot" data-action="click-calendar-col" data-col-day="${dayIdx}">
-                  <span>+ Add activity for ${dayLabel}</span>
+                  <span>${renderIcon("plus")} Add activity for ${dayLabel}</span>
                 </div>
               ` : dayEvents.map((evt) => `
                 <div class="timeline-event-row" data-action="open-edit-drawer" data-event-id="${evt.id}">
@@ -259,11 +260,11 @@ function renderVerticalTimeline(trip) {
 
                   <div class="timeline-card-box event-card--${evt.colorScheme || 'peach'}">
                     <div class="timeline-card-header">
-                      <h4 class="timeline-card-title">${evt.icon || '📍'} ${escapeHtml(evt.title)}</h4>
-                      <span class="timeline-duration-tag">⏱ ${evt.startTime} – ${evt.endTime}</span>
+                      <h4 class="timeline-card-title">${escapeHtml(evt.title)}</h4>
+                      <span class="timeline-duration-tag">${renderIcon("clock")} ${evt.startTime} – ${evt.endTime}</span>
                     </div>
-                    ${evt.location ? `<div class="timeline-card-location">📍 ${escapeHtml(evt.location)}</div>` : ''}
-                    ${evt.reminder ? `<div class="timeline-card-reminder">🔔 ${escapeHtml(evt.reminder)} before</div>` : ''}
+                    ${evt.location ? `<div class="timeline-card-location">${renderIcon("pin")} ${escapeHtml(evt.location)}</div>` : ''}
+                    ${evt.reminder && evt.reminder !== 'none' ? `<div class="timeline-card-reminder">${renderIcon("bell")} ${escapeHtml(evt.reminder)} before</div>` : ''}
                   </div>
                 </div>
               `).join('')}

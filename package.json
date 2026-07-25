@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "leaflet": "^1.9.4",
+    "lucide": "^1.26.0",
     "vite": "latest"
   }
 }

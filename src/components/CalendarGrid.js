@@ -1,4 +1,5 @@
 import { state } from "../state.js";
+import { renderIcon } from "../utils/icons.js";
 
 const DAYS_HEADER = ["Sat 3 Oct", "Sun 4 Oct", "Mon 5 Oct", "Tue 6 Oct", "Wed 7 Oct", "Thu 8 Oct", "Fri 9 Oct"];
 const TIME_SLOTS = ["08:00", "10:00", "12:00", "14:00", "16:00", "18:00", "20:00", "22:00"];
@@ -93,14 +94,13 @@ function renderEventCard(evt) {
          title="${escapeHtml(evt.title)} (${evt.startTime} - ${evt.endTime})">
       <div class="event-card__header">
         <span class="event-card__title">${escapeHtml(evt.title)}</span>
-        <span class="event-card__icon">${evt.icon || '📍'}</span>
       </div>
       <div class="event-card__time">${evt.startTime} – ${evt.endTime}</div>
-      ${evt.location ? `<div class="event-card__location">📍 ${escapeHtml(evt.location)}</div>` : ''}
-      ${evt.reminder && evt.reminder !== 'none' ? `<div class="event-card__reminder">🔔 ${escapeHtml(evt.reminder)} before</div>` : ''}
+      ${evt.location ? `<div class="event-card__location">${renderIcon("pin")} ${escapeHtml(evt.location)}</div>` : ''}
+      ${evt.reminder && evt.reminder !== 'none' ? `<div class="event-card__reminder">${renderIcon("bell")} ${escapeHtml(evt.reminder)} before</div>` : ''}
       
       <div class="event-card-actions">
-        <button class="btn btn--icon btn--ghost event-action-btn" data-action="open-edit-drawer" data-event-id="${evt.id}" title="Edit activity">✏️</button>
+        <button class="btn btn--icon btn--ghost event-action-btn" data-action="open-edit-drawer" data-event-id="${evt.id}" title="Edit activity">${renderIcon("pencil")}</button>
       </div>
 
       <!-- Bottom Resize Handle for Touch/Drag Duration Resizing -->

@@ -1,5 +1,6 @@
 import { state } from "../state.js";
 import { renderHeader } from "../components/Header.js";
+import { renderIcon } from "../utils/icons.js";
 
 export function renderHomeView() {
   const trip = state.activeTrip;
@@ -119,18 +120,18 @@ function renderPlanningModules(trip, checklist) {
       <div class="dashboard-card planning-widget">
         <div class="dashboard-card__header">
           <h3 class="dashboard-card__title">Continue planning</h3>
-          <button class="btn btn--outline btn--xs" data-action="add-checklist-item" title="Add planning task">+ Add task</button>
+          <button class="btn btn--outline btn--xs" data-action="add-checklist-item" title="Add planning task">${renderIcon("plus")} Add task</button>
         </div>
         <ul class="checklist-items">
           ${checklist.map(item => `
             <li class="checklist-item ${item.completed ? 'is-completed' : ''}">
               <span class="checkbox-circle ${item.completed ? 'is-checked' : ''}" data-action="toggle-check" data-item-id="${item.id}">
-                ${item.completed ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>' : ''}
+                ${item.completed ? renderIcon("check") : ''}
               </span>
               <span class="checklist-label" data-action="toggle-check" data-item-id="${item.id}">${escapeHtml(item.label)}</span>
               <div class="checklist-item-actions">
-                <button class="btn btn--icon btn--ghost item-action-btn" data-action="edit-checklist-item" data-item-id="${item.id}" data-label="${escapeHtml(item.label)}" title="Edit task">✏️</button>
-                <button class="btn btn--icon btn--ghost item-action-btn" data-action="delete-checklist-item" data-item-id="${item.id}" title="Delete task">🗑️</button>
+                <button class="btn btn--icon btn--ghost item-action-btn" data-action="edit-checklist-item" data-item-id="${item.id}" data-label="${escapeHtml(item.label)}" title="Edit task">${renderIcon("pencil")}</button>
+                <button class="btn btn--icon btn--ghost item-action-btn" data-action="delete-checklist-item" data-item-id="${item.id}" title="Delete task">${renderIcon("trash")}</button>
               </div>
             </li>
           `).join('')}

@@ -1,4 +1,5 @@
 import { state } from "../state.js";
+import { renderIcon } from "../utils/icons.js";
 
 const COLOR_OPTIONS = [
   { id: "peach", label: "Peach", bg: "#ffe4d6", border: "#ffd0b8" },
@@ -90,7 +91,7 @@ export function renderEventDrawer() {
                         style="background: ${c.bg}; border-color: ${c.border};" 
                         data-drawer-color="${c.id}" 
                         title="${c.label}">
-                  ${(evt.colorScheme || 'peach') === c.id ? '✓' : ''}
+                  ${(evt.colorScheme || 'peach') === c.id ? renderIcon("check") : ''}
                 </button>
               `).join('')}
             </div>
@@ -102,7 +103,7 @@ export function renderEventDrawer() {
             <div class="drawer-pills-row">
               ${REMINDER_OPTIONS.map(rem => `
                 <button type="button" class="drawer-pill ${(evt.reminder || 'none') === rem.id ? 'is-selected' : ''}" data-drawer-reminder="${rem.id}">
-                  ${rem.id === 'none' ? '🔔 Off' : `🔔 ${rem.label}`}
+                  ${renderIcon("bell")} ${rem.label}
                 </button>
               `).join('')}
             </div>
@@ -112,7 +113,7 @@ export function renderEventDrawer() {
           <div class="drawer-actions">
             ${isEdit ? `
               <button type="button" class="btn btn--outline btn--danger" data-action="delete-event-from-drawer" data-event-id="${evt.id}">
-                🗑️ Delete
+                ${renderIcon("trash")} Delete
               </button>
             ` : ''}
             <button type="submit" class="btn btn--primary flex-grow-btn" data-action="save-event-from-drawer">
