@@ -1079,7 +1079,10 @@ async function getStoredPlaceProfile(context, placeId) {
     ORDER BY f.created_at ASC
   `).bind(placeId).all();
   const imagesResult = await context.env.TRIP_DB.prepare(`
-    SELECT * FROM place_images WHERE place_id = ? ORDER BY final_score DESC LIMIT 12
+    SELECT * FROM place_images
+    WHERE place_id = ?
+    ORDER BY hero_locked DESC, visual_role = 'hero' DESC, final_score DESC
+    LIMIT 12
   `).bind(placeId).all();
   const editorial = await context.env.TRIP_DB.prepare(`
     SELECT editorial_json FROM place_editorial_profiles
@@ -1089,7 +1092,7 @@ async function getStoredPlaceProfile(context, placeId) {
   `).bind(placeId).first();
 
   const images = imagesResult.results || [];
-  const hero = images.find((image) => image.visual_role === "hero") || null;
+  const hero = images.find((image) => image.hero_locked) || images.find((image) => image.visual_role === "hero") || null;
   const gallery = images.filter((image) => image.id !== hero?.id);
   return {
     schemaVersion: "place-profile-v1",

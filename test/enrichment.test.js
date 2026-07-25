@@ -194,6 +194,61 @@ test("Worker admin hero lock promotes one selected place image", async () => {
   assert.equal(db.reviews[0].decision, "hero_locked");
 });
 
+test("Worker stored place profile prefers admin-locked hero image", async () => {
+  const env = {
+    TRIP_DB: {
+      prepare(sql) {
+        return {
+          bind(...args) {
+            return {
+              async first() {
+                if (/SELECT \* FROM places WHERE id = \?/.test(sql)) {
+                  assert.equal(args[0], "koules");
+                  return {
+                    id: "koules",
+                    canonical_name: "Koules Fortress",
+                    local_name: "",
+                    country_code: "GR",
+                    region: "Crete",
+                    municipality: "Heraklion",
+                    latitude: 35.3447,
+                    longitude: 25.1367,
+                    categories: "[\"Sight\"]",
+                    confidence: 0.8,
+                  };
+                }
+                if (/SELECT editorial_json FROM place_editorial_profiles/.test(sql)) return null;
+                throw new Error(`Unexpected first SQL: ${sql}`);
+              },
+              async all() {
+                if (/FROM place_facts/.test(sql)) return { results: [] };
+                if (/FROM place_images/.test(sql)) {
+                  assert.match(sql, /ORDER BY hero_locked DESC/);
+                  return {
+                    results: [
+                      { id: "locked-gallery", place_id: "koules", provider: "commons", image_url: "https://example.com/locked.jpg", thumbnail_url: "", visual_role: "gallery", hero_locked: 1, review_status: "approved", final_score: 70 },
+                      { id: "old-hero", place_id: "koules", provider: "commons", image_url: "https://example.com/old.jpg", thumbnail_url: "", visual_role: "hero", hero_locked: 0, review_status: "approved", final_score: 99 },
+                    ],
+                  };
+                }
+                throw new Error(`Unexpected all SQL: ${sql}`);
+              },
+            };
+          },
+        };
+      },
+    },
+  };
+
+  const response = await worker.fetch(new Request("https://trip.test/api/places/enrich?id=koules"), env, {});
+
+  assert.equal(response.status, 200);
+  const payload = await response.json();
+  assert.equal(payload.placeProfile.media.hero.id, "locked-gallery");
+  assert.equal(payload.placeProfile.media.hero.heroLocked, true);
+  assert.equal(payload.placeProfile.media.gallery[0].id, "old-hero");
+});
+
 function createMediaReviewDb(initialImage) {
   const state = {
     image: { ...initialImage },
