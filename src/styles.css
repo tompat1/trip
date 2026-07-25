@@ -1202,45 +1202,10 @@ input, select, textarea {
    PLAN VIEW & INTERACTIVE WEEKLY CALENDAR GRID
    ========================================================================== */
 .plan-page {
-  padding: 0 16px;
+  padding: 0 16px 24px 16px;
 }
-
-.plan-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px 0 8px 0;
-}
-.plan-header__brand {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-.logo-text {
-  font-family: var(--font-serif);
-  font-size: 1.5rem;
-  font-weight: 700;
-  letter-spacing: 2px;
-}
-.plan-trip-title {
-  font-size: 1.1rem;
-  font-weight: 700;
-  line-height: 1.1;
-}
-.plan-trip-dates {
-  font-size: 0.75rem;
-  color: var(--ink-muted);
-}
-.plan-header__actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.user-avatar-sm img {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  object-fit: cover;
+.plan-page-body {
+  margin-top: 4px;
 }
 
 /* Sub-Tab Navigation Bar */
@@ -1252,7 +1217,7 @@ input, select, textarea {
   white-space: nowrap;
   -webkit-overflow-scrolling: touch;
   border-bottom: 1px solid var(--line);
-  margin-bottom: 12px;
+  margin-bottom: 16px;
   padding: 0 4px;
   scrollbar-width: none;
 }

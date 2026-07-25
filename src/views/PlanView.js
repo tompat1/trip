@@ -1,5 +1,6 @@
 import { state } from "../state.js";
 import { renderCalendarGrid } from "../components/CalendarGrid.js";
+import { renderHeader } from "../components/Header.js";
 import { renderIcon } from "../utils/icons.js";
 
 const SUB_TABS = [
@@ -24,40 +25,27 @@ export function renderPlanView() {
 
   return `
     <div class="plan-page">
-      <!-- Minimal Trip Header Bar -->
-      <header class="plan-header">
-        <div class="plan-header__brand">
-          <span class="logo-text">T R I P</span>
-          <div class="trip-title-meta">
-            <h1 class="plan-trip-title">${escapeHtml(trip.destination)}</h1>
-            <span class="plan-trip-dates">${escapeHtml(trip.dates)}</span>
-          </div>
-        </div>
-        <div class="plan-header__actions">
-          <button class="btn btn--outline btn--sm" data-action="invite-companions">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
-            <span>Invite</span>
-          </button>
-          <div class="user-avatar-sm">
-            <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=120&q=80" alt="Thomas" />
-          </div>
-        </div>
-      </header>
+      <!-- Universal Top App Header -->
+      ${renderHeader()}
 
-      <!-- Primary Sub-Navigation Bar -->
-      <nav class="sub-tab-nav">
-        ${SUB_TABS.map(
-          (tab) => `
-            <button class="sub-tab-item ${state.planSubTab === tab.id ? 'is-active' : ''}" data-subtab="${tab.id}">
-              <span class="sub-tab-icon">${tab.icon}</span>
-              <span class="sub-tab-label">${tab.label}</span>
-            </button>
-          `
-        ).join("")}
-      </nav>
+      <div class="plan-page-body">
+        <!-- Primary Sub-Navigation Bar -->
+        <nav class="sub-tab-nav">
+          ${SUB_TABS.map(
+            (tab) => `
+              <button class="sub-tab-item ${state.planSubTab === tab.id ? 'is-active' : ''}" data-subtab="${tab.id}">
+                <span class="sub-tab-icon">${tab.icon}</span>
+                <span class="sub-tab-label">${tab.label}</span>
+              </button>
+            `
+          ).join("")}
+        </nav>
 
-      <!-- Subtab Specific Content Render -->
-      ${renderSubtabContent(trip)}
+        <!-- Subtab Specific Content Render -->
+        <div class="subtab-content-container">
+          ${renderSubtabContent(trip)}
+        </div>
+      </div>
     </div>
   `;
 }
@@ -104,46 +92,59 @@ function renderSubtabContent(trip) {
 function renderJournalSubTab() {
   const moments = state.moments || [];
   const mediaMoments = moments.filter(m => m.media_url);
+  const noteMoments = moments.filter(m => !m.media_url);
 
   return `
-    <div class="journal-subtab-view">
+    <div class="journal-subtab-view" style="padding: 8px 4px 24px 4px;">
       <div class="journal-header mb-md">
-        <h2 class="journal-title">Travel Moments & Media</h2>
-        <p class="journal-sub">Captured photos, videos, and personal notes from ${escapeHtml(state.activeTrip.destination)}</p>
+        <h2 style="font-size: 1.3rem; font-weight: 700; color: var(--ink); margin-bottom: 4px;">Travel Moments & Media</h2>
+        <p style="font-size: 0.85rem; color: var(--ink-muted); margin: 0;">Captured photos, videos, and personal notes from ${escapeHtml(state.activeTrip.destination)}</p>
       </div>
 
       <!-- Media Gallery Grid -->
-      <div class="journal-media-grid mb-lg">
+      <div class="journal-media-grid mb-lg" style="margin-bottom: 24px;">
         ${mediaMoments.length === 0 ? `
-          <div class="empty-media-card">
-            <span class="empty-icon">📷</span>
-            <h4>No photos or videos captured yet</h4>
-            <p>Use Quick Capture (Photo / Video) on the Home dashboard to add media!</p>
-          </div>
-        ` : mediaMoments.map(m => `
-          <div class="journal-media-card" data-action="open-lightbox" data-moment-id="${m.id}">
-            <div class="journal-media-thumb" style="background-image: url('${m.media_url}')">
-              <span class="media-type-badge">${m.type === 'video' ? '📹 Video' : '📷 Photo'}</span>
+          <div class="empty-media-card" style="background: var(--paper-card); border: 1px dashed var(--line); border-radius: var(--radius-lg); padding: 32px 20px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 8px;">
+            <div style="width: 44px; height: 44px; border-radius: 50%; background: var(--paper-subtle); display: flex; align-items: center; justify-content: center; color: var(--ink-muted); margin-bottom: 4px;">
+              ${renderIcon("camera")}
             </div>
-            <div class="journal-media-body">
-              <h4 class="journal-media-title">${escapeHtml(m.title || 'Trip Photo')}</h4>
-              <p class="journal-media-date">${escapeHtml(m.date || 'Oct 2026')}</p>
-            </div>
+            <h4 style="font-size: 0.98rem; font-weight: 700; color: var(--ink); margin: 0;">No photos or videos captured yet</h4>
+            <p style="font-size: 0.82rem; color: var(--ink-muted); margin: 0; max-width: 320px; line-height: 1.4;">Use Quick Capture on the Home dashboard to record photos, videos, and journey notes!</p>
           </div>
-        `).join('')}
+        ` : `
+          <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px;">
+            ${mediaMoments.map(m => `
+              <div class="journal-media-card" data-action="open-lightbox" data-moment-id="${m.id}" style="background: var(--paper-card); border: 1px solid var(--line); border-radius: var(--radius-md); overflow: hidden; cursor: pointer; box-shadow: var(--shadow-sm);">
+                <div class="journal-media-thumb" style="height: 110px; background-image: url('${m.media_url}'); background-size: cover; background-position: center; position: relative;">
+                  <span class="media-type-badge voice-mono" style="position: absolute; bottom: 6px; right: 6px; background: rgba(23,24,23,0.8); color: #fff; padding: 2px 8px; border-radius: var(--radius-pill); font-size: 0.68rem; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">
+                    ${m.type === 'video' ? renderIcon("video") : renderIcon("camera")} ${m.type}
+                  </span>
+                </div>
+                <div class="journal-media-body" style="padding: 10px;">
+                  <h4 class="journal-media-title" style="font-size: 0.85rem; font-weight: 700; margin: 0 0 2px 0; color: var(--ink); truncate;">${escapeHtml(m.title || 'Trip Moment')}</h4>
+                  <p class="journal-media-date voice-mono" style="font-size: 0.72rem; color: var(--ink-muted); margin: 0;">${escapeHtml(m.date || 'Oct 2026')}</p>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        `}
       </div>
 
       <!-- Notes Feed -->
       <div class="journal-notes-section">
-        <h3 class="section-title mb-sm">Personal Notes & Thoughts</h3>
-        <div class="notes-feed">
-          ${moments.filter(m => !m.media_url).map(m => `
-            <div class="note-card mb-sm">
-              <span class="note-icon">📝</span>
-              <div class="note-body">
-                <h4 class="note-title">${escapeHtml(m.title)}</h4>
-                <p class="note-text">${escapeHtml(m.text)}</p>
-                <span class="note-date">${m.date}</span>
+        <h3 style="font-size: 1.1rem; font-weight: 700; color: var(--ink); margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--line-light);">Personal Notes & Thoughts</h3>
+        <div class="notes-feed" style="display: flex; flex-direction: column; gap: 10px;">
+          ${noteMoments.length === 0 ? `
+            <p style="font-size: 0.85rem; color: var(--ink-muted); font-style: italic;">No personal notes written yet.</p>
+          ` : noteMoments.map(m => `
+            <div class="note-card" style="background: var(--paper-card); border: 1px solid var(--line); border-radius: var(--radius-md); padding: 14px 16px; box-shadow: var(--shadow-sm); display: flex; gap: 12px; align-items: flex-start;">
+              <div style="color: var(--blue); margin-top: 2px;">
+                ${renderIcon("fileText")}
+              </div>
+              <div class="note-body" style="flex: 1;">
+                <h4 class="note-title" style="font-size: 0.92rem; font-weight: 700; color: var(--ink); margin: 0 0 4px 0;">${escapeHtml(m.title)}</h4>
+                <p class="note-text" style="font-size: 0.85rem; color: var(--ink-muted); margin: 0 0 6px 0; line-height: 1.4;">${escapeHtml(m.text)}</p>
+                <span class="note-date voice-mono" style="font-size: 0.72rem; color: var(--ink-light);">${m.date}</span>
               </div>
             </div>
           `).join('')}
