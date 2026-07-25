@@ -5,8 +5,8 @@ import { renderIcon } from "../utils/icons.js";
 
 const SUB_TABS = [
   { id: "overview", label: "Overview", icon: renderIcon("compass") },
-  { id: "plan", label: "Plan", icon: renderIcon("calendar") },
   { id: "explore", label: "Explore", icon: renderIcon("sparkles") },
+  { id: "plan", label: "Plan", icon: renderIcon("calendar") },
   { id: "journal", label: "Journal", icon: renderIcon("bookOpen") },
   { id: "story", label: "Story", icon: renderIcon("award") }
 ];
@@ -405,6 +405,7 @@ function renderOverviewSubTab(trip) {
 
 function renderExploreSubTab(trip) {
   const ideas = trip.ideas || [];
+  const events = trip.calendarEvents || [];
 
   return `
     <div class="explore-subtab-view">
@@ -417,6 +418,7 @@ function renderExploreSubTab(trip) {
       <div class="explore-ideas-grid" style="display: flex; flex-direction: column; gap: 14px; margin-bottom: 24px;">
         ${ideas.map(idea => {
           const isSaved = state.savedPlaceIds.has(idea.id);
+          const isAdded = events.some(e => e.title === idea.title);
           return `
             <div class="explore-card" style="background: var(--paper-card); border: 1px solid var(--line); border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow-sm); display: flex; flex-direction: column;">
               <div style="height: 160px; background-image: url('${idea.image}'); background-size: cover; background-position: center; position: relative;">
@@ -437,9 +439,15 @@ function renderExploreSubTab(trip) {
 
                 <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 8px; padding-top: 10px; border-top: 1px solid var(--line-light);">
                   <span class="voice-mono" style="font-size: 0.78rem; color: var(--ink-muted);">${renderIcon("clock")} ${idea.duration || '2 hours'}</span>
-                  <button class="btn btn--primary btn--xs" data-action="add-idea-to-itinerary" data-title="${escapeHtml(idea.title)}" data-location="${escapeHtml(idea.subtitle)}">
-                    ${renderIcon("plus")} Add to Itinerary
-                  </button>
+                  ${isAdded ? `
+                    <button class="btn btn--outline btn--xs" disabled style="opacity: 0.65; cursor: default; background: var(--paper-subtle); color: var(--ink-muted); border-color: var(--line);">
+                      ${renderIcon("check")} Added
+                    </button>
+                  ` : `
+                    <button class="btn btn--primary btn--xs" data-action="add-idea-to-itinerary" data-title="${escapeHtml(idea.title)}" data-location="${escapeHtml(idea.subtitle)}">
+                      ${renderIcon("plus")} Add to Itinerary
+                    </button>
+                  `}
                 </div>
               </div>
             </div>
