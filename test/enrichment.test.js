@@ -72,6 +72,64 @@ test("Worker force media refresh requires admin", async () => {
   assert.equal(payload.error.code, "forbidden");
 });
 
+test("Worker attribution endpoint returns stored image provenance", async () => {
+  const imageRows = [{
+    id: "image-1",
+    place_id: "koules",
+    provider: "commons",
+    provider_id: "123",
+    image_url: "https://upload.wikimedia.org/example.jpg",
+    thumbnail_url: "https://upload.wikimedia.org/thumb/example.jpg",
+    source_page_url: "https://commons.wikimedia.org/wiki/File:Example.jpg",
+    creator_name: "Example Creator",
+    creator_url: "https://example.com/creator",
+    license_code: "CC BY-SA 4.0",
+    license_name: "Creative Commons Attribution-ShareAlike 4.0",
+    license_url: "https://creativecommons.org/licenses/by-sa/4.0/",
+    attribution_text: "Example Creator · CC BY-SA 4.0",
+    width: 1600,
+    height: 1000,
+    exact_location: 1,
+    approximate_location: 0,
+    illustrative_only: 0,
+    visual_role: "hero",
+    relevance_score: 0.9,
+    quality_score: 0.8,
+    final_score: 92,
+    perceptual_hash: "",
+    review_status: "approved",
+    hero_locked: 1,
+    checked_at: "2026-07-24T12:00:00.000Z",
+  }];
+  const env = {
+    TRIP_DB: {
+      prepare(sql) {
+        assert.match(sql, /FROM place_images/);
+        return {
+          bind(placeId) {
+            assert.equal(placeId, "koules");
+            return {
+              async all() {
+                return { results: imageRows };
+              },
+            };
+          },
+        };
+      },
+    },
+  };
+
+  const response = await worker.fetch(new Request("https://trip.test/api/places/koules/attributions"), env, {});
+
+  assert.equal(response.status, 200);
+  const payload = await response.json();
+  assert.equal(payload.attributions.length, 1);
+  assert.equal(payload.attributions[0].creator, "Example Creator");
+  assert.equal(payload.attributions[0].source, "Wikimedia Commons");
+  assert.equal(payload.attributions[0].licenseUrl, "https://creativecommons.org/licenses/by-sa/4.0/");
+  assert.equal(payload.attributions[0].sourcePageUrl, "https://commons.wikimedia.org/wiki/File:Example.jpg");
+});
+
 test("image scoring rewards strong candidates and penalizes mismatch signals", () => {
   const strong = calculateImageScore({
     exactNameMatch: 1,

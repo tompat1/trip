@@ -538,11 +538,12 @@ function heroLockHandler(context) {
   }, context));
 }
 
-function attributionHandler(context) {
+async function attributionHandler(context) {
   const [placeId] = context.params;
+  const attributions = await getStoredPlaceAttributions(context, placeId);
   return json(partialResponse("places.attributions", {
     placeId,
-    attributions: [],
+    attributions,
   }, context));
 }
 
@@ -1029,6 +1030,21 @@ async function getStoredPlaceMedia(context, placeId) {
   const hero = images.find((image) => image.visualRole === "hero") || images[0];
   const gallery = images.filter((image) => image.id !== hero.id);
   return createMediaPayload(hero, gallery, hero.illustrativeOnly ? "fallback" : gallery.length ? "complete" : "partial");
+}
+
+async function getStoredPlaceAttributions(context, placeId) {
+  if (!context.hasDb || !placeId) return [];
+  const imagesResult = await context.env.TRIP_DB.prepare(`
+    SELECT * FROM place_images
+    WHERE place_id = ?
+      AND (image_url != '' OR thumbnail_url != '')
+    ORDER BY hero_locked DESC, visual_role = 'hero' DESC, final_score DESC
+    LIMIT 24
+  `).bind(placeId).all();
+  return (imagesResult.results || [])
+    .map(normalizeStoredImage)
+    .filter((image) => image.sourcePageUrl || image.attributionText || image.creatorName || image.licenseName)
+    .map(formatImageAttribution);
 }
 
 async function fetchAndPersistProviderMedia(context, place = {}) {
@@ -1610,15 +1626,35 @@ function createMediaPayload(hero, gallery = [], imagesCoverage = "partial") {
       roles[role] = [...(roles[role] || []), image];
       return roles;
     }, {}),
-    attributions: images.filter((image) => image.sourcePageUrl || image.attributionText).map((image) => ({
-      imageId: image.id,
-      text: image.attributionText || image.provider,
-      sourcePageUrl: image.sourcePageUrl || "",
-      licenseUrl: image.licenseUrl || "",
-    })),
+    attributions: images.filter((image) => image.sourcePageUrl || image.attributionText).map(formatImageAttribution),
     coverage: { images: imagesCoverage },
     generatedAt: new Date().toISOString(),
     refreshAfter: new Date(Date.now() + 1000 * 60 * 60 * 24 * 7).toISOString(),
+  };
+}
+
+function formatImageAttribution(image = {}) {
+  const sourceName = image.provider === "commons" ? "Wikimedia Commons" : image.provider === "openverse" ? "Openverse" : image.provider || "Media source";
+  return {
+    imageId: image.id || "",
+    provider: image.provider || "",
+    providerId: image.providerId || "",
+    visualRole: image.visualRole || "illustrative",
+    reviewStatus: image.reviewStatus || "pending",
+    creator: image.creatorName || "",
+    creatorUrl: image.creatorUrl || "",
+    source: sourceName,
+    sourcePageUrl: image.sourcePageUrl || "",
+    license: image.licenseName || image.licenseCode || "",
+    licenseCode: image.licenseCode || "",
+    licenseUrl: image.licenseUrl || "",
+    attribution: image.attributionText || [image.creatorName, sourceName, image.licenseCode || image.licenseName].filter(Boolean).join(" · "),
+    imageUrl: image.imageUrl || "",
+    thumbnailUrl: image.thumbnailUrl || image.imageUrl || "",
+    exactLocation: Boolean(image.exactLocation),
+    approximateLocation: Boolean(image.approximateLocation),
+    illustrativeOnly: Boolean(image.illustrativeOnly),
+    checkedAt: image.checkedAt || "",
   };
 }
 

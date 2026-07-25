@@ -130,6 +130,7 @@ Current D1-backed endpoints:
 - `POST /api/places/:id/editorial/generate` creates deterministic editorial from submitted place, facts, media and traveller/route context, upserts the place if needed, and persists the editorial profile to D1.
 - `POST /api/media/light` stores a small D1 light media object.
 - `GET /api/media/light/:key` reads a D1 light media object.
+- `GET /api/places/:id/attributions` returns stored media provenance from D1 `place_images`: creator, source, licence, source page, licence page, review state and image role.
 
 Known provider note:
 
