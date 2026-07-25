@@ -2054,7 +2054,7 @@ async function getStoredNearbyPlaces(context, coordinates, radiusMeters, intent 
         distance: formatDistance(distanceMeters),
         category,
         tag: category,
-        reason: `Stored nearby profile · ${formatDistance(distanceMeters)} away`,
+        reason: buildStoredNearbyReason(category, distanceMeters),
         source: "Trip D1 nearby cache",
         openingHours: "",
         score: scoreNearbyPlace(tags, distanceMeters, intent),
@@ -2333,9 +2333,25 @@ function buildOsmAliases(tags = {}, title = "") {
 }
 
 function buildNearbyReason(tags, category) {
-  const details = [tags.coffee, tags.craft, tags.roastery === "yes" ? "roastery" : "", tags.cuisine, tags.opening_hours, tags.tourism, tags.historic, tags.shop, tags.wheelchair ? `wheelchair ${tags.wheelchair}` : ""].filter(Boolean).slice(0, 2);
-  if (details.length) return `${category} nearby · ${details.join(" · ")}`;
-  return `${category} nearby, found from OpenStreetMap traveler tags.`;
+  if (tags.amenity === "toilets") return "Useful comfort stop if you are already passing close by.";
+  if (tags.amenity === "drinking_water") return "Refill here before a longer walk or exposed stretch.";
+  if (tags.coffee === "specialty" || tags.craft === "roastery" || tags.roastery === "yes") return "Promising coffee stop for a focused reset.";
+  if (tags.amenity === "cafe") return "Good candidate for a short coffee break nearby.";
+  if (["restaurant", "food_court"].includes(tags.amenity)) return tags.cuisine ? `Food stop with ${tags.cuisine} noted in OpenStreetMap.` : "Useful food stop if timing lines up.";
+  if (["museum", "gallery"].includes(tags.tourism)) return "Culture stop worth checking before you commit time.";
+  if (tags.tourism === "viewpoint") return "Map it for a quick view if the detour stays short.";
+  if (tags.historic) return "Historic point nearby; check the map before folding it into the route.";
+  if (tags.shop) return "Nearby shop that may be useful while you are already in the area.";
+  if (tags.opening_hours) return "Has opening hours in OpenStreetMap; refresh before relying on them.";
+  return `${category} nearby; check distance and fit before saving it.`;
+}
+
+function buildStoredNearbyReason(category, distanceMeters) {
+  const distance = formatDistance(distanceMeters);
+  if (/coffee|cafe|roaster/i.test(category)) return `Coffee candidate from the saved place cache, ${distance} away.`;
+  if (/food|restaurant|bakery/i.test(category)) return `Food option from the saved place cache, ${distance} away.`;
+  if (/museum|culture|sight|historic/i.test(category)) return `Saved cultural stop ${distance} from here.`;
+  return `Saved nearby place ${distance} from here.`;
 }
 
 function buildNearbySource(tags) {
