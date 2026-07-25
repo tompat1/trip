@@ -348,6 +348,72 @@ export const tripsData = {
       { id: "cev3", title: "Traditional Market Day", dates: "19 Jul 2026", icon: "🎁" },
       { id: "cev4", title: "Night at the Museum", dates: "21 Jul 2026", icon: "🏛️" }
     ]
+  },
+  spain: {
+    id: "spain",
+    destination: "Spain, Fall 2026",
+    flag: "🇪🇸",
+    dates: "Sept-Oct 2026",
+    daysCount: 14,
+    startDate: "2026-09-15",
+    status: "Upcoming",
+    statusText: "Upcoming Spain adventure",
+    tripMode: false,
+    center: [40.4168, -3.7038],
+    zoom: 13,
+    weather: {
+      temp: "25°C",
+      condition: "Sunny",
+      feelsLike: "26°C",
+      localTime: "10:00 AM",
+      currency: "EUR (€)",
+      forecast: [
+        { day: "Today", temp: "26°" },
+        { day: "Tomorrow", temp: "25°" },
+        { day: "Wed", temp: "24°" }
+      ]
+    },
+    upcomingActivity: {
+      title: "Spain, Fall 2026",
+      subtitle: "Sept-Oct 2026",
+      image: "https://images.unsplash.com/photo-1543783207-ec64e4d95325?auto=format&fit=crop&w=600&q=80"
+    },
+    checklist: [
+      { id: "stay", label: "Book stay in Madrid & Barcelona", completed: false },
+      { id: "tickets", label: "Reserve Sagrada Família & Alhambra tickets", completed: false },
+      { id: "tapas", label: "Bookmark local tapas bars", completed: true }
+    ],
+    mapPins: [
+      { id: "spain_p1", name: "Plaza Mayor, Madrid", lat: 40.4155, lng: -3.7074, category: "sight" },
+      { id: "spain_p2", name: "Sagrada Família", lat: 41.4036, lng: 2.1744, category: "sight" }
+    ],
+    calendarEvents: [
+      {
+        id: "spain_e1",
+        title: "Tapas Crawl in Madrid",
+        type: "food",
+        icon: "🍷",
+        dayIndex: 0,
+        dayName: "Sat 15 Sept",
+        startTime: "19:00",
+        endTime: "22:00",
+        location: "La Latina, Madrid",
+        colorScheme: "peach"
+      }
+    ],
+    ideas: [
+      {
+        id: "spain_i1",
+        title: "Mercado de San Miguel",
+        subtitle: "Gourmet tapas hall in heart of Madrid",
+        rating: 4.8,
+        duration: "2 hrs",
+        image: "https://images.unsplash.com/photo-1515443961218-a51367888e4b?auto=format&fit=crop&w=600&q=80"
+      }
+    ],
+    events: [
+      { icon: "💃", title: "Flamenco Night", dates: "Weekly" }
+    ]
   }
 };
 

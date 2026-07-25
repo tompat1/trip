@@ -55,26 +55,29 @@ class AppState {
       const res = await enrichmentService.fetchTrips();
       if (res && res.trips && Array.isArray(res.trips)) {
         res.trips.forEach((t) => {
+          const resolvedFlag = (t.flag && t.flag.length <= 4 && !t.flag.match(/^[a-zA-Z]/)) ? t.flag : getCountryFlagEmoji(t.destination);
           if (!tripsData[t.id]) {
             tripsData[t.id] = {
               id: t.id,
               destination: t.destination || "Trip",
-              flag: t.flag || getCountryFlagEmoji(t.destination),
+              flag: resolvedFlag,
               dates: t.dates || "Upcoming",
               daysCount: 7,
               startDate: new Date().toISOString().split("T")[0],
               status: "Upcoming",
               statusText: "Trip loaded",
               tripMode: false,
-              center: [t.latitude || 40.0, t.longitude || 0.0],
+              center: [t.latitude || 40.4168, t.longitude || -3.7038],
               zoom: 12,
               weather: { temp: "22°C", condition: "Sunny", forecast: [] },
-              upcomingActivity: { title: t.destination, subtitle: t.dates || "Upcoming", image: "https://images.unsplash.com/photo-1488646953014-85cb44e25828?auto=format&fit=crop&w=600&q=80" },
+              upcomingActivity: { title: t.destination, subtitle: t.dates || "Upcoming", image: "https://images.unsplash.com/photo-1543783207-ec64e4d95325?auto=format&fit=crop&w=600&q=80" },
               checklist: [{ id: "stay", label: "Book your stay", completed: false }],
               calendarEvents: [],
               ideas: [],
               events: []
             };
+          } else {
+            tripsData[t.id].flag = resolvedFlag;
           }
         });
         this.notify();
