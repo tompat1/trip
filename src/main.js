@@ -9,6 +9,7 @@ import { renderLiveView, renderProfileView } from "./views/LiveView.js";
 import { renderBottomNav } from "./components/BottomNav.js";
 import { renderLightbox } from "./components/Lightbox.js";
 import { renderEventDrawer } from "./components/EventDrawer.js";
+import { renderQuickCaptureWidget } from "./components/QuickCaptureWidget.js";
 import "./styles.css";
 
 let activeMaps = new Map();
@@ -38,6 +39,7 @@ function render() {
 
   // Include floating bottom navigation dock for non-landing views
   const bottomNavHtml = view !== "landing" ? renderBottomNav() : "";
+  const quickCaptureHtml = view !== "landing" ? renderQuickCaptureWidget() : "";
   const lightboxHtml = renderLightbox();
   const drawerHtml = renderEventDrawer();
 
@@ -45,6 +47,7 @@ function render() {
     <div class="app-view app-view--${view}">
       ${viewHtml}
       ${bottomNavHtml}
+      ${quickCaptureHtml}
       ${lightboxHtml}
       ${drawerHtml}
     </div>
@@ -176,6 +179,34 @@ document.addEventListener("click", async (e) => {
     }
     else if (action === "switch-trip" || action === "toggle-trip-switch" || action === "cycle-next-trip") {
       state.cycleNextTrip();
+    }
+    else if (action === "toggle-quick-capture") {
+      state.toggleQuickCapture();
+    }
+    else if (action === "close-quick-capture") {
+      state.toggleQuickCapture(false);
+    }
+    else if (action === "trigger-file-upload") {
+      const fileInput = document.getElementById("capture-file-input");
+      if (fileInput) fileInput.click();
+    }
+    else if (action === "submit-quick-capture") {
+      const titleInput = document.getElementById("capture-title");
+      const textInput = document.getElementById("capture-text");
+      const title = titleInput ? titleInput.value.trim() : "";
+      const text = textInput ? textInput.value.trim() : "";
+      if (!title) {
+        alert("Please enter a title for your moment!");
+        return;
+      }
+      state.addMoment({
+        title,
+        text,
+        type: "note",
+        media_url: "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=600&q=80"
+      });
+      state.toggleQuickCapture(false);
+      showToast(`📸 Saved "${title}" to your Journal & Story!`);
     }
     else if (action === "toggle-bookmark") {
       const placeId = target.dataset.placeId;
@@ -381,23 +412,6 @@ document.addEventListener("click", async (e) => {
               .catch((err) => alert(`Authentication note: ${err.message}`));
           });
         }
-      }
-    }
-    else if (action === "quick-photo" || action === "quick-video") {
-      const fileInput = document.getElementById("quick-capture-file-input");
-      if (fileInput) {
-        fileInput.click();
-      } else {
-        const text = prompt(`Record a ${action.replace('quick-', '')} moment:`, `Captured a moment in ${state.activeTrip.destination}!`);
-        if (text) state.addMoment({ title: "Media Moment", text, type: "photo" });
-      }
-    }
-    else if (action.startsWith("quick-")) {
-      const type = action.replace("quick-", "");
-      const text = prompt(`Record a ${type} moment:`, `Captured a beautiful ${type} during the journey!`);
-      if (text) {
-        state.addMoment({ title: `${type.toUpperCase()} Moment`, text, type });
-        alert("Moment recorded & saved to D1 / local timeline!");
       }
     }
     else if (action === "open-lightbox") {

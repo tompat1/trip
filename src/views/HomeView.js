@@ -84,30 +84,6 @@ export function renderHomeView() {
         </section>
 
         ${!isLiveMode ? renderLiveJourneyModules(trip) : renderPlanningModules(trip, checklist)}
-
-        <!-- Quick Capture Bar -->
-        <section class="quick-capture-section">
-          <h3 class="section-title mb-sm">Quick capture</h3>
-          <div class="quick-capture-bar">
-            <button class="quick-btn" data-action="quick-photo">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
-              <span>Photo</span>
-            </button>
-            <button class="quick-btn" data-action="quick-video">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
-              <span>Video</span>
-            </button>
-            <button class="quick-btn" data-action="quick-note">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-              <span>Note</span>
-            </button>
-            <button class="quick-btn" data-action="quick-moment">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-              <span>Moment</span>
-            </button>
-            <input type="file" id="quick-capture-file-input" style="display:none" accept="image/*,video/*" />
-          </div>
-        </section>
       </div>
     </div>
   `;
@@ -148,31 +124,43 @@ function renderPlanningModules(trip, checklist) {
       </div>
 
       <!-- Widget 3: Live Open-Meteo Weather Context Card -->
-      <div class="dashboard-card weather-widget">
-        <div class="dashboard-card__header">
-          <h3 class="dashboard-card__title">Weather in ${escapeHtml(trip.destination.split(',')[0])}</h3>
-          <button class="btn btn--icon btn--ghost" data-action="refresh-weather" title="Fetch live Open-Meteo weather">🔄</button>
-        </div>
-        <div class="weather-main">
-          <div class="weather-current">
-            <span class="weather-icon">${trip.weather?.icon || '☀️'}</span>
-            <div class="weather-temp-wrap">
-              <span class="weather-degree">${trip.weather?.temp || '20°C'}</span>
-              <span class="weather-condition">${trip.weather?.condition || 'Fair'}</span>
-              ${trip.weather?.feelsLike ? `<span class="weather-feels">Feels like ${trip.weather.feelsLike}</span>` : ''}
+      ${(() => {
+        const currentDateStr = new Intl.DateTimeFormat("en-US", { weekday: "short", day: "numeric", month: "short" }).format(new Date());
+        const upcomingForecast = (trip.weather?.forecast || []).filter(f => f.day !== "Today");
+
+        return `
+          <div class="dashboard-card weather-widget">
+            <div class="dashboard-card__header" style="display: flex; justify-content: space-between; align-items: flex-start;">
+              <div>
+                <h3 class="dashboard-card__title" style="margin: 0; line-height: 1.2;">Weather in ${escapeHtml(trip.destination.split(',')[0])}</h3>
+                <span class="voice-mono" style="font-size: 0.75rem; color: var(--ink-muted); margin-top: 3px; display: block;">${currentDateStr}</span>
+              </div>
+              <button class="btn btn--icon btn--ghost" data-action="refresh-weather" title="Fetch live Open-Meteo weather" style="color: var(--ink-muted); padding: 4px;">
+                ${renderIcon("refreshCw")}
+              </button>
+            </div>
+            <div class="weather-main">
+              <div class="weather-current">
+                <span class="weather-icon">${trip.weather?.icon || '☀️'}</span>
+                <div class="weather-temp-wrap">
+                  <span class="weather-degree">${trip.weather?.temp || '20°C'}</span>
+                  <span class="weather-condition">${trip.weather?.condition || 'Fair'}</span>
+                  ${trip.weather?.feelsLike ? `<span class="weather-feels">Feels like ${trip.weather.feelsLike}</span>` : ''}
+                </div>
+              </div>
+              <div class="weather-forecast-pills">
+                ${upcomingForecast.map(f => `
+                  <div class="forecast-pill">
+                    <span class="forecast-day">${f.day}</span>
+                    <span class="forecast-icon">${f.icon || '☀️'}</span>
+                    <span class="forecast-temp">${f.temp}</span>
+                  </div>
+                `).join('')}
+              </div>
             </div>
           </div>
-          <div class="weather-forecast-pills">
-            ${(trip.weather?.forecast || []).map(f => `
-              <div class="forecast-pill">
-                <span class="forecast-day">${f.day}</span>
-                <span class="forecast-icon">${f.icon || '☀️'}</span>
-                <span class="forecast-temp">${f.temp}</span>
-              </div>
-            `).join('')}
-          </div>
-        </div>
-      </div>
+        `;
+      })()}
     </div>
   `;
 }

@@ -53,6 +53,7 @@ class AppState {
     // Generated AI Editorial Stories store
     this.generatedStories = {};
 
+    this.quickCaptureOpen = false;
     this.activeLightboxMedia = null;
     this.activeEventDrawer = null; // { mode: 'create'|'edit', event: {} }
     this.calendarDayFilter = "all"; // 'all' or '0'..'6'
@@ -60,6 +61,11 @@ class AppState {
     this.checkBackendHealth();
     this.loadD1Trips();
     this.refreshWeather();
+  }
+
+  toggleQuickCapture(open) {
+    this.quickCaptureOpen = open !== undefined ? open : !this.quickCaptureOpen;
+    this.notify();
   }
 
   setGeneratedStory(tripId, story) {

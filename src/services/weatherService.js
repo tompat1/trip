@@ -5,7 +5,7 @@ export async function fetchOpenMeteoWeather(lat = 48.8566, lng = 2.3522) {
     url.searchParams.set("longitude", lng);
     url.searchParams.set("current", "temperature_2m,relative_humidity_2m,apparent_temperature,is_day,precipitation,rain,weather_code,wind_speed_10m");
     url.searchParams.set("daily", "weather_code,temperature_2m_max,temperature_2m_min");
-    url.searchParams.set("forecast_days", "5");
+    url.searchParams.set("forecast_days", "6");
     url.searchParams.set("timezone", "auto");
 
     const res = await fetch(url.toString(), { headers: { Accept: "application/json" } });
@@ -18,7 +18,7 @@ export async function fetchOpenMeteoWeather(lat = 48.8566, lng = 2.3522) {
     const code = Number(current.weather_code ?? 0);
     const weatherMeta = getWeatherCodeMeta(code);
 
-    const forecast = (daily.time || []).slice(0, 5).map((t, idx) => {
+    const forecast = (daily.time || []).slice(0, 6).map((t, idx) => {
       const dCode = Number((daily.weather_code || [])[idx] ?? 0);
       const dayName = idx === 0 ? "Today" : new Intl.DateTimeFormat([], { weekday: "short" }).format(new Date(`${t}T12:00:00`));
       const meta = getWeatherCodeMeta(dCode);

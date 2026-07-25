@@ -2416,3 +2416,68 @@ input, select, textarea {
   from { opacity: 0; }
   to { opacity: 1; }
 }
+
+/* Universal Floating Quick Capture FAB & Modal */
+.quick-capture-fab {
+  position: fixed;
+  bottom: 84px;
+  right: 20px;
+  z-index: 100000;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: var(--red);
+  color: #ffffff;
+  border: 2px solid #ffffff;
+  box-shadow: 0 4px 16px rgba(217, 74, 58, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.25s var(--ease-out);
+}
+.quick-capture-fab:hover {
+  transform: scale(1.08);
+  box-shadow: 0 6px 20px rgba(217, 74, 58, 0.6);
+}
+.quick-capture-fab.is-active {
+  background: var(--ink);
+  transform: rotate(90deg);
+  box-shadow: 0 4px 16px rgba(23, 24, 23, 0.5);
+}
+
+.quick-capture-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100005;
+  background: rgba(23, 24, 23, 0.5);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease-out;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+.quick-capture-overlay.is-open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.quick-capture-modal {
+  width: 100%;
+  max-width: 500px;
+  background: var(--paper-card);
+  border-top-left-radius: var(--radius-lg);
+  border-top-right-radius: var(--radius-lg);
+  padding: 24px 20px 32px 20px;
+  box-shadow: var(--shadow-lg);
+  transform: translateY(100%);
+  transition: transform 0.3s var(--ease-out);
+  max-height: 85vh;
+  overflow-y: auto;
+}
+.quick-capture-overlay.is-open .quick-capture-modal {
+  transform: translateY(0);
+}
