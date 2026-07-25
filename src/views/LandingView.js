@@ -63,7 +63,7 @@ export function renderLandingView() {
         <div class="landing-footer__content">
           <span class="heart-icon">❤️</span>
           <span>Made for curious travelers, by travelers.</span>
-          <a href="#about" class="footer-link">Learn more &gt;</a>
+          <button class="footer-link-btn" data-action="show-about">Learn more &rsaquo;</button>
         </div>
       </footer>
     </div>

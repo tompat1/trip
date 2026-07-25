@@ -1,4 +1,5 @@
 import { state } from "../state.js";
+import { renderIcon } from "../utils/icons.js";
 
 export function renderHeader() {
   const isLanding = state.activeView === "landing";
@@ -39,8 +40,8 @@ export function renderHeader() {
             <span class="status-light-dot" title="Status: Online"></span>
           </div>
 
-          <button class="btn btn--icon btn--ghost" aria-label="Notifications" title="Notifications">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+          <button class="btn btn--icon btn--ghost" data-action="view-notifications" aria-label="Notifications" title="Notifications">
+            ${renderIcon("bell")}
           </button>
 
           <div class="avatar-badge" data-action="go-profile" title="View Profile">

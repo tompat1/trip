@@ -151,8 +151,28 @@ document.addEventListener("click", (e) => {
     else if (action === "go-search") state.setView("search");
     else if (action === "go-live") state.setView("live");
     else if (action === "go-moments" || action === "go-profile") state.setView("profile");
+    else if (action === "switch-to-landing") state.setView("landing");
     else if (action === "refresh-weather") {
       state.refreshWeather();
+    }
+    else if (action === "view-notifications") {
+      alert(`🔔 Notifications:\n\n• Weather update: 23°C in ${state.activeTrip.destination}\n• 2 planning tasks remaining for your trip!`);
+    }
+    else if (action === "invite-companions") {
+      const companionEmail = prompt("Enter email of travel companion to invite:", "partner@example.com");
+      if (companionEmail) {
+        alert(`✈️ Shared trip invitation to ${companionEmail} for ${state.activeTrip.destination}!`);
+      }
+    }
+    else if (action === "toggle-filters") {
+      const subFilter = state.searchSubFilter === "top-rated" ? "all" : "top-rated";
+      state.setSearchSubFilter(subFilter);
+    }
+    else if (action === "search-this-area") {
+      alert(`📍 Re-indexing places near map center for ${state.activeTrip.destination}...`);
+    }
+    else if (action === "show-about") {
+      alert(`TRIP - Travel Planner Deluxe\n\nMobile-first responsive travel planning & memory platform powered by Cloudflare Workers & Open-Meteo.`);
     }
     else if (action === "switch-trip" || action === "toggle-trip-switch" || action === "cycle-next-trip") {
       state.cycleNextTrip();
