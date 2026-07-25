@@ -221,7 +221,15 @@ test("Worker stored place profile prefers admin-locked hero image", async () => 
                 throw new Error(`Unexpected first SQL: ${sql}`);
               },
               async all() {
-                if (/FROM place_facts/.test(sql)) return { results: [] };
+                if (/FROM place_facts/.test(sql)) {
+                  return {
+                    results: [
+                      { id: "fact-name", key: "name", label: "Name", value_json: "\"Koules Fortress\"", source_id: "source-koules", source_name: "Trip seed", source_type: "curated", source_url: "", confidence: 0.8, volatility: "stable", retrieved_at: "2026-07-24T12:00:00.000Z" },
+                      { id: "fact-category", key: "category", label: "Category", value_json: "\"Sight\"", source_id: "source-koules", source_name: "Trip seed", source_type: "curated", source_url: "", confidence: 0.8, volatility: "stable", retrieved_at: "2026-07-24T12:00:00.000Z" },
+                      { id: "fact-area", key: "area", label: "Area", value_json: "\"Old Harbor\"", source_id: "source-koules", source_name: "Trip seed", source_type: "curated", source_url: "", confidence: 0.7, volatility: "stable", retrieved_at: "2026-07-24T12:00:00.000Z" },
+                    ],
+                  };
+                }
                 if (/FROM place_images/.test(sql)) {
                   assert.match(sql, /ORDER BY hero_locked DESC/);
                   return {
@@ -247,6 +255,8 @@ test("Worker stored place profile prefers admin-locked hero image", async () => 
   assert.equal(payload.placeProfile.media.hero.id, "locked-gallery");
   assert.equal(payload.placeProfile.media.hero.heroLocked, true);
   assert.equal(payload.placeProfile.media.gallery[0].id, "old-hero");
+  assert.doesNotMatch(payload.placeProfile.editorial.standfirst, /ready for enrichment/);
+  assert.match(payload.placeProfile.editorial.whyStop, /Koules Fortress/);
 });
 
 function createMediaReviewDb(initialImage) {

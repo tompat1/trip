@@ -1091,17 +1091,25 @@ async function getStoredPlaceProfile(context, placeId) {
     LIMIT 1
   `).bind(placeId).first();
 
+  const storedPlace = normalizeStoredPlace(place);
+  const facts = (factsResult.results || []).map(normalizeStoredFact);
   const images = imagesResult.results || [];
   const hero = images.find((image) => image.hero_locked) || images.find((image) => image.visual_role === "hero") || null;
   const gallery = images.filter((image) => image.id !== hero?.id);
+  const normalizedHero = hero ? normalizeStoredImage(hero) : null;
+  const normalizedGallery = gallery.map(normalizeStoredImage);
+  const storedEditorial = parseJson(editorial?.editorial_json, null);
   return {
     schemaVersion: "place-profile-v1",
-    place: normalizeStoredPlace(place),
-    facts: (factsResult.results || []).map(normalizeStoredFact),
-    editorial: parseJson(editorial?.editorial_json, createPendingEditorial(place.canonical_name)),
+    place: storedPlace,
+    facts,
+    editorial: storedEditorial || createGeneratedEditorial(storedPlace, {
+      facts,
+      media: { hero: normalizedHero, gallery: normalizedGallery },
+    }),
     media: {
-      hero: hero ? normalizeStoredImage(hero) : null,
-      gallery: gallery.map(normalizeStoredImage),
+      hero: normalizedHero,
+      gallery: normalizedGallery,
       roles: {},
       coverage: { images: hero ? "partial" : "fallback" },
     },
