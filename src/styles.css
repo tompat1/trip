@@ -300,6 +300,18 @@ input, select, textarea {
   color: var(--ink);
   box-shadow: var(--shadow-sm);
 }
+.header-weather-badge {
+  color: var(--ink);
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+.header-time-divider {
+  color: var(--ink-muted);
+  opacity: 0.5;
+  margin: 0 1px;
+}
 .status-light-dot {
   width: 8px;
   height: 8px;
