@@ -1897,6 +1897,146 @@ input, select, textarea {
 }
 
 /* ==========================================================================
+   VERTICAL GRAPHIC TIMELINE VIEW
+   ========================================================================== */
+.vertical-timeline-container {
+  position: relative;
+  padding: 16px 8px 32px 16px;
+}
+
+.vertical-timeline-spine {
+  position: absolute;
+  top: 24px;
+  bottom: 24px;
+  left: 27px;
+  width: 3px;
+  background: linear-gradient(180deg, var(--red) 0%, var(--sun) 50%, var(--line) 100%);
+  border-radius: 2px;
+  z-index: 1;
+}
+
+.timeline-day-group {
+  position: relative;
+  z-index: 2;
+  margin-bottom: 24px;
+}
+
+.timeline-day-node {
+  margin-bottom: 12px;
+}
+.timeline-day-badge {
+  display: inline-block;
+  background: var(--paper-card);
+  border: 1px solid var(--line);
+  padding: 4px 12px;
+  border-radius: var(--radius-pill);
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--ink);
+  box-shadow: var(--shadow-sm);
+}
+
+.timeline-day-events {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-left: 20px;
+}
+
+.timeline-event-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  position: relative;
+  cursor: pointer;
+}
+
+.timeline-node-point {
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.timeline-node-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid var(--paper-card);
+  box-shadow: 0 0 0 2px var(--line);
+}
+.timeline-dot--peach { background: #d94a3a; }
+.timeline-dot--blue { background: #385c73; }
+.timeline-dot--mint { background: #65705b; }
+.timeline-dot--pink { background: #d94a3a; }
+.timeline-dot--green { background: #65705b; }
+.timeline-dot--lavender { background: #385c73; }
+.timeline-dot--gold { background: #e9c76b; }
+
+.timeline-time-badge {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--ink-muted);
+  width: 44px;
+  flex-shrink: 0;
+}
+
+.timeline-card-box {
+  flex: 1;
+  border-radius: 12px;
+  padding: 10px 14px;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--line-light);
+  transition: transform 0.2s var(--ease-out);
+}
+.timeline-card-box:hover {
+  transform: translateX(3px);
+  box-shadow: var(--shadow-md);
+}
+
+.timeline-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.timeline-card-title {
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+.timeline-duration-tag {
+  font-size: 0.68rem;
+  opacity: 0.8;
+}
+.timeline-card-location {
+  font-size: 0.72rem;
+  opacity: 0.85;
+  margin-top: 2px;
+}
+.timeline-card-reminder {
+  font-size: 0.68rem;
+  font-weight: 700;
+  margin-top: 2px;
+}
+
+.timeline-empty-slot {
+  margin-left: 26px;
+  padding: 8px 12px;
+  border: 1px dashed var(--line);
+  border-radius: var(--radius-md);
+  font-size: 0.78rem;
+  color: var(--ink-muted);
+  cursor: pointer;
+  background: rgba(255,255,255,0.4);
+  transition: all 0.2s var(--ease-out);
+}
+.timeline-empty-slot:hover {
+  background: var(--paper-card);
+  border-color: var(--red);
+  color: var(--red);
+}
+
+/* ==========================================================================
    EDITORIAL STORY VIEW
    ========================================================================== */
 .editorial-story-card {

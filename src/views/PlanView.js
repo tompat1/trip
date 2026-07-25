@@ -89,34 +89,9 @@ function renderSubtabContent(trip) {
       </div>
     </div>
 
-    <!-- Date Range Controls -->
-    <div class="date-controls-bar">
-      <button class="btn btn--icon btn--ghost" data-action="prev-week" aria-label="Previous week">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
-      </button>
-      <button class="btn btn--outline btn--sm" data-action="go-today">Today</button>
-      <span class="current-date-range">Sat 3 Oct – Fri 9 Oct</span>
-      <button class="btn btn--icon btn--ghost" data-action="next-week" aria-label="Next week">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
-      </button>
-    </div>
-
-    <!-- Day Selector Bar -->
-    <div class="day-selector-scroll">
-      ${DAYS_HEADER.map(
-        (dayStr, index) => `
-          <button class="day-select-pill ${state.activeDayIndex === index ? 'is-active' : ''}" data-day-select="${index}">
-            <span class="day-select-name">${dayStr.split(" ")[0]}</span>
-            <span class="day-select-num">${dayStr.split(" ").slice(1).join(" ")}</span>
-            ${index === 0 ? '<span class="day-red-dot"></span>' : ''}
-          </button>
-        `
-      ).join("")}
-    </div>
-
-    <!-- Content Area (Calendar Grid or Timeline/Map) -->
+    <!-- Content Area (Calendar Grid or Vertical Timeline/Map) -->
     <main class="plan-content-area">
-      ${state.planViewMode === "week" ? renderCalendarGrid() : renderAlternativePlanView()}
+      ${state.planViewMode === "week" ? renderCalendarGrid() : renderAlternativePlanView(trip)}
     </main>
   `;
 }
@@ -249,20 +224,53 @@ function renderAlternativePlanView() {
     `;
   }
 
-  // Timeline view
+  // Vertical Graphic Timeline view
+  return renderVerticalTimeline(trip);
+}
+
+function renderVerticalTimeline(trip) {
+  const events = trip.calendarEvents || [];
+  const days = ["Sat 3 Oct", "Sun 4 Oct", "Mon 5 Oct", "Tue 6 Oct", "Wed 7 Oct", "Thu 8 Oct", "Fri 9 Oct"];
+
   return `
-    <div class="timeline-view">
-      <div class="timeline-list">
-        ${events.map((evt) => `
-          <div class="timeline-item">
-            <div class="timeline-badge">${evt.dayName}</div>
-            <div class="timeline-content">
-              <h4>${escapeHtml(evt.title)} ${evt.icon}</h4>
-              <p>⏱ ${evt.startTime} – ${evt.endTime} | 📍 ${escapeHtml(evt.location || '')}</p>
+    <div class="vertical-timeline-container">
+      <div class="vertical-timeline-spine"></div>
+
+      ${days.map((dayLabel, dayIdx) => {
+        const dayEvents = events.filter((e) => Number(e.dayIndex) === dayIdx);
+        return `
+          <div class="timeline-day-group">
+            <div class="timeline-day-node">
+              <span class="timeline-day-badge">📍 Day ${dayIdx + 1} &bull; ${dayLabel}</span>
+            </div>
+
+            <div class="timeline-day-events">
+              ${dayEvents.length === 0 ? `
+                <div class="timeline-empty-slot" data-action="click-calendar-col" data-col-day="${dayIdx}">
+                  <span>+ Add activity for ${dayLabel}</span>
+                </div>
+              ` : dayEvents.map((evt) => `
+                <div class="timeline-event-row" data-action="open-edit-drawer" data-event-id="${evt.id}">
+                  <div class="timeline-node-point">
+                    <span class="timeline-node-dot timeline-dot--${evt.colorScheme || 'peach'}"></span>
+                  </div>
+                  
+                  <div class="timeline-time-badge">${evt.startTime}</div>
+
+                  <div class="timeline-card-box event-card--${evt.colorScheme || 'peach'}">
+                    <div class="timeline-card-header">
+                      <h4 class="timeline-card-title">${evt.icon || '📍'} ${escapeHtml(evt.title)}</h4>
+                      <span class="timeline-duration-tag">⏱ ${evt.startTime} – ${evt.endTime}</span>
+                    </div>
+                    ${evt.location ? `<div class="timeline-card-location">📍 ${escapeHtml(evt.location)}</div>` : ''}
+                    ${evt.reminder ? `<div class="timeline-card-reminder">🔔 ${escapeHtml(evt.reminder)} before</div>` : ''}
+                  </div>
+                </div>
+              `).join('')}
             </div>
           </div>
-        `).join('')}
-      </div>
+        `;
+      }).join('')}
     </div>
   `;
 }
