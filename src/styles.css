@@ -1434,6 +1434,40 @@ input, select, textarea {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.event-card__reminder {
+  font-size: 0.6rem;
+  font-weight: 700;
+  margin-top: 2px;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  opacity: 0.9;
+}
+
+.event-resize-handle {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 8px;
+  cursor: ns-resize;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.event-resize-handle::after {
+  content: "";
+  width: 18px;
+  height: 3px;
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 2px;
+  opacity: 0;
+  transition: opacity 0.2s var(--ease-out);
+}
+.event-card:hover .event-resize-handle::after {
+  opacity: 1;
+}
 
 .calendar-col.drag-hover {
   background: rgba(233, 199, 107, 0.25);

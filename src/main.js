@@ -200,19 +200,22 @@ document.addEventListener("click", (e) => {
       }
     }
     else if (action === "add-event") {
-      const title = prompt("Activity title (e.g. Tokyo Skytree Visit):", "Tokyo Skytree Visit");
+      const title = prompt("Activity title (e.g. Louvre Museum Visit):", "Louvre Museum Visit");
       if (title) {
         const dayStr = prompt("Day index (0 = Sat, 1 = Sun, 2 = Mon...):", "0");
         const startTime = prompt("Start time (e.g. 14:00):", "14:00");
         const endTime = prompt("End time (e.g. 16:00):", "16:00");
-        const location = prompt("Location/Neighborhood:", "Sumida City");
+        const location = prompt("Location/Neighborhood:", "Paris");
+        const colorScheme = prompt("Pick event color (peach, blue, mint, pink, green, lavender, gold):", "blue");
+        const reminder = prompt("Set alarm/reminder (15m, 30m, 1h, or leave empty):", "15m");
         state.addCalendarEvent(state.activeTripId, {
           title,
           dayIndex: parseInt(dayStr, 10) || 0,
           startTime,
           endTime,
           location,
-          colorScheme: ["peach", "blue", "mint", "pink", "green", "gold"][Math.floor(Math.random() * 6)]
+          colorScheme: colorScheme || "peach",
+          reminder: reminder ? reminder.trim() : ""
         });
       }
     }
@@ -226,11 +229,15 @@ document.addEventListener("click", (e) => {
           const startTime = prompt("Start time (e.g. 10:00):", evt.startTime);
           const endTime = prompt("End time (e.g. 12:00):", evt.endTime);
           const location = prompt("Location:", evt.location || "");
+          const colorScheme = prompt("Pick event color (peach, blue, mint, pink, green, lavender, gold):", evt.colorScheme || "peach");
+          const reminder = prompt("Set alarm/reminder (15m, 30m, 1h, or leave empty):", evt.reminder || "");
           state.updateCalendarEvent(state.activeTripId, eventId, {
             title: title.trim(),
             startTime: startTime || evt.startTime,
             endTime: endTime || evt.endTime,
-            location: location || evt.location
+            location: location || evt.location,
+            colorScheme: colorScheme || evt.colorScheme,
+            reminder: reminder ? reminder.trim() : ""
           });
         }
       }
@@ -408,6 +415,54 @@ document.addEventListener("drop", (e) => {
       endTime
     });
   }
+});
+
+// Event card duration resizer (mouse & touch drag bottom handle)
+let resizerState = null;
+
+document.addEventListener("mousedown", (e) => {
+  const handle = e.target.closest(".event-resize-handle");
+  if (!handle) return;
+  e.preventDefault();
+  e.stopPropagation();
+  const card = handle.closest(".event-card");
+  const col = card.closest(".calendar-col");
+  resizerState = {
+    eventId: handle.dataset.eventId,
+    card,
+    col,
+    startY: e.clientY
+  };
+});
+
+document.addEventListener("mousemove", (e) => {
+  if (!resizerState) return;
+  e.preventDefault();
+  const rect = resizerState.col.getBoundingClientRect();
+  const offsetY = Math.max(20, Math.min(rect.height, e.clientY - rect.top));
+  const cardTopPercent = parseFloat(resizerState.card.style.top) || 0;
+  const startHours = 8 + (cardTopPercent / 100) * 15;
+  const endHours = 8 + (offsetY / rect.height) * 15;
+  if (endHours > startHours + 0.25) {
+    const endH = Math.min(23, Math.floor(endHours));
+    const endM = Math.round(((endHours - endH) * 60) / 15) * 15;
+    const endTimeStr = `${String(endH).padStart(2, '0')}:${String(endM % 60).padStart(2, '0')}`;
+    const timeEl = resizerState.card.querySelector(".event-card__time");
+    if (timeEl) {
+      const startTime = timeEl.textContent.split("–")[0].trim();
+      timeEl.textContent = `${startTime} – ${endTimeStr}`;
+    }
+    resizerState.newEndTime = endTimeStr;
+  }
+});
+
+document.addEventListener("mouseup", () => {
+  if (resizerState && resizerState.newEndTime) {
+    state.updateCalendarEvent(state.activeTripId, resizerState.eventId, {
+      endTime: resizerState.newEndTime
+    });
+  }
+  resizerState = null;
 });
 
 // Initialize reactive state listener & initial render

@@ -93,10 +93,15 @@ function renderEventCard(evt) {
       </div>
       <div class="event-card__time">${evt.startTime} – ${evt.endTime}</div>
       ${evt.location ? `<div class="event-card__location">📍 ${escapeHtml(evt.location)}</div>` : ''}
+      ${evt.reminder ? `<div class="event-card__reminder">🔔 ${escapeHtml(evt.reminder)} before</div>` : ''}
+      
       <div class="event-card-actions">
         <button class="btn btn--icon btn--ghost event-action-btn" data-action="edit-calendar-event" data-event-id="${evt.id}" title="Edit event">✏️</button>
         <button class="btn btn--icon btn--ghost event-action-btn" data-action="delete-calendar-event" data-event-id="${evt.id}" title="Delete event">🗑️</button>
       </div>
+
+      <!-- Bottom Resize Handle for Drag-to-Resize Duration -->
+      <div class="event-resize-handle" data-event-id="${evt.id}" title="Drag bottom edge to resize duration"></div>
     </div>
   `;
 }
