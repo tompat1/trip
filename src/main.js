@@ -7,6 +7,7 @@ import { renderSearchView } from "./views/SearchView.js";
 import { renderLandingView } from "./views/LandingView.js";
 import { renderLiveView, renderProfileView } from "./views/LiveView.js";
 import { renderBottomNav } from "./components/BottomNav.js";
+import { renderLightbox } from "./components/Lightbox.js";
 import "./styles.css";
 
 let activeMaps = new Map();
@@ -36,11 +37,13 @@ function render() {
 
   // Include floating bottom navigation dock for non-landing views
   const bottomNavHtml = view !== "landing" ? renderBottomNav() : "";
+  const lightboxHtml = renderLightbox();
 
   appEl.innerHTML = `
     <div class="app-view app-view--${view}">
       ${viewHtml}
       ${bottomNavHtml}
+      ${lightboxHtml}
     </div>
   `;
 
@@ -233,6 +236,14 @@ document.addEventListener("click", (e) => {
         state.addMoment({ title: `${type.toUpperCase()} Moment`, text, type });
         alert("Moment recorded & saved to D1 / local timeline!");
       }
+    }
+    else if (action === "open-lightbox") {
+      const momentId = target.dataset.momentId;
+      const media = (state.moments || []).find((m) => m.id === momentId);
+      if (media) state.openLightbox(media);
+    }
+    else if (action === "close-lightbox") {
+      state.closeLightbox();
     }
   }
 

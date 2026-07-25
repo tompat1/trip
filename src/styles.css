@@ -1528,19 +1528,238 @@ input, select, textarea {
   padding: 10px 18px;
 }
 
-/* Responsive adjustments */
-@media (max-width: 480px) {
-  .hero-title {
-    font-size: 2rem;
-  }
-  .trip-title {
-    font-size: 1.4rem;
-  }
-  .search-place-card {
-    flex-direction: column;
-  }
-  .search-place-card__thumb {
-    width: 100%;
-    height: 140px;
-  }
+/* ==========================================================================
+   LIGHTBOX OVERLAY & MEDIA MODAL
+   ========================================================================== */
+.lightbox-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  background: rgba(17, 18, 17, 0.88);
+  backdrop-filter: blur(12px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  animation: fadeIn 0.2s var(--ease-out);
+}
+
+.lightbox-container {
+  position: relative;
+  max-width: 480px;
+  width: 100%;
+  background: var(--paper-card);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-lg);
+}
+
+.lightbox-close-btn {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 10;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.6);
+  color: var(--white);
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.lightbox-media-wrapper {
+  max-height: 420px;
+  overflow: hidden;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.lightbox-img, .lightbox-video {
+  width: 100%;
+  max-height: 420px;
+  object-fit: contain;
+}
+
+.lightbox-caption-card {
+  padding: 16px;
+}
+.lightbox-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+.lightbox-date {
+  font-size: 0.78rem;
+  color: var(--ink-muted);
+  margin: 2px 0 8px 0;
+}
+.lightbox-text {
+  font-size: 0.88rem;
+  color: var(--ink);
+  line-height: 1.4;
+}
+
+/* ==========================================================================
+   JOURNAL & MEDIA GALLERY GRID
+   ========================================================================== */
+.journal-media-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 12px;
+}
+
+.empty-media-card {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 32px 16px;
+  background: var(--paper-card);
+  border: 1px dashed var(--line);
+  border-radius: var(--radius-md);
+  color: var(--ink-muted);
+}
+.empty-icon {
+  font-size: 2.5rem;
+  display: block;
+  margin-bottom: 8px;
+}
+
+.journal-media-card {
+  background: var(--paper-card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.2s var(--ease-out);
+}
+.journal-media-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.journal-media-thumb {
+  height: 110px;
+  background-size: cover;
+  background-position: center;
+  position: relative;
+  padding: 6px;
+}
+
+.media-type-badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  background: rgba(0, 0, 0, 0.6);
+  color: var(--white);
+  padding: 2px 6px;
+  border-radius: var(--radius-pill);
+  backdrop-filter: blur(4px);
+}
+
+.journal-media-body {
+  padding: 8px;
+}
+.journal-media-title {
+  font-size: 0.82rem;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.journal-media-date {
+  font-size: 0.7rem;
+  color: var(--ink-muted);
+}
+
+/* ==========================================================================
+   EDITORIAL STORY VIEW
+   ========================================================================== */
+.editorial-story-card {
+  background: var(--paper-card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 24px;
+}
+
+.story-cover {
+  height: 240px;
+  background-size: cover;
+  background-position: center;
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+}
+.story-cover-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent 40%, rgba(23, 24, 23, 0.85) 100%);
+}
+.story-cover-content {
+  position: relative;
+  z-index: 2;
+  padding: 20px;
+  color: var(--white);
+}
+.story-kicker {
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  opacity: 0.85;
+}
+.story-main-title {
+  font-family: var(--font-serif);
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin: 4px 0;
+}
+.story-byline {
+  font-size: 0.8rem;
+  opacity: 0.85;
+}
+
+.story-prose {
+  padding: 24px 20px;
+  line-height: 1.6;
+}
+.story-lead {
+  font-family: var(--font-serif);
+  font-size: 1.15rem;
+  font-style: italic;
+  color: var(--ink);
+  margin-bottom: 20px;
+}
+.story-h3 {
+  font-size: 1rem;
+  font-weight: 700;
+  margin: 20px 0 10px 0;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--line-light);
+}
+.story-highlights-list {
+  padding-left: 18px;
+  font-size: 0.9rem;
+}
+.story-quote {
+  border-left: 3px solid var(--red);
+  padding-left: 14px;
+  margin: 14px 0;
+  font-style: italic;
+  color: var(--ink-muted);
+}
+.story-quote cite {
+  display: block;
+  font-size: 0.75rem;
+  font-style: normal;
+  font-weight: 600;
+  margin-top: 4px;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }

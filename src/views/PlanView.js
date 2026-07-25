@@ -1,5 +1,4 @@
 import { state } from "../state.js";
-import { renderHeader } from "../components/Header.js";
 import { renderCalendarGrid } from "../components/CalendarGrid.js";
 
 const SUB_TABS = [
@@ -59,48 +58,159 @@ export function renderPlanView() {
         ).join("")}
       </nav>
 
-      <!-- View Mode Switcher Pills -->
-      <div class="view-mode-bar">
-        <div class="view-mode-pills-group">
-          ${VIEW_MODES.map(
-            (mode) => `
-              <button class="view-mode-pill ${state.planViewMode === mode.id ? 'is-active' : ''}" data-viewmode="${mode.id}">
-                ${mode.label}
-              </button>
-            `
-          ).join("")}
-        </div>
-      </div>
+      <!-- Subtab Specific Content Render -->
+      ${renderSubtabContent(trip)}
+    </div>
+  `;
+}
 
-      <!-- Date Range Controls -->
-      <div class="date-controls-bar">
-        <button class="btn btn--icon btn--ghost" data-action="prev-week" aria-label="Previous week">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
-        </button>
-        <button class="btn btn--outline btn--sm" data-action="go-today">Today</button>
-        <span class="current-date-range">Sat 3 Oct – Fri 9 Oct</span>
-        <button class="btn btn--icon btn--ghost" data-action="next-week" aria-label="Next week">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
-        </button>
-      </div>
+function renderSubtabContent(trip) {
+  const tab = state.planSubTab;
 
-      <!-- Day Selector Bar -->
-      <div class="day-selector-scroll">
-        ${DAYS_HEADER.map(
-          (dayStr, index) => `
-            <button class="day-select-pill ${state.activeDayIndex === index ? 'is-active' : ''}" data-day-select="${index}">
-              <span class="day-select-name">${dayStr.split(" ")[0]}</span>
-              <span class="day-select-num">${dayStr.split(" ").slice(1).join(" ")}</span>
-              ${index === 0 ? '<span class="day-red-dot"></span>' : ''}
+  if (tab === "journal") {
+    return renderJournalSubTab();
+  }
+  if (tab === "story") {
+    return renderStorySubTab(trip);
+  }
+
+  // Default "plan" / "overview" / "explore" layout with View Mode controls
+  return `
+    <!-- View Mode Switcher Pills -->
+    <div class="view-mode-bar">
+      <div class="view-mode-pills-group">
+        ${VIEW_MODES.map(
+          (mode) => `
+            <button class="view-mode-pill ${state.planViewMode === mode.id ? 'is-active' : ''}" data-viewmode="${mode.id}">
+              ${mode.label}
             </button>
           `
         ).join("")}
       </div>
+    </div>
 
-      <!-- Content Area (Calendar Grid or Timeline/Map) -->
-      <main class="plan-content-area">
-        ${state.planViewMode === "week" ? renderCalendarGrid() : renderAlternativePlanView()}
-      </main>
+    <!-- Date Range Controls -->
+    <div class="date-controls-bar">
+      <button class="btn btn--icon btn--ghost" data-action="prev-week" aria-label="Previous week">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+      </button>
+      <button class="btn btn--outline btn--sm" data-action="go-today">Today</button>
+      <span class="current-date-range">Sat 3 Oct – Fri 9 Oct</span>
+      <button class="btn btn--icon btn--ghost" data-action="next-week" aria-label="Next week">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+      </button>
+    </div>
+
+    <!-- Day Selector Bar -->
+    <div class="day-selector-scroll">
+      ${DAYS_HEADER.map(
+        (dayStr, index) => `
+          <button class="day-select-pill ${state.activeDayIndex === index ? 'is-active' : ''}" data-day-select="${index}">
+            <span class="day-select-name">${dayStr.split(" ")[0]}</span>
+            <span class="day-select-num">${dayStr.split(" ").slice(1).join(" ")}</span>
+            ${index === 0 ? '<span class="day-red-dot"></span>' : ''}
+          </button>
+        `
+      ).join("")}
+    </div>
+
+    <!-- Content Area (Calendar Grid or Timeline/Map) -->
+    <main class="plan-content-area">
+      ${state.planViewMode === "week" ? renderCalendarGrid() : renderAlternativePlanView()}
+    </main>
+  `;
+}
+
+function renderJournalSubTab() {
+  const moments = state.moments || [];
+  const mediaMoments = moments.filter(m => m.media_url);
+
+  return `
+    <div class="journal-subtab-view">
+      <div class="journal-header mb-md">
+        <h2 class="journal-title">Travel Moments & Media</h2>
+        <p class="journal-sub">Captured photos, videos, and personal notes from ${escapeHtml(state.activeTrip.destination)}</p>
+      </div>
+
+      <!-- Media Gallery Grid -->
+      <div class="journal-media-grid mb-lg">
+        ${mediaMoments.length === 0 ? `
+          <div class="empty-media-card">
+            <span class="empty-icon">📷</span>
+            <h4>No photos or videos captured yet</h4>
+            <p>Use Quick Capture (Photo / Video) on the Home dashboard to add media!</p>
+          </div>
+        ` : mediaMoments.map(m => `
+          <div class="journal-media-card" data-action="open-lightbox" data-moment-id="${m.id}">
+            <div class="journal-media-thumb" style="background-image: url('${m.media_url}')">
+              <span class="media-type-badge">${m.type === 'video' ? '📹 Video' : '📷 Photo'}</span>
+            </div>
+            <div class="journal-media-body">
+              <h4 class="journal-media-title">${escapeHtml(m.title || 'Trip Photo')}</h4>
+              <p class="journal-media-date">${escapeHtml(m.date || 'Oct 2026')}</p>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+
+      <!-- Notes Feed -->
+      <div class="journal-notes-section">
+        <h3 class="section-title mb-sm">Personal Notes & Thoughts</h3>
+        <div class="notes-feed">
+          ${moments.filter(m => !m.media_url).map(m => `
+            <div class="note-card mb-sm">
+              <span class="note-icon">📝</span>
+              <div class="note-body">
+                <h4 class="note-title">${escapeHtml(m.title)}</h4>
+                <p class="note-text">${escapeHtml(m.text)}</p>
+                <span class="note-date">${m.date}</span>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderStorySubTab(trip) {
+  return `
+    <div class="story-subtab-view">
+      <article class="editorial-story-card">
+        <div class="story-cover" style="background-image: url('${trip.upcomingActivity.image}')">
+          <div class="story-cover-overlay"></div>
+          <div class="story-cover-content">
+            <span class="story-kicker">EDITORIAL TRAVEL ARCHIVE</span>
+            <h1 class="story-main-title">${escapeHtml(trip.destination)} ${trip.flag}</h1>
+            <p class="story-byline">By Thomas Rynell • ${escapeHtml(trip.dates)}</p>
+          </div>
+        </div>
+
+        <div class="story-prose">
+          <p class="story-lead">
+            Every place becomes a story. Exploring ${escapeHtml(trip.destination)} brought together historic architecture, specialty coffee roasters, and unforgettable moments along the journey.
+          </p>
+
+          <h3 class="story-h3">Highlights of the Journey</h3>
+          <ul class="story-highlights-list">
+            ${(trip.ideas || []).map(idea => `
+              <li class="story-highlight-item">
+                <strong>${escapeHtml(idea.title)}</strong>: ${escapeHtml(idea.subtitle)} (★ ${idea.rating})
+              </li>
+            `).join('')}
+          </ul>
+
+          <h3 class="story-h3">Captured Memories & Notes</h3>
+          <div class="story-moments-list">
+            ${(state.moments || []).map(m => `
+              <blockquote class="story-quote">
+                <p>"${escapeHtml(m.text || m.title)}"</p>
+                <cite>— Recorded on ${m.date}</cite>
+              </blockquote>
+            `).join('')}
+          </div>
+        </div>
+      </article>
     </div>
   `;
 }
@@ -143,7 +253,7 @@ function renderAlternativePlanView() {
   return `
     <div class="timeline-view">
       <div class="timeline-list">
-        ${events.map((evt, idx) => `
+        ${events.map((evt) => `
           <div class="timeline-item">
             <div class="timeline-badge">${evt.dayName}</div>
             <div class="timeline-content">

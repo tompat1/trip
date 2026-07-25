@@ -42,8 +42,19 @@ class AppState {
       crete: [...tripsData.crete.checklist]
     };
 
+    this.activeLightboxMedia = null;
     this.listeners = new Set();
     this.checkBackendHealth();
+  }
+
+  openLightbox(media) {
+    this.activeLightboxMedia = media;
+    this.notify();
+  }
+
+  closeLightbox() {
+    this.activeLightboxMedia = null;
+    this.notify();
   }
 
   get activeTrip() {
