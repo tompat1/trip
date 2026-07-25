@@ -65,6 +65,7 @@ function matchRoute(method, pathname) {
     ["GET", /^\/api\/places\/([^/]+)\/attributions$/, attributionHandler],
     ["GET", /^\/api\/trips$/, tripsListHandler],
     ["POST", /^\/api\/trips$/, tripsCreateHandler],
+    ["PATCH", /^\/api\/trips\/([^/]+)$/, tripsUpdateHandler],
     ["GET", /^\/api\/trips\/([^/]+)\/events$/, tripEventsListHandler],
     ["POST", /^\/api\/trips\/([^/]+)\/events$/, tripEventsCreateHandler],
     ["GET", /^\/api\/user\/saved-places$/, userSavedPlacesListHandler],
