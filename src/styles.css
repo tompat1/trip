@@ -1217,23 +1217,102 @@ input, select, textarea {
 /* Sub-Tab Navigation Bar */
 .sub-tab-nav {
   display: flex;
-  justify-content: space-around;
+  align-items: center;
+  gap: 2px;
+  overflow-x: auto;
+  white-space: nowrap;
+  -webkit-overflow-scrolling: touch;
   border-bottom: 1px solid var(--line);
   margin-bottom: 12px;
+  padding: 0 4px;
+  scrollbar-width: none;
+}
+.sub-tab-nav::-webkit-scrollbar {
+  display: none;
 }
 .sub-tab-item {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 10px 14px;
-  font-size: 0.88rem;
+  padding: 8px 10px;
+  font-size: 0.82rem;
   font-weight: 600;
   color: var(--ink-muted);
   border-bottom: 2px solid transparent;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 .sub-tab-item.is-active {
   color: var(--ink);
   border-bottom-color: var(--ink);
+}
+
+/* Day Switcher Bar */
+.day-switcher-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  background: var(--paper-card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  padding: 8px 12px;
+  margin-bottom: 16px;
+  box-shadow: var(--shadow-sm);
+}
+.day-switcher-nav-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--ink);
+  cursor: pointer;
+  transition: all 0.2s var(--ease-out);
+}
+.day-switcher-nav-btn:hover {
+  background: var(--paper-subtle);
+  border-color: var(--ink);
+}
+.day-switcher-nav-btn[disabled] {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.day-switcher-pills {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding: 2px 0;
+}
+.day-switcher-pills::-webkit-scrollbar {
+  display: none;
+}
+.day-pill-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--line);
+  background: var(--paper);
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--ink-muted);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s var(--ease-out);
+}
+.day-pill-btn.is-active {
+  background: var(--ink);
+  color: var(--paper);
+  border-color: var(--ink);
+  box-shadow: var(--shadow-sm);
 }
 
 /* View Mode Bar */
