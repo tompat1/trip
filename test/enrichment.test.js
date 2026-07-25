@@ -434,6 +434,28 @@ test("Worker editorial avoids internal route placeholder copy", async () => {
   assert.match(payload.editorial.whyStop, /your last confirmed stop/);
 });
 
+test("Worker editorial uses grammatical standfirst articles", async () => {
+  const response = await worker.fetch(new Request("https://trip.test/api/places/chania/editorial/generate", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      place: { id: "chania", title: "Chania", category: "Old town city", area: "Western Crete" },
+      facts: [
+        { key: "name", value: "Chania", confidence: 0.9 },
+        { key: "category", value: "Old town city", confidence: 0.8 },
+        { key: "area", value: "Western Crete", confidence: 0.7 },
+      ],
+      media: {},
+    }),
+  }), {}, {});
+
+  assert.equal(response.status, 200);
+  const payload = await response.json();
+  assert.doesNotMatch(payload.editorial.standfirst, /\ba old\b/);
+  assert.match(payload.editorial.standfirst, /an old town city stop/);
+  assert.match(payload.editorial.whyStop, /route anchor/);
+});
+
 test("normalized profile contract preserves facts, images, sources, status, and coverage", () => {
   const fact = createNormalizedFact({
     key: "name",

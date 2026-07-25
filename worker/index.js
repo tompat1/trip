@@ -1853,7 +1853,7 @@ function createGeneratedEditorial(place, options = {}) {
   const hasRealHero = Boolean(options.media?.hero && !options.media.hero.illustrativeOnly && options.media.hero.imageUrl);
 
   return {
-    standfirst: [name, area ? `in ${area}` : "", category ? `works as a ${String(category).toLowerCase()} stop` : ""].filter(Boolean).join(" "),
+    standfirst: buildEditorialStandfirst(name, category, area),
     whyStop: buildEditorialWhyStop(name, category, area, travellerProfile, routeContext),
     atmosphere: buildEditorialAtmosphere(category, hasRealHero),
     essentialExperience: buildEditorialEssentialExperience(name, category),
@@ -1880,9 +1880,24 @@ function createGeneratedEditorial(place, options = {}) {
   };
 }
 
+function buildEditorialStandfirst(name, category, area) {
+  const normalizedCategory = String(category || "place").toLowerCase();
+  const categoryPhrase = withIndefiniteArticle(`${normalizedCategory} stop`);
+  return `${name}${area ? ` in ${area}` : ""} works as ${categoryPhrase}.`;
+}
+
+function withIndefiniteArticle(phrase = "") {
+  const text = String(phrase || "").trim();
+  if (!text) return "a stop";
+  const article = /^[aeiou]/i.test(text) ? "an" : "a";
+  return `${article} ${text}`;
+}
+
 function buildEditorialWhyStop(name, category, area, travellerProfile, routeContext) {
   const base = editorialTextIncludes(category, ["coffee", "cafe", "roaster"])
     ? `${name} is a focused coffee stop${area ? ` around ${area}` : ""}.`
+    : editorialTextIncludes(category, ["destination", "city", "old town"])
+      ? `${name} works as a route anchor${area ? ` around ${area}` : ""}.`
     : editorialTextIncludes(category, ["museum", "gallery", "archaeolog", "historic", "sight"])
       ? `${name} gives the route a cultural anchor${area ? ` around ${area}` : ""}.`
       : editorialTextIncludes(category, ["beach", "harbor", "water"])
