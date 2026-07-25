@@ -162,6 +162,22 @@ document.addEventListener("click", (e) => {
       const itemId = target.dataset.itemId;
       if (itemId) state.toggleCheckitem(itemId);
     }
+    else if (action === "add-checklist-item") {
+      const label = prompt("Add a new planning task (e.g. Reserve museum tickets):");
+      if (label) state.addChecklistItem(label);
+    }
+    else if (action === "edit-checklist-item") {
+      const itemId = target.dataset.itemId;
+      const currentLabel = target.dataset.label || "";
+      const updated = prompt("Edit planning task label:", currentLabel);
+      if (updated && itemId) state.updateChecklistItem(itemId, updated);
+    }
+    else if (action === "delete-checklist-item") {
+      const itemId = target.dataset.itemId;
+      if (itemId && confirm("Delete this planning task?")) {
+        state.deleteChecklistItem(itemId);
+      }
+    }
     else if (action === "clear-search-query") {
       state.setSearchQuery("");
     }

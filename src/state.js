@@ -312,6 +312,41 @@ class AppState {
     }
   }
 
+  addChecklistItem(label) {
+    if (!label || !label.trim()) return;
+    if (!this.checklists[this.activeTripId]) {
+      this.checklists[this.activeTripId] = [];
+    }
+    const list = this.checklists[this.activeTripId];
+    const newItem = {
+      id: `chk_${Date.now()}`,
+      label: label.trim(),
+      completed: false
+    };
+    list.push(newItem);
+    this.notify();
+  }
+
+  updateChecklistItem(itemId, newLabel) {
+    if (!newLabel || !newLabel.trim()) return;
+    const list = this.checklists[this.activeTripId];
+    if (list) {
+      const item = list.find((i) => i.id === itemId);
+      if (item) {
+        item.label = newLabel.trim();
+        this.notify();
+      }
+    }
+  }
+
+  deleteChecklistItem(itemId) {
+    const list = this.checklists[this.activeTripId];
+    if (list) {
+      this.checklists[this.activeTripId] = list.filter((i) => i.id !== itemId);
+      this.notify();
+    }
+  }
+
   async addMoment(momentInput) {
     const newMoment = {
       id: `m_${Date.now()}`,

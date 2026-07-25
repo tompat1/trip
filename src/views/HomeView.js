@@ -115,19 +115,23 @@ export function renderHomeView() {
 function renderPlanningModules(trip, checklist) {
   return `
     <div class="dashboard-grid">
-      <!-- Widget 1: Continue Planning Checklist -->
+      <!-- Widget 1: Continue Planning Checklist (Full CRUD) -->
       <div class="dashboard-card planning-widget">
         <div class="dashboard-card__header">
           <h3 class="dashboard-card__title">Continue planning</h3>
+          <button class="btn btn--outline btn--xs" data-action="add-checklist-item" title="Add planning task">+ Add task</button>
         </div>
         <ul class="checklist-items">
           ${checklist.map(item => `
-            <li class="checklist-item ${item.completed ? 'is-completed' : ''}" data-action="toggle-check" data-item-id="${item.id}">
-              <span class="checkbox-circle ${item.completed ? 'is-checked' : ''}">
+            <li class="checklist-item ${item.completed ? 'is-completed' : ''}">
+              <span class="checkbox-circle ${item.completed ? 'is-checked' : ''}" data-action="toggle-check" data-item-id="${item.id}">
                 ${item.completed ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>' : ''}
               </span>
-              <span class="checklist-label">${escapeHtml(item.label)}</span>
-              <button class="btn btn--icon btn--ghost item-more" aria-label="Options">⋮</button>
+              <span class="checklist-label" data-action="toggle-check" data-item-id="${item.id}">${escapeHtml(item.label)}</span>
+              <div class="checklist-item-actions">
+                <button class="btn btn--icon btn--ghost item-action-btn" data-action="edit-checklist-item" data-item-id="${item.id}" data-label="${escapeHtml(item.label)}" title="Edit task">✏️</button>
+                <button class="btn btn--icon btn--ghost item-action-btn" data-action="delete-checklist-item" data-item-id="${item.id}" title="Delete task">🗑️</button>
+              </div>
             </li>
           `).join('')}
         </ul>
