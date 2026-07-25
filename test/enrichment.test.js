@@ -153,6 +153,52 @@ test("editorial profile uses verified facts and strips unsupported volatile summ
   assert.ok(validation.confidence > 0);
 });
 
+test("editorial profile avoids internal route placeholder copy", () => {
+  const facts = createVerifiedFactBundle({
+    id: "nearby-cafe",
+    title: "Tiny Cafe",
+    category: "Coffee",
+    area: "Old Town",
+    coordinates: [35.3391, 25.132],
+  });
+  const profile = composeEditorialProfile({
+    id: "nearby-cafe",
+    title: "Tiny Cafe",
+    category: "Coffee",
+    area: "Old Town",
+  }, {
+    facts,
+    travellerProfile: { focus: "coffee" },
+    routeContext: { previousStop: "confirmed visit" },
+  });
+
+  assert.doesNotMatch(profile.whyStop, /It can sit|confirmed visit/);
+  assert.match(profile.whyStop, /your last confirmed stop/);
+});
+
+test("Worker editorial avoids internal route placeholder copy", async () => {
+  const response = await worker.fetch(new Request("https://trip.test/api/places/tiny-cafe/editorial/generate", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      place: { id: "tiny-cafe", title: "Tiny Cafe", category: "Coffee", area: "Old Town" },
+      facts: [
+        { key: "name", value: "Tiny Cafe", confidence: 0.9 },
+        { key: "category", value: "Coffee", confidence: 0.8 },
+        { key: "area", value: "Old Town", confidence: 0.7 },
+      ],
+      travellerProfile: { focus: "coffee" },
+      routeContext: { previousStop: "confirmed visit" },
+      media: {},
+    }),
+  }), {}, {});
+
+  assert.equal(response.status, 200);
+  const payload = await response.json();
+  assert.doesNotMatch(payload.editorial.whyStop, /It can sit|confirmed visit/);
+  assert.match(payload.editorial.whyStop, /your last confirmed stop/);
+});
+
 test("normalized profile contract preserves facts, images, sources, status, and coverage", () => {
   const fact = createNormalizedFact({
     key: "name",

@@ -1741,7 +1741,7 @@ function getRouteContext(place = {}) {
     destination: state.trip.destination,
     availableHours: 3,
     travellerProfile: getTravellerProfile(),
-    previousStop: state.confirmedIds.size ? "confirmed visit" : "",
+    previousStop: state.confirmedIds.size ? "your last confirmed stop" : "",
     nextStop: state.live.nextStop && state.live.nextStop !== place.title ? state.live.nextStop : "",
     weatherContext: state.weatherContext.current || {},
   };
