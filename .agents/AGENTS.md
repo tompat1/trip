@@ -20,12 +20,16 @@ Brand tokens:
 - Sun `#E9C76B`
 - Clay `#9C6E55`
 
-Mobile-First UX/UI Principle:
+Mobile-First UX/UI Principle & Design Pillars:
 - Primary design target is mobile application experience (iOS / Android web app shell).
 - Centered phone-width viewports (max-width 480px–540px centered frame on desktop, 100% on mobile).
 - Touch-friendly tap targets (minimum 44x44px for buttons, pills, and nav icons).
 - Floating bottom dock navigation with thumb-accessible central Search FAB.
 - Native mobile feel: safe-area-inset padding, smooth inertia scrolling (`-webkit-overflow-scrolling: touch`), touch feedback states, and app-like transitions.
+- **AI-Driven Personalization**: Interfaces adapt dynamically based on user intent, location context, and travel mode rather than static rules.
+- **Liquid Glass & Layered Depth**: Frosted glass overlays (`backdrop-filter: blur()`), glassmorphic floating elements, and progressive blur depth provide an immersive visual hierarchy.
+- **Thumb-Friendly Layouts**: Critical actions, FABs, and primary controls cluster in the natural lower reach zones of mobile screens.
+- **Purposeful Motion**: Micro-interactions, tactile press scales (`transform: scale(0.96)`), and fluid transitions confirm user actions to reduce cognitive friction.
 
 Imported skill pack:
 - Cloudflare platform: `cloudflare`, `wrangler`, `workers-best-practices`
