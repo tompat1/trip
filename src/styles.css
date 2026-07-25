@@ -78,6 +78,18 @@ input, select, textarea {
   box-shadow: 0 0 40px rgba(23, 24, 23, 0.06);
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
+  transition: max-width 0.3s var(--ease-out);
+}
+
+/* Desktop Expansion State */
+@media (min-width: 900px) {
+  #app {
+    max-width: 960px;
+    margin: 24px auto;
+    border-radius: 24px;
+    border: 1px solid var(--line);
+    box-shadow: 0 12px 48px rgba(23, 24, 23, 0.12);
+  }
 }
 
 /* ==========================================================================
@@ -1334,6 +1346,36 @@ input, select, textarea {
   align-items: flex-start;
   justify-content: center;
   padding-top: 4px;
+}
+
+/* Mobile Day Selector Bar for Calendar */
+.calendar-mobile-day-bar {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 8px 4px 12px 4px;
+  -webkit-overflow-scrolling: touch;
+}
+.cal-day-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  background: var(--paper-card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pill);
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--ink-muted);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.2s var(--ease-out);
+}
+.cal-day-pill.is-active {
+  background: var(--red);
+  color: var(--white);
+  border-color: var(--red);
+  box-shadow: var(--shadow-sm);
 }
 
 .calendar-days-container {

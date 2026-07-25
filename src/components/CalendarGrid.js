@@ -6,9 +6,27 @@ const TIME_SLOTS = ["08:00", "10:00", "12:00", "14:00", "16:00", "18:00", "20:00
 export function renderCalendarGrid() {
   const trip = state.activeTrip;
   const events = trip.calendarEvents || [];
+  const activeFilter = state.calendarDayFilter || "all";
+
+  const visibleDayIndices = activeFilter === "all" 
+    ? [0, 1, 2, 3, 4, 5, 6] 
+    : [parseInt(activeFilter, 10)];
 
   return `
     <div class="calendar-grid-wrapper">
+      <!-- Mobile Day Filter Bar -->
+      <div class="calendar-mobile-day-bar">
+        <button class="cal-day-pill ${activeFilter === 'all' ? 'is-active' : ''}" data-action="set-calendar-day-filter" data-filter="all">
+          <span>All 7 Days</span>
+        </button>
+        ${DAYS_HEADER.map((dayStr, idx) => `
+          <button class="cal-day-pill ${activeFilter === String(idx) ? 'is-active' : ''}" data-action="set-calendar-day-filter" data-filter="${idx}">
+            <span class="pill-day-name">${dayStr.split(' ')[0]}</span>
+            <span class="pill-day-num">${dayStr.split(' ')[1]}</span>
+          </button>
+        `).join('')}
+      </div>
+
       <div class="calendar-grid">
         <!-- Time column -->
         <div class="calendar-time-col">
@@ -19,19 +37,19 @@ export function renderCalendarGrid() {
         <!-- Days columns -->
         <div class="calendar-days-container">
           <!-- Days header row -->
-          <div class="calendar-days-header-row">
-            ${DAYS_HEADER.map(
-              (dayLabel, index) => `
+          <div class="calendar-days-header-row" style="grid-template-columns: repeat(${visibleDayIndices.length}, 1fr);">
+            ${visibleDayIndices.map(
+              (index) => `
                 <div class="calendar-day-header ${state.activeDayIndex === index ? 'is-active' : ''}" data-day="${index}">
-                  <span class="calendar-day-name">${dayLabel.split(" ")[0]}</span>
-                  <span class="calendar-day-num">${dayLabel.split(" ").slice(1).join(" ")}</span>
+                  <span class="calendar-day-name">${DAYS_HEADER[index].split(" ")[0]}</span>
+                  <span class="calendar-day-num">${DAYS_HEADER[index].split(" ").slice(1).join(" ")}</span>
                   ${index === 0 ? '<span class="day-active-dot"></span>' : ''}
                 </div>
               `
             ).join("")}
           </div>
 
-          <!-- Grid body with 7 columns & background time lines -->
+          <!-- Grid body with columns & background time lines -->
           <div class="calendar-days-body">
             <!-- Horizontal grid lines -->
             <div class="calendar-grid-lines">
@@ -39,9 +57,9 @@ export function renderCalendarGrid() {
             </div>
 
             <!-- Columns for events (Interactive Dropzones & Slot Clickers) -->
-            <div class="calendar-columns">
-              ${DAYS_HEADER.map((_, dayIndex) => {
-                const dayEvents = events.filter((e) => e.dayIndex === dayIndex);
+            <div class="calendar-columns" style="grid-template-columns: repeat(${visibleDayIndices.length}, 1fr);">
+              ${visibleDayIndices.map((dayIndex) => {
+                const dayEvents = events.filter((e) => Number(e.dayIndex) === dayIndex);
                 return `
                   <div class="calendar-col" data-col-day="${dayIndex}" data-action="click-calendar-col">
                     ${dayEvents.map((evt) => renderEventCard(evt)).join("")}
@@ -51,17 +69,6 @@ export function renderCalendarGrid() {
             </div>
           </div>
         </div>
-      </div>
-
-      <!-- Filter FAB -->
-      <div class="calendar-fabs-group">
-        <button class="calendar-fab-btn fab-filter" title="Filter calendar events" data-action="calendar-filter">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/>
-            <line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/>
-            <line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/>
-          </svg>
-        </button>
       </div>
     </div>
   `;
@@ -94,8 +101,7 @@ function renderEventCard(evt) {
       ${evt.reminder ? `<div class="event-card__reminder">🔔 ${escapeHtml(evt.reminder)} before</div>` : ''}
       
       <div class="event-card-actions">
-        <button class="btn btn--icon btn--ghost event-action-btn" data-action="edit-calendar-event" data-event-id="${evt.id}" title="Edit event">✏️</button>
-        <button class="btn btn--icon btn--ghost event-action-btn" data-action="delete-calendar-event" data-event-id="${evt.id}" title="Delete event">🗑️</button>
+        <button class="btn btn--icon btn--ghost event-action-btn" data-action="open-edit-drawer" data-event-id="${evt.id}" title="Edit event">✏️</button>
       </div>
 
       <!-- Bottom Resize Handle for Drag-to-Resize Duration -->
