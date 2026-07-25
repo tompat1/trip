@@ -179,7 +179,11 @@ document.addEventListener("click", (e) => {
     }
     else if (action === "toggle-bookmark") {
       const placeId = target.dataset.placeId;
-      if (placeId) state.toggleSavedPlace(placeId);
+      if (placeId) {
+        const isSaving = !state.savedPlaceIds.has(placeId);
+        state.toggleSavedPlace(placeId);
+        showToast(isSaving ? "🔖 Saved spot to your trip bookmarks!" : "Removed from saved bookmarks.");
+      }
     }
     else if (action === "add-idea-to-itinerary") {
       const title = target.dataset.title || "Explore Spot";
@@ -646,3 +650,26 @@ document.addEventListener("click", (e) => {
 // Initialize reactive state listener & initial render
 state.subscribe(render);
 render();
+
+export function showToast(message) {
+  let toastContainer = document.getElementById("app-toast-container");
+  if (!toastContainer) {
+    toastContainer = document.createElement("div");
+    toastContainer.id = "app-toast-container";
+    toastContainer.style.cssText = "position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 200000; pointer-events: none; width: calc(100% - 32px); max-width: 400px;";
+    document.body.appendChild(toastContainer);
+  }
+
+  const toast = document.createElement("div");
+  toast.className = "app-toast";
+  toast.style.cssText = "background: var(--ink); color: var(--paper); padding: 12px 18px; border-radius: var(--radius-pill); font-size: 0.85rem; font-weight: 600; box-shadow: var(--shadow-lg); text-align: center; margin-bottom: 8px; animation: toastSlideIn 0.25s ease-out;";
+  toast.textContent = message;
+
+  toastContainer.appendChild(toast);
+
+  setTimeout(() => {
+    toast.style.opacity = "0";
+    toast.style.transition = "opacity 0.3s ease-out";
+    setTimeout(() => toast.remove(), 300);
+  }, 2500);
+}

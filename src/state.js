@@ -18,7 +18,14 @@ class AppState {
     this.searchQuery = "Best coffee shops in Copenhagen";
     this.searchCategory = "All";
     this.searchSubFilter = "All";
-    this.savedPlaceIds = new Set(["sp1", "sp2", "sp3", "sp4"]);
+    
+    // Load persisted saved places from localStorage or default set
+    let localSaved = [];
+    try {
+      const stored = localStorage.getItem("trip_saved_places");
+      if (stored) localSaved = JSON.parse(stored);
+    } catch {}
+    this.savedPlaceIds = new Set(localSaved.length ? localSaved : ["sp1", "sp2", "sp3", "sp4"]);
 
     // Live Geolocation & Worker API Integration State
     this.userLocation = null; // [lat, lng]
@@ -325,6 +332,9 @@ class AppState {
     } else {
       this.savedPlaceIds.add(placeId);
     }
+    try {
+      localStorage.setItem("trip_saved_places", JSON.stringify([...this.savedPlaceIds]));
+    } catch {}
     this.notify();
 
     // Async sync with Cloudflare D1
