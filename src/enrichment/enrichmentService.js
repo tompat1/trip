@@ -177,6 +177,84 @@ export function createEnrichmentService(options = {}) {
     createProfileContract(input = {}) {
       return createPlaceProfileContract(input);
     },
+
+    // --- D1 User Trips & Itinerary Persistence Methods ---
+
+    async fetchTrips() {
+      const url = buildApiUrl(apiBase, "/api/trips");
+      const res = await fetchImpl(url.href, { headers: { Accept: "application/json" } });
+      if (!res.ok) throw new Error(`worker-trips-http-${res.status}`);
+      const data = await res.json();
+      return data.trips || [];
+    },
+
+    async createTrip(tripData) {
+      const url = buildApiUrl(apiBase, "/api/trips");
+      const res = await fetchImpl(url.href, {
+        method: "POST",
+        headers: { Accept: "application/json", "Content-Type": "application/json" },
+        body: JSON.stringify(tripData),
+      });
+      if (!res.ok) throw new Error(`worker-create-trip-http-${res.status}`);
+      return res.json();
+    },
+
+    async fetchTripEvents(tripId) {
+      const url = buildApiUrl(apiBase, `/api/trips/${encodeURIComponent(tripId)}/events`);
+      const res = await fetchImpl(url.href, { headers: { Accept: "application/json" } });
+      if (!res.ok) throw new Error(`worker-events-http-${res.status}`);
+      const data = await res.json();
+      return data.events || [];
+    },
+
+    async addTripEvent(tripId, eventData) {
+      const url = buildApiUrl(apiBase, `/api/trips/${encodeURIComponent(tripId)}/events`);
+      const res = await fetchImpl(url.href, {
+        method: "POST",
+        headers: { Accept: "application/json", "Content-Type": "application/json" },
+        body: JSON.stringify(eventData),
+      });
+      if (!res.ok) throw new Error(`worker-add-event-http-${res.status}`);
+      return res.json();
+    },
+
+    async fetchSavedPlaces() {
+      const url = buildApiUrl(apiBase, "/api/user/saved-places");
+      const res = await fetchImpl(url.href, { headers: { Accept: "application/json" } });
+      if (!res.ok) throw new Error(`worker-saved-places-http-${res.status}`);
+      const data = await res.json();
+      return data.savedPlaceIds || [];
+    },
+
+    async toggleSavedPlace(placeId) {
+      const url = buildApiUrl(apiBase, "/api/user/saved-places/toggle");
+      const res = await fetchImpl(url.href, {
+        method: "POST",
+        headers: { Accept: "application/json", "Content-Type": "application/json" },
+        body: JSON.stringify({ placeId }),
+      });
+      if (!res.ok) throw new Error(`worker-toggle-saved-http-${res.status}`);
+      return res.json();
+    },
+
+    async fetchMoments() {
+      const url = buildApiUrl(apiBase, "/api/user/moments");
+      const res = await fetchImpl(url.href, { headers: { Accept: "application/json" } });
+      if (!res.ok) throw new Error(`worker-moments-http-${res.status}`);
+      const data = await res.json();
+      return data.moments || [];
+    },
+
+    async createMoment(momentData) {
+      const url = buildApiUrl(apiBase, "/api/user/moments");
+      const res = await fetchImpl(url.href, {
+        method: "POST",
+        headers: { Accept: "application/json", "Content-Type": "application/json" },
+        body: JSON.stringify(momentData),
+      });
+      if (!res.ok) throw new Error(`worker-create-moment-http-${res.status}`);
+      return res.json();
+    },
   };
 }
 

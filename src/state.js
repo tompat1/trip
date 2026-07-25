@@ -107,13 +107,92 @@ class AppState {
     this.notify();
   }
 
-  toggleSavedPlace(placeId) {
+  async createCustomTrip(tripInput) {
+    const id = tripInput.id || `trip_${Date.now()}`;
+    const newTrip = {
+      id,
+      destination: tripInput.destination || "Custom Trip",
+      flag: tripInput.flag || "🗺️",
+      dates: tripInput.dates || "Upcoming",
+      daysCount: 7,
+      startDate: new Date().toISOString().split("T")[0],
+      status: "Upcoming",
+      statusText: "Trip created",
+      tripMode: true,
+      center: tripInput.center || [48.8566, 2.3522],
+      zoom: 13,
+      weather: { temp: "20°C", condition: "Fair", forecast: [] },
+      upcomingActivity: { title: tripInput.destination, subtitle: tripInput.dates, image: "https://images.unsplash.com/photo-1488646953014-85cb44e25828?auto=format&fit=crop&w=600&q=80" },
+      checklist: [{ id: "stay", label: "Book your stay", completed: false }, { id: "exp", label: "Choose experiences", completed: false }],
+      mapPins: [],
+      calendarEvents: [],
+      ideas: [],
+      events: []
+    };
+
+    tripsData[id] = newTrip;
+    this.checklists[id] = [...newTrip.checklist];
+    this.activeTripId = id;
+    this.notify();
+
+    // Async sync with Cloudflare D1
+    try {
+      await enrichmentService.createTrip({
+        id,
+        destination: newTrip.destination,
+        flag: newTrip.flag,
+        dates: newTrip.dates,
+        latitude: newTrip.center[0],
+        longitude: newTrip.center[1]
+      });
+    } catch (e) {
+      console.warn("D1 trip sync fallback:", e);
+    }
+  }
+
+  async addCalendarEvent(tripId, eventInput) {
+    const trip = tripsData[tripId];
+    if (!trip) return;
+
+    const newEvt = {
+      id: eventInput.id || `evt_${Date.now()}`,
+      title: eventInput.title || "New Activity",
+      type: eventInput.type || "sight",
+      icon: eventInput.icon || "📍",
+      dayIndex: Number(eventInput.dayIndex) || 0,
+      dayName: eventInput.dayName || "Day 1",
+      startTime: eventInput.startTime || "10:00",
+      endTime: eventInput.endTime || "12:00",
+      location: eventInput.location || "",
+      colorScheme: eventInput.colorScheme || "peach"
+    };
+
+    trip.calendarEvents = trip.calendarEvents || [];
+    trip.calendarEvents.push(newEvt);
+    this.notify();
+
+    // Async sync with Cloudflare D1
+    try {
+      await enrichmentService.addTripEvent(tripId, newEvt);
+    } catch (e) {
+      console.warn("D1 event sync fallback:", e);
+    }
+  }
+
+  async toggleSavedPlace(placeId) {
     if (this.savedPlaceIds.has(placeId)) {
       this.savedPlaceIds.delete(placeId);
     } else {
       this.savedPlaceIds.add(placeId);
     }
     this.notify();
+
+    // Async sync with Cloudflare D1
+    try {
+      await enrichmentService.toggleSavedPlace(placeId);
+    } catch (e) {
+      console.warn("D1 saved place toggle fallback:", e);
+    }
   }
 
   toggleCheckitem(itemId) {
@@ -127,13 +206,22 @@ class AppState {
     }
   }
 
-  addMoment(moment) {
-    this.moments.unshift({
+  async addMoment(momentInput) {
+    const newMoment = {
       id: `m_${Date.now()}`,
       date: new Date().toISOString().split("T")[0],
-      ...moment
-    });
+      ...momentInput
+    };
+
+    this.moments.unshift(newMoment);
     this.notify();
+
+    // Async sync with Cloudflare D1
+    try {
+      await enrichmentService.createMoment(newMoment);
+    } catch (e) {
+      console.warn("D1 moment sync fallback:", e);
+    }
   }
 
   // --- Cloudflare Worker & OpenStreetMap Integration Methods ---

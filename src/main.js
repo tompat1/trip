@@ -154,6 +154,39 @@ document.addEventListener("click", (e) => {
     else if (action === "locate-user" || action === "toggle-map-view" || action === "toggle-full-map") {
       state.setView("live");
     }
+    else if (action === "create-trip") {
+      const destination = prompt("Enter trip destination (e.g. Tokyo, Japan):", "Tokyo, Japan");
+      if (destination) {
+        const dates = prompt("Enter travel dates (e.g. 12 – 19 Nov 2026):", "12 – 19 Nov 2026");
+        const flag = prompt("Enter flag emoji (e.g. 🇯🇵):", "🇯🇵");
+        state.createCustomTrip({ destination, dates, flag });
+      }
+    }
+    else if (action === "add-event") {
+      const title = prompt("Activity title (e.g. Tokyo Skytree Visit):", "Tokyo Skytree Visit");
+      if (title) {
+        const dayStr = prompt("Day index (0 = Sat, 1 = Sun, 2 = Mon...):", "0");
+        const startTime = prompt("Start time (e.g. 14:00):", "14:00");
+        const endTime = prompt("End time (e.g. 16:00):", "16:00");
+        const location = prompt("Location/Neighborhood:", "Sumida City");
+        state.addCalendarEvent(state.activeTripId, {
+          title,
+          dayIndex: parseInt(dayStr, 10) || 0,
+          startTime,
+          endTime,
+          location,
+          colorScheme: ["peach", "blue", "mint", "pink", "green", "gold"][Math.floor(Math.random() * 6)]
+        });
+      }
+    }
+    else if (action.startsWith("quick-")) {
+      const type = action.replace("quick-", "");
+      const text = prompt(`Record a ${type} moment:`, `Captured a beautiful ${type} during the journey!`);
+      if (text) {
+        state.addMoment({ title: `${type.toUpperCase()} Moment`, text, type });
+        alert("Moment recorded & saved to D1 / local timeline!");
+      }
+    }
   }
 
   // Subtab switcher

@@ -65,8 +65,8 @@ export function renderHeader() {
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
                 <span>Share</span>
               </button>
-              <button class="btn btn--primary btn--sm" data-action="switch-trip" title="Switch to ${isParis ? 'Heraklion, Crete' : 'Paris, France'}">
-                <span>+ ${isParis ? 'Crete Trip' : 'Paris Trip'}</span>
+              <button class="btn btn--primary btn--sm" data-action="create-trip" title="Create a new custom trip">
+                <span>+ New trip</span>
               </button>
               <label class="trip-mode-toggle" title="Toggle Trip Mode">
                 <span class="trip-mode-label">Trip Mode</span>

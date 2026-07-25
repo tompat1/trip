@@ -63,6 +63,14 @@ function matchRoute(method, pathname) {
     ["PATCH", /^\/api\/place-images\/([^/]+)$/, placeImagePatchHandler],
     ["POST", /^\/api\/places\/([^/]+)\/hero\/lock$/, heroLockHandler],
     ["GET", /^\/api\/places\/([^/]+)\/attributions$/, attributionHandler],
+    ["GET", /^\/api\/trips$/, tripsListHandler],
+    ["POST", /^\/api\/trips$/, tripsCreateHandler],
+    ["GET", /^\/api\/trips\/([^/]+)\/events$/, tripEventsListHandler],
+    ["POST", /^\/api\/trips\/([^/]+)\/events$/, tripEventsCreateHandler],
+    ["GET", /^\/api\/user\/saved-places$/, userSavedPlacesListHandler],
+    ["POST", /^\/api\/user\/saved-places\/toggle$/, userSavedPlacesToggleHandler],
+    ["GET", /^\/api\/user\/moments$/, userMomentsListHandler],
+    ["POST", /^\/api\/user\/moments$/, userMomentsCreateHandler],
   ];
 
   for (const [routeMethod, pattern, handler] of routes) {
@@ -2800,3 +2808,136 @@ function jsonError(code, message, status = 400) {
     generatedAt: new Date().toISOString(),
   }, status);
 }
+
+/* ==========================================================================
+   USER TRIPS, ITINERARY EVENTS, SAVED PLACES & MOMENTS D1 HANDLERS
+   ========================================================================== */
+
+async function tripsListHandler({ env }) {
+  if (!env.TRIP_DB) return json({ ok: true, trips: [] });
+  try {
+    const { results } = await env.TRIP_DB.prepare("SELECT * FROM user_trips ORDER BY created_at DESC").all();
+    return json({ ok: true, trips: results || [] });
+  } catch (e) {
+    return json({ ok: true, trips: [], note: "tables_not_yet_applied" });
+  }
+}
+
+async function tripsCreateHandler({ request, env }) {
+  if (!env.TRIP_DB) return jsonError("no_db", "Database not bound", 500);
+  const body = await request.json().catch(() => ({}));
+  const id = body.id || `trip_${Date.now()}`;
+  const destination = body.destination || "New Destination";
+  const flag = body.flag || "🗺️";
+  const dates = body.dates || "Upcoming";
+  const lat = Number(body.latitude) || 0.0;
+  const lng = Number(body.longitude) || 0.0;
+
+  try {
+    await env.TRIP_DB.prepare(
+      `INSERT INTO user_trips (id, destination, flag, dates, latitude, longitude) VALUES (?, ?, ?, ?, ?, ?)`
+    ).bind(id, destination, flag, dates, lat, lng).run();
+    return json({ ok: true, trip: { id, destination, flag, dates, latitude: lat, longitude: lng } });
+  } catch (e) {
+    return jsonError("db_error", e.message, 500);
+  }
+}
+
+async function tripEventsListHandler({ params, env }) {
+  const tripId = params[0];
+  if (!env.TRIP_DB) return json({ ok: true, events: [] });
+  try {
+    const { results } = await env.TRIP_DB.prepare("SELECT * FROM trip_itinerary_events WHERE trip_id = ? ORDER BY day_index ASC, start_time ASC").bind(tripId).all();
+    return json({ ok: true, events: results || [] });
+  } catch (e) {
+    return json({ ok: true, events: [] });
+  }
+}
+
+async function tripEventsCreateHandler({ params, request, env }) {
+  const tripId = params[0];
+  if (!env.TRIP_DB) return jsonError("no_db", "Database not bound", 500);
+  const body = await request.json().catch(() => ({}));
+  const id = body.id || `evt_${Date.now()}`;
+  const title = body.title || "New Activity";
+  const eventType = body.eventType || "sight";
+  const icon = body.icon || "📍";
+  const dayIndex = Number(body.dayIndex) || 0;
+  const dayName = body.dayName || "";
+  const startTime = body.startTime || "10:00";
+  const endTime = body.endTime || "12:00";
+  const location = body.location || "";
+  const colorScheme = body.colorScheme || "peach";
+
+  try {
+    await env.TRIP_DB.prepare(
+      `INSERT INTO trip_itinerary_events (id, trip_id, title, event_type, icon, day_index, day_name, start_time, end_time, location, color_scheme) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    ).bind(id, tripId, title, eventType, icon, dayIndex, dayName, startTime, endTime, location, colorScheme).run();
+    return json({ ok: true, event: { id, tripId, title, eventType, icon, dayIndex, dayName, startTime, endTime, location, colorScheme } });
+  } catch (e) {
+    return jsonError("db_error", e.message, 500);
+  }
+}
+
+async function userSavedPlacesListHandler({ env }) {
+  if (!env.TRIP_DB) return json({ ok: true, savedPlaceIds: [] });
+  try {
+    const { results } = await env.TRIP_DB.prepare("SELECT place_id FROM user_saved_places WHERE user_id = 'default_user'").all();
+    return json({ ok: true, savedPlaceIds: (results || []).map(r => r.place_id) });
+  } catch (e) {
+    return json({ ok: true, savedPlaceIds: [] });
+  }
+}
+
+async function userSavedPlacesToggleHandler({ request, env }) {
+  if (!env.TRIP_DB) return json({ ok: true, toggled: true });
+  const body = await request.json().catch(() => ({}));
+  const placeId = body.placeId;
+  if (!placeId) return jsonError("bad_request", "Missing placeId", 400);
+
+  try {
+    const existing = await env.TRIP_DB.prepare("SELECT id FROM user_saved_places WHERE user_id = 'default_user' AND place_id = ?").bind(placeId).first();
+    if (existing) {
+      await env.TRIP_DB.prepare("DELETE FROM user_saved_places WHERE user_id = 'default_user' AND place_id = ?").bind(placeId).run();
+      return json({ ok: true, saved: false, placeId });
+    } else {
+      const id = `saved_${Date.now()}`;
+      await env.TRIP_DB.prepare("INSERT INTO user_saved_places (id, user_id, place_id) VALUES (?, 'default_user', ?)").bind(id, placeId).run();
+      return json({ ok: true, saved: true, placeId });
+    }
+  } catch (e) {
+    return jsonError("db_error", e.message, 500);
+  }
+}
+
+async function userMomentsListHandler({ env }) {
+  if (!env.TRIP_DB) return json({ ok: true, moments: [] });
+  try {
+    const { results } = await env.TRIP_DB.prepare("SELECT * FROM user_moments ORDER BY created_at DESC").all();
+    return json({ ok: true, moments: results || [] });
+  } catch (e) {
+    return json({ ok: true, moments: [] });
+  }
+}
+
+async function userMomentsCreateHandler({ request, env }) {
+  if (!env.TRIP_DB) return jsonError("no_db", "Database not bound", 500);
+  const body = await request.json().catch(() => ({}));
+  const id = body.id || `m_${Date.now()}`;
+  const tripId = body.tripId || "paris";
+  const type = body.type || "note";
+  const title = body.title || "";
+  const text = body.text || "";
+  const date = body.date || new Date().toISOString().split("T")[0];
+
+  try {
+    await env.TRIP_DB.prepare(
+      `INSERT INTO user_moments (id, trip_id, type, title, text, date) VALUES (?, ?, ?, ?, ?, ?)`
+    ).bind(id, tripId, type, title, text, date).run();
+    return json({ ok: true, moment: { id, tripId, type, title, text, date } });
+  } catch (e) {
+    return jsonError("db_error", e.message, 500);
+  }
+}
+
