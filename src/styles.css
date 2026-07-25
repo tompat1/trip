@@ -310,11 +310,12 @@ input, select, textarea {
 }
 .brand-monogram__logo {
   font-family: var(--font-serif);
-  font-size: 1.5rem;
+  font-size: 1.4rem;
   font-weight: 700;
   letter-spacing: 2px;
   color: var(--ink);
   line-height: 1;
+  white-space: nowrap;
 }
 .brand-monogram__sub {
   font-size: 0.7rem;
@@ -325,28 +326,36 @@ input, select, textarea {
 .app-header__user {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
+  flex-wrap: nowrap;
 }
 
 .header-live-time-pill {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   background: var(--paper-card);
   border: 1px solid var(--line);
-  padding: 4px 10px;
+  padding: 4px 8px;
   border-radius: var(--radius-pill);
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   font-weight: 700;
   color: var(--ink);
   box-shadow: var(--shadow-sm);
+  white-space: nowrap;
+  flex-shrink: 1;
 }
 .header-weather-badge {
   color: var(--ink);
   font-weight: 800;
   display: inline-flex;
   align-items: center;
-  gap: 3px;
+  gap: 2px;
+  white-space: nowrap;
+}
+.live-time-text {
+  font-family: var(--font-mono);
+  white-space: nowrap;
 }
 .header-time-divider {
   color: var(--ink-muted);
@@ -1202,7 +1211,7 @@ input, select, textarea {
    PLAN VIEW & INTERACTIVE WEEKLY CALENDAR GRID
    ========================================================================== */
 .plan-page {
-  padding: 0 16px 24px 16px;
+  padding: 0 0 24px 0;
 }
 .plan-page-body {
   margin-top: 4px;

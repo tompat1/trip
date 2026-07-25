@@ -124,7 +124,7 @@ function initMapsForView(view) {
 }
 
 // Global Event Listeners Delegation
-document.addEventListener("click", (e) => {
+document.addEventListener("click", async (e) => {
   const target = e.target.closest("[data-nav], [data-action], [data-subtab], [data-viewmode], [data-day-select], [data-cat], [data-subfilter]");
   if (!target) return;
 
@@ -199,6 +199,37 @@ document.addEventListener("click", (e) => {
         colorScheme: "peach",
         reminder: "30m"
       });
+    }
+    else if (action === "generate-ai-story") {
+      const trip = state.activeTrip;
+      showToast("✨ Synthesizing AI Travel Journal Story...");
+      try {
+        const place = { id: trip.id, canonicalName: trip.destination, category: "trip" };
+        const editorial = await enrichmentService.generateEditorial({
+          place,
+          facts: [
+            { title: "Travel Dates", value: trip.dates },
+            { title: "Scheduled Activities", value: String((trip.calendarEvents || []).length) },
+            { title: "Bookmarked Spots", value: String(state.savedPlaceIds.size) }
+          ],
+          travellerProfile: { name: "Thomas Rynell" }
+        });
+        if (editorial) {
+          state.setGeneratedStory(trip.id, editorial);
+          showToast("📖 AI Travel Narrative Generated!");
+        }
+      } catch (e) {
+        console.warn("Worker editorial generate fallback:", e);
+        state.setGeneratedStory(trip.id, {
+          title: `Tales of ${trip.destination}`,
+          lead: `Every place becomes a story. Journeying through ${trip.destination} brought together iconic architecture, historic quarter strolls, and vibrant local gastronomy.`,
+          sections: [
+            { title: "Morning Rhythms & Local Flavour", body: `Starting the morning in ${trip.destination} revealed a city waking up to fresh aromas, local markets, and timeless streets.` },
+            { title: "Curated Wanders & Evening Light", body: `As twilight settled, exploring saved spots and historical quarters framed an unforgettable travel experience.` }
+          ]
+        });
+        showToast("📖 Travel Story Generated!");
+      }
     }
     else if (action === "toggle-check") {
       const itemId = target.dataset.itemId;

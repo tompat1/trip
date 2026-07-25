@@ -25,7 +25,7 @@ class AppState {
       const stored = localStorage.getItem("trip_saved_places");
       if (stored) localSaved = JSON.parse(stored);
     } catch {}
-    this.savedPlaceIds = new Set(localSaved.length ? localSaved : ["sp1", "sp2", "sp3", "sp4"]);
+    this.savedPlaceIds = new Set(localSaved.length ? localSaved : ["i1", "i2", "i3", "i4", "sp1", "sp2"]);
 
     // Live Geolocation & Worker API Integration State
     this.userLocation = null; // [lat, lng]
@@ -50,6 +50,9 @@ class AppState {
       crete: [...tripsData.crete.checklist]
     };
 
+    // Generated AI Editorial Stories store
+    this.generatedStories = {};
+
     this.activeLightboxMedia = null;
     this.activeEventDrawer = null; // { mode: 'create'|'edit', event: {} }
     this.calendarDayFilter = "all"; // 'all' or '0'..'6'
@@ -57,6 +60,11 @@ class AppState {
     this.checkBackendHealth();
     this.loadD1Trips();
     this.refreshWeather();
+  }
+
+  setGeneratedStory(tripId, story) {
+    this.generatedStories[tripId] = story;
+    this.notify();
   }
 
   setCalendarDayFilter(filter) {

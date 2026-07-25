@@ -28,7 +28,7 @@ export function renderPlanView() {
       <!-- Universal Top App Header -->
       ${renderHeader()}
 
-      <div class="plan-page-body">
+      <div class="plan-page-body" style="padding: 0 16px;">
         <!-- Primary Sub-Navigation Bar -->
         <nav class="sub-tab-nav">
           ${SUB_TABS.map(
@@ -155,22 +155,40 @@ function renderJournalSubTab() {
 }
 
 function renderStorySubTab(trip) {
+  const generated = state.generatedStories ? state.generatedStories[trip.id] : null;
+
   return `
     <div class="story-subtab-view">
+      <!-- AI Editorial Action Header Bar -->
+      <div class="story-ai-header mb-md" style="background: var(--paper-card); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 16px; display: flex; justify-content: space-between; align-items: center; box-shadow: var(--shadow-sm);">
+        <div>
+          <span style="font-size: 0.72rem; font-weight: 700; text-transform: uppercase; color: var(--red); letter-spacing: 0.5px;">AI NARRATIVE JOURNAL</span>
+          <h3 style="font-size: 1.05rem; font-weight: 700; margin: 2px 0 0 0; color: var(--ink);">"Every place becomes a story"</h3>
+        </div>
+        <button class="btn btn--primary btn--sm" data-action="generate-ai-story">
+          ${renderIcon("sparkles")} ${generated ? 'Regenerate AI Story' : 'Generate AI Story'}
+        </button>
+      </div>
+
       <article class="editorial-story-card">
         <div class="story-cover" style="background-image: url('${trip.upcomingActivity.image}')">
           <div class="story-cover-overlay"></div>
           <div class="story-cover-content">
             <span class="story-kicker">EDITORIAL TRAVEL ARCHIVE</span>
-            <h1 class="story-main-title">${escapeHtml(trip.destination)} ${trip.flag}</h1>
-            <p class="story-byline">By Thomas Rynell • ${escapeHtml(trip.dates)}</p>
+            <h1 class="story-main-title">${escapeHtml(generated?.title || `${trip.destination} ${trip.flag}`)}</h1>
+            <p class="story-byline">By Thomas Rynell • ${escapeHtml(trip.dates)} ${generated ? '• Powered by Worker AI Engine' : ''}</p>
           </div>
         </div>
 
         <div class="story-prose">
           <p class="story-lead">
-            Every place becomes a story. Exploring ${escapeHtml(trip.destination)} brought together historic architecture, specialty coffee roasters, and unforgettable moments along the journey.
+            ${escapeHtml(generated?.lead || generated?.summary || `Every place becomes a story. Exploring ${trip.destination} brought together historic architecture, specialty coffee roasters, and unforgettable moments along the journey.`)}
           </p>
+
+          ${generated?.sections ? generated.sections.map(sec => `
+            <h3 class="story-h3" style="font-size: 1.2rem; font-weight: 700; margin-top: 20px; color: var(--ink);">${escapeHtml(sec.title || sec.heading)}</h3>
+            <p style="font-size: 0.95rem; line-height: 1.6; color: var(--ink-muted);">${escapeHtml(sec.body || sec.content)}</p>
+          `).join('') : ''}
 
           <h3 class="story-h3">Highlights of the Journey</h3>
           <ul class="story-highlights-list">
@@ -316,12 +334,14 @@ function renderOverviewSubTab(trip) {
   const completedCount = checklist.filter(i => i.completed).length;
   const progressPct = checklist.length ? Math.round((completedCount / checklist.length) * 100) : 0;
   const events = trip.calendarEvents || [];
-  const savedPlacesCount = state.savedPlaceIds ? state.savedPlaceIds.size : 0;
+  
+  // Comprehensive saved places gatherer across Explore & Search
+  const savedPlaces = getSavedPlacesForTrip(trip);
 
   return `
-    <div class="overview-subtab-view">
+    <div class="overview-subtab-view" style="display: flex; flex-direction: column; gap: 20px;">
       <!-- Destination Hero Banner & Stats -->
-      <div class="overview-hero-card mb-md" style="background: linear-gradient(135deg, var(--paper-card) 0%, var(--paper-subtle) 100%); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 20px; box-shadow: var(--shadow-sm);">
+      <div class="overview-hero-card" style="background: linear-gradient(135deg, var(--paper-card) 0%, var(--paper-subtle) 100%); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 20px; box-shadow: var(--shadow-sm);">
         <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px;">
           <div>
             <span style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--red);">TRIP OVERVIEW</span>
@@ -340,7 +360,7 @@ function renderOverviewSubTab(trip) {
             <div style="font-size: 0.72rem; font-weight: 600; color: var(--ink-muted); text-transform: uppercase; margin-top: 2px;">Activities</div>
           </div>
           <div class="stat-box" style="text-align: center; background: var(--paper); padding: 10px; border-radius: var(--radius-md); border: 1px solid var(--line);">
-            <div class="voice-mono" style="font-size: 1.2rem; font-weight: 700; color: var(--blue);">${savedPlacesCount}</div>
+            <div class="voice-mono" style="font-size: 1.2rem; font-weight: 700; color: var(--blue);">${savedPlaces.length}</div>
             <div style="font-size: 0.72rem; font-weight: 600; color: var(--ink-muted); text-transform: uppercase; margin-top: 2px;">Saved Spots</div>
           </div>
           <div class="stat-box" style="text-align: center; background: var(--paper); padding: 10px; border-radius: var(--radius-md); border: 1px solid var(--line);">
@@ -350,24 +370,48 @@ function renderOverviewSubTab(trip) {
         </div>
       </div>
 
-      <!-- Destination Photo Palette (Generated Brand Palette) -->
-      <div class="dashboard-card mb-md" style="padding: 16px;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-          <h3 class="dashboard-card__title">Destination Color Palette</h3>
-          <span style="font-size: 0.72rem; font-weight: 600; color: var(--ink-muted);">Photo extracted</span>
+      <!-- Saved / Bookmarked Spots Panel (Reminders to Add to Plan) -->
+      <div class="dashboard-card" style="padding: 20px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+          <div>
+            <h3 class="dashboard-card__title" style="margin: 0; font-size: 1.1rem;">Saved & Bookmarked Spots</h3>
+            <p style="font-size: 0.8rem; color: var(--ink-muted); margin: 2px 0 0 0;">Bookmarked places ready to add to your trip itinerary</p>
+          </div>
+          <span class="badge badge--info voice-mono" style="font-weight: 700;">${savedPlaces.length} Saved</span>
         </div>
-        <div style="display: flex; gap: 8px; align-items: center; justify-content: space-between;">
-          <div style="flex: 1; height: 36px; border-radius: 8px; background: #F4F0E7; border: 1px solid #E0D8CB; display: flex; align-items: flex-end; padding: 4px; font-size: 0.65rem; font-weight: 700; font-family: var(--font-mono); color: #171817;" title="Paper #F4F0E7">Paper</div>
-          <div style="flex: 1; height: 36px; border-radius: 8px; background: #D94A3A; display: flex; align-items: flex-end; padding: 4px; font-size: 0.65rem; font-weight: 700; font-family: var(--font-mono); color: #FFF;" title="Journey Red #D94A3A">Red</div>
-          <div style="flex: 1; height: 36px; border-radius: 8px; background: #385C73; display: flex; align-items: flex-end; padding: 4px; font-size: 0.65rem; font-weight: 700; font-family: var(--font-mono); color: #FFF;" title="Atlas Blue #385C73">Blue</div>
-          <div style="flex: 1; height: 36px; border-radius: 8px; background: #65705B; display: flex; align-items: flex-end; padding: 4px; font-size: 0.65rem; font-weight: 700; font-family: var(--font-mono); color: #FFF;" title="Field Green #65705B">Green</div>
-          <div style="flex: 1; height: 36px; border-radius: 8px; background: #E9C76B; display: flex; align-items: flex-end; padding: 4px; font-size: 0.65rem; font-weight: 700; font-family: var(--font-mono); color: #171817;" title="Sun #E9C76B">Sun</div>
-          <div style="flex: 1; height: 36px; border-radius: 8px; background: #9C6E55; display: flex; align-items: flex-end; padding: 4px; font-size: 0.65rem; font-weight: 700; font-family: var(--font-mono); color: #FFF;" title="Clay #9C6E55">Clay</div>
+
+        <div class="saved-spots-reminder-list" style="display: flex; flex-direction: column; gap: 12px;">
+          ${savedPlaces.length === 0 ? `
+            <div style="background: var(--paper); border: 1px dashed var(--line); border-radius: var(--radius-md); padding: 20px; text-align: center; color: var(--ink-muted); font-size: 0.88rem;">
+              No bookmarked spots yet. Tap ${renderIcon("bookmark")} on any recommendation in Explore to shortlist places here!
+            </div>
+          ` : savedPlaces.map(spot => {
+            const isAdded = events.some(e => e.title === spot.title);
+            return `
+              <div style="display: flex; align-items: center; justify-content: space-between; background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius-md); padding: 12px 16px; box-shadow: var(--shadow-sm);">
+                <div>
+                  <h4 style="font-size: 0.96rem; font-weight: 700; color: var(--ink); margin: 0 0 4px 0;">${escapeHtml(spot.title)}</h4>
+                  <span class="voice-mono" style="font-size: 0.75rem; color: var(--ink-muted);">${escapeHtml(spot.category || 'Sight')} • ${escapeHtml(spot.subtitle || 'Recommended')}</span>
+                </div>
+                <div>
+                  ${isAdded ? `
+                    <button class="btn btn--outline btn--xs" disabled style="opacity: 0.65; cursor: default; background: var(--paper-subtle); color: var(--ink-muted);">
+                      ${renderIcon("check")} Added
+                    </button>
+                  ` : `
+                    <button class="btn btn--primary btn--xs" data-action="add-idea-to-itinerary" data-title="${escapeHtml(spot.title)}" data-location="${escapeHtml(spot.subtitle || spot.title)}">
+                      ${renderIcon("plus")} Add to Plan
+                    </button>
+                  `}
+                </div>
+              </div>
+            `;
+          }).join('')}
         </div>
       </div>
 
       <!-- Planning Progress Summary Card -->
-      <div class="dashboard-card mb-md">
+      <div class="dashboard-card">
         <div class="dashboard-card__header">
           <h3 class="dashboard-card__title">Planning Progress</h3>
           <span class="badge ${progressPct === 100 ? 'badge--success' : 'badge--info'}">${completedCount} of ${checklist.length} tasks (${progressPct}%)</span>
@@ -379,7 +423,7 @@ function renderOverviewSubTab(trip) {
       </div>
 
       <!-- Synced Planning Checklist (Full CRUD) -->
-      <div class="dashboard-card planning-widget mb-md">
+      <div class="dashboard-card planning-widget">
         <div class="dashboard-card__header">
           <h3 class="dashboard-card__title">Trip Checklist</h3>
           <button class="btn btn--outline btn--xs" data-action="add-checklist-item" title="Add planning task">${renderIcon("plus")} Add task</button>
@@ -401,6 +445,32 @@ function renderOverviewSubTab(trip) {
       </div>
     </div>
   `;
+}
+
+function getSavedPlacesForTrip(trip) {
+  const savedSet = state.savedPlaceIds || new Set();
+  const places = [];
+
+  (trip.ideas || []).forEach(idea => {
+    if (savedSet.has(idea.id)) {
+      places.push(idea);
+    }
+  });
+
+  const SEARCH_SPOTS = [
+    { id: "sp1", title: "Savannah Coffee Roasters", category: "Café", subtitle: "Specialty pourovers" },
+    { id: "sp2", title: "Saint-Germain Bistro", category: "Dining", subtitle: "Classic French cuisine" },
+    { id: "sp3", title: "Musée d'Orsay", category: "Museum", subtitle: "Impressionist masterworks" },
+    { id: "sp4", title: "Palais-Royal Garden", category: "Park", subtitle: "Tranquil courtyard" }
+  ];
+
+  SEARCH_SPOTS.forEach(spot => {
+    if (savedSet.has(spot.id) && !places.some(p => p.id === spot.id || p.title === spot.title)) {
+      places.push(spot);
+    }
+  });
+
+  return places;
 }
 
 function renderExploreSubTab(trip) {
