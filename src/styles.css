@@ -2141,6 +2141,9 @@ input, select, textarea {
 /* ==========================================================================
    MOBILE EVENT DRAWER / BOTTOM SHEET
    ========================================================================== */
+/* ==========================================================================
+   MOBILE EVENT DRAWER / BOTTOM SHEET (REDESIGNED)
+   ========================================================================== */
 .drawer-overlay {
   position: fixed;
   inset: 0;
@@ -2161,12 +2164,12 @@ input, select, textarea {
   width: 100%;
   max-width: 480px;
   background: var(--paper-card);
-  border-top-left-radius: 24px;
-  border-top-right-radius: 24px;
-  padding: 12px 20px calc(24px + env(safe-area-inset-bottom, 0px)) 20px;
+  border-top-left-radius: 28px;
+  border-top-right-radius: 28px;
+  padding: 16px 20px calc(28px + env(safe-area-inset-bottom, 0px)) 20px;
   box-shadow: var(--shadow-lg);
   border: 1px solid var(--line);
-  max-height: 85vh;
+  max-height: 88vh;
   overflow-y: auto;
   animation: drawerSlideUp 0.3s var(--ease-out);
 }
@@ -2176,80 +2179,71 @@ input, select, textarea {
 }
 
 .drawer-drag-handle {
-  width: 36px;
-  height: 4px;
-  border-radius: 2px;
+  width: 42px;
+  height: 5px;
+  border-radius: 3px;
   background: var(--line);
-  margin: 0 auto 12px auto;
+  margin: 0 auto 16px auto;
+  cursor: pointer;
 }
 
 .drawer-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 16px;
+  margin-bottom: 20px;
 }
 .drawer-title {
-  font-size: 1.15rem;
+  font-size: 1.25rem;
   font-weight: 700;
   color: var(--ink);
 }
-.drawer-close-btn {
-  background: var(--paper-subtle);
-  border: 1px solid var(--line-light);
-  border-radius: 50%;
-  width: 30px;
-  height: 30px;
-  font-size: 0.9rem;
-  cursor: pointer;
+.drawer-subtitle {
+  font-size: 0.8rem;
   color: var(--ink-muted);
+  margin-top: 2px;
 }
 
-.form-group {
+.drawer-form-group {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  margin-bottom: 16px;
 }
-.form-row {
+.drawer-form-row {
   display: flex;
   gap: 12px;
 }
-.half-width {
-  flex: 1;
-}
-.form-label {
-  font-size: 0.78rem;
+.drawer-label {
+  font-size: 0.75rem;
   font-weight: 700;
   color: var(--ink-muted);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
-.form-input {
+.drawer-input {
   width: 100%;
-  padding: 10px 14px;
+  padding: 12px 16px;
   border: 1px solid var(--line);
   border-radius: var(--radius-md);
   background: var(--paper);
-  font-size: 0.9rem;
+  font-size: 0.95rem;
   color: var(--ink);
   outline: none;
 }
-.form-input:focus {
+.drawer-input:focus {
   border-color: var(--red);
   box-shadow: 0 0 0 3px rgba(217, 74, 58, 0.15);
 }
 
-.pill-options-grid {
+.drawer-pills-row {
   display: flex;
-  gap: 6px;
+  gap: 8px;
   flex-wrap: wrap;
 }
 .drawer-pill {
-  padding: 6px 12px;
+  padding: 8px 14px;
   border-radius: var(--radius-pill);
   border: 1px solid var(--line);
   background: var(--paper);
-  font-size: 0.78rem;
+  font-size: 0.82rem;
   font-weight: 600;
   color: var(--ink-muted);
   cursor: pointer;
@@ -2262,30 +2256,42 @@ input, select, textarea {
   box-shadow: var(--shadow-sm);
 }
 
-.color-picker-row {
+.drawer-colors-row {
   display: flex;
-  gap: 10px;
+  gap: 12px;
   align-items: center;
 }
-.color-picker-dot {
-  width: 32px;
-  height: 32px;
+.drawer-color-dot {
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
-  border: 2px solid transparent;
+  border: 2px solid;
   cursor: pointer;
   box-shadow: var(--shadow-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: var(--ink);
   transition: transform 0.2s var(--ease-out);
 }
-.color-picker-dot.is-active {
-  transform: scale(1.18);
-  border-color: var(--ink);
+.drawer-color-dot.is-active {
+  transform: scale(1.2);
   box-shadow: var(--shadow-md);
 }
 
-.drawer-actions-row {
+.drawer-actions {
   display: flex;
-  gap: 10px;
-  margin-top: 20px;
+  gap: 12px;
+  margin-top: 24px;
+}
+.btn--danger {
+  color: #d94a3a;
+  border-color: rgba(217, 74, 58, 0.4);
+}
+.btn--danger:hover {
+  background: rgba(217, 74, 58, 0.08);
 }
 .flex-grow-btn {
   flex: 1;

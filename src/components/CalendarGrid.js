@@ -37,7 +37,7 @@ export function renderCalendarGrid() {
         <!-- Days columns -->
         <div class="calendar-days-container">
           <!-- Days header row -->
-          <div class="calendar-days-header-row" style="grid-template-columns: repeat(${visibleDayIndices.length}, 1fr);">
+          <div class="calendar-days-header-row" style="grid-template-columns: repeat(${visibleDayIndices.length}, minmax(${visibleDayIndices.length === 7 ? '110px' : '1fr'}, 1fr));">
             ${visibleDayIndices.map(
               (index) => `
                 <div class="calendar-day-header ${state.activeDayIndex === index ? 'is-active' : ''}" data-day="${index}">
@@ -56,8 +56,8 @@ export function renderCalendarGrid() {
               ${TIME_SLOTS.map(() => `<div class="grid-horizontal-line"></div>`).join("")}
             </div>
 
-            <!-- Columns for events (Interactive Dropzones & Slot Clickers) -->
-            <div class="calendar-columns" style="grid-template-columns: repeat(${visibleDayIndices.length}, 1fr);">
+            <!-- Columns for events (Interactive Dropzones & Touch Drag) -->
+            <div class="calendar-columns" style="grid-template-columns: repeat(${visibleDayIndices.length}, minmax(${visibleDayIndices.length === 7 ? '110px' : '1fr'}, 1fr));">
               ${visibleDayIndices.map((dayIndex) => {
                 const dayEvents = events.filter((e) => Number(e.dayIndex) === dayIndex);
                 return `
@@ -89,7 +89,6 @@ function renderEventCard(evt) {
          draggable="true"
          data-event-id="${evt.id}"
          data-day-index="${evt.dayIndex}"
-         data-action="open-edit-drawer"
          style="top: ${Math.max(0, topPercent)}%; height: ${Math.min(100, heightPercent)}%;"
          title="${escapeHtml(evt.title)} (${evt.startTime} - ${evt.endTime})">
       <div class="event-card__header">
@@ -98,13 +97,13 @@ function renderEventCard(evt) {
       </div>
       <div class="event-card__time">${evt.startTime} – ${evt.endTime}</div>
       ${evt.location ? `<div class="event-card__location">📍 ${escapeHtml(evt.location)}</div>` : ''}
-      ${evt.reminder ? `<div class="event-card__reminder">🔔 ${escapeHtml(evt.reminder)} before</div>` : ''}
+      ${evt.reminder && evt.reminder !== 'none' ? `<div class="event-card__reminder">🔔 ${escapeHtml(evt.reminder)} before</div>` : ''}
       
       <div class="event-card-actions">
-        <button class="btn btn--icon btn--ghost event-action-btn" data-action="open-edit-drawer" data-event-id="${evt.id}" title="Edit event">✏️</button>
+        <button class="btn btn--icon btn--ghost event-action-btn" data-action="open-edit-drawer" data-event-id="${evt.id}" title="Edit activity">✏️</button>
       </div>
 
-      <!-- Bottom Resize Handle for Drag-to-Resize Duration -->
+      <!-- Bottom Resize Handle for Touch/Drag Duration Resizing -->
       <div class="event-resize-handle" data-event-id="${evt.id}" title="Drag bottom edge to resize duration"></div>
     </div>
   `;

@@ -369,105 +369,139 @@ document.addEventListener("change", (e) => {
   }
 });
 
-// Calendar Drag & Drop Handlers (HTML5 & Mobile Touch)
-document.addEventListener("dragstart", (e) => {
+// ==========================================================================
+// UNIFIED TOUCH & POINTER DRAG & RESIZE ENGINE (Mobile + Desktop)
+// ==========================================================================
+let activeDragState = null;
+
+// Touch & Mouse Down Start Listener
+document.addEventListener("pointerdown", (e) => {
+  const resizeHandle = e.target.closest(".event-resize-handle");
   const card = e.target.closest(".event-card");
-  if (card && card.dataset.eventId) {
-    e.dataTransfer.setData("text/plain", card.dataset.eventId);
-    card.classList.add("is-dragging");
-  }
-});
 
-document.addEventListener("dragend", (e) => {
-  const card = e.target.closest(".event-card");
-  if (card) card.classList.remove("is-dragging");
-});
-
-document.addEventListener("dragover", (e) => {
-  const col = e.target.closest(".calendar-col");
-  if (col) {
+  if (resizeHandle) {
     e.preventDefault();
-    col.classList.add("drag-hover");
+    e.stopPropagation();
+    const parentCard = resizeHandle.closest(".event-card");
+    const col = parentCard.closest(".calendar-col");
+    activeDragState = {
+      type: "resize",
+      eventId: resizeHandle.dataset.eventId,
+      card: parentCard,
+      col,
+      startY: e.clientY,
+      initialHeight: parentCard.offsetHeight
+    };
+    return;
+  }
+
+  if (card && !e.target.closest(".event-action-btn")) {
+    const col = card.closest(".calendar-col");
+    activeDragState = {
+      type: "move",
+      eventId: card.dataset.eventId,
+      card,
+      col,
+      startX: e.clientX,
+      startY: e.clientY,
+      hasMoved: false
+    };
   }
 });
 
-document.addEventListener("dragleave", (e) => {
-  const col = e.target.closest(".calendar-col");
-  if (col) col.classList.remove("drag-hover");
-});
+// Touch & Mouse Move Listener
+document.addEventListener("pointermove", (e) => {
+  if (!activeDragState) return;
 
-document.addEventListener("drop", (e) => {
-  const col = e.target.closest(".calendar-col");
-  if (col) {
+  if (activeDragState.type === "resize") {
     e.preventDefault();
-    col.classList.remove("drag-hover");
-    const eventId = e.dataTransfer.getData("text/plain");
-    if (!eventId) return;
+    const rect = activeDragState.col.getBoundingClientRect();
+    const offsetY = Math.max(20, Math.min(rect.height, e.clientY - rect.top));
+    const cardTopPercent = parseFloat(activeDragState.card.style.top) || 0;
+    const startHours = 8 + (cardTopPercent / 100) * 15;
+    const endHours = 8 + (offsetY / rect.height) * 15;
 
-    const targetDayIndex = parseInt(col.dataset.colDay, 10);
-    const rect = col.getBoundingClientRect();
-    const offsetY = Math.max(0, Math.min(rect.height, e.clientY - rect.top));
-    const percentY = offsetY / rect.height;
-    const hourFloat = 8 + percentY * 15;
-    const startH = Math.floor(hourFloat);
-    const startM = Math.round(((hourFloat - startH) * 60) / 30) * 30;
-    const startTime = `${String(startH).padStart(2, '0')}:${String(startM % 60).padStart(2, '0')}`;
-    const endTime = `${String(startH + 2).padStart(2, '0')}:${String(startM % 60).padStart(2, '0')}`;
-
-    state.updateCalendarEvent(state.activeTripId, eventId, {
-      dayIndex: targetDayIndex,
-      startTime,
-      endTime
-    });
-  }
-});
-
-// Event card duration resizer (mouse & touch drag bottom handle)
-let resizerState = null;
-
-document.addEventListener("mousedown", (e) => {
-  const handle = e.target.closest(".event-resize-handle");
-  if (!handle) return;
-  e.preventDefault();
-  e.stopPropagation();
-  const card = handle.closest(".event-card");
-  const col = card.closest(".calendar-col");
-  resizerState = {
-    eventId: handle.dataset.eventId,
-    card,
-    col,
-    startY: e.clientY
-  };
-});
-
-document.addEventListener("mousemove", (e) => {
-  if (!resizerState) return;
-  e.preventDefault();
-  const rect = resizerState.col.getBoundingClientRect();
-  const offsetY = Math.max(20, Math.min(rect.height, e.clientY - rect.top));
-  const cardTopPercent = parseFloat(resizerState.card.style.top) || 0;
-  const startHours = 8 + (cardTopPercent / 100) * 15;
-  const endHours = 8 + (offsetY / rect.height) * 15;
-  if (endHours > startHours + 0.25) {
-    const endH = Math.min(23, Math.floor(endHours));
-    const endM = Math.round(((endHours - endH) * 60) / 15) * 15;
-    const endTimeStr = `${String(endH).padStart(2, '0')}:${String(endM % 60).padStart(2, '0')}`;
-    const timeEl = resizerState.card.querySelector(".event-card__time");
-    if (timeEl) {
-      const startTime = timeEl.textContent.split("–")[0].trim();
-      timeEl.textContent = `${startTime} – ${endTimeStr}`;
+    if (endHours > startHours + 0.25) {
+      const endH = Math.min(23, Math.floor(endHours));
+      const endM = Math.round(((endHours - endH) * 60) / 15) * 15;
+      const endTimeStr = `${String(endH).padStart(2, '0')}:${String(endM % 60).padStart(2, '0')}`;
+      const timeEl = activeDragState.card.querySelector(".event-card__time");
+      if (timeEl) {
+        const startTime = timeEl.textContent.split("–")[0].trim();
+        timeEl.textContent = `${startTime} – ${endTimeStr}`;
+      }
+      activeDragState.newEndTime = endTimeStr;
     }
-    resizerState.newEndTime = endTimeStr;
+    return;
+  }
+
+  if (activeDragState.type === "move") {
+    const dx = e.clientX - activeDragState.startX;
+    const dy = e.clientY - activeDragState.startY;
+
+    if (Math.hypot(dx, dy) > 8) {
+      activeDragState.hasMoved = true;
+      e.preventDefault();
+      activeDragState.card.classList.add("is-dragging");
+
+      const targetElem = document.elementFromPoint(e.clientX, e.clientY);
+      const targetCol = targetElem ? targetElem.closest(".calendar-col") : null;
+
+      document.querySelectorAll(".calendar-col").forEach((c) => c.classList.remove("drag-hover"));
+      if (targetCol) {
+        targetCol.classList.add("drag-hover");
+        activeDragState.targetCol = targetCol;
+      }
+    }
   }
 });
 
-document.addEventListener("mouseup", () => {
-  if (resizerState && resizerState.newEndTime) {
-    state.updateCalendarEvent(state.activeTripId, resizerState.eventId, {
-      endTime: resizerState.newEndTime
-    });
+// Touch & Mouse Up / Cancel End Listener
+document.addEventListener("pointerup", (e) => {
+  if (!activeDragState) return;
+
+  if (activeDragState.type === "resize") {
+    if (activeDragState.newEndTime) {
+      state.updateCalendarEvent(state.activeTripId, activeDragState.eventId, {
+        endTime: activeDragState.newEndTime
+      });
+    }
+    activeDragState = null;
+    return;
   }
-  resizerState = null;
+
+  if (activeDragState.type === "move") {
+    activeDragState.card.classList.remove("is-dragging");
+    document.querySelectorAll(".calendar-col").forEach((c) => c.classList.remove("drag-hover"));
+
+    if (activeDragState.hasMoved && activeDragState.targetCol) {
+      const targetCol = activeDragState.targetCol;
+      const targetDayIndex = parseInt(targetCol.dataset.colDay, 10);
+      const rect = targetCol.getBoundingClientRect();
+      const offsetY = Math.max(0, Math.min(rect.height, e.clientY - rect.top));
+      const percentY = offsetY / rect.height;
+      const hourFloat = 8 + percentY * 15;
+      const startH = Math.floor(hourFloat);
+      const startM = Math.round(((hourFloat - startH) * 60) / 30) * 30;
+      const startTime = `${String(startH).padStart(2, '0')}:${String(startM % 60).padStart(2, '0')}`;
+      const endTime = `${String(Math.min(23, startH + 2)).padStart(2, '0')}:${String(startM % 60).padStart(2, '0')}`;
+
+      state.updateCalendarEvent(state.activeTripId, activeDragState.eventId, {
+        dayIndex: targetDayIndex,
+        startTime,
+        endTime
+      });
+    } else if (!activeDragState.hasMoved) {
+      // Tap detected! Open edit drawer
+      const trip = state.activeTrip;
+      const evt = (trip.calendarEvents || []).find((e) => e.id === activeDragState.eventId);
+      if (evt) {
+        state.openEventDrawer("edit", evt);
+      }
+    }
+
+    activeDragState = null;
+  }
 });
 
 // Event Drawer Form Submission & Interactive Pills
