@@ -30,7 +30,6 @@ export function renderHeader() {
       <div class="app-header__top">
         <div class="brand-monogram" data-action="cycle-next-trip" title="Click logo to cycle trip context">
           <span class="brand-monogram__logo">T R I P</span>
-          <span class="brand-monogram__sub">Trip Planner Deluxe</span>
         </div>
         <div class="app-header__user">
           <div class="header-live-time-pill" title="Live Open-Meteo weather in ${escapeHtml(trip.destination.split(',')[0])} & time">
@@ -54,13 +53,12 @@ export function renderHeader() {
       <div class="trip-context-card">
         <div class="trip-context-card__header">
           <div class="card-eyebrow-row">
-            <span class="eyebrow-pill">${state.tripMode ? 'MVP 2 · LIVE JOURNEY' : 'MVP 2 · PLANNING MODE'}</span>
+            <span class="eyebrow-pill">${state.tripMode ? 'LIVE JOURNEY' : 'PLANNING MODE'}</span>
             <div class="trip-selector-wrap">
               <select class="trip-select-dropdown" data-action="select-trip-dropdown">
                 ${allTrips.map(t => `<option value="${t.id}" ${t.id === trip.id ? 'selected' : ''}>${t.flag} ${escapeHtml(t.destination)}</option>`).join('')}
               </select>
               <button class="btn btn--ghost btn--xs cycle-trips-btn" data-action="cycle-next-trip" title="Cycle through all trips">
-                <span>🔄 Next</span>
               </button>
             </div>
           </div>
@@ -68,6 +66,7 @@ export function renderHeader() {
           <div class="trip-context-card__title-row">
             <div class="editable-trip-title" data-action="edit-trip-title" title="Click to edit destination name & auto flag">
               <h1 class="trip-title">${escapeHtml(trip.destination)} ${trip.flag}</h1>
+              <p class="trip-dates">${escapeHtml(trip.dates)}</p>
               <button class="btn btn--icon btn--ghost edit-pencil-btn" aria-label="Edit trip title">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
               </button>
@@ -92,7 +91,6 @@ export function renderHeader() {
               </label>
             </div>
           </div>
-          <p class="trip-dates">${escapeHtml(trip.dates)}</p>
         </div>
       </div>
     </header>
