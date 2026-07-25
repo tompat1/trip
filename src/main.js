@@ -148,7 +148,9 @@ document.addEventListener("click", (e) => {
     else if (action === "go-search") state.setView("search");
     else if (action === "go-live") state.setView("live");
     else if (action === "go-moments" || action === "go-profile") state.setView("profile");
-    else if (action === "switch-to-landing") state.setView("landing");
+    else if (action === "refresh-weather") {
+      state.refreshWeather();
+    }
     else if (action === "switch-trip" || action === "toggle-trip-switch" || action === "cycle-next-trip") {
       state.cycleNextTrip();
     }

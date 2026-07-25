@@ -1,6 +1,7 @@
 import { tripsData } from "./data/tripsData.js";
 import { enrichmentService } from "./enrichment/enrichmentService.js";
 import { getCountryFlagEmoji } from "./utils/countryEmoji.js";
+import { fetchOpenMeteoWeather } from "./services/weatherService.js";
 
 class AppState {
   constructor() {
@@ -46,6 +47,7 @@ class AppState {
     this.listeners = new Set();
     this.checkBackendHealth();
     this.loadD1Trips();
+    this.refreshWeather();
   }
 
   async loadD1Trips() {
@@ -128,6 +130,20 @@ class AppState {
   setTrip(tripId) {
     if (tripsData[tripId] && this.activeTripId !== tripId) {
       this.activeTripId = tripId;
+      this.refreshWeather();
+      this.notify();
+    }
+  }
+
+  async refreshWeather() {
+    const trip = this.activeTrip;
+    const [lat, lng] = trip.center || [48.8566, 2.3522];
+    const liveWeather = await fetchOpenMeteoWeather(lat, lng);
+    if (liveWeather) {
+      trip.weather = {
+        ...trip.weather,
+        ...liveWeather
+      };
       this.notify();
     }
   }

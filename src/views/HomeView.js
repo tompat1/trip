@@ -5,6 +5,8 @@ export function renderHomeView() {
   const trip = state.activeTrip;
   const isLiveMode = state.tripMode;
   const checklist = state.checklists[trip.id] || trip.checklist;
+  const statusText = getDynamicTripCountdown(trip);
+  const liveTimeStr = formatLiveTimeString();
 
   return `
     <div class="home-page">
@@ -17,8 +19,8 @@ export function renderHomeView() {
             <h2 class="greeting-title">Good morning, Thomas 👋</h2>
             <p class="greeting-status">
               ${isLiveMode 
-                ? `<span class="live-pulse-dot"></span> <strong>You are in ${escapeHtml(trip.destination)}</strong> <span class="status-meta">Clear sky + 28°C + 10:15 AM</span>` 
-                : `<span class="upcoming-badge">17 days until your trip to ${escapeHtml(trip.destination.split(',')[0])}</span>`}
+                ? `<span class="live-pulse-dot"></span> <strong>You are in ${escapeHtml(trip.destination)}</strong> <span class="status-meta">${trip.weather?.condition || 'Fair'} • ${trip.weather?.temp || '20°C'} • ${liveTimeStr}</span>` 
+                : `<span class="upcoming-badge">${statusText}</span>`}
             </p>
           </div>
 
@@ -140,25 +142,26 @@ function renderPlanningModules(trip, checklist) {
         </div>
       </div>
 
-      <!-- Widget 3: Weather Context Card -->
+      <!-- Widget 3: Live Open-Meteo Weather Context Card -->
       <div class="dashboard-card weather-widget">
         <div class="dashboard-card__header">
           <h3 class="dashboard-card__title">Weather in ${escapeHtml(trip.destination.split(',')[0])}</h3>
-          <button class="btn btn--icon btn--ghost">⋮</button>
+          <button class="btn btn--icon btn--ghost" data-action="refresh-weather" title="Fetch live Open-Meteo weather">🔄</button>
         </div>
         <div class="weather-main">
           <div class="weather-current">
-            <span class="weather-icon">☀️</span>
+            <span class="weather-icon">${trip.weather?.icon || '☀️'}</span>
             <div class="weather-temp-wrap">
-              <span class="weather-degree">${trip.weather.temp}</span>
-              <span class="weather-condition">${trip.weather.condition}</span>
+              <span class="weather-degree">${trip.weather?.temp || '20°C'}</span>
+              <span class="weather-condition">${trip.weather?.condition || 'Fair'}</span>
+              ${trip.weather?.feelsLike ? `<span class="weather-feels">Feels like ${trip.weather.feelsLike}</span>` : ''}
             </div>
           </div>
           <div class="weather-forecast-pills">
-            ${trip.weather.forecast.map(f => `
+            ${(trip.weather?.forecast || []).map(f => `
               <div class="forecast-pill">
                 <span class="forecast-day">${f.day}</span>
-                <span class="forecast-icon">☀️</span>
+                <span class="forecast-icon">${f.icon || '☀️'}</span>
                 <span class="forecast-temp">${f.temp}</span>
               </div>
             `).join('')}
@@ -217,6 +220,39 @@ function renderLiveJourneyModules(trip) {
       ` : ''}
     </div>
   `;
+}
+
+function getDynamicTripCountdown(trip) {
+  if (!trip) return "Planning mode";
+  const now = new Date();
+  
+  let startDate = trip.startDate ? new Date(trip.startDate) : null;
+  if (!startDate || isNaN(startDate.getTime())) {
+    if (trip.id === "paris") startDate = new Date("2026-10-03");
+    else if (trip.id === "crete") startDate = new Date("2026-07-15");
+    else startDate = new Date();
+  }
+
+  const diffMs = startDate.getTime() - now.getTime();
+  const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+  const destCity = (trip.destination || "").split(",")[0];
+
+  if (diffDays > 0) {
+    return `${diffDays} ${diffDays === 1 ? 'day' : 'days'} until your trip to ${destCity}`;
+  } else if (diffDays === 0) {
+    return `🎉 Your trip to ${destCity} starts today!`;
+  } else if (diffDays > -14) {
+    return `✈️ Trip to ${destCity} in progress`;
+  } else {
+    return `📖 Travel memory archive (${destCity})`;
+  }
+}
+
+function formatLiveTimeString() {
+  return new Intl.DateTimeFormat([], {
+    hour: "2-digit",
+    minute: "2-digit"
+  }).format(new Date());
 }
 
 function escapeHtml(str) {
