@@ -289,8 +289,11 @@ document.addEventListener("input", (e) => {
   }
 });
 
-// Trip mode checkbox listener
+// Trip mode & dropdown change listener
 document.addEventListener("change", (e) => {
+  if (e.target.dataset.action === "select-trip-dropdown") {
+    state.setTrip(e.target.value);
+  }
   if (e.target.dataset.action === "toggle-trip-mode") {
     state.toggleTripMode(e.target.checked);
   }

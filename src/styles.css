@@ -318,6 +318,42 @@ input, select, textarea {
   box-shadow: var(--shadow-sm);
 }
 
+.card-eyebrow-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.trip-selector-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.trip-select-dropdown {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--ink);
+  background: var(--paper-card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pill);
+  padding: 3px 10px;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.2s var(--ease-out);
+}
+.trip-select-dropdown:hover {
+  border-color: var(--red);
+}
+
+.cycle-trips-btn {
+  font-size: 0.72rem;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+}
+
 .eyebrow-pill {
   font-size: 0.68rem;
   font-weight: 700;
