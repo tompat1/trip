@@ -128,6 +128,8 @@ Current D1-backed endpoints:
 - `GET /api/places/enrich?id=<placeId>` reads a stored `PlaceProfile`.
 - `POST /api/places/:id/media/refresh` returns reviewed D1 images when available, otherwise accepts curated/client place media such as `/assets/...` seed images, otherwise runs the server-side media provider router, persists candidates to `place_images`, and only then returns designed fallback media. Add `refresh=1` or body `force: true` to bypass D1 for a fresh provider pass; forced refresh requires admin.
 - `POST /api/places/:id/editorial/generate` creates deterministic editorial from submitted place, facts, media and traveller/route context, upserts the place if needed, and persists the editorial profile to D1.
+- `PATCH /api/place-images/:imageId` requires admin, updates D1 `place_images.review_status`, `visual_role` and optional `hero_locked`, then writes a `media_reviews` audit row.
+- `POST /api/places/:id/hero/lock` requires admin and `{ "imageId": "..." }`, unlocks the place's previous hero images, promotes the selected image to approved locked hero, and writes a `media_reviews` audit row.
 - `POST /api/media/light` stores a small D1 light media object.
 - `GET /api/media/light/:key` reads a D1 light media object.
 - `GET /api/places/:id/attributions` returns stored media provenance from D1 `place_images`: creator, source, licence, source page, licence page, review state and image role.

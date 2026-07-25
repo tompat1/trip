@@ -130,6 +130,118 @@ test("Worker attribution endpoint returns stored image provenance", async () => 
   assert.equal(payload.attributions[0].sourcePageUrl, "https://commons.wikimedia.org/wiki/File:Example.jpg");
 });
 
+test("Worker admin image review persists status, role, and audit row", async () => {
+  const db = createMediaReviewDb({
+    id: "image-1",
+    place_id: "koules",
+    provider: "commons",
+    provider_id: "123",
+    image_url: "https://upload.wikimedia.org/example.jpg",
+    thumbnail_url: "https://upload.wikimedia.org/thumb/example.jpg",
+    visual_role: "gallery",
+    review_status: "pending",
+    hero_locked: 0,
+    final_score: 72,
+  });
+
+  const response = await worker.fetch(new Request("https://trip.test/api/place-images/image-1", {
+    method: "PATCH",
+    headers: {
+      Authorization: "Bearer secret",
+      "Content-Type": "application/json",
+      "X-Trip-User-Id": "thomas@rynell.org",
+    },
+    body: JSON.stringify({ reviewStatus: "approved", visualRole: "hero", heroLocked: true, notes: "Correct landmark." }),
+  }), { TRIP_ADMIN_TOKEN: "secret", TRIP_DB: db }, {});
+
+  assert.equal(response.status, 200);
+  const payload = await response.json();
+  assert.equal(payload.image.reviewStatus, "approved");
+  assert.equal(payload.image.visualRole, "hero");
+  assert.equal(payload.image.heroLocked, true);
+  assert.equal(db.reviews.length, 1);
+  assert.equal(db.reviews[0].decision, "approved");
+  assert.equal(db.reviews[0].reviewer, "thomas@rynell.org");
+});
+
+test("Worker admin hero lock promotes one selected place image", async () => {
+  const db = createMediaReviewDb({
+    id: "image-1",
+    place_id: "koules",
+    provider: "commons",
+    image_url: "https://upload.wikimedia.org/example.jpg",
+    thumbnail_url: "https://upload.wikimedia.org/thumb/example.jpg",
+    visual_role: "gallery",
+    review_status: "pending",
+    hero_locked: 0,
+  });
+
+  const response = await worker.fetch(new Request("https://trip.test/api/places/koules/hero/lock", {
+    method: "POST",
+    headers: {
+      Authorization: "Bearer secret",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ imageId: "image-1" }),
+  }), { TRIP_ADMIN_TOKEN: "secret", TRIP_DB: db }, {});
+
+  assert.equal(response.status, 200);
+  const payload = await response.json();
+  assert.equal(payload.locked, true);
+  assert.equal(payload.image.reviewStatus, "approved");
+  assert.equal(payload.image.visualRole, "hero");
+  assert.equal(payload.image.heroLocked, true);
+  assert.equal(db.reviews[0].decision, "hero_locked");
+});
+
+function createMediaReviewDb(initialImage) {
+  const state = {
+    image: { ...initialImage },
+    reviews: [],
+    prepare(sql) {
+      return {
+        bind(...args) {
+          return {
+            async first() {
+              assert.match(sql, /SELECT \* FROM place_images WHERE id = \?/);
+              return args[0] === state.image.id ? { ...state.image } : null;
+            },
+            async all() {
+              return { results: [] };
+            },
+            async run() {
+              if (/UPDATE place_images\s+SET review_status/.test(sql)) {
+                const [reviewStatus, visualRole, heroLocked, updatedAt, imageId] = args;
+                assert.equal(imageId, state.image.id);
+                state.image = { ...state.image, review_status: reviewStatus, visual_role: visualRole, hero_locked: heroLocked, updated_at: updatedAt };
+                return { success: true, meta: { changes: 1 } };
+              }
+              if (/UPDATE place_images\s+SET hero_locked = 0/.test(sql)) {
+                state.image = { ...state.image, hero_locked: 0, visual_role: state.image.visual_role === "hero" ? "gallery" : state.image.visual_role, updated_at: args[0] };
+                return { success: true, meta: { changes: 1 } };
+              }
+              if (/UPDATE place_images\s+SET hero_locked = 1/.test(sql)) {
+                const [updatedAt, imageId, placeId] = args;
+                assert.equal(imageId, state.image.id);
+                assert.equal(placeId, state.image.place_id);
+                state.image = { ...state.image, hero_locked: 1, visual_role: "hero", review_status: "approved", updated_at: updatedAt };
+                return { success: true, meta: { changes: 1 } };
+              }
+              if (/INSERT INTO media_reviews/.test(sql)) {
+                const [, imageId, reviewer, decision, notes, createdAt] = args;
+                state.reviews.push({ imageId, reviewer, decision, notes, createdAt });
+                return { success: true, meta: { changes: 1 } };
+              }
+              throw new Error(`Unexpected SQL: ${sql}`);
+            },
+          };
+        },
+      };
+    },
+  };
+  return state;
+}
+
 test("image scoring rewards strong candidates and penalizes mismatch signals", () => {
   const strong = calculateImageScore({
     exactNameMatch: 1,

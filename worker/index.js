@@ -13,6 +13,8 @@ const ROLE = Object.freeze({
   traveler: "traveler",
   admin: "admin",
 });
+const MEDIA_REVIEW_STATUSES = new Set(["pending", "approved", "rejected", "needs-review"]);
+const MEDIA_VISUAL_ROLES = new Set(["hero", "gallery", "illustrative", "approximate", "coffee", "food", "museum", "beach", "sight"]);
 const JSON_HEADERS = {
   "Content-Type": "application/json; charset=utf-8",
   "Cache-Control": "no-store",
@@ -518,22 +520,98 @@ async function editorialGenerateHandler(context) {
 async function placeImagePatchHandler(context) {
   const forbidden = requireAdmin(context);
   if (forbidden) return forbidden;
+  if (!context.hasDb) return jsonError("storage_unavailable", "TRIP_DB is required to review place images.", 503);
   const [imageId] = context.params;
   const body = await readJson(context.request);
+  const hasReviewStatus = body.reviewStatus !== undefined || body.reviewState !== undefined;
+  const hasVisualRole = body.visualRole !== undefined;
+  const reviewStatus = normalizeMediaReviewStatus(body.reviewStatus || body.reviewState);
+  const visualRole = normalizeMediaVisualRole(body.visualRole);
+  const heroLocked = typeof body.heroLocked === "boolean" ? body.heroLocked : null;
+  const notes = cleanReviewNotes(body.notes);
+
+  if (hasReviewStatus && !reviewStatus) return jsonError("invalid_review", "reviewStatus is not supported.", 400);
+  if (hasVisualRole && !visualRole) return jsonError("invalid_review", "visualRole is not supported.", 400);
+  if (!reviewStatus && !visualRole && heroLocked === null) {
+    return jsonError("invalid_review", "Provide reviewStatus, visualRole, or heroLocked.", 400);
+  }
+
+  const currentImage = await readStoredImageById(context, imageId);
+  if (!currentImage) return jsonError("not_found", "Place image was not found.", 404);
+
+  const nextStatus = reviewStatus || currentImage.review_status || "pending";
+  const nextRole = visualRole || currentImage.visual_role || "illustrative";
+  const nextHeroLocked = heroLocked === null ? Number(currentImage.hero_locked || 0) : heroLocked ? 1 : 0;
+  const updatedAt = new Date().toISOString();
+
+  await context.env.TRIP_DB.prepare(`
+    UPDATE place_images
+    SET review_status = ?, visual_role = ?, hero_locked = ?, updated_at = ?
+    WHERE id = ?
+  `).bind(nextStatus, nextRole, nextHeroLocked, updatedAt, imageId).run();
+
+  await writeMediaReview(context, {
+    imageId,
+    reviewer: context.principal.userId || "admin",
+    decision: nextStatus,
+    notes,
+  });
+
+  const image = await readStoredImageById(context, imageId);
   return json(partialResponse("placeImages.patch", {
     imageId,
-    reviewState: body.reviewState || body.reviewStatus || "pending",
+    image: normalizeStoredImage(image),
+    review: {
+      decision: nextStatus,
+      notes,
+      reviewer: redactPrincipal(context.principal),
+    },
     principal: redactPrincipal(context.principal),
   }, context));
 }
 
-function heroLockHandler(context) {
+async function heroLockHandler(context) {
   const forbidden = requireAdmin(context);
   if (forbidden) return forbidden;
+  if (!context.hasDb) return jsonError("storage_unavailable", "TRIP_DB is required to lock hero images.", 503);
   const [placeId] = context.params;
+  const body = await readJson(context.request);
+  const imageId = String(body.imageId || "").trim();
+  if (!imageId) return jsonError("invalid_hero_lock", "imageId is required.", 400);
+
+  const currentImage = await readStoredImageById(context, imageId);
+  if (!currentImage || currentImage.place_id !== placeId) {
+    return jsonError("not_found", "Place image was not found for this place.", 404);
+  }
+
+  const updatedAt = new Date().toISOString();
+  await context.env.TRIP_DB.prepare(`
+    UPDATE place_images
+    SET hero_locked = 0,
+        visual_role = CASE WHEN visual_role = 'hero' THEN 'gallery' ELSE visual_role END,
+        updated_at = ?
+    WHERE place_id = ?
+  `).bind(updatedAt, placeId).run();
+
+  await context.env.TRIP_DB.prepare(`
+    UPDATE place_images
+    SET hero_locked = 1, visual_role = 'hero', review_status = 'approved', updated_at = ?
+    WHERE id = ? AND place_id = ?
+  `).bind(updatedAt, imageId, placeId).run();
+
+  await writeMediaReview(context, {
+    imageId,
+    reviewer: context.principal.userId || "admin",
+    decision: "hero_locked",
+    notes: cleanReviewNotes(body.notes),
+  });
+
+  const image = await readStoredImageById(context, imageId);
   return json(partialResponse("places.heroLock", {
     placeId,
+    imageId,
     locked: true,
+    image: normalizeStoredImage(image),
     principal: redactPrincipal(context.principal),
   }, context));
 }
@@ -639,6 +717,22 @@ function cleanPrincipalId(value = "") {
   const id = String(value || "").trim();
   if (!id || id.length > 80) return "";
   return /^[a-zA-Z0-9_.:@-]+$/.test(id) ? id : "";
+}
+
+function normalizeMediaReviewStatus(value = "") {
+  const status = String(value || "").trim().toLowerCase();
+  if (!status) return "";
+  return MEDIA_REVIEW_STATUSES.has(status) ? status : "";
+}
+
+function normalizeMediaVisualRole(value = "") {
+  const role = String(value || "").trim().toLowerCase();
+  if (!role) return "";
+  return MEDIA_VISUAL_ROLES.has(role) ? role : "";
+}
+
+function cleanReviewNotes(value = "") {
+  return String(value || "").trim().slice(0, 500);
 }
 
 function constantTimeStringEqual(a = "", b = "") {
@@ -1027,9 +1121,31 @@ async function getStoredPlaceMedia(context, placeId) {
   `).bind(placeId).all();
   const images = (imagesResult.results || []).map(normalizeStoredImage);
   if (!images.length) return createEmptyMedia("fallback");
-  const hero = images.find((image) => image.visualRole === "hero") || images[0];
+  const hero = images.find((image) => image.heroLocked) || images.find((image) => image.visualRole === "hero") || images[0];
   const gallery = images.filter((image) => image.id !== hero.id);
   return createMediaPayload(hero, gallery, hero.illustrativeOnly ? "fallback" : gallery.length ? "complete" : "partial");
+}
+
+async function readStoredImageById(context, imageId) {
+  if (!context.hasDb || !imageId) return null;
+  return context.env.TRIP_DB.prepare(`
+    SELECT * FROM place_images WHERE id = ?
+  `).bind(imageId).first();
+}
+
+async function writeMediaReview(context, { imageId, reviewer, decision, notes = "" }) {
+  const createdAt = new Date().toISOString();
+  await context.env.TRIP_DB.prepare(`
+    INSERT INTO media_reviews (id, image_id, reviewer, decision, notes, created_at)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `).bind(
+    stableId("media-review", [imageId, reviewer, decision, notes, createdAt]),
+    imageId,
+    cleanPrincipalId(reviewer) || "admin",
+    decision,
+    notes,
+    createdAt
+  ).run();
 }
 
 async function getStoredPlaceAttributions(context, placeId) {
@@ -1640,6 +1756,7 @@ function formatImageAttribution(image = {}) {
     provider: image.provider || "",
     providerId: image.providerId || "",
     visualRole: image.visualRole || "illustrative",
+    heroLocked: Boolean(image.heroLocked),
     reviewStatus: image.reviewStatus || "pending",
     creator: image.creatorName || "",
     creatorUrl: image.creatorUrl || "",
@@ -2542,6 +2659,7 @@ function normalizeStoredImage(row) {
     approximateLocation: Boolean(row.approximate_location),
     illustrativeOnly: Boolean(row.illustrative_only),
     visualRole: row.visual_role || "illustrative",
+    heroLocked: Boolean(row.hero_locked),
     relevanceScore: Number(row.relevance_score || 0),
     qualityScore: Number(row.quality_score || 0),
     finalScore: Number(row.final_score || 0),
