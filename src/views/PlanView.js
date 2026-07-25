@@ -68,6 +68,9 @@ function renderSubtabContent(trip) {
   if (tab === "overview") {
     return renderOverviewSubTab(trip);
   }
+  if (tab === "explore") {
+    return renderExploreSubTab(trip);
+  }
   if (tab === "journal") {
     return renderJournalSubTab();
   }
@@ -311,9 +314,57 @@ function renderOverviewSubTab(trip) {
   const checklist = state.checklists[trip.id] || trip.checklist || [];
   const completedCount = checklist.filter(i => i.completed).length;
   const progressPct = checklist.length ? Math.round((completedCount / checklist.length) * 100) : 0;
+  const events = trip.calendarEvents || [];
+  const savedPlacesCount = state.savedPlaceIds ? state.savedPlaceIds.size : 0;
 
   return `
     <div class="overview-subtab-view">
+      <!-- Destination Hero Banner & Stats -->
+      <div class="overview-hero-card mb-md" style="background: linear-gradient(135deg, var(--paper-card) 0%, var(--paper-subtle) 100%); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 20px; box-shadow: var(--shadow-sm);">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px;">
+          <div>
+            <span style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--red);">TRIP OVERVIEW</span>
+            <h2 class="voice-serif" style="font-size: 1.6rem; font-weight: 700; color: var(--ink); margin: 4px 0;">${escapeHtml(trip.destination)} ${trip.flag}</h2>
+            <p class="voice-mono" style="font-size: 0.85rem; color: var(--ink-muted);">${escapeHtml(trip.dates)}</p>
+          </div>
+          <button class="btn btn--outline btn--sm" data-action="share-trip" title="Share trip link">
+            ${renderIcon("share")} Share
+          </button>
+        </div>
+
+        <!-- Stat Counters Grid -->
+        <div class="overview-stats-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line-light);">
+          <div class="stat-box" style="text-align: center; background: var(--paper); padding: 10px; border-radius: var(--radius-md); border: 1px solid var(--line);">
+            <div class="voice-mono" style="font-size: 1.2rem; font-weight: 700; color: var(--red);">${events.length}</div>
+            <div style="font-size: 0.72rem; font-weight: 600; color: var(--ink-muted); text-transform: uppercase; margin-top: 2px;">Activities</div>
+          </div>
+          <div class="stat-box" style="text-align: center; background: var(--paper); padding: 10px; border-radius: var(--radius-md); border: 1px solid var(--line);">
+            <div class="voice-mono" style="font-size: 1.2rem; font-weight: 700; color: var(--blue);">${savedPlacesCount}</div>
+            <div style="font-size: 0.72rem; font-weight: 600; color: var(--ink-muted); text-transform: uppercase; margin-top: 2px;">Saved Spots</div>
+          </div>
+          <div class="stat-box" style="text-align: center; background: var(--paper); padding: 10px; border-radius: var(--radius-md); border: 1px solid var(--line);">
+            <div class="voice-mono" style="font-size: 1.2rem; font-weight: 700; color: var(--green);">${progressPct}%</div>
+            <div style="font-size: 0.72rem; font-weight: 600; color: var(--ink-muted); text-transform: uppercase; margin-top: 2px;">Planned</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Destination Photo Palette (Generated Brand Palette) -->
+      <div class="dashboard-card mb-md" style="padding: 16px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+          <h3 class="dashboard-card__title">Destination Color Palette</h3>
+          <span style="font-size: 0.72rem; font-weight: 600; color: var(--ink-muted);">Photo extracted</span>
+        </div>
+        <div style="display: flex; gap: 8px; align-items: center; justify-content: space-between;">
+          <div style="flex: 1; height: 36px; border-radius: 8px; background: #F4F0E7; border: 1px solid #E0D8CB; display: flex; align-items: flex-end; padding: 4px; font-size: 0.65rem; font-weight: 700; font-family: var(--font-mono); color: #171817;" title="Paper #F4F0E7">Paper</div>
+          <div style="flex: 1; height: 36px; border-radius: 8px; background: #D94A3A; display: flex; align-items: flex-end; padding: 4px; font-size: 0.65rem; font-weight: 700; font-family: var(--font-mono); color: #FFF;" title="Journey Red #D94A3A">Red</div>
+          <div style="flex: 1; height: 36px; border-radius: 8px; background: #385C73; display: flex; align-items: flex-end; padding: 4px; font-size: 0.65rem; font-weight: 700; font-family: var(--font-mono); color: #FFF;" title="Atlas Blue #385C73">Blue</div>
+          <div style="flex: 1; height: 36px; border-radius: 8px; background: #65705B; display: flex; align-items: flex-end; padding: 4px; font-size: 0.65rem; font-weight: 700; font-family: var(--font-mono); color: #FFF;" title="Field Green #65705B">Green</div>
+          <div style="flex: 1; height: 36px; border-radius: 8px; background: #E9C76B; display: flex; align-items: flex-end; padding: 4px; font-size: 0.65rem; font-weight: 700; font-family: var(--font-mono); color: #171817;" title="Sun #E9C76B">Sun</div>
+          <div style="flex: 1; height: 36px; border-radius: 8px; background: #9C6E55; display: flex; align-items: flex-end; padding: 4px; font-size: 0.65rem; font-weight: 700; font-family: var(--font-mono); color: #FFF;" title="Clay #9C6E55">Clay</div>
+        </div>
+      </div>
+
       <!-- Planning Progress Summary Card -->
       <div class="dashboard-card mb-md">
         <div class="dashboard-card__header">
@@ -330,22 +381,69 @@ function renderOverviewSubTab(trip) {
       <div class="dashboard-card planning-widget mb-md">
         <div class="dashboard-card__header">
           <h3 class="dashboard-card__title">Trip Checklist</h3>
-          <button class="btn btn--outline btn--xs" data-action="add-checklist-item" title="Add planning task">+ Add task</button>
+          <button class="btn btn--outline btn--xs" data-action="add-checklist-item" title="Add planning task">${renderIcon("plus")} Add task</button>
         </div>
         <ul class="checklist-items">
           ${checklist.map(item => `
             <li class="checklist-item ${item.completed ? 'is-completed' : ''}">
               <span class="checkbox-circle ${item.completed ? 'is-checked' : ''}" data-action="toggle-check" data-item-id="${item.id}">
-                ${item.completed ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>' : ''}
+                ${item.completed ? renderIcon("check") : ''}
               </span>
               <span class="checklist-label" data-action="toggle-check" data-item-id="${item.id}">${escapeHtml(item.label)}</span>
               <div class="checklist-item-actions">
-                <button class="btn btn--icon btn--ghost item-action-btn" data-action="edit-checklist-item" data-item-id="${item.id}" data-label="${escapeHtml(item.label)}" title="Edit task">✏️</button>
-                <button class="btn btn--icon btn--ghost item-action-btn" data-action="delete-checklist-item" data-item-id="${item.id}" title="Delete task">🗑️</button>
+                <button class="btn btn--icon btn--ghost item-action-btn" data-action="edit-checklist-item" data-item-id="${item.id}" data-label="${escapeHtml(item.label)}" title="Edit task">${renderIcon("pencil")}</button>
+                <button class="btn btn--icon btn--ghost item-action-btn" data-action="delete-checklist-item" data-item-id="${item.id}" title="Delete task">${renderIcon("trash")}</button>
               </div>
             </li>
           `).join('')}
         </ul>
+      </div>
+    </div>
+  `;
+}
+
+function renderExploreSubTab(trip) {
+  const ideas = trip.ideas || [];
+
+  return `
+    <div class="explore-subtab-view">
+      <div class="explore-header mb-md">
+        <h2 class="voice-serif" style="font-size: 1.4rem; font-weight: 700; margin-bottom: 4px;">Explore ${escapeHtml(trip.destination)}</h2>
+        <p style="font-size: 0.85rem; color: var(--ink-muted);">Curated local recommendations & sights for your trip</p>
+      </div>
+
+      <!-- Recommendation Cards Feed -->
+      <div class="explore-ideas-grid" style="display: flex; flex-direction: column; gap: 14px; margin-bottom: 24px;">
+        ${ideas.map(idea => {
+          const isSaved = state.savedPlaceIds.has(idea.id);
+          return `
+            <div class="explore-card" style="background: var(--paper-card); border: 1px solid var(--line); border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow-sm); display: flex; flex-direction: column;">
+              <div style="height: 160px; background-image: url('${idea.image}'); background-size: cover; background-position: center; position: relative;">
+                <button class="btn-bookmark ${isSaved ? 'is-saved' : ''}" data-action="toggle-bookmark" data-place-id="${idea.id}" style="position: absolute; top: 12px; right: 12px; background: rgba(255,255,255,0.9); border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border: none; box-shadow: var(--shadow-sm);" aria-label="Bookmark">
+                  ${renderIcon("bookmark")}
+                </button>
+                <span class="category-badge" style="position: absolute; bottom: 12px; left: 12px; background: rgba(23,24,23,0.85); color: #fff; padding: 4px 10px; border-radius: var(--radius-pill); font-size: 0.72rem; font-weight: 700;">${escapeHtml(idea.category)}</span>
+              </div>
+
+              <div style="padding: 16px; display: flex; flex-direction: column; gap: 8px;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                  <div>
+                    <h3 style="font-size: 1.1rem; font-weight: 700; color: var(--ink); margin-bottom: 2px;">${escapeHtml(idea.title)}</h3>
+                    <p style="font-size: 0.82rem; color: var(--ink-muted); margin: 0;">${escapeHtml(idea.subtitle)}</p>
+                  </div>
+                  <span class="voice-mono" style="font-size: 0.8rem; font-weight: 700; color: var(--sun); background: rgba(233,199,107,0.18); padding: 3px 8px; border-radius: var(--radius-pill);">★ ${idea.rating}</span>
+                </div>
+
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 8px; padding-top: 10px; border-top: 1px solid var(--line-light);">
+                  <span class="voice-mono" style="font-size: 0.78rem; color: var(--ink-muted);">${renderIcon("clock")} ${idea.duration || '2 hours'}</span>
+                  <button class="btn btn--primary btn--xs" data-action="add-idea-to-itinerary" data-title="${escapeHtml(idea.title)}" data-location="${escapeHtml(idea.subtitle)}">
+                    ${renderIcon("plus")} Add to Itinerary
+                  </button>
+                </div>
+              </div>
+            </div>
+          `;
+        }).join('')}
       </div>
     </div>
   `;

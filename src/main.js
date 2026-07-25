@@ -181,6 +181,20 @@ document.addEventListener("click", (e) => {
       const placeId = target.dataset.placeId;
       if (placeId) state.toggleSavedPlace(placeId);
     }
+    else if (action === "add-idea-to-itinerary") {
+      const title = target.dataset.title || "Explore Spot";
+      const location = target.dataset.location || "";
+      state.addCalendarEvent(state.activeTripId, {
+        title,
+        location,
+        dayIndex: 0,
+        startTime: "11:00",
+        endTime: "13:00",
+        colorScheme: "peach",
+        reminder: "30m"
+      });
+      alert(`✅ Added "${title}" to your Day 1 itinerary!`);
+    }
     else if (action === "toggle-check") {
       const itemId = target.dataset.itemId;
       if (itemId) state.toggleCheckitem(itemId);
