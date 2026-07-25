@@ -2321,11 +2321,11 @@ function bindEvents() {
   });
 
   document.querySelectorAll("[data-select-place-image]").forEach((button) => {
-    button.addEventListener("click", (event) => {
+    button.addEventListener("click", async (event) => {
       event.preventDefault();
       event.stopPropagation();
       if (!canRefreshPlaceImages()) return;
-      selectPlaceImage(button.dataset.selectPlaceImage, Number(button.dataset.imageChoiceIndex));
+      await selectPlaceImage(button.dataset.selectPlaceImage, Number(button.dataset.imageChoiceIndex));
     });
   });
 
@@ -2828,7 +2828,7 @@ async function refreshPlaceImage(placeId) {
   }
 }
 
-function selectPlaceImage(placeId, choiceIndex) {
+async function selectPlaceImage(placeId, choiceIndex) {
   const place = findEditableSourcePlace(placeId);
   if (!place || !Number.isInteger(choiceIndex)) return;
   const key = getPlaceImageKey(place);
@@ -2836,14 +2836,25 @@ function selectPlaceImage(placeId, choiceIndex) {
   const selected = panel?.candidates?.[choiceIndex];
   if (!selected) return;
 
+  const persisted = await persistSelectedPlaceImage(place, selected);
   state.placeImageCache[key] = {
-    ...createSelectedPlaceMedia(panel.media, selected),
+    ...createSelectedPlaceMedia(panel.media, persisted || selected),
     previousMedia: panel.previousMedia || getCurrentPlaceMediaSnapshot(place),
     updatedAt: new Date().toISOString(),
   };
   delete state.imageChoicePanels[key];
   writeCachedPlaceImages(state.placeImageCache);
   render();
+}
+
+async function persistSelectedPlaceImage(place, selected) {
+  if (!selected?.id) return null;
+  try {
+    const result = await enrichmentService.lockHeroImage(place, selected);
+    return result.image || null;
+  } catch {
+    return null;
+  }
 }
 
 function revertPlaceImage(placeId) {

@@ -145,6 +145,10 @@ export function createEnrichmentService(options = {}) {
       };
     },
 
+    async lockHeroImage(place, image, options = {}) {
+      return lockWorkerHeroImage(place, image, { ...options, apiBase, fetchImpl, now });
+    },
+
     async enrichPlace(place, options = {}) {
       const workerProfile = await fetchWorkerPlaceProfile(place, { apiBase, fetchImpl }).catch(() => null);
       if (workerProfile && workerProfile.coverage !== "coordinates-only" && workerProfile.facts?.length) {
@@ -316,6 +320,28 @@ async function refreshWorkerMedia(place = {}, options = {}) {
     providerStatus: payload.providerStatus || payload.media?.providerStatus || [],
     generatedAt: payload.media?.generatedAt || payload.generatedAt || options.now().toISOString(),
     refreshAfter: payload.media?.refreshAfter || payload.refreshAfter || new Date(options.now().getTime() + 1000 * 60 * 30).toISOString(),
+  };
+}
+
+async function lockWorkerHeroImage(place = {}, image = {}, options = {}) {
+  const placeId = place.id || place.identity?.id || place.canonicalName || place.title || "";
+  const imageId = image.id || "";
+  if (!placeId || !imageId) throw new Error("worker-hero-lock-missing-id");
+  const url = buildApiUrl(options.apiBase, `/api/places/${encodeURIComponent(placeId)}/hero/lock`);
+  const response = await options.fetchImpl(url.href, {
+    method: "POST",
+    headers: createApiHeaders({ "Content-Type": "application/json" }),
+    body: JSON.stringify({
+      imageId,
+      notes: options.notes || "Selected from refreshed image choices.",
+    }),
+  });
+  if (!response.ok) throw new Error(`worker-hero-lock-http-${response.status}`);
+  const payload = await response.json();
+  return {
+    image: payload.image || null,
+    providerStatus: payload.providerStatus || [],
+    generatedAt: payload.generatedAt || options.now().toISOString(),
   };
 }
 

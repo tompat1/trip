@@ -703,6 +703,42 @@ test("enrichment service forwards forced media refresh to the Worker", async () 
   assert.equal(media.hero.provider, "commons");
 });
 
+test("enrichment service locks a selected Worker image as hero", async () => {
+  let requestedUrl = "";
+  let postedBody = null;
+  const service = createEnrichmentService({
+    apiBase: "https://trip.test",
+    fetchImpl: async (url, options = {}) => {
+      requestedUrl = String(url);
+      postedBody = JSON.parse(options.body);
+      return {
+        ok: true,
+        async json() {
+          return {
+            generatedAt: "2026-07-24T12:00:00.000Z",
+            providerStatus: [{ provider: "worker-storage", status: "ok", count: 1 }],
+            image: {
+              id: "image-1",
+              imageUrl: "https://example.com/hero.jpg",
+              thumbnailUrl: "https://example.com/thumb.jpg",
+              visualRole: "hero",
+              reviewStatus: "approved",
+              heroLocked: true,
+            },
+          };
+        },
+      };
+    },
+  });
+
+  const result = await service.lockHeroImage({ id: "koules" }, { id: "image-1" });
+
+  assert.match(requestedUrl, /\/api\/places\/koules\/hero\/lock$/);
+  assert.equal(postedBody.imageId, "image-1");
+  assert.equal(result.image.heroLocked, true);
+  assert.equal(result.image.reviewStatus, "approved");
+});
+
 test("enrichment service falls back to local media providers after empty Worker media", async () => {
   const service = createEnrichmentService({
     apiBase: "https://trip.test",
