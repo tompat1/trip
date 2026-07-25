@@ -2844,6 +2844,23 @@ async function tripsCreateHandler({ request, env }) {
   }
 }
 
+async function tripsUpdateHandler({ params, request, env }) {
+  const tripId = params[0];
+  if (!env.TRIP_DB) return jsonError("no_db", "Database not bound", 500);
+  const body = await request.json().catch(() => ({}));
+  const destination = body.destination;
+  const flag = body.flag;
+
+  try {
+    await env.TRIP_DB.prepare(
+      `UPDATE user_trips SET destination = COALESCE(?, destination), flag = COALESCE(?, flag), updated_at = CURRENT_TIMESTAMP WHERE id = ?`
+    ).bind(destination || null, flag || null, tripId).run();
+    return json({ ok: true, tripId, destination, flag });
+  } catch (e) {
+    return jsonError("db_error", e.message, 500);
+  }
+}
+
 async function tripEventsListHandler({ params, env }) {
   const tripId = params[0];
   if (!env.TRIP_DB) return json({ ok: true, events: [] });
