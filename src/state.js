@@ -1,5 +1,6 @@
 import { tripsData } from "./data/tripsData.js";
 import { enrichmentService } from "./enrichment/enrichmentService.js";
+import { getCountryFlagEmoji } from "./utils/countryEmoji.js";
 
 class AppState {
   constructor() {
@@ -109,10 +110,14 @@ class AppState {
 
   async createCustomTrip(tripInput) {
     const id = tripInput.id || `trip_${Date.now()}`;
+    const destination = tripInput.destination || "Custom Trip";
+    // Auto-detect flag emoji if not specified
+    const flag = (tripInput.flag && tripInput.flag !== "🗺️") ? tripInput.flag : getCountryFlagEmoji(destination);
+
     const newTrip = {
       id,
-      destination: tripInput.destination || "Custom Trip",
-      flag: tripInput.flag || "🗺️",
+      destination,
+      flag,
       dates: tripInput.dates || "Upcoming",
       daysCount: 7,
       startDate: new Date().toISOString().split("T")[0],
@@ -122,7 +127,7 @@ class AppState {
       center: tripInput.center || [48.8566, 2.3522],
       zoom: 13,
       weather: { temp: "20°C", condition: "Fair", forecast: [] },
-      upcomingActivity: { title: tripInput.destination, subtitle: tripInput.dates, image: "https://images.unsplash.com/photo-1488646953014-85cb44e25828?auto=format&fit=crop&w=600&q=80" },
+      upcomingActivity: { title: destination, subtitle: tripInput.dates, image: "https://images.unsplash.com/photo-1488646953014-85cb44e25828?auto=format&fit=crop&w=600&q=80" },
       checklist: [{ id: "stay", label: "Book your stay", completed: false }, { id: "exp", label: "Choose experiences", completed: false }],
       mapPins: [],
       calendarEvents: [],
@@ -147,6 +152,29 @@ class AppState {
       });
     } catch (e) {
       console.warn("D1 trip sync fallback:", e);
+    }
+  }
+
+  async updateTripTitle(tripId, newDestination) {
+    const trip = tripsData[tripId];
+    if (!trip || !newDestination) return;
+
+    // Auto detect country flag emoji
+    const flag = getCountryFlagEmoji(newDestination);
+
+    trip.destination = newDestination;
+    trip.flag = flag;
+    if (trip.upcomingActivity) {
+      trip.upcomingActivity.title = newDestination;
+    }
+
+    this.notify();
+
+    // Async sync with Cloudflare D1
+    try {
+      await enrichmentService.updateTrip(tripId, { destination: newDestination, flag });
+    } catch (e) {
+      console.warn("D1 trip title update fallback:", e);
     }
   }
 

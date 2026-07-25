@@ -154,6 +154,13 @@ document.addEventListener("click", (e) => {
     else if (action === "locate-user" || action === "toggle-map-view" || action === "toggle-full-map") {
       state.setView("live");
     }
+    else if (action === "edit-trip-title") {
+      const current = state.activeTrip.destination || "Paris, France";
+      const updated = prompt("Edit trip destination (country flag will be added automatically):", current);
+      if (updated && updated.trim()) {
+        state.updateTripTitle(state.activeTripId, updated.trim());
+      }
+    }
     else if (action === "create-trip") {
       const destination = prompt("Enter trip destination (e.g. Tokyo, Japan):", "Tokyo, Japan");
       if (destination) {

@@ -199,6 +199,17 @@ export function createEnrichmentService(options = {}) {
       return res.json();
     },
 
+    async updateTrip(tripId, tripData) {
+      const url = buildApiUrl(apiBase, `/api/trips/${encodeURIComponent(tripId)}`);
+      const res = await fetchImpl(url.href, {
+        method: "PATCH",
+        headers: { Accept: "application/json", "Content-Type": "application/json" },
+        body: JSON.stringify(tripData),
+      });
+      if (!res.ok) throw new Error(`worker-update-trip-http-${res.status}`);
+      return res.json();
+    },
+
     async fetchTripEvents(tripId) {
       const url = buildApiUrl(apiBase, `/api/trips/${encodeURIComponent(tripId)}/events`);
       const res = await fetchImpl(url.href, { headers: { Accept: "application/json" } });

@@ -331,6 +331,30 @@ input, select, textarea {
   gap: 10px;
 }
 
+.editable-trip-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  padding: 2px 6px;
+  margin-left: -6px;
+  transition: background 0.2s var(--ease-out);
+}
+.editable-trip-title:hover {
+  background: var(--paper-subtle);
+}
+.edit-pencil-btn {
+  opacity: 0.5;
+  width: 28px;
+  height: 28px;
+  transition: opacity 0.2s var(--ease-out);
+}
+.editable-trip-title:hover .edit-pencil-btn {
+  opacity: 1;
+  color: var(--red);
+}
+
 .trip-title {
   font-family: var(--font-serif);
   font-size: 1.75rem;
