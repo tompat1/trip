@@ -464,6 +464,17 @@ input, select, textarea {
 .dock-nav-item.is-active {
   color: var(--red);
 }
+.dock-nav-item.is-disabled {
+  opacity: 0.45;
+  filter: grayscale(80%);
+}
+.dock-disabled-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--ink-light);
+  margin-top: 1px;
+}
 
 .dock-label {
   font-size: 0.7rem;

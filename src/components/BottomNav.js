@@ -14,12 +14,13 @@ export function renderBottomNav() {
           <span class="dock-label">Home</span>
         </button>
 
-        <button class="dock-nav-item ${view === 'live' ? 'is-active' : ''}" data-nav="live">
+        <button class="dock-nav-item ${view === 'live' ? 'is-active' : ''} ${!state.tripMode ? 'is-disabled' : ''}" data-nav="live" title="${state.tripMode ? 'Live Journey Mode' : 'Live Journey (Requires Trip Mode ON)'}">
           <svg class="dock-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="12" cy="12" r="2"/>
             <path d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.48-.01a6 6 0 0 1 0-8.49m11.31-2.83a10 10 0 0 1 0 14.14m-14.14 0a10 10 0 0 1 0-14.14"/>
           </svg>
           <span class="dock-label">Live</span>
+          ${!state.tripMode ? '<span class="dock-disabled-dot"></span>' : ''}
         </button>
 
         <button class="dock-nav-item dock-nav-item--fab ${view === 'search' ? 'is-active' : ''}" data-nav="search" aria-label="Search">

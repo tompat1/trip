@@ -21,13 +21,13 @@ export function renderHeader() {
   }
 
   const trip = state.activeTrip;
-  const isParis = trip.id === "paris";
+  const allTrips = state.getAllTrips();
   const health = state.backendHealth;
 
   return `
     <header class="app-header">
       <div class="app-header__top">
-        <div class="brand-monogram" data-action="toggle-trip-switch" title="Switch trip context">
+        <div class="brand-monogram" data-action="cycle-next-trip" title="Click logo to cycle trip context">
           <span class="brand-monogram__logo">T R I P</span>
           <span class="brand-monogram__sub">Trip Planner Deluxe</span>
         </div>
@@ -52,6 +52,14 @@ export function renderHeader() {
         <div class="trip-context-card__header">
           <div class="card-eyebrow-row">
             <span class="eyebrow-pill">${state.tripMode ? 'MVP 2 · LIVE JOURNEY' : 'MVP 2 · PLANNING MODE'}</span>
+            <div class="trip-selector-wrap">
+              <select class="trip-select-dropdown" data-action="select-trip-dropdown">
+                ${allTrips.map(t => `<option value="${t.id}" ${t.id === trip.id ? 'selected' : ''}>${t.flag} ${escapeHtml(t.destination)}</option>`).join('')}
+              </select>
+              <button class="btn btn--ghost btn--xs cycle-trips-btn" data-action="cycle-next-trip" title="Cycle through all trips">
+                <span>🔄 Next</span>
+              </button>
+            </div>
             ${health.bindings.d1 ? '<span class="d1-ready-badge">⚡ D1 Database Ready</span>' : ''}
           </div>
 

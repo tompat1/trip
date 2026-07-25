@@ -127,7 +127,16 @@ document.addEventListener("click", (e) => {
 
   // Bottom dock navigation
   if (target.dataset.nav) {
-    state.setView(target.dataset.nav);
+    const nav = target.dataset.nav;
+    if (nav === "live" && !state.tripMode) {
+      const confirmActivate = confirm(`📍 Live Journey Mode requires Trip Mode ON.\n\nWould you like to activate Trip Mode for ${state.activeTrip.destination}?`);
+      if (confirmActivate) {
+        state.toggleTripMode(true);
+        state.setView("live");
+      }
+      return;
+    }
+    state.setView(nav);
     return;
   }
 
@@ -140,8 +149,8 @@ document.addEventListener("click", (e) => {
     else if (action === "go-live") state.setView("live");
     else if (action === "go-moments" || action === "go-profile") state.setView("profile");
     else if (action === "switch-to-landing") state.setView("landing");
-    else if (action === "switch-trip" || action === "toggle-trip-switch") {
-      state.setTrip(state.activeTripId === "paris" ? "crete" : "paris");
+    else if (action === "switch-trip" || action === "toggle-trip-switch" || action === "cycle-next-trip") {
+      state.cycleNextTrip();
     }
     else if (action === "toggle-bookmark") {
       const placeId = target.dataset.placeId;

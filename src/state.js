@@ -45,6 +45,54 @@ class AppState {
     this.activeLightboxMedia = null;
     this.listeners = new Set();
     this.checkBackendHealth();
+    this.loadD1Trips();
+  }
+
+  async loadD1Trips() {
+    try {
+      const res = await enrichmentService.fetchTrips();
+      if (res && res.trips && Array.isArray(res.trips)) {
+        res.trips.forEach((t) => {
+          if (!tripsData[t.id]) {
+            tripsData[t.id] = {
+              id: t.id,
+              destination: t.destination || "Trip",
+              flag: t.flag || getCountryFlagEmoji(t.destination),
+              dates: t.dates || "Upcoming",
+              daysCount: 7,
+              startDate: new Date().toISOString().split("T")[0],
+              status: "Upcoming",
+              statusText: "Trip loaded",
+              tripMode: false,
+              center: [t.latitude || 40.0, t.longitude || 0.0],
+              zoom: 12,
+              weather: { temp: "22°C", condition: "Sunny", forecast: [] },
+              upcomingActivity: { title: t.destination, subtitle: t.dates || "Upcoming", image: "https://images.unsplash.com/photo-1488646953014-85cb44e25828?auto=format&fit=crop&w=600&q=80" },
+              checklist: [{ id: "stay", label: "Book your stay", completed: false }],
+              calendarEvents: [],
+              ideas: [],
+              events: []
+            };
+          }
+        });
+        this.notify();
+      }
+    } catch (e) {
+      console.warn("D1 trips load fallback:", e);
+    }
+  }
+
+  getAllTrips() {
+    return Object.values(tripsData);
+  }
+
+  cycleNextTrip() {
+    const keys = Object.keys(tripsData);
+    if (keys.length === 0) return;
+    const currentIndex = keys.indexOf(this.activeTripId);
+    const nextIndex = (currentIndex + 1) % keys.length;
+    this.activeTripId = keys[nextIndex];
+    this.notify();
   }
 
   openLightbox(media) {
