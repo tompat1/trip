@@ -1,27 +1,29 @@
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,400&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,400;1,600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 
 :root {
-  --paper: #f7f4ee;
-  --paper-card: #ffffff;
-  --paper-subtle: #f2eee6;
-  --ink: #171817;
-  --ink-muted: #6b6e6b;
-  --ink-light: #949994;
-  --line: #e6dfd3;
-  --line-light: #efe8dc;
+  /* Official Brand Palette */
+  --paper: #F4F0E7; /* Warm off-white */
+  --paper-card: #FFFFFF;
+  --paper-subtle: #EAE5DA;
+  --ink: #171817; /* Soft black */
+  --ink-muted: #65705B; /* Natural muted green tone */
+  --ink-light: #9C6E55; /* Warm travel-worn clay tone */
+  --line: #E0D8CB;
+  --line-light: #EBE4D8;
 
-  /* Brand Palette */
-  --red: #d94a3a;
-  --red-gradient: linear-gradient(135deg, #e54c38 0%, #c43c2c 100%);
-  --blue: #385c73;
-  --green: #65705b;
-  --sun: #e9c76b;
-  --clay: #9c6e55;
-  --white: #ffffff;
+  /* Accent Brand Colors */
+  --red: #D94A3A; /* Journey Red: Muted transport red */
+  --red-gradient: linear-gradient(135deg, #D94A3A 0%, #B8382A 100%);
+  --blue: #385C73; /* Atlas Blue: Deep softened blue */
+  --green: #65705B; /* Field Green: Natural muted green */
+  --sun: #E9C76B; /* Sun: Washed golden yellow */
+  --clay: #9C6E55; /* Clay: Warm travel-worn brown */
+  --white: #FFFFFF;
 
-  /* Typography */
-  --font-serif: "Playfair Display", Georgia, serif;
-  --font-sans: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  /* Three Distinct Typographic Voices */
+  --font-serif: "Playfair Display", Georgia, serif; /* Voice 1: Destination names, stories, evocative language */
+  --font-sans: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; /* Voice 2: Navigation, planning, practical info */
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; /* Voice 3: Times, dates, coordinates, distances, location metadata */
 
   /* Elevation Shadows */
   --shadow-sm: 0 2px 8px rgba(23, 24, 23, 0.04);
@@ -35,6 +37,33 @@
   --radius-pill: 9999px;
 
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Three Typographic Voice Utility Classes */
+.voice-serif,
+.trip-title,
+.plan-trip-title,
+.landing-title,
+.story-main-title,
+.story-lead {
+  font-family: var(--font-serif);
+}
+
+.voice-mono,
+.trip-dates,
+.plan-trip-dates,
+.header-weather-badge,
+.live-time-text,
+.event-card__time,
+.timeline-time-badge,
+.timeline-duration-tag,
+.day-event-time-badge,
+.time-label,
+.pill-day-num,
+.calendar-day-num,
+.drawer-input[type="time"] {
+  font-family: var(--font-mono);
+  font-feature-settings: "tnum" 1;
 }
 
 * {
