@@ -22,7 +22,7 @@ export function renderHeader() {
 
   const trip = state.activeTrip;
   const allTrips = state.getAllTrips();
-  const health = state.backendHealth;
+  const liveDayTime = getLiveDayTimeFormatted();
 
   return `
     <header class="app-header">
@@ -32,9 +32,11 @@ export function renderHeader() {
           <span class="brand-monogram__sub">Trip Planner Deluxe</span>
         </div>
         <div class="app-header__user">
-          <div class="backend-status-pill ${health.status === 'connected' ? 'is-connected' : ''}" title="Cloudflare Worker & D1 status">
-            <span class="status-dot"></span>
-            <span class="status-text">${health.status === 'connected' ? 'CF Worker Connected' : 'Local / Offline Ready'}</span>
+          <div class="header-live-time-pill" title="Live Open-Meteo weather in ${escapeHtml(trip.destination.split(',')[0])} & time">
+            <span class="header-weather-badge">${trip.weather?.icon || '☀️'} ${trip.weather?.temp || '20°C'}</span>
+            <span class="header-time-divider">•</span>
+            <span class="live-time-text">${liveDayTime}</span>
+            <span class="status-light-dot" title="Status: Online"></span>
           </div>
 
           <button class="btn btn--icon btn--ghost" aria-label="Notifications" title="Notifications">
@@ -60,7 +62,6 @@ export function renderHeader() {
                 <span>🔄 Next</span>
               </button>
             </div>
-            ${health.bindings.d1 ? '<span class="d1-ready-badge">⚡ D1 Database Ready</span>' : ''}
           </div>
 
           <div class="trip-context-card__title-row">
@@ -95,6 +96,17 @@ export function renderHeader() {
       </div>
     </header>
   `;
+}
+
+function getLiveDayTimeFormatted() {
+  const now = new Date();
+  return new Intl.DateTimeFormat([], {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit"
+  }).format(now);
 }
 
 function escapeHtml(str) {
