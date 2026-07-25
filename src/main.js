@@ -114,6 +114,7 @@ const state = {
     ...createAnonymousSession("idle"),
   },
   placeImageCache: readCachedPlaceImages(),
+  imageChoicePanels: {},
   refreshingImageIds: new Set(),
   userPlaces: readStoredUserPlaces(),
   hiddenNearbyIds: readStoredHiddenNearbyIds(),
@@ -236,6 +237,7 @@ const icons = {
   chevron: `<path d="m9 5 7 7-7 7"/>`,
   locate: `<path d="M12 2.8v3.1"/><path d="M12 18.1v3.1"/><path d="M2.8 12h3.1"/><path d="M18.1 12h3.1"/><circle cx="12" cy="12" r="5.2"/><circle cx="12" cy="12" r="1.8"/>`,
   refresh: `<path d="M20 11a8 8 0 0 0-13.7-4.8L4 8.5"/><path d="M4 4.5v4h4"/><path d="M4 13a8 8 0 0 0 13.7 4.8L20 15.5"/><path d="M20 19.5v-4h-4"/>`,
+  undo: `<path d="M9 7H4.5v-4"/><path d="M4.8 7a8 8 0 1 1 1.9 8.3"/>`,
   fullscreenExit: `<path d="M9.3 5.2v4.5H4.8"/><path d="M14.7 5.2v4.5h4.5"/><path d="M9.3 18.8v-4.5H4.8"/><path d="M14.7 18.8v-4.5h4.5"/><path d="M9.3 9.7 5.1 5.5"/><path d="m14.7 9.7 4.2-4.2"/><path d="m9.3 14.3-4.2 4.2"/><path d="m14.7 14.3 4.2 4.2"/>`,
   timeline: `<path d="M5 6h5"/><path d="M14 6h5"/><path d="M5 12h14"/><path d="M5 18h5"/><path d="M14 18h5"/><circle cx="12" cy="6" r="2"/><circle cx="12" cy="18" r="2"/>`,
   camera: `<path d="M4.5 8.5h4l1.4-2h4.2l1.4 2h4v10h-15z"/><circle cx="12" cy="13.5" r="3.2"/><path d="M17 11h.1"/>`,
@@ -1364,6 +1366,7 @@ function renderHomeIdeaCard(place) {
         <small>★ ${escapeHtml(place.tag)} · ${escapeHtml(place.distance)}</small>
       </a>
       ${renderImageRefreshButton(place, "image-refresh-button")}
+      ${renderImageRevertButton(place, "image-revert-button")}
     </article>
   `;
 }
@@ -1446,6 +1449,7 @@ function renderPlaceResult(place) {
       <div class="place-actions">
         <button class="save-button ${saved ? "is-saved" : ""}" data-save="${place.id}">${saved ? "Saved" : "Save"}</button>
         ${renderImageRefreshButton(place, "bookmark-button")}
+        ${renderImageRevertButton(place, "bookmark-button")}
         <button class="bookmark-button ${saved ? "is-saved" : ""}" data-save="${place.id}" aria-label="${saved ? "Remove" : "Save"} ${place.title}">${renderIcon("bookmark")}</button>
       </div>
     </article>
@@ -1576,6 +1580,7 @@ function renderRecommendation(item) {
       </a>
       <div class="recommendation-actions">
         ${renderImageRefreshButton(item)}
+        ${renderImageRevertButton(item)}
         <button data-edit-user-place="${escapeHtml(item.id)}" aria-label="Edit ${escapeHtml(item.title)}">${renderIcon("note")}</button>
         <button data-hide-nearby="${escapeHtml(item.id)}" aria-label="Remove ${escapeHtml(item.title)} as not relevant">−</button>
       </div>
@@ -1588,6 +1593,29 @@ function renderImageRefreshButton(place, className = "") {
   const imageRefreshing = state.refreshingImageIds.has(place.id);
   const classAttr = [className, imageRefreshing ? "is-loading" : ""].filter(Boolean).join(" ");
   return `<button class="${escapeHtml(classAttr)}" data-refresh-place-image="${escapeHtml(place.id)}" aria-label="Refresh image for ${escapeHtml(place.title)}" ${imageRefreshing ? "disabled" : ""}>${renderIcon("refresh")}</button>`;
+}
+
+function renderImageRevertButton(place, className = "") {
+  if (!canRefreshPlaceImages() || !getPreviousPlaceMedia(place)) return "";
+  const classAttr = [className].filter(Boolean).join(" ");
+  return `<button class="${escapeHtml(classAttr)}" data-revert-place-image="${escapeHtml(place.id)}" aria-label="Revert image for ${escapeHtml(place.title)}">${renderIcon("undo")}</button>`;
+}
+
+function renderImageChoicePanel(place = {}) {
+  if (!canRefreshPlaceImages()) return "";
+  const panel = state.imageChoicePanels[getPlaceImageKey(place)];
+  const candidates = (panel?.candidates || []).slice(0, 4);
+  if (!candidates.length) return "";
+
+  return `
+    <div class="image-choice-panel" role="group" aria-label="Choose refreshed image for ${escapeHtml(place.title)}">
+      ${candidates.map((image, index) => `
+        <button data-select-place-image="${escapeHtml(place.id)}" data-image-choice-index="${index}" aria-label="Use refreshed image ${index + 1} for ${escapeHtml(place.title)}">
+          <img src="${escapeHtml(image.thumbnailUrl || image.imageUrl)}" alt="" loading="lazy" referrerpolicy="no-referrer"/>
+        </button>
+      `).join("")}
+    </div>
+  `;
 }
 
 function canRefreshPlaceImages() {
@@ -1611,6 +1639,7 @@ function renderPlaceImage(place, className) {
     >
       ${imageUrl ? `<img src="${escapeHtml(imageUrl)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.parentElement.classList.add('is-missing'); this.remove();"/>` : ""}
       <span class="place-image-fallback">${renderIcon(fallbackIcon)}<small>${escapeHtml(fallbackLabel)}</small></span>
+      ${renderImageChoicePanel(place)}
     </div>
   `;
 }
@@ -2282,6 +2311,24 @@ function bindEvents() {
     });
   });
 
+  document.querySelectorAll("[data-revert-place-image]").forEach((button) => {
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      if (!canRefreshPlaceImages()) return;
+      revertPlaceImage(button.dataset.revertPlaceImage);
+    });
+  });
+
+  document.querySelectorAll("[data-select-place-image]").forEach((button) => {
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      if (!canRefreshPlaceImages()) return;
+      selectPlaceImage(button.dataset.selectPlaceImage, Number(button.dataset.imageChoiceIndex));
+    });
+  });
+
   document.querySelectorAll("[data-refresh-weather]").forEach((button) => {
     button.addEventListener("click", () => {
       if (state.locationContext.coordinates) {
@@ -2649,7 +2696,7 @@ function getCategoryColor(category = "") {
 
 function getPlaceImageUrl(place = {}) {
   const cached = state.placeImageCache[getPlaceImageKey(place)];
-  return place.imageUrl || cached?.hero?.imageUrl || cached?.hero?.thumbnailUrl || cached?.url || "";
+  return cached?.hero?.imageUrl || cached?.hero?.thumbnailUrl || cached?.url || place.imageUrl || "";
 }
 
 function getOsmImageUrl(tags = {}) {
@@ -2745,21 +2792,169 @@ async function refreshPlaceImage(placeId) {
   if (!canRefreshPlaceImages()) return;
   if (!place || state.refreshingImageIds.has(place.id)) return;
 
+  const key = getPlaceImageKey(place);
+  const currentMedia = getCurrentPlaceMediaSnapshot(place);
+  const currentImageUrl = getPlaceImageUrl(place);
   state.refreshingImageIds.add(place.id);
   render();
   try {
     const media = await enrichmentService.refreshMedia(place, { force: true });
-    state.placeImageCache[getPlaceImageKey(place)] = media;
-    writeCachedPlaceImages(state.placeImageCache);
+    const candidates = getRefreshedImageChoices(media, currentImageUrl);
+    if (candidates.length) {
+      state.imageChoicePanels[key] = {
+        media,
+        candidates,
+        previousMedia: currentMedia,
+        updatedAt: new Date().toISOString(),
+      };
+    } else {
+      state.placeImageCache[key] = {
+        ...chooseNextRefreshedMedia(media, currentImageUrl),
+        previousMedia: currentMedia,
+        updatedAt: new Date().toISOString(),
+      };
+      delete state.imageChoicePanels[key];
+      writeCachedPlaceImages(state.placeImageCache);
+    }
   } catch {
-    state.placeImageCache[getPlaceImageKey(place)] = {
-      ...(state.placeImageCache[getPlaceImageKey(place)] || {}),
+    state.placeImageCache[key] = {
+      ...(state.placeImageCache[key] || {}),
       providerStatus: [{ provider: "trip-worker-media", status: "error", error: "manual-refresh-failed", count: 0 }],
     };
+    delete state.imageChoicePanels[key];
   } finally {
     state.refreshingImageIds.delete(place.id);
     render();
   }
+}
+
+function selectPlaceImage(placeId, choiceIndex) {
+  const place = findEditableSourcePlace(placeId);
+  if (!place || !Number.isInteger(choiceIndex)) return;
+  const key = getPlaceImageKey(place);
+  const panel = state.imageChoicePanels[key];
+  const selected = panel?.candidates?.[choiceIndex];
+  if (!selected) return;
+
+  state.placeImageCache[key] = {
+    ...createSelectedPlaceMedia(panel.media, selected),
+    previousMedia: panel.previousMedia || getCurrentPlaceMediaSnapshot(place),
+    updatedAt: new Date().toISOString(),
+  };
+  delete state.imageChoicePanels[key];
+  writeCachedPlaceImages(state.placeImageCache);
+  render();
+}
+
+function revertPlaceImage(placeId) {
+  const place = findEditableSourcePlace(placeId);
+  if (!place || !canRefreshPlaceImages()) return;
+  const key = getPlaceImageKey(place);
+  const previousMedia = getPreviousPlaceMedia(place);
+  if (!previousMedia) return;
+
+  state.placeImageCache[key] = {
+    ...stripMediaHistory(previousMedia),
+    updatedAt: new Date().toISOString(),
+  };
+  delete state.imageChoicePanels[key];
+  writeCachedPlaceImages(state.placeImageCache);
+  render();
+}
+
+function getRefreshedImageChoices(media = {}, currentImageUrl = "") {
+  return getUniqueMediaCandidates([media.hero, ...(media.gallery || [])])
+    .filter((image) => !mediaImageMatchesUrl(image, currentImageUrl))
+    .slice(0, 4);
+}
+
+function createSelectedPlaceMedia(media = {}, selected = {}) {
+  const candidates = getUniqueMediaCandidates([selected, media.hero, ...(media.gallery || [])]);
+  return {
+    ...media,
+    hero: { ...selected, visualRole: "hero" },
+    gallery: candidates.filter((image) => !mediaImageMatchesUrl(image, selected.imageUrl || selected.thumbnailUrl)),
+  };
+}
+
+function chooseNextRefreshedMedia(media = {}, currentImageUrl = "") {
+  const candidates = getUniqueMediaCandidates([media.hero, ...(media.gallery || [])]);
+  if (candidates.length <= 1) return media;
+
+  const currentIndex = candidates.findIndex((image) => mediaImageMatchesUrl(image, currentImageUrl));
+  if (currentIndex < 0) return media;
+
+  const nextHero = candidates[(currentIndex + 1) % candidates.length];
+  const nextGallery = candidates.filter((image) => !mediaImageMatchesUrl(image, nextHero.imageUrl || nextHero.thumbnailUrl));
+  return {
+    ...media,
+    hero: { ...nextHero, visualRole: "hero" },
+    gallery: nextGallery,
+  };
+}
+
+function getUniqueMediaCandidates(images = []) {
+  const seen = new Set();
+  return images.filter((image) => {
+    const key = normalizeMediaUrlForComparison(image?.imageUrl || image?.thumbnailUrl || "");
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function getCurrentPlaceMediaSnapshot(place = {}) {
+  const cached = state.placeImageCache[getPlaceImageKey(place)];
+  if (cached?.hero) return stripMediaHistory(cached);
+  if (!place.imageUrl) return null;
+  return createPlaceImageUrlMedia(place);
+}
+
+function getPreviousPlaceMedia(place = {}) {
+  const cached = state.placeImageCache[getPlaceImageKey(place)];
+  return cached?.previousMedia ? stripMediaHistory(cached.previousMedia) : null;
+}
+
+function stripMediaHistory(media = null) {
+  if (!media) return null;
+  const { previousMedia, ...rest } = media;
+  return rest;
+}
+
+function createPlaceImageUrlMedia(place = {}) {
+  const imageUrl = place.imageUrl || "";
+  const attribution = getPlaceImageAttribution(place, imageUrl);
+  return {
+    hero: {
+      id: `seed-${place.id || "image"}`,
+      provider: attribution.provider,
+      imageUrl,
+      thumbnailUrl: imageUrl,
+      sourcePageUrl: attribution.sourceUrl || imageUrl,
+      attributionText: attribution.attribution,
+      exactLocation: false,
+      approximateLocation: true,
+      illustrativeOnly: false,
+      visualRole: attribution.visualRole || "hero",
+      finalScore: 50,
+    },
+    gallery: [],
+    roles: {},
+    attributions: [],
+    coverage: { images: imageUrl ? "partial" : "fallback" },
+    providerStatus: [],
+    generatedAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+function mediaImageMatchesUrl(image = {}, url = "") {
+  const normalized = normalizeMediaUrlForComparison(url);
+  return Boolean(normalized && [image.imageUrl, image.thumbnailUrl].map(normalizeMediaUrlForComparison).includes(normalized));
+}
+
+function normalizeMediaUrlForComparison(url = "") {
+  return String(url || "").trim().replace(/^http:\/\//i, "https://").replace(/\/+$/, "");
 }
 
 async function findCommonsImageForPlace(place) {

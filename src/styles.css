@@ -1059,6 +1059,7 @@ h3 {
 }
 
 .home-idea-image {
+  position: relative;
   display: grid;
   place-items: center;
   min-height: 118px;
@@ -1111,6 +1112,68 @@ h3 {
 
 .image-refresh-button.is-loading .app-icon {
   animation: mapSpin .8s linear infinite;
+}
+
+.image-revert-button {
+  position: absolute;
+  top: 48px;
+  right: 8px;
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border: 1px solid rgba(255, 253, 248, .72);
+  border-radius: 10px;
+  color: var(--ink);
+  background: rgba(255, 253, 248, .88);
+  box-shadow: 0 10px 24px rgba(23, 24, 23, .14);
+  backdrop-filter: blur(10px);
+}
+
+.image-revert-button .app-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.image-choice-panel {
+  position: absolute;
+  left: 7px;
+  right: 7px;
+  bottom: 7px;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 5px;
+  padding: 5px;
+  border: 1px solid rgba(255, 253, 248, .72);
+  border-radius: 10px;
+  background: rgba(255, 253, 248, .9);
+  box-shadow: 0 8px 18px rgba(23, 24, 23, .16);
+  backdrop-filter: blur(10px);
+}
+
+.image-choice-panel button {
+  display: block;
+  width: 100%;
+  min-height: 34px;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: rgba(23, 24, 23, .08);
+}
+
+.image-choice-panel button:hover,
+.image-choice-panel button:focus-visible {
+  border-color: var(--red);
+  outline: none;
+}
+
+.image-choice-panel img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .place-image-fallback {
@@ -2627,6 +2690,7 @@ h3 {
 }
 
 .recommendation-image {
+  position: relative;
   display: grid;
   place-items: center;
   width: 100%;
@@ -2657,6 +2721,26 @@ h3 {
 
 .recommendation-image .place-image-fallback small {
   font-size: 9px;
+}
+
+.recommendation-image .image-choice-panel {
+  left: 4px;
+  right: 4px;
+  bottom: 4px;
+  gap: 3px;
+  padding: 3px;
+  border-radius: 7px;
+}
+
+.recommendation-image .image-choice-panel button {
+  min-height: 22px;
+  border-radius: 4px;
+}
+
+.place-photo .image-choice-panel {
+  left: 7px;
+  right: 7px;
+  bottom: 7px;
 }
 
 .recommendation-image.sun { background: linear-gradient(140deg, #e9c76b, #d94a3a); }
@@ -3187,6 +3271,7 @@ button:focus-visible {
 }
 
 .place-photo {
+  position: relative;
   display: grid;
   place-items: center;
   width: 100%;
@@ -3975,6 +4060,21 @@ button:focus-visible {
     width: 56px;
     min-height: 56px;
     border-radius: 9px;
+  }
+
+  .image-choice-panel {
+    left: 8px;
+    right: 8px;
+    bottom: 8px;
+    gap: 6px;
+    padding: 6px;
+    background: rgba(255, 253, 248, .94);
+  }
+
+  .image-choice-panel button,
+  .recommendation-image .image-choice-panel button {
+    min-height: 38px;
+    border-radius: 8px;
   }
 
   .hero-actions button,
