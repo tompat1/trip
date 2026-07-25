@@ -61,6 +61,12 @@ export function renderProfileView() {
           </div>
         </div>
 
+        <div class="dashboard-card account-card mb-md">
+          <h3 class="dashboard-card__title mb-sm">Account & Authentication</h3>
+          <p class="account-status-desc mb-sm">Signed in as <strong>thomas@rynell.org</strong> (TRIP Traveler Profile)</p>
+          <button class="btn btn--outline btn--sm" data-action="admin-login-dialog">🔑 Sign in to Cloudflare D1 Account</button>
+        </div>
+
         <div class="profile-actions-list">
           <button class="btn btn--outline full-width-btn mb-sm" data-action="switch-to-landing">View Marketing / Landing Page</button>
           <button class="btn btn--primary full-width-btn" data-action="switch-trip">Toggle Paris / Crete Trip Context</button>

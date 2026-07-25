@@ -186,6 +186,46 @@ document.addEventListener("click", (e) => {
         });
       }
     }
+    else if (action === "share-trip") {
+      const trip = state.activeTrip;
+      const shareUrl = `${window.location.origin}?trip=${encodeURIComponent(state.activeTripId)}`;
+      if (navigator.share) {
+        navigator.share({
+          title: `TRIP - ${trip.destination}`,
+          text: `Check out my travel plan & memories for ${trip.destination}!`,
+          url: shareUrl
+        }).catch(() => {});
+      } else {
+        navigator.clipboard.writeText(shareUrl).then(() => {
+          alert(`🔗 Trip share link copied to clipboard:\n${shareUrl}`);
+        });
+      }
+    }
+    else if (action === "admin-login-dialog") {
+      const email = prompt("Enter admin/traveler email:", "thomas@rynell.org");
+      if (email) {
+        const password = prompt("Enter password:");
+        if (password) {
+          import("./enrichment/enrichmentService.js").then(({ enrichmentService }) => {
+            enrichmentService.loginAdmin({ email, password })
+              .then((res) => {
+                alert(`✅ Signed in successfully! Token: ${res.token ? 'Active' : 'Granted'}`);
+                state.notify();
+              })
+              .catch((err) => alert(`Authentication note: ${err.message}`));
+          });
+        }
+      }
+    }
+    else if (action === "quick-photo" || action === "quick-video") {
+      const fileInput = document.getElementById("quick-capture-file-input");
+      if (fileInput) {
+        fileInput.click();
+      } else {
+        const text = prompt(`Record a ${action.replace('quick-', '')} moment:`, `Captured a moment in ${state.activeTrip.destination}!`);
+        if (text) state.addMoment({ title: "Media Moment", text, type: "photo" });
+      }
+    }
     else if (action.startsWith("quick-")) {
       const type = action.replace("quick-", "");
       const text = prompt(`Record a ${type} moment:`, `Captured a beautiful ${type} during the journey!`);
@@ -233,6 +273,21 @@ document.addEventListener("input", (e) => {
 document.addEventListener("change", (e) => {
   if (e.target.dataset.action === "toggle-trip-mode") {
     state.toggleTripMode(e.target.checked);
+  }
+  if (e.target.id === "quick-capture-file-input" && e.target.files && e.target.files[0]) {
+    const file = e.target.files[0];
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      const dataUrl = evt.target.result;
+      state.addMoment({
+        title: `Captured ${file.type.startsWith('video') ? 'Video' : 'Photo'}`,
+        text: file.name,
+        type: file.type.startsWith('video') ? 'video' : 'photo',
+        media_url: dataUrl
+      });
+      alert(`📸 ${file.name} uploaded & recorded to your trip memory timeline!`);
+    };
+    reader.readAsDataURL(file);
   }
 });
 
