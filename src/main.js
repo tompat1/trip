@@ -678,6 +678,35 @@ document.addEventListener("click", (e) => {
   }
 });
 
+// Inline Editing Persistence for AI Narrative Story
+document.addEventListener("blur", (e) => {
+  const target = e.target;
+  if (!target || !target.isContentEditable) return;
+
+  const tripId = state.activeTripId;
+  const currentStory = state.generatedStories[tripId] || { title: "", lead: "", sections: [] };
+
+  if (target.dataset.storyField === "title") {
+    currentStory.title = target.innerText.trim();
+    state.setGeneratedStory(tripId, currentStory);
+  } else if (target.dataset.storyField === "lead") {
+    currentStory.lead = target.innerText.trim();
+    state.setGeneratedStory(tripId, currentStory);
+  } else if (target.dataset.storySecTitle !== undefined) {
+    const idx = parseInt(target.dataset.storySecTitle, 10);
+    if (currentStory.sections && currentStory.sections[idx]) {
+      currentStory.sections[idx].title = target.innerText.trim();
+      state.setGeneratedStory(tripId, currentStory);
+    }
+  } else if (target.dataset.storySecBody !== undefined) {
+    const idx = parseInt(target.dataset.storySecBody, 10);
+    if (currentStory.sections && currentStory.sections[idx]) {
+      currentStory.sections[idx].body = target.innerText.trim();
+      state.setGeneratedStory(tripId, currentStory);
+    }
+  }
+}, true);
+
 // Initialize reactive state listener & initial render
 state.subscribe(render);
 render();

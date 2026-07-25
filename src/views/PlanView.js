@@ -175,22 +175,33 @@ function renderStorySubTab(trip) {
           <div class="story-cover-overlay"></div>
           <div class="story-cover-content">
             <span class="story-kicker">EDITORIAL TRAVEL ARCHIVE</span>
-            <h1 class="story-main-title">${escapeHtml(generated?.title || `${trip.destination} ${trip.flag}`)}</h1>
+            <h1 class="story-main-title" style="display: flex; align-items: center; gap: 8px;">
+              <span contenteditable="true" data-story-field="title" style="outline: none;" title="Click to edit title">${escapeHtml(generated?.title || `${trip.destination} ${trip.flag}`)}</span>
+              <span style="opacity: 0.5; font-size: 0.8rem; display: inline-flex; align-items: center;" title="Click text to edit">${renderIcon("pencil")}</span>
+            </h1>
             <p class="story-byline">By Thomas Rynell • ${escapeHtml(trip.dates)} ${generated ? '• Powered by Worker AI Engine' : ''}</p>
           </div>
         </div>
 
         <div class="story-prose">
-          <p class="story-lead">
-            ${escapeHtml(generated?.lead || generated?.summary || `Every place becomes a story. Exploring ${trip.destination} brought together historic architecture, specialty coffee roasters, and unforgettable moments along the journey.`)}
-          </p>
+          <div style="position: relative; margin-bottom: 20px;">
+            <p class="story-lead" contenteditable="true" data-story-field="lead" style="outline: none; margin: 0; padding-right: 28px;" title="Click to edit lead paragraph">
+              ${escapeHtml(generated?.lead || generated?.summary || `Every place becomes a story. Exploring ${trip.destination} brought together historic architecture, specialty coffee roasters, and unforgettable moments along the journey.`)}
+            </p>
+            <span style="position: absolute; top: 2px; right: 0; opacity: 0.45; font-size: 0.8rem; display: inline-flex; align-items: center; pointer-events: none;">${renderIcon("pencil")}</span>
+          </div>
 
-          ${generated?.sections ? generated.sections.map(sec => `
-            <h3 class="story-h3" style="font-size: 1.2rem; font-weight: 700; margin-top: 20px; color: var(--ink);">${escapeHtml(sec.title || sec.heading)}</h3>
-            <p style="font-size: 0.95rem; line-height: 1.6; color: var(--ink-muted);">${escapeHtml(sec.body || sec.content)}</p>
+          ${generated?.sections ? generated.sections.map((sec, idx) => `
+            <div style="position: relative; margin-top: 20px;">
+              <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">
+                <h3 class="story-h3" contenteditable="true" data-story-sec-title="${idx}" style="font-size: 1.2rem; font-weight: 700; color: var(--ink); outline: none; margin: 0;" title="Click to edit heading">${escapeHtml(sec.title || sec.heading)}</h3>
+                <span style="opacity: 0.45; font-size: 0.75rem; display: inline-flex; align-items: center; pointer-events: none;">${renderIcon("pencil")}</span>
+              </div>
+              <p contenteditable="true" data-story-sec-body="${idx}" style="font-size: 0.95rem; line-height: 1.6; color: var(--ink-muted); outline: none; margin: 0;" title="Click to edit content">${escapeHtml(sec.body || sec.content)}</p>
+            </div>
           `).join('') : ''}
 
-          <h3 class="story-h3">Highlights of the Journey</h3>
+          <h3 class="story-h3" style="margin-top: 24px;">Highlights of the Journey</h3>
           <ul class="story-highlights-list">
             ${(trip.ideas || []).map(idea => `
               <li class="story-highlight-item">
@@ -199,11 +210,14 @@ function renderStorySubTab(trip) {
             `).join('')}
           </ul>
 
-          <h3 class="story-h3">Captured Memories & Notes</h3>
+          <h3 class="story-h3" style="margin-top: 24px;">Captured Memories & Notes</h3>
           <div class="story-moments-list">
             ${(state.moments || []).map(m => `
-              <blockquote class="story-quote">
-                <p>"${escapeHtml(m.text || m.title)}"</p>
+              <blockquote class="story-quote" style="position: relative;">
+                <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 8px;">
+                  <p contenteditable="true" data-story-moment-id="${m.id}" style="outline: none; margin: 0; flex: 1;" title="Click to edit note">"${escapeHtml(m.text || m.title)}"</p>
+                  <span style="opacity: 0.45; font-size: 0.75rem; display: inline-flex; align-items: center; pointer-events: none; margin-top: 2px;">${renderIcon("pencil")}</span>
+                </div>
                 <cite>— Recorded on ${m.date}</cite>
               </blockquote>
             `).join('')}
