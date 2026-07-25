@@ -67,13 +67,17 @@ input, select, textarea {
   color: inherit;
 }
 
-/* Base Layout Container */
+/* Mobile-First App Layout Container */
 #app {
-  max-width: 768px;
+  max-width: 480px;
   margin: 0 auto;
   min-height: 100vh;
-  padding-bottom: 96px; /* Space for floating bottom dock */
+  padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
   position: relative;
+  background-color: var(--paper);
+  box-shadow: 0 0 40px rgba(23, 24, 23, 0.06);
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 /* ==========================================================================
@@ -426,11 +430,11 @@ input, select, textarea {
    ========================================================================== */
 .bottom-dock-nav {
   position: fixed;
-  bottom: 16px;
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
   left: 50%;
   transform: translateX(-50%);
-  width: calc(100% - 32px);
-  max-width: 540px;
+  width: calc(100% - 24px);
+  max-width: 456px;
   z-index: 100;
 }
 

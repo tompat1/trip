@@ -20,6 +20,13 @@ Brand tokens:
 - Sun `#E9C76B`
 - Clay `#9C6E55`
 
+Mobile-First UX/UI Principle:
+- Primary design target is mobile application experience (iOS / Android web app shell).
+- Centered phone-width viewports (max-width 480px–540px centered frame on desktop, 100% on mobile).
+- Touch-friendly tap targets (minimum 44x44px for buttons, pills, and nav icons).
+- Floating bottom dock navigation with thumb-accessible central Search FAB.
+- Native mobile feel: safe-area-inset padding, smooth inertia scrolling (`-webkit-overflow-scrolling: touch`), touch feedback states, and app-like transitions.
+
 Imported skill pack:
 - Cloudflare platform: `cloudflare`, `wrangler`, `workers-best-practices`
 - Quality and testing: `playwright-skill`, `vitest-skill`, `web-quality-audit`,
