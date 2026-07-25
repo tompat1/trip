@@ -1,0 +1,405 @@
+export const tripsData = {
+  paris: {
+    id: "paris",
+    destination: "Paris, France",
+    flag: "🇫🇷",
+    dates: "3 – 9 Oct 2026",
+    daysCount: 7,
+    startDate: "2026-10-03",
+    status: "Upcoming",
+    statusText: "17 days until your trip to Paris",
+    tripMode: true,
+    center: [48.8566, 2.3522],
+    zoom: 13,
+    weather: {
+      temp: "18°C",
+      condition: "Partly cloudy",
+      feelsLike: "19°C",
+      localTime: "09:42 AM",
+      currency: "EUR (€)",
+      forecast: [
+        { day: "Mon", temp: "21°" },
+        { day: "Tue", temp: "19°" },
+        { day: "Wed", temp: "17°" }
+      ]
+    },
+    upcomingActivity: {
+      title: "Paris, France",
+      subtitle: "3 – 9 Oct 2026",
+      image: "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=600&q=80"
+    },
+    checklist: [
+      { id: "stay", label: "Book your stay", completed: false },
+      { id: "exp", label: "Choose experiences", completed: false },
+      { id: "companions", label: "Invite travel companions", completed: true },
+      { id: "visa", label: "Check visa requirements", completed: true }
+    ],
+    mapPins: [
+      { id: "p1", name: "Montmartre", lat: 48.8867, lng: 2.3431, category: "sight" },
+      { id: "p2", name: "Le Marais", lat: 48.8575, lng: 2.3592, category: "shopping" },
+      { id: "p3", name: "Eiffel Tower", lat: 48.8584, lng: 2.2945, category: "sight" },
+      { id: "p4", name: "Latin Quarter", lat: 48.8499, lng: 2.3444, category: "cafe" }
+    ],
+    calendarEvents: [
+      {
+        id: "e1",
+        title: "Flight to Paris",
+        type: "flight",
+        icon: "✈️",
+        dayIndex: 0, // Sat 3 Oct
+        dayName: "Sat 3 Oct",
+        startTime: "06:15",
+        endTime: "11:30",
+        location: "CDG Airport",
+        colorScheme: "peach"
+      },
+      {
+        id: "e2",
+        title: "Louvre Museum",
+        type: "museum",
+        icon: "📍",
+        dayIndex: 0,
+        dayName: "Sat 3 Oct",
+        startTime: "10:00",
+        endTime: "12:30",
+        location: "1st Arrondissement",
+        colorScheme: "blue"
+      },
+      {
+        id: "e3",
+        title: "Versailles Palace",
+        type: "sight",
+        icon: "👑",
+        dayIndex: 3, // Tue 6 Oct
+        dayName: "Tue 6 Oct",
+        startTime: "09:30",
+        endTime: "12:00",
+        location: "Versailles",
+        colorScheme: "mint"
+      },
+      {
+        id: "e4",
+        title: "Le Marais Shopping",
+        type: "shopping",
+        icon: "🛍️",
+        dayIndex: 4, // Wed 7 Oct
+        dayName: "Wed 7 Oct",
+        startTime: "11:00",
+        endTime: "13:00",
+        location: "3rd Arrondissement",
+        colorScheme: "pink"
+      },
+      {
+        id: "e5",
+        title: "Café de Flore Brunch",
+        type: "cafe",
+        icon: "☕",
+        dayIndex: 0,
+        dayName: "Sat 3 Oct",
+        startTime: "13:00",
+        endTime: "14:30",
+        location: "Saint-Germain",
+        colorScheme: "green"
+      },
+      {
+        id: "e6",
+        title: "Café de Flore Brunch",
+        type: "cafe",
+        icon: "☕",
+        dayIndex: 1, // Sun 4 Oct
+        dayName: "Sun 4 Oct",
+        startTime: "13:00",
+        endTime: "14:30",
+        location: "Saint-Germain",
+        colorScheme: "lavender"
+      },
+      {
+        id: "e7",
+        title: "Eiffel Tower Golden hour",
+        type: "sight",
+        icon: "🗼",
+        dayIndex: 4,
+        dayName: "Wed 7 Oct",
+        startTime: "16:30",
+        endTime: "18:00",
+        location: "Champ de Mars",
+        colorScheme: "gold"
+      },
+      {
+        id: "e8",
+        title: "Opéra Garnier Tour",
+        type: "sight",
+        icon: "🎭",
+        dayIndex: 5, // Thu 8 Oct
+        dayName: "Thu 8 Oct",
+        startTime: "16:00",
+        endTime: "17:30",
+        location: "9th Arrondissement",
+        colorScheme: "mint"
+      },
+      {
+        id: "e9",
+        title: "Jazz Night Le Caveau",
+        type: "music",
+        icon: "🎵",
+        dayIndex: 0,
+        dayName: "Sat 3 Oct",
+        startTime: "21:00",
+        endTime: "23:00",
+        location: "Latin Quarter",
+        colorScheme: "gold"
+      },
+      {
+        id: "e10",
+        title: "Dinner Chez Janou",
+        type: "dining",
+        icon: "🍽️",
+        dayIndex: 1,
+        dayName: "Sun 4 Oct",
+        startTime: "19:30",
+        endTime: "21:30",
+        location: "Le Marais",
+        colorScheme: "peach"
+      },
+      {
+        id: "e11",
+        title: "Jazz Night Le Caveau",
+        type: "music",
+        icon: "🎵",
+        dayIndex: 4,
+        dayName: "Wed 7 Oct",
+        startTime: "21:00",
+        endTime: "23:00",
+        location: "Latin Quarter",
+        colorScheme: "blue"
+      },
+      {
+        id: "e12",
+        title: "Le Marais Shopping",
+        type: "shopping",
+        icon: "🛍️",
+        dayIndex: 6, // Fri 9 Oct
+        dayName: "Fri 9 Oct",
+        startTime: "10:00",
+        endTime: "12:00",
+        location: "3rd Arrondissement",
+        colorScheme: "blue"
+      },
+      {
+        id: "e13",
+        title: "Pack & Prepare Departure",
+        type: "shopping",
+        icon: "🛍️",
+        dayIndex: 6,
+        dayName: "Fri 9 Oct",
+        startTime: "19:00",
+        endTime: "21:00",
+        location: "Evening",
+        colorScheme: "pink"
+      }
+    ],
+    ideas: [
+      {
+        id: "i1",
+        title: "Sunset Seine Cruise",
+        subtitle: "Popular with locals",
+        rating: 4.8,
+        duration: "1.5h",
+        image: "https://images.unsplash.com/photo-1511739001486-6bfe10ce785f?auto=format&fit=crop&w=600&q=80"
+      },
+      {
+        id: "i2",
+        title: "Louvre Museum",
+        subtitle: "Book tickets",
+        rating: 4.9,
+        duration: "3h",
+        image: "https://images.unsplash.com/photo-1499856871958-5b9627545d1a?auto=format&fit=crop&w=600&q=80"
+      },
+      {
+        id: "i3",
+        title: "Café de Flore",
+        subtitle: "Classic Parisian café",
+        rating: 4.6,
+        duration: "1h",
+        image: "https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=600&q=80"
+      },
+      {
+        id: "i4",
+        title: "Jazz Night",
+        subtitle: "Live at Le Caveau",
+        rating: 4.7,
+        duration: "2h",
+        image: "https://images.unsplash.com/photo-1511192336575-5a79af67a629?auto=format&fit=crop&w=600&q=80"
+      }
+    ],
+    events: [
+      { id: "ev1", title: "Fiac Art Fair", dates: "2 – 5 Oct 2026", icon: "🔴" },
+      { id: "ev2", title: "Paris Jazz Festival", dates: "3 – 9 Oct 2026", icon: "🅰️" },
+      { id: "ev3", title: "Fashion Week", dates: "27 Sep – 5 Oct 2026", icon: "🕒" }
+    ]
+  },
+
+  crete: {
+    id: "crete",
+    destination: "Heraklion, Crete",
+    flag: "🇬🇷",
+    dates: "17 Jul – 24 Jul 2026",
+    daysCount: 8,
+    startDate: "2026-07-17",
+    status: "Live",
+    statusText: "You are in Heraklion, Crete",
+    tripMode: true,
+    center: [35.3391, 25.132],
+    zoom: 13,
+    weather: {
+      temp: "28°C",
+      condition: "Sunny",
+      feelsLike: "30°C",
+      localTime: "10:15 AM",
+      currency: "Euro EUR (€)",
+      forecast: [
+        { day: "Thu", temp: "29°" },
+        { day: "Fri", temp: "28°" },
+        { day: "Sat", temp: "27°" },
+        { day: "Sun", temp: "27°" }
+      ]
+    },
+    upcomingActivity: {
+      title: "Knossos Palace",
+      subtitle: "Today · 11:00 AM",
+      image: "https://images.unsplash.com/photo-1563720223185-11003d516935?auto=format&fit=crop&w=600&q=80"
+    },
+    checklist: [
+      { id: "stay", label: "Book your stay", completed: false },
+      { id: "exp", label: "Choose experiences", completed: false },
+      { id: "companions", label: "Invite travel companions", completed: true },
+      { id: "visa", label: "Check visa requirements", completed: true },
+      { id: "maps", label: "Offline maps", completed: false }
+    ],
+    mapPins: [
+      { id: "c1", name: "Lions Square", lat: 35.3391, lng: 25.132, category: "user", isUser: true },
+      { id: "c2", name: "Venetini Fountain", lat: 35.3395, lng: 25.1328, category: "sight" },
+      { id: "c3", name: "Koules Fortress", lat: 35.3444, lng: 25.137, category: "fortress" },
+      { id: "c4", name: "Knossos Palace", lat: 35.298, lng: 25.1631, category: "ruins" },
+      { id: "c5", name: "Archaeological Museum", lat: 35.339, lng: 25.1373, category: "museum" },
+      { id: "c6", name: "Ammoudara Beach", lat: 35.333, lng: 25.085, category: "beach" }
+    ],
+    nearbyNow: [
+      { id: "n1", title: "Hacienda Coffee Heraklion", distance: "220 m · 3 min walk", icon: "☕" },
+      { id: "n2", title: "Lions Square", distance: "350 m · 5 min walk", icon: "🏛️" },
+      { id: "n3", title: "Local Bus Stop", distance: "120 m · Line 1 to Old Town", icon: "🚌" }
+    ],
+    liveInfo: [
+      { id: "l1", title: "Local Bus (KTEL)", subtitle: "Real-time routes & arrivals", status: "On time", statusClass: "badge-green", icon: "🚌" },
+      { id: "l2", title: "Ferry to Santorini", subtitle: "From Heraklion Port", status: "2h 15m", statusClass: "badge-gray", icon: "🛳️" },
+      { id: "l3", title: "Heraklion Airport (HER)", subtitle: "Arrivals & departures", status: "On time", statusClass: "badge-green", icon: "✈️" }
+    ],
+    transportOptions: [
+      { id: "t1", title: "Bus", detail: "From €1.20", icon: "🚌" },
+      { id: "t2", title: "Taxi", detail: "From €8", icon: "🚕" },
+      { id: "t3", title: "Car rental", detail: "From €28/day", icon: "🚗" },
+      { id: "t4", title: "Ferry", detail: "To islands", icon: "⛴️" }
+    ],
+    ideas: [
+      {
+        id: "ci1",
+        title: "Koules Fortress",
+        subtitle: "Walk the Venetian fort",
+        rating: 4.7,
+        duration: "1–1.5h",
+        image: "https://images.unsplash.com/photo-1570077188670-e3a8d69ac5ff?auto=format&fit=crop&w=600&q=80"
+      },
+      {
+        id: "ci2",
+        title: "Knossos Palace",
+        subtitle: "Ancient Minoan site",
+        rating: 4.8,
+        duration: "2–3h",
+        image: "https://images.unsplash.com/photo-1563720223185-11003d516935?auto=format&fit=crop&w=600&q=80"
+      },
+      {
+        id: "ci3",
+        title: "Heraklion Museum",
+        subtitle: "Minoan treasures",
+        rating: 4.6,
+        duration: "1.5–2h",
+        image: "https://images.unsplash.com/photo-1565008447742-97f6f38c985c?auto=format&fit=crop&w=600&q=80"
+      },
+      {
+        id: "ci4",
+        title: "Old Venetian Harbor",
+        subtitle: "Scenic walk & cafés",
+        rating: 4.6,
+        duration: "1–2h",
+        image: "https://images.unsplash.com/photo-1516483638261-f4dbaf036963?auto=format&fit=crop&w=600&q=80"
+      },
+      {
+        id: "ci5",
+        title: "Ammoudara Beach",
+        subtitle: "Relax & swim",
+        rating: 4.5,
+        duration: "Half day",
+        image: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=600&q=80"
+      }
+    ],
+    events: [
+      { id: "cev1", title: "Heraklion Wine Festival", dates: "17 – 20 Jul 2026", icon: "🍷" },
+      { id: "cev2", title: "Crete Jazz & World Music", dates: "18 – 20 Jul 2026", icon: "🎵" },
+      { id: "cev3", title: "Traditional Market Day", dates: "19 Jul 2026", icon: "🎁" },
+      { id: "cev4", title: "Night at the Museum", dates: "21 Jul 2026", icon: "🏛️" }
+    ]
+  }
+};
+
+export const searchPlacesData = [
+  {
+    id: "sp1",
+    name: "La Cabra",
+    neighborhood: "Østerbro, Copenhagen",
+    rating: 4.7,
+    reviewsCount: 230,
+    category: "Cafe",
+    description: "Specialty coffee roaster & café. Minimalist interior, great pastries.",
+    image: "https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&w=600&q=80"
+  },
+  {
+    id: "sp2",
+    name: "The Coffee Collective",
+    neighborhood: "Nørrebro, Copenhagen",
+    rating: 4.6,
+    reviewsCount: 352,
+    category: "Cafe",
+    description: "One of the world's best coffee shops. Roastery & multiple locations.",
+    image: "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=600&q=80"
+  },
+  {
+    id: "sp3",
+    name: "Prolog Coffee Bar",
+    neighborhood: "Vesterbro, Copenhagen",
+    rating: 4.6,
+    reviewsCount: 176,
+    category: "Cafe",
+    description: "Small, seasonal menu & cozy vibe.",
+    image: "https://images.unsplash.com/photo-1442512595331-e89e73853f31?auto=format&fit=crop&w=600&q=80"
+  },
+  {
+    id: "sp4",
+    name: "Andersen & Maillard",
+    neighborhood: "Nørrebro, Copenhagen",
+    rating: 4.6,
+    reviewsCount: 181,
+    category: "Cafe",
+    description: "World-class coffee & beautiful surroundings.",
+    image: "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=600&q=80"
+  },
+  {
+    id: "sp5",
+    name: "Boot Café",
+    neighborhood: "Le Marais, Paris",
+    rating: 4.7,
+    reviewsCount: 310,
+    category: "Specialty Coffee",
+    description: "Cozy former cobbler shop serving meticulous espresso.",
+    image: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=600&q=80"
+  }
+];
