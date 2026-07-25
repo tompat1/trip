@@ -1723,9 +1723,23 @@ function buildEditorialWhyStop(name, category, area, travellerProfile, routeCont
       ? `${name} gives the route a cultural anchor${area ? ` around ${area}` : ""}.`
       : editorialTextIncludes(category, ["beach", "harbor", "water"])
         ? `${name} works as a slower coastal pause${area ? ` around ${area}` : ""}.`
-        : `${name} is a practical nearby stop${area ? ` around ${area}` : ""}.`;
+        : `${name} is useful if it keeps the next move simple${area ? ` around ${area}` : ""}.`;
   const focus = getEditorialTravellerAngle(category, travellerProfile);
-  return [base, focus, routeContext.previousStop ? `It can sit after ${routeContext.previousStop}.` : ""].filter(Boolean).join(" ");
+  return [base, focus, buildEditorialRouteNudge(routeContext)].filter(Boolean).join(" ");
+}
+
+function buildEditorialRouteNudge(routeContext = {}) {
+  if (!routeContext.previousStop) return "";
+  const stop = formatEditorialRouteStopLabel(routeContext.previousStop);
+  if (!stop) return "";
+  return `Use it as a short detour after ${stop}.`;
+}
+
+function formatEditorialRouteStopLabel(value = "") {
+  const label = String(value || "").trim().toLowerCase();
+  if (!label) return "";
+  if (["confirmed visit", "confirmed stop", "last confirmed stop"].includes(label)) return "your last confirmed stop";
+  return String(value).trim();
 }
 
 function buildEditorialAtmosphere(category, hasRealHero) {
@@ -1773,10 +1787,10 @@ function buildEditorialLocalTip(category, routeContext) {
 }
 
 function getEditorialTravellerAngle(category, travellerProfile) {
-  if (travellerProfile.focus === "coffee" && editorialTextIncludes(category, ["coffee", "cafe", "roaster"])) return "Good fit for the current coffee focus.";
-  if (travellerProfile.focus === "shopper" && editorialTextIncludes(category, ["shop", "market", "bakery"])) return "Good fit for the current shopper focus.";
-  if (travellerProfile.focus === "arty" && editorialTextIncludes(category, ["museum", "gallery", "archaeolog", "art"])) return "Good fit for the current arty focus.";
-  if (travellerProfile.focus === "beachy" && editorialTextIncludes(category, ["beach", "harbor", "water"])) return "Good fit for the current beachy focus.";
+  if (travellerProfile.focus === "coffee" && editorialTextIncludes(category, ["coffee", "cafe", "roaster"])) return "Keep it on the coffee shortlist.";
+  if (travellerProfile.focus === "shopper" && editorialTextIncludes(category, ["shop", "market", "bakery"])) return "Worth a look while you are browsing nearby streets.";
+  if (travellerProfile.focus === "arty" && editorialTextIncludes(category, ["museum", "gallery", "archaeolog", "art"])) return "Good fit for a culture-led day.";
+  if (travellerProfile.focus === "beachy" && editorialTextIncludes(category, ["beach", "harbor", "water"])) return "Save it for a slower light-and-water break.";
   return "";
 }
 

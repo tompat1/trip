@@ -133,10 +133,24 @@ function buildWhyStop(name, category, area, angle, routeContext) {
     ? `${name} is a focused coffee stop${area ? ` around ${area}` : ""}.`
     : categoryTextIncludes(category, ["museum", "gallery", "archaeolog", "historic", "sight"])
       ? `${name} gives the route a cultural anchor${area ? ` around ${area}` : ""}.`
-      : categoryTextIncludes(category, ["beach", "harbor", "water"])
+    : categoryTextIncludes(category, ["beach", "harbor", "water"])
         ? `${name} works as a slower coastal pause${area ? ` around ${area}` : ""}.`
-        : `${name} is a practical nearby stop${area ? ` around ${area}` : ""}.`;
-  return [base, angle, routeContext.previousStop ? `It can sit after ${routeContext.previousStop}.` : ""].filter(Boolean).join(" ");
+        : `${name} is useful if it keeps the next move simple${area ? ` around ${area}` : ""}.`;
+  return [base, angle, buildRouteNudge(routeContext)].filter(Boolean).join(" ");
+}
+
+function buildRouteNudge(routeContext = {}) {
+  if (!routeContext.previousStop) return "";
+  const stop = formatRouteStopLabel(routeContext.previousStop);
+  if (!stop) return "";
+  return `Use it as a short detour after ${stop}.`;
+}
+
+function formatRouteStopLabel(value = "") {
+  const label = String(value || "").trim().toLowerCase();
+  if (!label) return "";
+  if (["confirmed visit", "confirmed stop", "last confirmed stop"].includes(label)) return "your last confirmed stop";
+  return String(value).trim();
 }
 
 function buildAtmosphere(category, media) {
@@ -196,10 +210,10 @@ function buildPracticalWarnings(facts) {
 }
 
 function getTravellerAngle(category, travellerProfile) {
-  if (travellerProfile.focus === "coffee" && categoryTextIncludes(category, ["coffee", "cafe", "roaster"])) return "Good fit for the current coffee focus.";
-  if (travellerProfile.focus === "shopper" && categoryTextIncludes(category, ["shop", "market", "bakery"])) return "Good fit for the current shopper focus.";
-  if (travellerProfile.focus === "arty" && categoryTextIncludes(category, ["museum", "gallery", "archaeolog", "art"])) return "Good fit for the current arty focus.";
-  if (travellerProfile.focus === "beachy" && categoryTextIncludes(category, ["beach", "harbor", "water"])) return "Good fit for the current beachy focus.";
+  if (travellerProfile.focus === "coffee" && categoryTextIncludes(category, ["coffee", "cafe", "roaster"])) return "Keep it on the coffee shortlist.";
+  if (travellerProfile.focus === "shopper" && categoryTextIncludes(category, ["shop", "market", "bakery"])) return "Worth a look while you are browsing nearby streets.";
+  if (travellerProfile.focus === "arty" && categoryTextIncludes(category, ["museum", "gallery", "archaeolog", "art"])) return "Good fit for a culture-led day.";
+  if (travellerProfile.focus === "beachy" && categoryTextIncludes(category, ["beach", "harbor", "water"])) return "Save it for a slower light-and-water break.";
   return "";
 }
 
