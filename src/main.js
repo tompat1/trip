@@ -8,6 +8,7 @@ import { renderLandingView } from "./views/LandingView.js";
 import { renderLiveView, renderProfileView } from "./views/LiveView.js";
 import { renderBottomNav } from "./components/BottomNav.js";
 import { renderLightbox } from "./components/Lightbox.js";
+import { renderEventDrawer } from "./components/EventDrawer.js";
 import "./styles.css";
 
 let activeMaps = new Map();
@@ -38,12 +39,14 @@ function render() {
   // Include floating bottom navigation dock for non-landing views
   const bottomNavHtml = view !== "landing" ? renderBottomNav() : "";
   const lightboxHtml = renderLightbox();
+  const drawerHtml = renderEventDrawer();
 
   appEl.innerHTML = `
     <div class="app-view app-view--${view}">
       ${viewHtml}
       ${bottomNavHtml}
       ${lightboxHtml}
+      ${drawerHtml}
     </div>
   `;
 
@@ -199,47 +202,45 @@ document.addEventListener("click", (e) => {
         state.createCustomTrip({ destination, dates, flag });
       }
     }
-    else if (action === "add-event") {
-      const title = prompt("Activity title (e.g. Louvre Museum Visit):", "Louvre Museum Visit");
-      if (title) {
-        const dayStr = prompt("Day index (0 = Sat, 1 = Sun, 2 = Mon...):", "0");
-        const startTime = prompt("Start time (e.g. 14:00):", "14:00");
-        const endTime = prompt("End time (e.g. 16:00):", "16:00");
-        const location = prompt("Location/Neighborhood:", "Paris");
-        const colorScheme = prompt("Pick event color (peach, blue, mint, pink, green, lavender, gold):", "blue");
-        const reminder = prompt("Set alarm/reminder (15m, 30m, 1h, or leave empty):", "15m");
-        state.addCalendarEvent(state.activeTripId, {
-          title,
-          dayIndex: parseInt(dayStr, 10) || 0,
-          startTime,
-          endTime,
-          location,
-          colorScheme: colorScheme || "peach",
-          reminder: reminder ? reminder.trim() : ""
-        });
-      }
-    }
-    else if (action === "edit-calendar-event") {
+    else if (action === "open-edit-drawer") {
       const eventId = target.dataset.eventId;
       const trip = state.activeTrip;
       const evt = (trip.calendarEvents || []).find((e) => e.id === eventId);
       if (evt) {
-        const title = prompt("Edit activity title:", evt.title);
-        if (title) {
-          const startTime = prompt("Start time (e.g. 10:00):", evt.startTime);
-          const endTime = prompt("End time (e.g. 12:00):", evt.endTime);
-          const location = prompt("Location:", evt.location || "");
-          const colorScheme = prompt("Pick event color (peach, blue, mint, pink, green, lavender, gold):", evt.colorScheme || "peach");
-          const reminder = prompt("Set alarm/reminder (15m, 30m, 1h, or leave empty):", evt.reminder || "");
-          state.updateCalendarEvent(state.activeTripId, eventId, {
-            title: title.trim(),
-            startTime: startTime || evt.startTime,
-            endTime: endTime || evt.endTime,
-            location: location || evt.location,
-            colorScheme: colorScheme || evt.colorScheme,
-            reminder: reminder ? reminder.trim() : ""
-          });
-        }
+        state.openEventDrawer("edit", evt);
+      }
+    }
+    else if (action === "click-calendar-col") {
+      if (e.target.closest(".event-card") || e.target.closest(".event-action-btn")) return;
+      const col = target.closest(".calendar-col");
+      const dayIndex = parseInt(col.dataset.colDay, 10) || 0;
+      const rect = col.getBoundingClientRect();
+      const offsetY = Math.max(0, Math.min(rect.height, e.clientY - rect.top));
+      const percentY = offsetY / rect.height;
+      const hourFloat = 8 + percentY * 15;
+      const startH = Math.floor(hourFloat);
+      const startM = Math.round(((hourFloat - startH) * 60) / 30) * 30;
+      const startTime = `${String(startH).padStart(2, '0')}:${String(startM % 60).padStart(2, '0')}`;
+      const endTime = `${String(Math.min(23, startH + 2)).padStart(2, '0')}:${String(startM % 60).padStart(2, '0')}`;
+
+      state.openEventDrawer("create", {
+        dayIndex,
+        startTime,
+        endTime,
+        title: "",
+        location: "",
+        colorScheme: "peach",
+        reminder: "none"
+      });
+    }
+    else if (action === "close-event-drawer") {
+      state.closeEventDrawer();
+    }
+    else if (action === "delete-event-from-drawer") {
+      const eventId = target.dataset.eventId;
+      if (eventId && confirm("Delete this activity?")) {
+        state.deleteCalendarEvent(state.activeTripId, eventId);
+        state.closeEventDrawer();
       }
     }
     else if (action === "delete-calendar-event") {
@@ -463,6 +464,77 @@ document.addEventListener("mouseup", () => {
     });
   }
   resizerState = null;
+});
+
+// Event Drawer Form Submission & Interactive Pills
+document.addEventListener("submit", (e) => {
+  if (e.target.id === "event-drawer-form") {
+    e.preventDefault();
+    const form = e.target;
+    const eventId = form.eventId.value;
+    const title = form.title.value.trim();
+    const location = form.location.value.trim();
+    const dayIndex = parseInt(form.dayIndex.value, 10) || 0;
+    const startTime = form.startTime.value || "10:00";
+    const endTime = form.endTime.value || "12:00";
+    const colorScheme = form.colorScheme.value || "peach";
+    const reminder = form.reminder.value || "none";
+
+    if (!title) return;
+
+    if (eventId) {
+      state.updateCalendarEvent(state.activeTripId, eventId, {
+        title,
+        location,
+        dayIndex,
+        startTime,
+        endTime,
+        colorScheme,
+        reminder: reminder === "none" ? "" : reminder
+      });
+    } else {
+      state.addCalendarEvent(state.activeTripId, {
+        title,
+        location,
+        dayIndex,
+        startTime,
+        endTime,
+        colorScheme,
+        reminder: reminder === "none" ? "" : reminder
+      });
+    }
+    state.closeEventDrawer();
+  }
+});
+
+// Drawer Pill & Color Selection Click Listener
+document.addEventListener("click", (e) => {
+  const dayPill = e.target.closest("[data-drawer-day]");
+  if (dayPill) {
+    const dayIdx = dayPill.dataset.drawerDay;
+    const input = document.getElementById("drawer-day-index");
+    if (input) input.value = dayIdx;
+    dayPill.parentElement.querySelectorAll(".drawer-pill").forEach((p) => p.classList.remove("is-selected"));
+    dayPill.classList.add("is-selected");
+  }
+
+  const colorDot = e.target.closest("[data-drawer-color]");
+  if (colorDot) {
+    const color = colorDot.dataset.drawerColor;
+    const input = document.getElementById("drawer-color-scheme");
+    if (input) input.value = color;
+    colorDot.parentElement.querySelectorAll(".color-picker-dot").forEach((d) => d.classList.remove("is-active"));
+    colorDot.classList.add("is-active");
+  }
+
+  const reminderPill = e.target.closest("[data-drawer-reminder]");
+  if (reminderPill) {
+    const reminder = reminderPill.dataset.drawerReminder;
+    const input = document.getElementById("drawer-reminder");
+    if (input) input.value = reminder;
+    reminderPill.parentElement.querySelectorAll(".drawer-pill").forEach((p) => p.classList.remove("is-selected"));
+    reminderPill.classList.add("is-selected");
+  }
 });
 
 // Initialize reactive state listener & initial render

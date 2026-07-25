@@ -53,11 +53,8 @@ export function renderCalendarGrid() {
         </div>
       </div>
 
-      <!-- Quick Add & Filter FABs -->
+      <!-- Filter FAB -->
       <div class="calendar-fabs-group">
-        <button class="calendar-fab-btn fab-add" title="Add new event" data-action="add-event">
-          <span>+ Add</span>
-        </button>
         <button class="calendar-fab-btn fab-filter" title="Filter calendar events" data-action="calendar-filter">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/>
@@ -85,6 +82,7 @@ function renderEventCard(evt) {
          draggable="true"
          data-event-id="${evt.id}"
          data-day-index="${evt.dayIndex}"
+         data-action="open-edit-drawer"
          style="top: ${Math.max(0, topPercent)}%; height: ${Math.min(100, heightPercent)}%;"
          title="${escapeHtml(evt.title)} (${evt.startTime} - ${evt.endTime})">
       <div class="event-card__header">

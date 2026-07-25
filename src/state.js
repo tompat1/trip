@@ -44,10 +44,21 @@ class AppState {
     };
 
     this.activeLightboxMedia = null;
+    this.activeEventDrawer = null; // { mode: 'create'|'edit', event: {} }
     this.listeners = new Set();
     this.checkBackendHealth();
     this.loadD1Trips();
     this.refreshWeather();
+  }
+
+  openEventDrawer(mode = "create", event = {}) {
+    this.activeEventDrawer = { mode, event };
+    this.notify();
+  }
+
+  closeEventDrawer() {
+    this.activeEventDrawer = null;
+    this.notify();
   }
 
   async loadD1Trips() {
