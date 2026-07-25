@@ -229,6 +229,13 @@ document.addEventListener("input", (e) => {
   }
 });
 
+// Trip mode checkbox listener
+document.addEventListener("change", (e) => {
+  if (e.target.dataset.action === "toggle-trip-mode") {
+    state.toggleTripMode(e.target.checked);
+  }
+});
+
 // Initialize reactive state listener & initial render
 state.subscribe(render);
 render();

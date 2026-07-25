@@ -6,7 +6,7 @@ class AppState {
   constructor() {
     this.activeView = "home"; // "home" | "live" | "plan" | "search" | "profile" | "landing"
     this.activeTripId = "paris"; // "paris" | "crete"
-    this.tripMode = true;
+    this.tripMode = false; // Default: Planning mode ("Before you go" / Just got home from Crete!)
     
     // Plan view settings
     this.planSubTab = "plan"; // "overview" | "plan" | "explore" | "journal" | "story"

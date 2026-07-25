@@ -51,7 +51,7 @@ export function renderHeader() {
       <div class="trip-context-card">
         <div class="trip-context-card__header">
           <div class="card-eyebrow-row">
-            <span class="eyebrow-pill">MVP 2 · LIVE JOURNEY</span>
+            <span class="eyebrow-pill">${state.tripMode ? 'MVP 2 · LIVE JOURNEY' : 'MVP 2 · PLANNING MODE'}</span>
             ${health.bindings.d1 ? '<span class="d1-ready-badge">⚡ D1 Database Ready</span>' : ''}
           </div>
 
@@ -73,11 +73,11 @@ export function renderHeader() {
               <button class="btn btn--primary btn--sm" data-action="create-trip" title="Create a new custom trip">
                 <span>+ New trip</span>
               </button>
-              <label class="trip-mode-toggle" title="Toggle Trip Mode">
+              <label class="trip-mode-toggle" title="Toggle Trip Mode (Live vs Planning)">
                 <span class="trip-mode-label">Trip Mode</span>
                 <input type="checkbox" ${state.tripMode ? 'checked' : ''} data-action="toggle-trip-mode" />
                 <span class="toggle-slider">
-                  <span class="toggle-knob">ON</span>
+                  <span class="toggle-knob">${state.tripMode ? 'ON' : 'OFF'}</span>
                 </span>
               </label>
             </div>

@@ -3,7 +3,7 @@ import { renderHeader } from "../components/Header.js";
 
 export function renderHomeView() {
   const trip = state.activeTrip;
-  const isCrete = trip.id === "crete";
+  const isLiveMode = state.tripMode;
   const checklist = state.checklists[trip.id] || trip.checklist;
 
   return `
@@ -11,20 +11,20 @@ export function renderHomeView() {
       ${renderHeader()}
 
       <div class="home-page__content">
-        <!-- Morning Greeting & Status Header -->
+        <!-- Morning Greeting & Dynamic Mode Status Header -->
         <section class="greeting-row">
           <div class="greeting-text">
             <h2 class="greeting-title">Good morning, Thomas 👋</h2>
             <p class="greeting-status">
-              ${isCrete 
-                ? `<span class="live-pulse-dot"></span> <strong>You are in Heraklion, Crete</strong> <span class="status-meta">Clear sky + 28°C + 10:15 AM</span>` 
-                : `<span class="upcoming-badge">17 days until your trip to Paris</span>`}
+              ${isLiveMode 
+                ? `<span class="live-pulse-dot"></span> <strong>You are in ${escapeHtml(trip.destination)}</strong> <span class="status-meta">Clear sky + 28°C + 10:15 AM</span>` 
+                : `<span class="upcoming-badge">17 days until your trip to ${escapeHtml(trip.destination.split(',')[0])}</span>`}
             </p>
           </div>
 
           <div class="upcoming-card" data-action="go-plan">
             <div class="upcoming-card__info">
-              <span class="upcoming-card__label">Upcoming</span>
+              <span class="upcoming-card__label">${isLiveMode ? 'Current Stop' : 'Upcoming'}</span>
               <h3 class="upcoming-card__title">${escapeHtml(trip.upcomingActivity.title)} &rsaquo;</h3>
               <p class="upcoming-card__time">${escapeHtml(trip.upcomingActivity.subtitle)}</p>
             </div>
@@ -32,73 +32,9 @@ export function renderHomeView() {
           </div>
         </section>
 
-        <!-- Main Dashboard Widgets Grid -->
-        <div class="dashboard-grid">
-          <!-- Widget 1: Continue Planning Checklist -->
-          <div class="dashboard-card planning-widget">
-            <div class="dashboard-card__header">
-              <h3 class="dashboard-card__title">Continue planning</h3>
-            </div>
-            <ul class="checklist-items">
-              ${checklist.map(item => `
-                <li class="checklist-item ${item.completed ? 'is-completed' : ''}" data-action="toggle-check" data-item-id="${item.id}">
-                  <span class="checkbox-circle ${item.completed ? 'is-checked' : ''}">
-                    ${item.completed ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>' : ''}
-                  </span>
-                  <span class="checklist-label">${escapeHtml(item.label)}</span>
-                  <button class="btn btn--icon btn--ghost item-more" aria-label="Options">⋮</button>
-                </li>
-              `).join('')}
-            </ul>
-            ${isCrete ? '<button class="btn btn--outline btn--sm full-width-btn" data-action="view-checklist">View full checklist</button>' : ''}
-          </div>
+        ${isLiveMode ? renderLiveJourneyModules(trip) : renderPlanningModules(trip, checklist)}
 
-          <!-- Widget 2: Leaflet Interactive Map Preview Card -->
-          <div class="dashboard-card map-widget">
-            <div id="home-map-container" class="home-map"></div>
-            <div class="map-card-footer">
-              <span class="map-location-badge">📍 You are near: Lions Square</span>
-              <span class="map-accuracy-pill">🎯 Accuracy: 12m</span>
-            </div>
-          </div>
-
-          <!-- Widget 3: Weather Context Card -->
-          <div class="dashboard-card weather-widget">
-            <div class="dashboard-card__header">
-              <h3 class="dashboard-card__title">Weather in ${escapeHtml(trip.destination.split(',')[0])}</h3>
-              <button class="btn btn--icon btn--ghost">⋮</button>
-            </div>
-            <div class="weather-main">
-              <div class="weather-current">
-                <span class="weather-icon">☀️</span>
-                <div class="weather-temp-wrap">
-                  <span class="weather-degree">${trip.weather.temp}</span>
-                  <span class="weather-condition">${trip.weather.condition}</span>
-                  ${trip.weather.feelsLike ? `<span class="weather-feels">Feels like ${trip.weather.feelsLike}</span>` : ''}
-                </div>
-              </div>
-
-              <div class="weather-forecast-pills">
-                ${trip.weather.forecast.map(f => `
-                  <div class="forecast-pill">
-                    <span class="forecast-day">${f.day}</span>
-                    <span class="forecast-icon">☀️</span>
-                    <span class="forecast-temp">${f.temp}</span>
-                  </div>
-                `).join('')}
-              </div>
-
-              ${isCrete ? `
-                <div class="weather-meta-row">
-                  <div class="meta-item"><span class="meta-label">Local time</span><span class="meta-val">${trip.weather.localTime} GMT+3</span></div>
-                  <div class="meta-item"><span class="meta-label">Currency</span><span class="meta-val">${trip.weather.currency}</span></div>
-                </div>
-              ` : ''}
-            </div>
-          </div>
-        </div>
-
-        <!-- Section: Ideas for your trip -->
+        <!-- Common Section: Ideas for your trip -->
         <section class="home-section">
           <div class="section-header">
             <h3 class="section-title">Ideas for your trip</h3>
@@ -125,7 +61,7 @@ export function renderHomeView() {
           </div>
         </section>
 
-        <!-- Section: Events during your stay -->
+        <!-- Common Section: Events during your stay -->
         <section class="home-section">
           <div class="section-header">
             <h3 class="section-title">Events during your stay</h3>
@@ -144,65 +80,7 @@ export function renderHomeView() {
           </div>
         </section>
 
-        ${isCrete ? `
-          <!-- Section: Nearby Now (Live in destination) -->
-          <section class="home-section">
-            <div class="section-header">
-              <h3 class="section-title">Nearby now</h3>
-            </div>
-            <div class="nearby-grid">
-              ${trip.nearbyNow.map(nb => `
-                <div class="nearby-card">
-                  <span class="nearby-icon">${nb.icon}</span>
-                  <div class="nearby-info">
-                    <h4 class="nearby-title">${escapeHtml(nb.title)}</h4>
-                    <p class="nearby-dist">${escapeHtml(nb.distance)}</p>
-                  </div>
-                </div>
-              `).join('')}
-            </div>
-            <button class="btn btn--outline btn--sm full-width-btn margin-top-sm" data-action="go-search">Explore more near you</button>
-          </section>
-
-          <!-- Section: Live Travel Info -->
-          <section class="home-section">
-            <div class="section-header">
-              <h3 class="section-title">Live travel info</h3>
-            </div>
-            <div class="live-info-grid">
-              ${trip.liveInfo.map(info => `
-                <div class="live-info-card">
-                  <span class="live-info-icon">${info.icon}</span>
-                  <div class="live-info-body">
-                    <h4 class="live-info-title">${escapeHtml(info.title)}</h4>
-                    <p class="live-info-sub">${escapeHtml(info.subtitle)}</p>
-                  </div>
-                  <span class="badge ${info.statusClass}">${info.status}</span>
-                </div>
-              `).join('')}
-            </div>
-            <button class="btn btn--outline btn--sm full-width-btn margin-top-sm" data-action="go-live">View all live updates</button>
-          </section>
-
-          <!-- Section: Transport Options -->
-          <section class="home-section">
-            <div class="section-header">
-              <h3 class="section-title">Transport options</h3>
-            </div>
-            <div class="transport-grid">
-              ${trip.transportOptions.map(tr => `
-                <div class="transport-card">
-                  <span class="transport-icon">${tr.icon}</span>
-                  <div class="transport-body">
-                    <h4 class="transport-title">${escapeHtml(tr.title)}</h4>
-                    <p class="transport-detail">${escapeHtml(tr.detail)}</p>
-                  </div>
-                </div>
-              `).join('')}
-            </div>
-            <button class="btn btn--outline btn--sm full-width-btn margin-top-sm" data-action="go-plan">Plan your route</button>
-          </section>
-        ` : ''}
+        ${!isLiveMode ? renderLiveJourneyModules(trip) : renderPlanningModules(trip, checklist)}
 
         <!-- Quick Capture Bar -->
         <section class="quick-capture-section">
@@ -224,15 +102,118 @@ export function renderHomeView() {
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
               <span>Moment</span>
             </button>
-            ${isCrete ? `
-              <button class="quick-btn" data-action="quick-expense">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
-                <span>Expense</span>
-              </button>
-            ` : ''}
           </div>
         </section>
       </div>
+    </div>
+  `;
+}
+
+function renderPlanningModules(trip, checklist) {
+  return `
+    <div class="dashboard-grid">
+      <!-- Widget 1: Continue Planning Checklist -->
+      <div class="dashboard-card planning-widget">
+        <div class="dashboard-card__header">
+          <h3 class="dashboard-card__title">Continue planning</h3>
+        </div>
+        <ul class="checklist-items">
+          ${checklist.map(item => `
+            <li class="checklist-item ${item.completed ? 'is-completed' : ''}" data-action="toggle-check" data-item-id="${item.id}">
+              <span class="checkbox-circle ${item.completed ? 'is-checked' : ''}">
+                ${item.completed ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>' : ''}
+              </span>
+              <span class="checklist-label">${escapeHtml(item.label)}</span>
+              <button class="btn btn--icon btn--ghost item-more" aria-label="Options">⋮</button>
+            </li>
+          `).join('')}
+        </ul>
+      </div>
+
+      <!-- Widget 2: Leaflet Interactive Map Preview Card -->
+      <div class="dashboard-card map-widget">
+        <div id="home-map-container" class="home-map"></div>
+        <div class="map-card-footer">
+          <span class="map-location-badge">📍 Map Preview: ${escapeHtml(trip.destination)}</span>
+          <button class="btn btn--link btn--sm" data-action="go-live">Full Map &rsaquo;</button>
+        </div>
+      </div>
+
+      <!-- Widget 3: Weather Context Card -->
+      <div class="dashboard-card weather-widget">
+        <div class="dashboard-card__header">
+          <h3 class="dashboard-card__title">Weather in ${escapeHtml(trip.destination.split(',')[0])}</h3>
+          <button class="btn btn--icon btn--ghost">⋮</button>
+        </div>
+        <div class="weather-main">
+          <div class="weather-current">
+            <span class="weather-icon">☀️</span>
+            <div class="weather-temp-wrap">
+              <span class="weather-degree">${trip.weather.temp}</span>
+              <span class="weather-condition">${trip.weather.condition}</span>
+            </div>
+          </div>
+          <div class="weather-forecast-pills">
+            ${trip.weather.forecast.map(f => `
+              <div class="forecast-pill">
+                <span class="forecast-day">${f.day}</span>
+                <span class="forecast-icon">☀️</span>
+                <span class="forecast-temp">${f.temp}</span>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderLiveJourneyModules(trip) {
+  const nearby = trip.nearbyNow || [];
+  const liveInfo = trip.liveInfo || [];
+
+  return `
+    <div class="live-modules-wrapper">
+      <!-- Section: Nearby Now -->
+      ${nearby.length ? `
+        <section class="home-section mb-md">
+          <div class="section-header">
+            <h3 class="section-title">Nearby now</h3>
+          </div>
+          <div class="nearby-grid">
+            ${nearby.map(nb => `
+              <div class="nearby-card">
+                <span class="nearby-icon">${nb.icon}</span>
+                <div class="nearby-info">
+                  <h4 class="nearby-title">${escapeHtml(nb.title)}</h4>
+                  <p class="nearby-dist">${escapeHtml(nb.distance)}</p>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </section>
+      ` : ''}
+
+      <!-- Section: Live Travel Info -->
+      ${liveInfo.length ? `
+        <section class="home-section mb-md">
+          <div class="section-header">
+            <h3 class="section-title">Live travel info</h3>
+          </div>
+          <div class="live-info-grid">
+            ${liveInfo.map(info => `
+              <div class="live-info-card">
+                <span class="live-info-icon">${info.icon}</span>
+                <div class="live-info-body">
+                  <h4 class="live-info-title">${escapeHtml(info.title)}</h4>
+                  <p class="live-info-sub">${escapeHtml(info.subtitle)}</p>
+                </div>
+                <span class="badge ${info.statusClass}">${info.status}</span>
+              </div>
+            `).join('')}
+          </div>
+        </section>
+      ` : ''}
     </div>
   `;
 }
