@@ -234,18 +234,29 @@ document.addEventListener("click", (e) => {
         state.openEventDrawer("edit", evt);
       }
     }
-    else if (action === "click-calendar-col") {
+    else if (action === "add-event-for-day" || action === "click-calendar-col") {
       if (e.target.closest(".event-card") || e.target.closest(".event-action-btn")) return;
+      
+      let dayIndex = 0;
+      let startTime = "10:00";
+      let endTime = "12:00";
+
+      const dayAttr = target.dataset.dayIndex || target.dataset.colDay;
+      if (dayAttr !== undefined && dayAttr !== null) {
+        dayIndex = parseInt(dayAttr, 10);
+      }
+
       const col = target.closest(".calendar-col");
-      const dayIndex = parseInt(col.dataset.colDay, 10) || 0;
-      const rect = col.getBoundingClientRect();
-      const offsetY = Math.max(0, Math.min(rect.height, e.clientY - rect.top));
-      const percentY = offsetY / rect.height;
-      const hourFloat = 8 + percentY * 15;
-      const startH = Math.floor(hourFloat);
-      const startM = Math.round(((hourFloat - startH) * 60) / 30) * 30;
-      const startTime = `${String(startH).padStart(2, '0')}:${String(startM % 60).padStart(2, '0')}`;
-      const endTime = `${String(Math.min(23, startH + 2)).padStart(2, '0')}:${String(startM % 60).padStart(2, '0')}`;
+      if (col) {
+        const rect = col.getBoundingClientRect();
+        const offsetY = Math.max(0, Math.min(rect.height, e.clientY - rect.top));
+        const percentY = offsetY / rect.height;
+        const hourFloat = 8 + percentY * 15;
+        const startH = Math.floor(hourFloat);
+        const startM = Math.round(((hourFloat - startH) * 60) / 30) * 30;
+        startTime = `${String(startH).padStart(2, '0')}:${String(startM % 60).padStart(2, '0')}`;
+        endTime = `${String(Math.min(23, startH + 2)).padStart(2, '0')}:${String(startM % 60).padStart(2, '0')}`;
+      }
 
       state.openEventDrawer("create", {
         dayIndex,

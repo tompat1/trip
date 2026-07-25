@@ -246,11 +246,7 @@ function renderVerticalTimeline(trip) {
             </div>
 
             <div class="timeline-day-events">
-              ${dayEvents.length === 0 ? `
-                <div class="timeline-empty-slot" data-action="click-calendar-col" data-col-day="${dayIdx}">
-                  <span>${renderIcon("plus")} Add activity for ${dayLabel}</span>
-                </div>
-              ` : dayEvents.map((evt) => `
+              ${dayEvents.map((evt) => `
                 <div class="timeline-event-row" data-action="open-edit-drawer" data-event-id="${evt.id}">
                   <div class="timeline-node-point">
                     <span class="timeline-node-dot timeline-dot--${evt.colorScheme || 'peach'}"></span>
@@ -268,6 +264,10 @@ function renderVerticalTimeline(trip) {
                   </div>
                 </div>
               `).join('')}
+
+              <button class="timeline-empty-slot" data-action="add-event-for-day" data-day-index="${dayIdx}">
+                <span>${renderIcon("plus")} Add activity for ${dayLabel}</span>
+              </button>
             </div>
           </div>
         `;
