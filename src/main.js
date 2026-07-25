@@ -271,6 +271,16 @@ document.addEventListener("click", (e) => {
     else if (action === "close-event-drawer") {
       state.closeEventDrawer();
     }
+    else if (action === "save-event-from-drawer") {
+      const form = document.getElementById("event-drawer-form");
+      if (form) {
+        if (typeof form.requestSubmit === "function") {
+          form.requestSubmit();
+        } else {
+          form.dispatchEvent(new Event("submit", { cancelable: true, bubbles: true }));
+        }
+      }
+    }
     else if (action === "delete-event-from-drawer") {
       const eventId = target.dataset.eventId;
       if (eventId && confirm("Delete this activity?")) {
@@ -592,8 +602,12 @@ document.addEventListener("click", (e) => {
     const color = colorDot.dataset.drawerColor;
     const input = document.getElementById("drawer-color-scheme");
     if (input) input.value = color;
-    colorDot.parentElement.querySelectorAll(".color-picker-dot").forEach((d) => d.classList.remove("is-active"));
+    colorDot.parentElement.querySelectorAll(".drawer-color-dot").forEach((d) => {
+      d.classList.remove("is-active");
+      d.innerHTML = "";
+    });
     colorDot.classList.add("is-active");
+    colorDot.innerHTML = renderIcon("check");
   }
 
   const reminderPill = e.target.closest("[data-drawer-reminder]");
