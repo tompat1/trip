@@ -101,6 +101,7 @@ function renderJournalSubTab() {
   const moments = getMomentsForTrip(state.activeTrip.id);
   const mediaMoments = moments.filter(m => m.media_url);
   const noteMoments = moments.filter(m => !m.media_url);
+  const mediaGroups = groupMediaMoments(mediaMoments);
 
   return `
     <div class="journal-subtab-view" style="padding: 8px 4px 24px 4px;">
@@ -120,23 +121,7 @@ function renderJournalSubTab() {
             <p style="font-size: 0.82rem; color: var(--ink-muted); margin: 0; max-width: 320px; line-height: 1.4;">Use Quick Capture on the Home dashboard to record photos, videos, and journey notes!</p>
           </div>
         ` : `
-          <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px;">
-            ${mediaMoments.map(m => `
-              <div class="journal-media-card" data-action="open-lightbox" data-moment-id="${m.id}" style="background: var(--paper-card); border: 1px solid var(--line); border-radius: var(--radius-md); overflow: hidden; cursor: pointer; box-shadow: var(--shadow-sm);">
-                <div class="journal-media-thumb" style="height: 110px; background-image: url('${m.media_url}'); background-size: cover; background-position: center; position: relative;">
-                  <span class="media-type-badge voice-mono" style="position: absolute; bottom: 6px; right: 6px; background: rgba(23,24,23,0.8); color: #fff; padding: 2px 8px; border-radius: var(--radius-pill); font-size: 0.68rem; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">
-                    ${m.type === 'video' ? renderIcon("video") : renderIcon("camera")} ${m.type}
-                  </span>
-                  <button class="journal-media-edit-btn" data-action="edit-journal-media" data-moment-id="${m.id}" title="Edit place tags" aria-label="Edit place tags">${renderIcon("pencil")}</button>
-                </div>
-                <div class="journal-media-body" style="padding: 10px;">
-                  <h4 class="journal-media-title" style="font-size: 0.85rem; font-weight: 700; margin: 0 0 2px 0; color: var(--ink); truncate;">${escapeHtml(m.title || 'Trip Moment')}</h4>
-                  <p class="journal-media-date voice-mono" style="font-size: 0.72rem; color: var(--ink-muted); margin: 0;">${escapeHtml(m.date || 'Oct 2026')}</p>
-                  ${renderMomentTags(m)}
-                </div>
-              </div>
-            `).join('')}
-          </div>
+          ${mediaGroups.map(renderJournalMediaGroup).join("")}
         `}
       </div>
 
@@ -162,6 +147,80 @@ function renderJournalSubTab() {
       </div>
     </div>
   `;
+}
+
+function groupMediaMoments(mediaMoments = []) {
+  const groups = new Map();
+  mediaMoments.forEach((moment) => {
+    const key = moment.groupId || moment.id;
+    if (!groups.has(key)) {
+      groups.set(key, {
+        id: key,
+        title: moment.groupTitle || moment.groupPlaceTitle || moment.placeTitle || "Media",
+        date: moment.groupCapturedAt || moment.date || "",
+        geoLabel: moment.groupGeoLabel || moment.geoLabel || "",
+        placeTitle: moment.groupPlaceTitle || moment.placeTitle || "",
+        category: moment.groupCategory || moment.placeCategory || "",
+        moments: [],
+      });
+    }
+    groups.get(key).moments.push(moment);
+  });
+  return Array.from(groups.values());
+}
+
+function renderJournalMediaGroup(group) {
+  const isBatch = group.moments.length > 1;
+  const meta = [
+    group.placeTitle || group.geoLabel,
+    group.category,
+    isBatch ? `${group.moments.length} items` : "",
+  ].filter(Boolean).join(" · ");
+
+  return `
+    <section class="journal-media-group ${isBatch ? 'is-batch' : ''}">
+      ${isBatch ? `
+        <div class="journal-media-group__header">
+          <div>
+            <h3>${escapeHtml(group.title || "Media batch")}</h3>
+            <p>${escapeHtml(meta || "Grouped by upload time")}</p>
+          </div>
+          <span class="voice-mono">${escapeHtml(formatJournalGroupDate(group.date))}</span>
+        </div>
+      ` : ""}
+      <div class="journal-media-group__grid">
+        ${group.moments.map(renderJournalMediaCard).join("")}
+      </div>
+    </section>
+  `;
+}
+
+function renderJournalMediaCard(m) {
+  return `
+    <div class="journal-media-card" data-action="open-lightbox" data-moment-id="${m.id}" style="background: var(--paper-card); border: 1px solid var(--line); border-radius: var(--radius-md); overflow: hidden; cursor: pointer; box-shadow: var(--shadow-sm);">
+      <div class="journal-media-thumb" style="height: 110px; background-image: url('${m.media_url}'); background-size: cover; background-position: center; position: relative;">
+        <span class="media-type-badge voice-mono" style="position: absolute; bottom: 6px; right: 6px; background: rgba(23,24,23,0.8); color: #fff; padding: 2px 8px; border-radius: var(--radius-pill); font-size: 0.68rem; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">
+          ${m.type === 'video' ? renderIcon("video") : renderIcon("camera")} ${escapeHtml(m.type)}
+        </span>
+        ${m.groupFileCount > 1 ? `
+          <span class="journal-media-batch-badge voice-mono">${escapeHtml(String(m.groupFileCount))} batch</span>
+        ` : ""}
+        <button class="journal-media-edit-btn" data-action="edit-journal-media" data-moment-id="${m.id}" title="Edit place tags" aria-label="Edit place tags">${renderIcon("pencil")}</button>
+      </div>
+      <div class="journal-media-body" style="padding: 10px;">
+        <h4 class="journal-media-title" style="font-size: 0.85rem; font-weight: 700; margin: 0 0 2px 0; color: var(--ink);">${escapeHtml(m.title || 'Trip Moment')}</h4>
+        <p class="journal-media-date voice-mono" style="font-size: 0.72rem; color: var(--ink-muted); margin: 0;">${escapeHtml(m.date || 'Oct 2026')}</p>
+        ${renderMomentTags(m)}
+      </div>
+    </div>
+  `;
+}
+
+function formatJournalGroupDate(value) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
 function renderStorySubTab(trip) {

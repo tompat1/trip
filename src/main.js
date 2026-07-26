@@ -412,7 +412,6 @@ document.addEventListener("click", async (e) => {
     else if (action === "submit-quick-capture") {
       const titleInput = document.getElementById("capture-title");
       const textInput = document.getElementById("capture-text");
-      const selectedType = document.querySelector('input[name="captureType"]:checked')?.value || "note";
       const title = titleInput ? titleInput.value.trim() : "";
       const text = textInput ? textInput.value.trim() : "";
       if (!title) {
@@ -423,8 +422,8 @@ document.addEventListener("click", async (e) => {
         tripId: state.quickCaptureTripId || state.activeTripId,
         title,
         text,
-        type: selectedType,
-        media_url: selectedType === "note" ? "" : "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=600&q=80"
+        type: "note",
+        media_url: ""
       });
       const receiverTrip = state.getAllTrips().find((trip) => trip.id === (state.quickCaptureTripId || state.activeTripId)) || state.activeTrip;
       state.toggleQuickCapture(false);
@@ -925,8 +924,48 @@ function inferMomentCategory(categories = []) {
   return "";
 }
 
+function readFileAsDataUrl(file, onProgress = () => {}) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onprogress = (evt) => {
+      if (!evt.lengthComputable) return;
+      onProgress(evt.loaded / evt.total);
+    };
+    reader.onload = (evt) => resolve(evt.target.result);
+    reader.onerror = () => reject(reader.error || new Error("file-read-failed"));
+    reader.readAsDataURL(file);
+  });
+}
+
+function createMediaGroup(files = [], receiverTrip) {
+  const timestamp = new Date();
+  return {
+    groupId: `media_group_${timestamp.getTime()}_${Math.random().toString(36).slice(2, 8)}`,
+    groupTitle: `${receiverTrip.destination} media batch`,
+    capturedAt: timestamp.toISOString(),
+    fileCount: files.length,
+  };
+}
+
+function buildGroupedMomentTitle(file, selectedType, index, total, group) {
+  if (total <= 1) return `Captured ${selectedType === "video" ? "Video" : "Photo"}`;
+  const base = group.groupTitle || "Media batch";
+  return `${base} ${index + 1}/${total}`;
+}
+
+function summarizeMediaGroup(moments = [], fallbackTrip) {
+  const place = moments.find((moment) => moment.placeTitle)?.placeTitle;
+  const geo = moments.find((moment) => moment.geoLabel)?.geoLabel;
+  const category = moments.find((moment) => moment.placeCategory)?.placeCategory;
+  return {
+    groupPlaceTitle: place || "",
+    groupGeoLabel: geo || fallbackTrip.destination,
+    groupCategory: category || "",
+  };
+}
+
 // Trip mode & dropdown change listener
-document.addEventListener("change", (e) => {
+document.addEventListener("change", async (e) => {
   if (e.target.dataset.action === "select-trip-dropdown") {
     state.setTrip(e.target.value);
   }
@@ -937,65 +976,99 @@ document.addEventListener("change", (e) => {
     state.setQuickCaptureTrip(e.target.value);
   }
   if (e.target.id === "quick-capture-file-input" && e.target.files && e.target.files[0]) {
-    const file = e.target.files[0];
-    const reader = new FileReader();
-    const selectedType = file.type.startsWith("video") ? "video" : "photo";
-    state.setQuickCaptureUpload({
-      status: "reading",
-      progress: 8,
-      fileName: file.name,
-      type: selectedType,
-    });
-    reader.onprogress = (evt) => {
-      if (!evt.lengthComputable) return;
-      const progress = Math.min(92, Math.max(8, Math.round((evt.loaded / evt.total) * 92)));
+    const files = Array.from(e.target.files).filter((file) => /^(image|video)\//.test(file.type || ""));
+    if (!files.length) return;
+
+    const receiverTripId = state.quickCaptureTripId || state.activeTripId;
+    const receiverTrip = state.getAllTrips().find((trip) => trip.id === receiverTripId) || state.activeTrip;
+    const group = createMediaGroup(files, receiverTrip);
+    const savedMoments = [];
+
+    for (let index = 0; index < files.length; index += 1) {
+      const file = files[index];
+      const selectedType = file.type.startsWith("video") ? "video" : "photo";
+      const progressLabel = files.length > 1 ? `${file.name} (${index + 1}/${files.length})` : file.name;
+      const baseProgress = Math.max(8, Math.round((index / files.length) * 92));
+
       state.setQuickCaptureUpload({
         status: "reading",
-        progress,
-        fileName: file.name,
+        progress: baseProgress,
+        fileName: progressLabel,
         type: selectedType,
       });
-    };
-    reader.onload = async (evt) => {
-      const dataUrl = evt.target.result;
-      state.setQuickCaptureUpload({
-        status: "saving",
-        progress: 96,
-        fileName: file.name,
-        type: selectedType,
+
+      try {
+        const dataUrl = await readFileAsDataUrl(file, (ratio) => {
+          const progress = Math.min(92, Math.max(8, Math.round(((index + ratio) / files.length) * 92)));
+          state.setQuickCaptureUpload({
+            status: "reading",
+            progress,
+            fileName: progressLabel,
+            type: selectedType,
+          });
+        });
+
+        state.setQuickCaptureUpload({
+          status: "saving",
+          progress: Math.min(98, Math.max(10, Math.round(((index + 0.96) / files.length) * 100))),
+          fileName: progressLabel,
+          type: selectedType,
+        });
+
+        const enrichment = selectedType === "photo"
+          ? await enrichCapturedMediaFile(file, receiverTrip).catch(() => ({ tags: ["Needs place tag"], geoSource: "manual-needed" }))
+          : { tags: ["Video"], geoSource: "video" };
+
+        const savedMoment = await state.addMoment({
+          tripId: receiverTripId,
+          groupId: group.groupId,
+          groupTitle: group.groupTitle,
+          groupCapturedAt: group.capturedAt,
+          groupFileCount: group.fileCount,
+          title: buildGroupedMomentTitle(file, selectedType, index, files.length, group),
+          text: file.name,
+          type: selectedType,
+          media_url: dataUrl,
+          ...enrichment
+        });
+        savedMoments.push(savedMoment);
+      } catch (error) {
+        state.setQuickCaptureUpload({
+          status: "error",
+          progress: 100,
+          fileName: file.name,
+          type: selectedType,
+        });
+        showToast(`Could not read ${file.name}.`);
+      }
+    }
+
+    if (savedMoments.length) {
+      const groupSummary = summarizeMediaGroup(savedMoments, receiverTrip);
+      const resolvedGroupTitle = groupSummary.groupPlaceTitle
+        ? `${groupSummary.groupPlaceTitle} media`
+        : `${groupSummary.groupGeoLabel || receiverTrip.destination} media`;
+
+      savedMoments.forEach((moment) => {
+        state.updateMoment(moment.id, {
+          ...groupSummary,
+          groupTitle: files.length > 1 ? resolvedGroupTitle : moment.groupTitle,
+        });
       });
-      const receiverTripId = state.quickCaptureTripId || state.activeTripId;
-      const receiverTrip = state.getAllTrips().find((trip) => trip.id === receiverTripId) || state.activeTrip;
-      const enrichment = selectedType === "photo"
-        ? await enrichCapturedMediaFile(file, receiverTrip).catch(() => ({ tags: ["Needs place tag"] }))
-        : { tags: ["Video"] };
-      state.addMoment({
-        tripId: receiverTripId,
-        title: `Captured ${selectedType === 'video' ? 'Video' : 'Photo'}`,
-        text: file.name,
-        type: selectedType,
-        media_url: dataUrl,
-        ...enrichment
-      });
+
       state.setQuickCaptureUpload({
         status: "complete",
         progress: 100,
-        fileName: file.name,
-        type: selectedType,
+        fileName: files.length > 1 ? `${savedMoments.length} media saved` : files[0].name,
+        type: files.length > 1 ? "batch" : savedMoments[0].type,
       });
-      showToast(`${file.name} saved to ${receiverTrip.destination} Journal.`);
+      showToast(files.length > 1
+        ? `${savedMoments.length} media saved to ${receiverTrip.destination} Journal.`
+        : `${files[0].name} saved to ${receiverTrip.destination} Journal.`);
       setTimeout(() => state.toggleQuickCapture(false), 650);
-    };
-    reader.onerror = () => {
-      state.setQuickCaptureUpload({
-        status: "error",
-        progress: 100,
-        fileName: file.name,
-        type: selectedType,
-      });
-      showToast("Could not read that media file.");
-    };
-    reader.readAsDataURL(file);
+    }
+
+    e.target.value = "";
   }
 });
 

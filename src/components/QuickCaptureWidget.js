@@ -44,34 +44,7 @@ export function renderQuickCaptureWidget() {
         </div>
 
         <form id="quick-capture-form" onsubmit="return false;">
-          <input type="file" id="quick-capture-file-input" accept="image/*,video/*" style="display: none;" />
-
-          <!-- Quick Capture Type Selector -->
-          <div class="quick-capture-types" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 16px;">
-            <label class="capture-type-card" style="cursor: pointer;">
-              <input type="radio" name="captureType" value="photo" checked style="display: none;" />
-              <div class="capture-card-body" style="background: var(--paper-card); border: 1.5px solid var(--line); border-radius: var(--radius-md); padding: 12px 8px; text-align: center; transition: all 0.2s;">
-                <div style="color: var(--red); margin-bottom: 4px; display: flex; justify-content: center;">${renderIcon("camera")}</div>
-                <span style="font-size: 0.78rem; font-weight: 700; color: var(--ink);">Photo</span>
-              </div>
-            </label>
-
-            <label class="capture-type-card" style="cursor: pointer;">
-              <input type="radio" name="captureType" value="video" style="display: none;" />
-              <div class="capture-card-body" style="background: var(--paper-card); border: 1.5px solid var(--line); border-radius: var(--radius-md); padding: 12px 8px; text-align: center; transition: all 0.2s;">
-                <div style="color: var(--blue); margin-bottom: 4px; display: flex; justify-content: center;">${renderIcon("video")}</div>
-                <span style="font-size: 0.78rem; font-weight: 700; color: var(--ink);">Video</span>
-              </div>
-            </label>
-
-            <label class="capture-type-card" style="cursor: pointer;">
-              <input type="radio" name="captureType" value="note" style="display: none;" />
-              <div class="capture-card-body" style="background: var(--paper-card); border: 1.5px solid var(--line); border-radius: var(--radius-md); padding: 12px 8px; text-align: center; transition: all 0.2s;">
-                <div style="color: var(--green); margin-bottom: 4px; display: flex; justify-content: center;">${renderIcon("fileText")}</div>
-                <span style="font-size: 0.78rem; font-weight: 700; color: var(--ink);">Note</span>
-              </div>
-            </label>
-          </div>
+          <input type="file" id="quick-capture-file-input" accept="image/*,video/*" multiple style="display: none;" />
 
           <!-- Title Input -->
           <div class="form-group mb-sm">
@@ -90,7 +63,7 @@ export function renderQuickCaptureWidget() {
               ${renderIcon("image")} ${isUploading ? "Preparing..." : "Attach Media"}
             </button>
             <button type="submit" class="btn btn--primary btn--sm" data-action="submit-quick-capture" style="flex: 1;" ${isUploading ? "disabled" : ""}>
-              ${renderIcon("check")} Save Moment
+              ${renderIcon("check")} Save Note
             </button>
           </div>
 

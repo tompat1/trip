@@ -2801,19 +2801,64 @@ textarea {
    JOURNAL & MEDIA GALLERY GRID
    ========================================================================== */
 .journal-media-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  gap: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
 }
 
 .empty-media-card {
-  grid-column: 1 / -1;
   text-align: center;
   padding: 32px 16px;
   background: var(--paper-card);
   border: 1px dashed var(--line);
   border-radius: var(--radius-md);
   color: var(--ink-muted);
+}
+
+.journal-media-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.journal-media-group.is-batch {
+  padding: 10px;
+  border: 1px solid rgba(210, 104, 43, 0.18);
+  border-radius: var(--radius-md);
+  background: rgba(210, 104, 43, 0.04);
+}
+
+.journal-media-group__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.journal-media-group__header h3 {
+  margin: 0;
+  font-size: 0.92rem;
+  font-weight: 800;
+  color: var(--ink);
+}
+
+.journal-media-group__header p {
+  margin: 2px 0 0 0;
+  color: var(--ink-muted);
+  font-size: 0.76rem;
+}
+
+.journal-media-group__header span {
+  flex: 0 0 auto;
+  color: var(--orange);
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+
+.journal-media-group__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 12px;
 }
 
 .empty-icon {
@@ -2876,6 +2921,19 @@ textarea {
   padding: 2px 6px;
   border-radius: var(--radius-pill);
   backdrop-filter: blur(4px);
+}
+
+.journal-media-batch-badge {
+  position: absolute;
+  bottom: 6px;
+  left: 6px;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  color: var(--orange);
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: var(--shadow-sm);
+  font-size: 0.64rem;
+  font-weight: 800;
 }
 
 .journal-media-body {

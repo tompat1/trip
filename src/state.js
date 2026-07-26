@@ -810,7 +810,7 @@ class AppState {
 
   async addMoment(momentInput) {
     const newMoment = {
-      id: `m_${Date.now()}`,
+      id: `m_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
       tripId: momentInput.tripId || this.quickCaptureTripId || this.activeTripId,
       date: new Date().toISOString().split("T")[0],
       ...momentInput
@@ -825,6 +825,8 @@ class AppState {
     } catch (e) {
       console.warn("D1 moment sync fallback:", e);
     }
+
+    return newMoment;
   }
 
   updateMoment(momentId, updates = {}) {
