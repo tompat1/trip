@@ -15,7 +15,7 @@ class AppState {
     this.activeDayIndex = 0;
 
     // Search view settings
-    this.searchQuery = "Best coffee shops in Copenhagen";
+    this.searchQuery = "";
     this.searchCategory = "All";
     this.searchSubFilter = "All";
     
