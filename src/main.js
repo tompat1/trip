@@ -9,6 +9,7 @@ import { renderLiveView, renderProfileView } from "./views/LiveView.js";
 import { renderBottomNav } from "./components/BottomNav.js";
 import { renderLightbox } from "./components/Lightbox.js";
 import { renderEventDrawer } from "./components/EventDrawer.js";
+import { renderTripCreateModal } from "./components/TripCreateModal.js";
 import { renderQuickCaptureWidget } from "./components/QuickCaptureWidget.js";
 import { fetchConcertsForTrip } from "./services/concertService.js";
 import { fetchOpenMeteoWeather } from "./services/weatherService.js";
@@ -45,6 +46,26 @@ const PLAN_EVENT_LOCATION_COORDS = {
   "lions square": [35.3391, 25.132],
 };
 
+const TRIP_DESTINATION_COORDS = {
+  paris: [48.8566, 2.3522],
+  france: [48.8566, 2.3522],
+  copenhagen: [55.6761, 12.5683],
+  denmark: [55.6761, 12.5683],
+  tokyo: [35.6762, 139.6503],
+  japan: [35.6762, 139.6503],
+  madrid: [40.4168, -3.7038],
+  barcelona: [41.3874, 2.1686],
+  spain: [40.4168, -3.7038],
+  heraklion: [35.3391, 25.132],
+  crete: [35.3391, 25.132],
+  london: [51.5072, -0.1276],
+  "new york": [40.7128, -74.0060],
+  rome: [41.9028, 12.4964],
+  lisbon: [38.7223, -9.1393],
+  berlin: [52.5200, 13.4050],
+  amsterdam: [52.3676, 4.9041],
+};
+
 function render() {
   const appEl = document.getElementById("app");
   if (!appEl) return;
@@ -73,6 +94,7 @@ function render() {
   const quickCaptureHtml = view !== "landing" ? renderQuickCaptureWidget() : "";
   const lightboxHtml = renderLightbox();
   const drawerHtml = renderEventDrawer();
+  const tripCreateHtml = renderTripCreateModal();
 
   appEl.innerHTML = `
     <div class="app-view app-view--${view}">
@@ -81,6 +103,7 @@ function render() {
       ${quickCaptureHtml}
       ${lightboxHtml}
       ${drawerHtml}
+      ${tripCreateHtml}
     </div>
   `;
 
@@ -265,7 +288,7 @@ function escapeHtml(str) {
 
 // Global Event Listeners Delegation
 document.addEventListener("click", async (e) => {
-  const target = e.target.closest("[data-nav], [data-action], [data-subtab], [data-viewmode], [data-day-select], [data-map-day-filter], [data-cat], [data-subfilter]");
+  const target = e.target.closest("[data-nav], [data-action], [data-subtab], [data-viewmode], [data-day-select], [data-map-day-filter], [data-trip-length], [data-cat], [data-subfilter]");
   if (!target) return;
 
   // Bottom dock navigation
@@ -477,12 +500,10 @@ document.addEventListener("click", async (e) => {
       }
     }
     else if (action === "create-trip") {
-      const destination = prompt("Enter trip destination (e.g. Tokyo, Japan):", "Tokyo, Japan");
-      if (destination) {
-        const dates = prompt("Enter travel dates (e.g. 12 – 19 Nov 2026):", "12 – 19 Nov 2026");
-        const flag = prompt("Enter flag emoji (e.g. 🇯🇵):", "🇯🇵");
-        state.createCustomTrip({ destination, dates, flag });
-      }
+      state.openTripCreate();
+    }
+    else if (action === "close-trip-create") {
+      state.closeTripCreate();
     }
     else if (action === "open-edit-drawer") {
       const eventId = target.dataset.eventId;
@@ -614,6 +635,13 @@ document.addEventListener("click", async (e) => {
     state.setMapDayFilter(currentFilter === selectedDay ? null : selectedDay);
   }
 
+  if (target.dataset.tripLength !== undefined) {
+    const daysInput = document.getElementById("trip-create-days-count");
+    if (daysInput) daysInput.value = target.dataset.tripLength;
+    target.parentElement?.querySelectorAll(".trip-create-pill").forEach((pill) => pill.classList.remove("is-selected"));
+    target.classList.add("is-selected");
+  }
+
   // Search categories
   if (target.dataset.cat) {
     state.setSearchCategory(target.dataset.cat);
@@ -641,6 +669,12 @@ document.addEventListener("keydown", (e) => {
   actionCard.click();
 });
 
+document.addEventListener("click", (e) => {
+  if (e.target.classList?.contains("trip-create-overlay")) {
+    state.closeTripCreate();
+  }
+});
+
 function updateSearchResultsInPlace(input) {
   const resultsRegion = document.getElementById("search-results-region");
   if (resultsRegion) {
@@ -659,6 +693,67 @@ function updateSearchResultsInPlace(input) {
   } else if (!input.value && clearButton) {
     clearButton.remove();
   }
+}
+
+document.addEventListener("submit", async (e) => {
+  if (e.target.id !== "trip-create-form") return;
+  e.preventDefault();
+
+  const form = e.target;
+  const errorEl = document.getElementById("trip-create-error");
+  const submitButton = form.querySelector(".trip-create-submit");
+  const destination = form.destination.value.trim();
+  const startDate = form.startDate.value;
+  const daysCount = Number(form.daysCount.value) || 7;
+
+  if (!destination) {
+    if (errorEl) errorEl.textContent = "Add a destination to create your trip.";
+    form.destination.focus();
+    return;
+  }
+
+  if (submitButton) {
+    submitButton.disabled = true;
+    submitButton.classList.add("is-loading");
+    submitButton.innerHTML = "Creating trip";
+  }
+
+  const starterTasks = [...form.querySelectorAll('input[name="starterTasks"]:checked')]
+    .map((input) => input.value);
+
+  await state.createCustomTrip({
+    destination,
+    dates: formatTripDateRange(startDate, daysCount),
+    startDate,
+    daysCount,
+    center: resolveTripCenter(destination),
+    checklist: createStarterChecklist(starterTasks),
+  });
+});
+
+function formatTripDateRange(startDate, daysCount) {
+  if (!startDate) return "Upcoming";
+  const start = new Date(`${startDate}T12:00:00`);
+  const end = new Date(start);
+  end.setDate(start.getDate() + Math.max(1, Number(daysCount) || 1) - 1);
+  const formatter = new Intl.DateTimeFormat("en-US", { day: "numeric", month: "short", year: "numeric" });
+  return `${formatter.format(start)} - ${formatter.format(end)}`;
+}
+
+function createStarterChecklist(selected = []) {
+  const tasks = {
+    stay: { id: "stay", label: "Book your stay", completed: false },
+    food: { id: "food", label: "Find food spots", completed: false },
+    map: { id: "map", label: "Build route map", completed: false },
+  };
+  const checklist = selected.map((id) => tasks[id]).filter(Boolean);
+  return checklist.length ? checklist : [{ id: "first-step", label: "Add your first plan", completed: false }];
+}
+
+function resolveTripCenter(destination = "") {
+  const key = normalizeMapLookupKey(destination);
+  const match = Object.entries(TRIP_DESTINATION_COORDS).find(([name]) => key.includes(name) || name.includes(key));
+  return match ? match[1] : [48.8566, 2.3522];
 }
 
 // Trip mode & dropdown change listener

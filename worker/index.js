@@ -2833,14 +2833,16 @@ async function tripsCreateHandler({ request, env }) {
   const destination = body.destination || "New Destination";
   const flag = body.flag || "🗺️";
   const dates = body.dates || "Upcoming";
+  const daysCount = Number(body.daysCount || body.days_count) || 7;
+  const startDate = body.startDate || body.start_date || "";
   const lat = Number(body.latitude) || 0.0;
   const lng = Number(body.longitude) || 0.0;
 
   try {
     await env.TRIP_DB.prepare(
-      `INSERT INTO user_trips (id, destination, flag, dates, latitude, longitude) VALUES (?, ?, ?, ?, ?, ?)`
-    ).bind(id, destination, flag, dates, lat, lng).run();
-    return json({ ok: true, trip: { id, destination, flag, dates, latitude: lat, longitude: lng } });
+      `INSERT INTO user_trips (id, destination, flag, dates, days_count, start_date, latitude, longitude) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+    ).bind(id, destination, flag, dates, daysCount, startDate, lat, lng).run();
+    return json({ ok: true, trip: { id, destination, flag, dates, daysCount, startDate, latitude: lat, longitude: lng } });
   } catch (e) {
     return jsonError("db_error", e.message, 500);
   }

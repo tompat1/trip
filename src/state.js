@@ -119,6 +119,7 @@ class AppState {
     this.quickCaptureOpen = false;
     this.activeLightboxMedia = null;
     this.activeEventDrawer = null; // { mode: 'create'|'edit', event: {} }
+    this.tripCreateOpen = false;
     this.listeners = new Set();
     this.checkBackendHealth();
     this.loadD1Trips();
@@ -145,6 +146,16 @@ class AppState {
     this.notify();
   }
 
+  openTripCreate() {
+    this.tripCreateOpen = true;
+    this.notify();
+  }
+
+  closeTripCreate() {
+    this.tripCreateOpen = false;
+    this.notify();
+  }
+
   async loadD1Trips() {
     try {
       const res = await enrichmentService.fetchTrips();
@@ -157,8 +168,8 @@ class AppState {
               destination: t.destination || "Trip",
               flag: resolvedFlag,
               dates: t.dates || "Upcoming",
-              daysCount: 7,
-              startDate: new Date().toISOString().split("T")[0],
+              daysCount: Number(t.days_count || t.daysCount) || 7,
+              startDate: t.start_date || t.startDate || new Date().toISOString().split("T")[0],
               status: "Upcoming",
               statusText: "Trip loaded",
               tripMode: false,
@@ -173,6 +184,9 @@ class AppState {
             };
           } else {
             tripsData[t.id].flag = resolvedFlag;
+            tripsData[t.id].dates = t.dates || tripsData[t.id].dates;
+            tripsData[t.id].daysCount = Number(t.days_count || t.daysCount) || tripsData[t.id].daysCount;
+            tripsData[t.id].startDate = t.start_date || t.startDate || tripsData[t.id].startDate;
           }
         });
         await Promise.all(res.trips.map(async (t) => {
@@ -340,8 +354,8 @@ class AppState {
       destination,
       flag,
       dates: tripInput.dates || "Upcoming",
-      daysCount: 7,
-      startDate: new Date().toISOString().split("T")[0],
+      daysCount: Number(tripInput.daysCount) || 7,
+      startDate: tripInput.startDate || new Date().toISOString().split("T")[0],
       status: "Upcoming",
       statusText: "Trip created",
       tripMode: true,
@@ -349,7 +363,9 @@ class AppState {
       zoom: 13,
       weather: { temp: "20°C", condition: "Fair", forecast: [] },
       upcomingActivity: { title: destination, subtitle: tripInput.dates, image: "https://images.unsplash.com/photo-1488646953014-85cb44e25828?auto=format&fit=crop&w=600&q=80" },
-      checklist: [{ id: "stay", label: "Book your stay", completed: false }, { id: "exp", label: "Choose experiences", completed: false }],
+      checklist: Array.isArray(tripInput.checklist) && tripInput.checklist.length
+        ? tripInput.checklist
+        : [{ id: "stay", label: "Book your stay", completed: false }, { id: "exp", label: "Choose experiences", completed: false }],
       mapPins: [],
       calendarEvents: [],
       ideas: [],
@@ -359,6 +375,10 @@ class AppState {
     tripsData[id] = newTrip;
     this.checklists[id] = [...newTrip.checklist];
     this.activeTripId = id;
+    this.tripCreateOpen = false;
+    this.activeView = "plan";
+    this.planSubTab = "plan";
+    this.planViewMode = getDefaultPlanViewMode();
     this.notify();
 
     // Async sync with Cloudflare D1
@@ -368,6 +388,8 @@ class AppState {
         destination: newTrip.destination,
         flag: newTrip.flag,
         dates: newTrip.dates,
+        daysCount: newTrip.daysCount,
+        startDate: newTrip.startDate,
         latitude: newTrip.center[0],
         longitude: newTrip.center[1]
       });
