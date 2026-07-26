@@ -220,7 +220,7 @@ export function createEnrichmentService(options = {}) {
       const res = await fetchImpl(url.href, { headers: { Accept: "application/json" } });
       if (!res.ok) throw new Error(`worker-events-http-${res.status}`);
       const data = await res.json();
-      return data.events || [];
+      return (data.events || []).map(normalizeTripEvent);
     },
 
     async addTripEvent(tripId, eventData) {
@@ -231,6 +231,29 @@ export function createEnrichmentService(options = {}) {
         body: JSON.stringify(eventData),
       });
       if (!res.ok) throw new Error(`worker-add-event-http-${res.status}`);
+      const data = await res.json();
+      return { ...data, event: normalizeTripEvent(data.event) };
+    },
+
+    async updateTripEvent(tripId, eventId, eventData) {
+      const url = buildApiUrl(apiBase, `/api/trips/${encodeURIComponent(tripId)}/events/${encodeURIComponent(eventId)}`);
+      const res = await fetchImpl(url.href, {
+        method: "PATCH",
+        headers: { Accept: "application/json", "Content-Type": "application/json" },
+        body: JSON.stringify(eventData),
+      });
+      if (!res.ok) throw new Error(`worker-update-event-http-${res.status}`);
+      const data = await res.json();
+      return { ...data, event: normalizeTripEvent(data.event) };
+    },
+
+    async deleteTripEvent(tripId, eventId) {
+      const url = buildApiUrl(apiBase, `/api/trips/${encodeURIComponent(tripId)}/events/${encodeURIComponent(eventId)}`);
+      const res = await fetchImpl(url.href, {
+        method: "DELETE",
+        headers: { Accept: "application/json" },
+      });
+      if (!res.ok) throw new Error(`worker-delete-event-http-${res.status}`);
       return res.json();
     },
 
@@ -396,6 +419,19 @@ function cleanAreaType(value = "") {
 
 function inferIsland(region = "") {
   return /crete/i.test(String(region)) ? "Crete" : "";
+}
+
+function normalizeTripEvent(event = {}) {
+  if (!event) return event;
+  return {
+    ...event,
+    type: event.type || event.eventType || event.event_type || "sight",
+    dayIndex: Number(event.dayIndex ?? event.day_index ?? 0),
+    dayName: event.dayName ?? event.day_name ?? "",
+    startTime: event.startTime ?? event.start_time ?? "10:00",
+    endTime: event.endTime ?? event.end_time ?? "12:00",
+    colorScheme: event.colorScheme ?? event.color_scheme ?? "peach",
+  };
 }
 
 async function refreshWorkerMedia(place = {}, options = {}) {

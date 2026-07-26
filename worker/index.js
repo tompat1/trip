@@ -68,6 +68,8 @@ function matchRoute(method, pathname) {
     ["PATCH", /^\/api\/trips\/([^/]+)$/, tripsUpdateHandler],
     ["GET", /^\/api\/trips\/([^/]+)\/events$/, tripEventsListHandler],
     ["POST", /^\/api\/trips\/([^/]+)\/events$/, tripEventsCreateHandler],
+    ["PATCH", /^\/api\/trips\/([^/]+)\/events\/([^/]+)$/, tripEventsUpdateHandler],
+    ["DELETE", /^\/api\/trips\/([^/]+)\/events\/([^/]+)$/, tripEventsDeleteHandler],
     ["GET", /^\/api\/user\/saved-places$/, userSavedPlacesListHandler],
     ["POST", /^\/api\/user\/saved-places\/toggle$/, userSavedPlacesToggleHandler],
     ["GET", /^\/api\/user\/moments$/, userMomentsListHandler],
@@ -2878,7 +2880,7 @@ async function tripEventsCreateHandler({ params, request, env }) {
   const body = await request.json().catch(() => ({}));
   const id = body.id || `evt_${Date.now()}`;
   const title = body.title || "New Activity";
-  const eventType = body.eventType || "sight";
+  const eventType = body.eventType || body.type || "sight";
   const icon = body.icon || "📍";
   const dayIndex = Number(body.dayIndex) || 0;
   const dayName = body.dayName || "";
@@ -2893,6 +2895,55 @@ async function tripEventsCreateHandler({ params, request, env }) {
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     ).bind(id, tripId, title, eventType, icon, dayIndex, dayName, startTime, endTime, location, colorScheme).run();
     return json({ ok: true, event: { id, tripId, title, eventType, icon, dayIndex, dayName, startTime, endTime, location, colorScheme } });
+  } catch (e) {
+    return jsonError("db_error", e.message, 500);
+  }
+}
+
+async function tripEventsUpdateHandler({ params, request, env }) {
+  const tripId = params[0];
+  const eventId = params[1];
+  if (!env.TRIP_DB) return jsonError("no_db", "Database not bound", 500);
+  const body = await request.json().catch(() => ({}));
+  const title = body.title || "New Activity";
+  const eventType = body.eventType || body.type || "sight";
+  const icon = body.icon || "📍";
+  const dayIndex = Number(body.dayIndex) || 0;
+  const dayName = body.dayName || "";
+  const startTime = body.startTime || "10:00";
+  const endTime = body.endTime || "12:00";
+  const location = body.location || "";
+  const colorScheme = body.colorScheme || "peach";
+
+  try {
+    await env.TRIP_DB.prepare(
+      `INSERT INTO trip_itinerary_events (id, trip_id, title, event_type, icon, day_index, day_name, start_time, end_time, location, color_scheme)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT(id) DO UPDATE SET
+         title = excluded.title,
+         event_type = excluded.event_type,
+         icon = excluded.icon,
+         day_index = excluded.day_index,
+         day_name = excluded.day_name,
+         start_time = excluded.start_time,
+         end_time = excluded.end_time,
+         location = excluded.location,
+         color_scheme = excluded.color_scheme`
+    ).bind(eventId, tripId, title, eventType, icon, dayIndex, dayName, startTime, endTime, location, colorScheme).run();
+    return json({ ok: true, event: { id: eventId, tripId, title, eventType, icon, dayIndex, dayName, startTime, endTime, location, colorScheme } });
+  } catch (e) {
+    return jsonError("db_error", e.message, 500);
+  }
+}
+
+async function tripEventsDeleteHandler({ params, env }) {
+  const tripId = params[0];
+  const eventId = params[1];
+  if (!env.TRIP_DB) return jsonError("no_db", "Database not bound", 500);
+
+  try {
+    await env.TRIP_DB.prepare("DELETE FROM trip_itinerary_events WHERE trip_id = ? AND id = ?").bind(tripId, eventId).run();
+    return json({ ok: true, eventId, tripId });
   } catch (e) {
     return jsonError("db_error", e.message, 500);
   }
@@ -2958,4 +3009,3 @@ async function userMomentsCreateHandler({ request, env }) {
     return jsonError("db_error", e.message, 500);
   }
 }
-

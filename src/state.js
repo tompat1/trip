@@ -11,6 +11,40 @@ function getDefaultPlanViewMode() {
   return window.matchMedia("(pointer: coarse), (max-width: 540px)").matches ? "day" : "week";
 }
 
+const CALENDAR_EVENTS_STORAGE_PREFIX = "trip_calendar_events_";
+
+function readStoredCalendarEvents(tripId) {
+  if (typeof localStorage === "undefined") return null;
+  try {
+    const stored = localStorage.getItem(`${CALENDAR_EVENTS_STORAGE_PREFIX}${tripId}`);
+    if (!stored) return null;
+    const events = JSON.parse(stored);
+    return Array.isArray(events) ? events : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeStoredCalendarEvents(tripId, events) {
+  if (typeof localStorage === "undefined") return;
+  try {
+    localStorage.setItem(`${CALENDAR_EVENTS_STORAGE_PREFIX}${tripId}`, JSON.stringify(events || []));
+  } catch {}
+}
+
+function mergeCalendarEvents(baseEvents = [], savedEvents = []) {
+  const merged = [...baseEvents];
+  savedEvents.forEach((savedEvent) => {
+    const index = merged.findIndex((event) => event.id === savedEvent.id);
+    if (index >= 0) {
+      merged[index] = { ...merged[index], ...savedEvent };
+    } else {
+      merged.push(savedEvent);
+    }
+  });
+  return merged;
+}
+
 class AppState {
   constructor() {
     this.activeView = "landing"; // Initial entry view: "landing" | "home" | "live" | "plan" | "search" | "profile"
@@ -71,6 +105,12 @@ class AppState {
       paris: [...tripsData.paris.checklist],
       crete: [...tripsData.crete.checklist]
     };
+    Object.keys(tripsData).forEach((tripId) => {
+      const storedEvents = readStoredCalendarEvents(tripId);
+      if (storedEvents) {
+        tripsData[tripId].calendarEvents = storedEvents;
+      }
+    });
 
     // Generated AI Editorial Stories store
     this.generatedStories = {};
@@ -140,6 +180,25 @@ class AppState {
             tripsData[t.id].flag = resolvedFlag;
           }
         });
+        await Promise.all(res.trips.map(async (t) => {
+          const trip = tripsData[t.id];
+          if (!trip) return;
+          try {
+            const remoteEvents = await enrichmentService.fetchTripEvents(t.id);
+            if (remoteEvents.length) {
+              trip.calendarEvents = mergeCalendarEvents(trip.calendarEvents || [], remoteEvents);
+            }
+            const storedEvents = readStoredCalendarEvents(t.id);
+            if (storedEvents) {
+              trip.calendarEvents = storedEvents;
+            }
+          } catch (e) {
+            const storedEvents = readStoredCalendarEvents(t.id);
+            if (storedEvents) {
+              trip.calendarEvents = storedEvents;
+            }
+          }
+        }));
         this.notify();
       }
     } catch (e) {
@@ -359,6 +418,7 @@ class AppState {
 
     trip.calendarEvents = trip.calendarEvents || [];
     trip.calendarEvents.push(newEvt);
+    writeStoredCalendarEvents(tripId, trip.calendarEvents);
     this.notify();
 
     // Async sync with Cloudflare D1
@@ -375,7 +435,11 @@ class AppState {
     const evt = trip.calendarEvents.find((e) => e.id === eventId);
     if (evt) {
       Object.assign(evt, updates);
+      writeStoredCalendarEvents(tripId, trip.calendarEvents);
       this.notify();
+      enrichmentService.updateTripEvent(tripId, eventId, { ...evt }).catch((e) => {
+        console.warn("D1 event update fallback:", e);
+      });
     }
   }
 
@@ -383,7 +447,11 @@ class AppState {
     const trip = tripsData[tripId];
     if (!trip || !trip.calendarEvents) return;
     trip.calendarEvents = trip.calendarEvents.filter((e) => e.id !== eventId);
+    writeStoredCalendarEvents(tripId, trip.calendarEvents);
     this.notify();
+    enrichmentService.deleteTripEvent(tripId, eventId).catch((e) => {
+      console.warn("D1 event delete fallback:", e);
+    });
   }
 
   async toggleSavedPlace(placeId) {
