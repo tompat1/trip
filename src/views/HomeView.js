@@ -74,15 +74,24 @@ export function renderHomeView() {
             <button class="btn btn--link" data-action="go-search">See all</button>
           </div>
           <div class="events-grid">
-            ${trip.events.map(ev => `
-              <div class="event-pill-card">
-                <span class="event-pill-icon">${ev.icon}</span>
-                <div class="event-pill-info">
-                  <h4 class="event-pill-title">${escapeHtml(ev.title)}</h4>
-                  <p class="event-pill-dates">${escapeHtml(ev.dates)}</p>
+            ${trip.events.map(ev => {
+              const eventId = ev.id || ev.title;
+              const isSaved = state.savedPlaceIds && state.savedPlaceIds.has(eventId);
+              return `
+                <div class="event-pill-card" style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+                  <div style="display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0;">
+                    <span class="event-pill-icon">${ev.icon}</span>
+                    <div class="event-pill-info" style="min-width: 0;">
+                      <h4 class="event-pill-title" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(ev.title)}</h4>
+                      <p class="event-pill-dates">${escapeHtml(ev.dates)}</p>
+                    </div>
+                  </div>
+                  <button class="btn-bookmark ${isSaved ? 'is-saved' : ''}" data-action="toggle-bookmark" data-place-id="${escapeHtml(eventId)}" aria-label="Bookmark event" style="padding: 4px; border: none; background: transparent; cursor: pointer; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center;" title="${isSaved ? 'Saved to planning bucket' : 'Bookmark to planning bucket'}">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="${isSaved ? 'var(--orange)' : 'none'}" stroke="${isSaved ? 'var(--orange)' : 'currentColor'}" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+                  </button>
                 </div>
-              </div>
-            `).join('')}
+              `;
+            }).join('')}
           </div>
         </section>
 

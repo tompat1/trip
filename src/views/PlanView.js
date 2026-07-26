@@ -5,6 +5,7 @@ import { renderIcon } from "../utils/icons.js";
 import { TRIP_STAMP_SVG } from "../components/BrandAssets.js";
 import { calculateFlightDistance, getAirportByIata } from "../services/airportService.js";
 import { getDestinationTransitGuide } from "../services/transitService.js";
+import { CONCERTS_DATABASE } from "../services/concertService.js";
 
 const SUB_TABS = [
   { id: "overview", label: "Overview", icon: renderIcon("compass") },
@@ -488,6 +489,29 @@ function getSavedPlacesForTrip(trip) {
   (trip.ideas || []).forEach(idea => {
     if (savedSet.has(idea.id)) {
       places.push(idea);
+    }
+  });
+
+  (trip.events || []).forEach(evt => {
+    const evtId = evt.id || evt.title;
+    if (savedSet.has(evtId) && !places.some(p => p.id === evtId || p.title === evt.title)) {
+      places.push({
+        id: evtId,
+        title: evt.title,
+        category: evt.category || "Event",
+        subtitle: evt.dates || evt.venue || "Saved Event"
+      });
+    }
+  });
+
+  CONCERTS_DATABASE.forEach(cnc => {
+    if (savedSet.has(cnc.id) && !places.some(p => p.id === cnc.id || p.title === cnc.title)) {
+      places.push({
+        id: cnc.id,
+        title: cnc.title,
+        category: "Concert",
+        subtitle: `${cnc.venue} • ${cnc.dates}`
+      });
     }
   });
 

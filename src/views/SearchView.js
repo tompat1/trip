@@ -134,10 +134,15 @@ function renderSearchPlaceCard(place) {
 }
 
 function renderConcertCard(concert) {
+  const isSaved = state.savedPlaceIds && state.savedPlaceIds.has(concert.id);
+
   return `
     <div class="search-place-card concert-card" style="border-left: 3px solid var(--orange);">
-      <div class="search-place-card__thumb" style="background-image: url('${concert.image}'); display: flex; align-items: flex-start; padding: 6px;">
+      <div class="search-place-card__thumb" style="background-image: url('${concert.image}'); display: flex; align-items: flex-start; justify-content: space-between; padding: 6px;">
         <span style="background: rgba(23,24,23,0.85); color: #fff; font-size: 0.7rem; font-weight: 700; padding: 2px 8px; border-radius: 10px;">${concert.icon} ${escapeHtml(concert.genre)}</span>
+        <button class="btn-bookmark ${isSaved ? 'is-saved' : ''}" data-action="toggle-bookmark" data-place-id="${concert.id}" style="background: rgba(255,255,255,0.9); border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border: none; box-shadow: var(--shadow-sm); cursor: pointer;" aria-label="Bookmark event" title="${isSaved ? 'Saved to planning bucket' : 'Bookmark event'}">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="${isSaved ? 'var(--orange)' : 'none'}" stroke="${isSaved ? 'var(--orange)' : 'currentColor'}" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+        </button>
       </div>
       <div class="search-place-card__content">
         <div class="search-place-card__header">
