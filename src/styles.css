@@ -1313,6 +1313,18 @@ textarea {
   border: 1px solid #d2e3fc;
 }
 
+.saved-spots-panel-copy {
+  min-width: 0;
+}
+
+.saved-spots-count-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
 .checkbox-circle {
   width: 20px;
   height: 20px;
@@ -3146,6 +3158,18 @@ textarea {
 
   .trip-title {
     font-size: 1.2rem !important;
+  }
+
+  .saved-spots-panel-header {
+    gap: 10px !important;
+    align-items: flex-start !important;
+  }
+
+  .saved-spots-count-badge {
+    min-width: max-content !important;
+    padding-inline: 8px !important;
+    font-size: 0.72rem !important;
+    line-height: 1 !important;
   }
 
   .brand-monogram,

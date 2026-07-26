@@ -407,12 +407,12 @@ function renderOverviewSubTab(trip) {
 
       <!-- Saved / Bookmarked Spots Panel (Reminders to Add to Plan) -->
       <div class="dashboard-card" style="padding: 20px;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
-          <div>
+        <div class="saved-spots-panel-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+          <div class="saved-spots-panel-copy">
             <h3 class="dashboard-card__title" style="margin: 0; font-size: 1.1rem;">Saved & Bookmarked Spots</h3>
             <p style="font-size: 0.8rem; color: var(--ink-muted); margin: 2px 0 0 0;">Bookmarked places ready to add to your trip itinerary</p>
           </div>
-          <span class="badge badge--info voice-mono" style="font-weight: 700;">${savedPlaces.length} Saved</span>
+          <span class="badge badge--info voice-mono saved-spots-count-badge" style="font-weight: 700;">${savedPlaces.length} Saved</span>
         </div>
 
         <div class="saved-spots-reminder-list" style="display: flex; flex-direction: column; gap: 12px;">
