@@ -9,7 +9,7 @@ export function renderHeader() {
     return `
       <header class="top-nav top-nav--landing">
         <div class="top-nav__brand">
-          ${TRIP_LOGO_SVG("", 24)}
+          ${TRIP_LOGO_SVG("", 26)}
         </div>
         <div class="top-nav__actions">
           <button class="btn btn--primary btn--sm" data-action="go-app">Get started</button>
