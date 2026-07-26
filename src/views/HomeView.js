@@ -48,7 +48,12 @@ export function renderHomeView() {
         <section class="home-section">
           <div class="section-header">
             <h3 class="section-title">Ideas for your trip</h3>
-            <button class="btn btn--link" data-action="go-search">See all</button>
+            <div class="section-header__actions">
+              <button class="btn btn--icon btn--ghost" data-action="refresh-trip-ideas" aria-label="Refresh trip ideas" title="Refresh trip ideas">
+                ${renderIcon("refresh")}
+              </button>
+              <button class="btn btn--link" data-action="go-search">See all</button>
+            </div>
           </div>
           <div class="horizontal-scroll-container">
             ${tripIdeas.map(idea => {
@@ -80,7 +85,12 @@ export function renderHomeView() {
         <section class="home-section">
           <div class="section-header">
             <h3 class="section-title">Events during your stay</h3>
-            <button class="btn btn--link" data-action="go-search">See all</button>
+            <div class="section-header__actions">
+              <button class="btn btn--icon btn--ghost" data-action="refresh-trip-events" aria-label="Refresh trip events" title="Refresh trip events">
+                ${renderIcon("refresh")}
+              </button>
+              <button class="btn btn--link" data-action="go-search">See all</button>
+            </div>
           </div>
           <div class="events-grid">
             ${trip.events.map(ev => {

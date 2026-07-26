@@ -3,7 +3,9 @@ import { renderIcon } from "../utils/icons.js";
 
 export function renderQuickCaptureWidget() {
   const isOpen = state.quickCaptureOpen;
-  const trip = state.activeTrip;
+  const trips = state.getAllTrips ? state.getAllTrips() : [state.activeTrip];
+  const selectedTripId = state.quickCaptureTripId || state.activeTripId;
+  const trip = trips.find((item) => item.id === selectedTripId) || state.activeTrip;
   const upload = state.quickCaptureUpload || { status: "idle", progress: 0 };
   const isUploading = upload.status === "reading" || upload.status === "saving";
 
@@ -26,12 +28,19 @@ export function renderQuickCaptureWidget() {
           </button>
         </div>
 
-        <!-- Location Badge -->
-        <div style="margin: 12px 0 16px 0; padding: 8px 12px; background: var(--paper-subtle); border: 1px solid var(--line); border-radius: var(--radius-md); display: flex; align-items: center; justify-content: space-between;">
-          <span class="voice-mono" style="font-size: 0.78rem; font-weight: 600; color: var(--ink-muted); display: flex; align-items: center; gap: 6px;">
-            ${renderIcon("mapPin")} ${escapeHtml(trip.destination)} ${trip.flag}
-          </span>
-          <span class="voice-mono" style="font-size: 0.72rem; color: var(--ink-light);">${new Date().toISOString().split("T")[0]}</span>
+        <!-- Receiver Badge -->
+        <div class="quick-capture-receiver">
+          <label for="quick-capture-trip-select" class="voice-mono">
+            ${renderIcon("mapPin")} Send to
+          </label>
+          <select id="quick-capture-trip-select" data-action="select-quick-capture-trip" ${isUploading ? "disabled" : ""}>
+            ${trips.map((item) => `
+              <option value="${escapeHtml(item.id)}" ${item.id === trip.id ? "selected" : ""}>
+                ${item.flag || ""} ${escapeHtml(item.destination)}
+              </option>
+            `).join("")}
+          </select>
+          <span class="voice-mono">${new Date().toISOString().split("T")[0]}</span>
         </div>
 
         <form id="quick-capture-form" onsubmit="return false;">

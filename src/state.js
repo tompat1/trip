@@ -174,6 +174,7 @@ class AppState {
     this.moments = [
       {
         id: "m1",
+        tripId: "paris",
         title: "Morning coffee in Saint-Germain",
         type: "note",
         date: "2026-10-03",
@@ -213,6 +214,7 @@ class AppState {
     this.generatedStories = {};
 
     this.quickCaptureOpen = false;
+    this.quickCaptureTripId = this.activeTripId;
     this.quickCaptureUpload = { status: "idle", progress: 0, fileName: "", type: "" };
     this.activeLightboxMedia = null;
     this.activeEventDrawer = null; // { mode: 'create'|'edit', event: {} }
@@ -227,9 +229,18 @@ class AppState {
 
   toggleQuickCapture(open) {
     this.quickCaptureOpen = open !== undefined ? open : !this.quickCaptureOpen;
+    if (this.quickCaptureOpen && !tripsData[this.quickCaptureTripId]) {
+      this.quickCaptureTripId = this.activeTripId;
+    }
     if (!this.quickCaptureOpen) {
       this.quickCaptureUpload = { status: "idle", progress: 0, fileName: "", type: "" };
     }
+    this.notify();
+  }
+
+  setQuickCaptureTrip(tripId) {
+    if (!tripsData[tripId]) return;
+    this.quickCaptureTripId = tripId;
     this.notify();
   }
 
@@ -402,6 +413,9 @@ class AppState {
   setTrip(tripId) {
     if (tripsData[tripId] && this.activeTripId !== tripId) {
       this.activeTripId = tripId;
+      if (!this.quickCaptureOpen) {
+        this.quickCaptureTripId = tripId;
+      }
       this.refreshWeather();
       this.refreshTourismDiscovery(tripId);
       this.refreshEventDiscovery(tripId);
@@ -428,11 +442,11 @@ class AppState {
 
   async refreshTourismDiscovery(tripId = this.activeTripId, options = {}) {
     const trip = tripsData[tripId];
-    if (!trip || !Array.isArray(trip.center)) return;
+    if (!trip || !Array.isArray(trip.center)) return { status: "error", error: "invalid-trip-center" };
 
     const existing = [...(trip.tourismPois || []), ...(trip.hiddenGems || []), ...(trip.osmPlaces || [])];
-    if (this.tourismDiscoveryStatus[tripId]?.status === "loading" && !options.force) return;
-    if (existing.length && !options.force) return;
+    if (this.tourismDiscoveryStatus[tripId]?.status === "loading" && !options.force) return this.tourismDiscoveryStatus[tripId];
+    if (existing.length && !options.force) return this.tourismDiscoveryStatus[tripId] || { status: "ready", error: "" };
 
     this.tourismDiscoveryStatus[tripId] = {
       status: "loading",
@@ -488,6 +502,7 @@ class AppState {
     }
 
     this.notify();
+    return this.tourismDiscoveryStatus[tripId];
   }
 
   async enrichDiscoveryMedia(ideas = []) {
@@ -514,9 +529,11 @@ class AppState {
 
   async refreshEventDiscovery(tripId = this.activeTripId, options = {}) {
     const trip = tripsData[tripId];
-    if (!trip || !Array.isArray(trip.center)) return;
-    if (this.eventDiscoveryStatus[tripId]?.status === "loading" && !options.force) return;
-    if ((trip.events || []).some((event) => ["ticketmaster", "bandsintown"].includes(event.sourceRole || event.provider)) && !options.force) return;
+    if (!trip || !Array.isArray(trip.center)) return { status: "error", error: "invalid-trip-center" };
+    if (this.eventDiscoveryStatus[tripId]?.status === "loading" && !options.force) return this.eventDiscoveryStatus[tripId];
+    if ((trip.events || []).some((event) => ["ticketmaster", "bandsintown"].includes(event.sourceRole || event.provider)) && !options.force) {
+      return this.eventDiscoveryStatus[tripId] || { status: "ready", error: "" };
+    }
 
     this.eventDiscoveryStatus[tripId] = {
       status: "loading",
@@ -543,6 +560,7 @@ class AppState {
     }
 
     this.notify();
+    return this.eventDiscoveryStatus[tripId];
   }
 
   toggleTripMode(enabled) {
@@ -793,6 +811,7 @@ class AppState {
   async addMoment(momentInput) {
     const newMoment = {
       id: `m_${Date.now()}`,
+      tripId: momentInput.tripId || this.quickCaptureTripId || this.activeTripId,
       date: new Date().toISOString().split("T")[0],
       ...momentInput
     };

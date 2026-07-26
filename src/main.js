@@ -327,6 +327,28 @@ document.addEventListener("click", async (e) => {
     else if (action === "refresh-weather") {
       state.refreshWeather();
     }
+    else if (action === "refresh-trip-ideas") {
+      showToast("Refreshing trip ideas...");
+      const result = await state.refreshTourismDiscovery(state.activeTripId, { force: true });
+      if (result?.status === "error") {
+        showToast("Could not refresh trip ideas. Showing saved ideas.");
+      } else if (result?.status === "not-configured") {
+        showToast("OpenTripMap key missing. Showing available OSM and saved ideas.");
+      } else {
+        showToast("Trip ideas refreshed.");
+      }
+    }
+    else if (action === "refresh-trip-events") {
+      showToast("Refreshing events...");
+      const result = await state.refreshEventDiscovery(state.activeTripId, { force: true });
+      if (result?.status === "error") {
+        showToast("Could not refresh live events. Showing saved events.");
+      } else if (result?.status === "fallback") {
+        showToast("Live event providers returned no new matches. Showing saved events.");
+      } else {
+        showToast("Events refreshed.");
+      }
+    }
     else if (action === "view-notifications") {
       alert(`🔔 Notifications:\n\n• Weather update: 23°C in ${state.activeTrip.destination}\n• 2 planning tasks remaining for your trip!`);
     }

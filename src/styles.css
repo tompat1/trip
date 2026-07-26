@@ -1729,6 +1729,13 @@ textarea {
   margin-bottom: 12px;
 }
 
+.section-header__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
 .section-title {
   font-size: 1.1rem;
   font-weight: 700;
