@@ -2809,9 +2809,6 @@ input, select, textarea {
     flex-shrink: 0 !important;
     min-height: 36px !important;
   }
-}
-
-@media (max-width: 390px) {
   .avatar-badge {
     display: none !important;
   }
