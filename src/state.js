@@ -27,12 +27,19 @@ class AppState {
     } catch {}
     this.savedPlaceIds = new Set(localSaved.length ? localSaved : ["i1", "i2", "i3", "i4", "sp1", "sp2"]);
 
-    // User Profile Avatar
+    // User Profile Avatar & Preferences
     this.userAvatar = "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=240&q=80";
     try {
       const savedAvatar = localStorage.getItem("trip_user_avatar");
       if (savedAvatar) this.userAvatar = savedAvatar;
     } catch {}
+
+    let savedPrefs = ["☕ Coffee Lover", "🍕 Foodie", "🎵 Concert Goer", "🎨 Art Enthusiast"];
+    try {
+      const stored = localStorage.getItem("trip_user_preferences");
+      if (stored) savedPrefs = JSON.parse(stored);
+    } catch {}
+    this.userPreferences = new Set(savedPrefs);
 
     // Live Geolocation & Worker API Integration State
     this.userLocation = null; // [lat, lng]
@@ -160,6 +167,19 @@ class AppState {
     this.userAvatar = url;
     try {
       localStorage.setItem("trip_user_avatar", url);
+    } catch {}
+    this.notify();
+  }
+
+  toggleUserPreference(pref) {
+    if (!pref) return;
+    if (this.userPreferences.has(pref)) {
+      this.userPreferences.delete(pref);
+    } else {
+      this.userPreferences.add(pref);
+    }
+    try {
+      localStorage.setItem("trip_user_preferences", JSON.stringify(Array.from(this.userPreferences)));
     } catch {}
     this.notify();
   }

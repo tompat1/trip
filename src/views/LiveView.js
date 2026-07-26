@@ -159,6 +159,36 @@ export function renderProfileView() {
           </div>
         </div>
 
+        <!-- Traveler Personas & Enriched Interests Card -->
+        <div class="profile-menu-card mb-sm" style="padding: 16px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <div>
+              <h4 class="profile-menu-item__title" style="margin: 0; font-size: 0.95rem;">Traveler Personas & Interests</h4>
+              <p class="profile-menu-item__sub" style="margin-top: 2px;">Enriches recommendations, concerts & live stay events</p>
+            </div>
+            <span style="font-size: 0.72rem; background: rgba(217,74,58,0.12); color: var(--red); padding: 3px 10px; border-radius: 12px; font-weight: 700; letter-spacing: 0.5px;">LIVE ENRICHED</span>
+          </div>
+          <div class="profile-personas-grid" style="display: flex; flex-wrap: wrap; gap: 8px;">
+            ${[
+              "☕ Coffee Lover",
+              "🍕 Foodie",
+              "🎵 Concert Goer",
+              "🎨 Art Enthusiast",
+              "🏛️ History Buff",
+              "🌅 Sunset Chaser",
+              "🛍️ Boutique Shopper",
+              "🏖️ Beach & Island"
+            ].map(persona => {
+              const isSelected = state.userPreferences && state.userPreferences.has(persona);
+              return `
+                <button class="chip ${isSelected ? "chip--active" : ""}" data-action="toggle-user-persona" data-persona="${escapeHtml(persona)}" style="cursor: pointer; font-size: 0.8rem; padding: 6px 14px; border-radius: 20px; transition: all 0.15s ease;">
+                  ${persona} ${isSelected ? "✓" : "+"}
+                </button>
+              `;
+            }).join("")}
+          </div>
+        </div>
+
         <!-- Group 1: User Account Settings Menu -->
         <div class="profile-menu-card">
           <button class="profile-menu-item">
