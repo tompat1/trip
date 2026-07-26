@@ -8,7 +8,7 @@ export function renderHeader() {
   if (isLanding) {
     return `
       <header class="top-nav top-nav--landing">
-        <div class="top-nav__brand">
+        <div class="top-nav__brand" data-action="go-home" role="button" tabindex="0" aria-label="Go to home">
           ${TRIP_LOGO_SVG("", 26)}
         </div>
         <div class="top-nav__actions">
