@@ -1,6 +1,7 @@
 import { state } from "../state.js";
 import { renderHeader } from "../components/Header.js";
 import { renderIcon } from "../utils/icons.js";
+import { TRIP_STAMP_SVG } from "../components/BrandAssets.js";
 
 export function renderLiveView() {
   const trip = state.activeTrip;
@@ -120,7 +121,12 @@ export function renderProfileView() {
       ${renderHeader()}
 
       <div class="profile-page__content">
-        <div class="profile-header-card">
+        <div class="profile-header-card" style="position: relative; display: flex; flex-direction: column; align-items: center; text-align: center;">
+          <!-- Brand Stamp Emblem (Guidelines Section 07) -->
+          <div style="position: absolute; top: 12px; right: 12px;">
+            ${TRIP_STAMP_SVG("", 68)}
+          </div>
+
           <div class="profile-avatar-lg">
             <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=240&q=80" alt="Thomas Rynell" />
           </div>

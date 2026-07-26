@@ -32,6 +32,14 @@ export function renderSearchView() {
           </button>
         </div>
 
+        <!-- Brand Guidelines Section 07: Active Location Tag Pill -->
+        <div class="search-location-tags" style="display: flex; align-items: center; gap: 8px; margin: 8px 0 12px 0;">
+          <span class="location-tag-pill">
+            <span>📍 ${escapeHtml(state.activeTrip.destination.toUpperCase())}</span>
+            <span class="location-tag-pill__close" data-action="clear-search-query">×</span>
+          </span>
+        </div>
+
         <!-- Primary Category Tabs -->
         <div class="primary-tabs-scroll">
           ${PRIMARY_CATEGORIES.map(

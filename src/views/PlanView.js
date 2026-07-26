@@ -2,6 +2,7 @@ import { state } from "../state.js";
 import { renderCalendarGrid } from "../components/CalendarGrid.js";
 import { renderHeader } from "../components/Header.js";
 import { renderIcon } from "../utils/icons.js";
+import { TRIP_STAMP_SVG } from "../components/BrandAssets.js";
 
 const SUB_TABS = [
   { id: "overview", label: "Overview", icon: renderIcon("compass") },
@@ -302,6 +303,15 @@ function renderVerticalTimeline(trip) {
 
   return `
     <div class="vertical-timeline-container">
+      <!-- Section 07 Brand Element: Dotted Route Line Header -->
+      <div class="route-line-dashed-header mb-md" style="display: flex; align-items: center; justify-content: space-between; background: var(--paper-card); border: 1px solid var(--line); border-radius: var(--radius-md); padding: 12px 16px; margin-bottom: 16px; box-shadow: var(--shadow-sm);">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span class="route-node-pin">📍</span>
+          <span class="voice-mono" style="font-size: 0.8rem; font-weight: 700; color: var(--ink);">${escapeHtml(trip.destination.toUpperCase())} ROUTE</span>
+        </div>
+        <span class="voice-mono" style="font-size: 0.72rem; color: var(--ink-muted);">${events.length} STOPS CONNECTED</span>
+      </div>
+
       <div class="vertical-timeline-spine"></div>
 
       ${days.map((dayLabel, dayIdx) => {
@@ -354,17 +364,21 @@ function renderOverviewSubTab(trip) {
 
   return `
     <div class="overview-subtab-view" style="display: flex; flex-direction: column; gap: 20px;">
-      <!-- Destination Hero Banner & Stats -->
-      <div class="overview-hero-card" style="background: linear-gradient(135deg, var(--paper-card) 0%, var(--paper-subtle) 100%); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 20px; box-shadow: var(--shadow-sm);">
+      <!-- Destination Hero Banner with Brand Stamp Badge -->
+      <div class="overview-hero-card" style="background: linear-gradient(135deg, var(--paper-card) 0%, var(--paper-subtle) 100%); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 20px; box-shadow: var(--shadow-sm); position: relative;">
         <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px;">
           <div>
-            <span style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--red);">TRIP OVERVIEW</span>
+            <span style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--orange);">TRIP OVERVIEW</span>
             <h2 class="voice-serif" style="font-size: 1.6rem; font-weight: 700; color: var(--ink); margin: 4px 0;">${escapeHtml(trip.destination)} ${trip.flag}</h2>
-            <p class="voice-mono" style="font-size: 0.85rem; color: var(--ink-muted);">${escapeHtml(trip.dates)}</p>
+            <p class="voice-mono" style="font-size: 0.85rem; color: var(--ink-muted); margin-bottom: 10px;">${escapeHtml(trip.dates)}</p>
+            <button class="btn btn--outline btn--sm" data-action="share-trip" title="Share trip link">
+              ${renderIcon("share")} Share Link
+            </button>
           </div>
-          <button class="btn btn--outline btn--sm" data-action="share-trip" title="Share trip link">
-            ${renderIcon("share")} Share
-          </button>
+          <!-- Brand Stamp Emblem (Guidelines Section 07) -->
+          <div>
+            ${TRIP_STAMP_SVG("", 68)}
+          </div>
         </div>
 
         <!-- Stat Counters Grid -->

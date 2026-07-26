@@ -1,6 +1,7 @@
 import { state } from "../state.js";
 import { renderHeader } from "../components/Header.js";
 import { renderIcon } from "../utils/icons.js";
+import { TRIP_STAMP_SVG, TRIP_ROUTE_LINE_SVG } from "../components/BrandAssets.js";
 
 export function renderHomeView() {
   const trip = state.activeTrip;
@@ -14,10 +15,10 @@ export function renderHomeView() {
       ${renderHeader()}
 
       <div class="home-page__content">
-        <!-- Morning Greeting & Dynamic Mode Status Header -->
-        <section class="greeting-row">
+        <!-- Morning Greeting with Brand Stamp Badge & Dynamic Mode Status -->
+        <section class="greeting-row" style="position: relative; display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px;">
           <div class="greeting-text">
-            <h2 class="greeting-title">Good morning, Thomas 👋</h2>
+            <h2 class="greeting-title voice-serif" style="font-size: 1.45rem; font-weight: 700; color: var(--ink);">Good morning, Thomas 👋</h2>
             <p class="greeting-status">
               ${isLiveMode 
                 ? `<span class="live-pulse-dot"></span> <strong>You are in ${escapeHtml(trip.destination)}</strong> <span class="status-meta">${trip.weather?.condition || 'Fair'} • ${trip.weather?.temp || '20°C'} • ${liveTimeStr}</span>` 
@@ -25,15 +26,22 @@ export function renderHomeView() {
             </p>
           </div>
 
-          <div class="upcoming-card" data-action="go-plan">
-            <div class="upcoming-card__info">
-              <span class="upcoming-card__label">${isLiveMode ? 'Current Stop' : 'Upcoming'}</span>
-              <h3 class="upcoming-card__title">${escapeHtml(trip.upcomingActivity.title)} &rsaquo;</h3>
-              <p class="upcoming-card__time">${escapeHtml(trip.upcomingActivity.subtitle)}</p>
-            </div>
-            <div class="upcoming-card__thumb" style="background-image: url('${trip.upcomingActivity.image}')"></div>
+          <!-- Brand Stamp Emblem (Guidelines Section 07) -->
+          <div style="transform: scale(0.85); margin: -8px -8px 0 0;">
+            ${TRIP_STAMP_SVG("", 72)}
           </div>
         </section>
+
+        <!-- Dotted Route Line Banner (Guidelines Section 07) -->
+        <div class="route-line-dashed-banner" style="display: flex; flex-direction: column; gap: 8px; background: var(--paper-card); border: 1px solid var(--line); border-radius: var(--radius-md); padding: 14px; margin-bottom: 16px; box-shadow: var(--shadow-sm);" data-action="go-plan">
+          <div style="display: flex; align-items: center; justify-content: space-between;">
+            <span class="voice-mono" style="font-size: 0.8rem; font-weight: 700; color: var(--ink);">${escapeHtml(trip.destination.toUpperCase())} ROUTE PATH</span>
+            <span class="voice-mono" style="font-size: 0.72rem; font-weight: 700; color: var(--orange);">${escapeHtml(trip.upcomingActivity.title)} &rsaquo;</span>
+          </div>
+          <div style="max-height: 40px; overflow: hidden; margin-top: -10px;">
+            ${TRIP_ROUTE_LINE_SVG()}
+          </div>
+        </div>
 
         ${isLiveMode ? renderLiveJourneyModules(trip) : renderPlanningModules(trip, checklist)}
 
@@ -92,8 +100,8 @@ export function renderHomeView() {
 function renderPlanningModules(trip, checklist) {
   return `
     <div class="dashboard-grid">
-      <!-- Widget 1: Continue Planning Checklist (Full CRUD) -->
-      <div class="dashboard-card planning-widget">
+      <!-- Widget 1: Continue Planning Checklist (MapPattern Overlay) -->
+      <div class="dashboard-card planning-widget card-pattern-map">
         <div class="dashboard-card__header">
           <h3 class="dashboard-card__title">Continue planning</h3>
           <button class="btn btn--outline btn--xs" data-action="add-checklist-item" title="Add planning task">${renderIcon("plus")} Add task</button>
@@ -114,8 +122,8 @@ function renderPlanningModules(trip, checklist) {
         </ul>
       </div>
 
-      <!-- Widget 2: Leaflet Interactive Map Preview Card -->
-      <div class="dashboard-card map-widget">
+      <!-- Widget 2: Leaflet Interactive Map Preview Card (PolyLines Overlay) -->
+      <div class="dashboard-card map-widget card-pattern-poly">
         <div id="home-map-container" class="home-map"></div>
         <div class="map-card-footer">
           <span class="map-location-badge">📍 Map Preview: ${escapeHtml(trip.destination)}</span>
@@ -123,13 +131,13 @@ function renderPlanningModules(trip, checklist) {
         </div>
       </div>
 
-      <!-- Widget 3: Live Open-Meteo Weather Context Card -->
+      <!-- Widget 3: Live Open-Meteo Weather Context Card (PolyLines Overlay) -->
       ${(() => {
         const currentDateStr = new Intl.DateTimeFormat("en-US", { weekday: "short", day: "numeric", month: "short" }).format(new Date());
         const upcomingForecast = (trip.weather?.forecast || []).filter(f => f.day !== "Today");
 
         return `
-          <div class="dashboard-card weather-widget">
+          <div class="dashboard-card weather-widget card-pattern-poly">
             <div class="dashboard-card__header" style="display: flex; justify-content: space-between; align-items: flex-start;">
               <div>
                 <h3 class="dashboard-card__title" style="margin: 0; line-height: 1.2;">Weather in ${escapeHtml(trip.destination.split(',')[0])}</h3>

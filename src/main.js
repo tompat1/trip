@@ -153,7 +153,11 @@ document.addEventListener("click", async (e) => {
     else if (action === "go-plan") state.setView("plan");
     else if (action === "go-search") state.setView("search");
     else if (action === "go-live") state.setView("live");
-    else if (action === "go-moments" || action === "go-profile") state.setView("profile");
+    else if (action === "go-moments") {
+      state.setView("plan");
+      state.setPlanSubTab("journal");
+    }
+    else if (action === "go-profile") state.setView("profile");
     else if (action === "switch-to-landing") state.setView("landing");
     else if (action === "refresh-weather") {
       state.refreshWeather();

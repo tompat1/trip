@@ -1,0 +1,33 @@
+<svg class="trip-stamp-logo" viewBox="0 0 160 160" width="80" height="80" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Outer Circle Border -->
+  <circle cx="80" cy="80" r="74" stroke="#0F1B2B" stroke-width="3.5"/>
+  
+  <!-- Curved Text Top: EXPLORE -->
+  <path id="stamp-top-arc" d="M 30,80 A 50,50 0 1,1 130,80" fill="none"/>
+  <text font-family="'Sora', sans-serif" font-size="12" font-weight="700" fill="#0F1B2B" letter-spacing="3" text-anchor="middle">
+    <textPath href="#stamp-top-arc" startOffset="50%">EXPLORE</textPath>
+  </text>
+  
+  <!-- Year 20 26 Side Numbers -->
+  <text x="24" y="84" font-family="'IBM Plex Mono', monospace" font-size="12" font-weight="700" fill="#0F1B2B">20</text>
+  <text x="122" y="84" font-family="'IBM Plex Mono', monospace" font-size="12" font-weight="700" fill="#0F1B2B">26</text>
+
+  <!-- Center TRIP Wordmark -->
+  <g transform="translate(42, 64) scale(0.35)">
+    <path d="M12 16H42M27 16V50" stroke="#0F1B2B" stroke-width="8" stroke-linecap="round"/>
+    <path d="M60 50V16H78C85 16 90 20 90 27C90 34 85 37 78 37H60M75 37L90 50" stroke="#0F1B2B" stroke-width="8" stroke-linecap="round"/>
+    <path d="M126 27V50" stroke="#0F1B2B" stroke-width="8" stroke-linecap="round"/>
+    <path d="M126 3C121 3 117 7 117 12C117 17.5 126 24 126 24C126 24 135 17.5 135 12C135 7 131 3 126 3Z" fill="#FF5500"/>
+    <circle cx="126" cy="11" r="3" fill="#FFFFFF"/>
+    <path d="M162 50V16H180C188 16 194 21 194 28C194 35 188 40 180 40H162" stroke="#0F1B2B" stroke-width="8" stroke-linecap="round"/>
+  </g>
+
+  <!-- Center Orange Accent Line -->
+  <line x1="62" y1="96" x2="98" y2="96" stroke="#FF5500" stroke-width="2.5" stroke-linecap="round"/>
+
+  <!-- Curved Text Bottom: THE WORLD -->
+  <path id="stamp-bottom-arc" d="M 130,80 A 50,50 0 0,1 30,80" fill="none"/>
+  <text font-family="'Sora', sans-serif" font-size="12" font-weight="700" fill="#0F1B2B" letter-spacing="3" text-anchor="middle">
+    <textPath href="#stamp-bottom-arc" startOffset="50%">THE WORLD</textPath>
+  </text>
+</svg>

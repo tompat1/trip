@@ -1,35 +1,38 @@
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,400;1,600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,400&family=Playfair+Display:ital,wght@0,600;0,700;1,400;1,600&family=Sora:wght@400;500;600;700;800&display=swap');
 
 :root {
-  /* Official Brand Palette */
-  --paper: #F4F0E7; /* Warm off-white */
+  /* 03. Official Brand Palette (Brand Guidelines v1.0) */
+  --ink: #0F1B2B; /* Primary Dark Navy Ink (#0F1B2B) */
+  --paper: #F4F1E9; /* Primary Light Paper Canvas (#F4F1E9) */
   --paper-card: #FFFFFF;
-  --paper-subtle: #EAE5DA;
-  --ink: #171817; /* Soft black */
-  --ink-muted: #65705B; /* Natural muted green tone */
-  --ink-light: #9C6E55; /* Warm travel-worn clay tone */
-  --line: #E0D8CB;
-  --line-light: #EBE4D8;
-
+  --paper-subtle: #EAE6DF;
+  
   /* Accent Brand Colors */
-  --red: #D94A3A; /* Journey Red: Muted transport red */
-  --red-gradient: linear-gradient(135deg, #D94A3A 0%, #B8382A 100%);
-  --blue: #385C73; /* Atlas Blue: Deep softened blue */
-  --green: #65705B; /* Field Green: Natural muted green */
-  --sun: #E9C76B; /* Sun: Washed golden yellow */
-  --clay: #9C6E55; /* Clay: Warm travel-worn brown */
+  --orange: #FF5500; /* Journey Orange / Primary Button (#FF5500 / #FF8A00) */
+  --red: #FF5500; /* Primary Action Red-Orange */
+  --red-gradient: linear-gradient(135deg, #FF5500 0%, #D94A3A 100%);
+  --blue: #385C73; /* Atlas Blue (#385C73) */
+  --green: #65705B; /* Field Green (#65705B) */
+  --sun: #E9C76B; /* Sun Yellow (#E9C76B) */
+  --clay: #9C6E55; /* Clay Brown (#9C6E55) */
+  --slate: #6B7A8F; /* Slate Grey (#6B7A8F) */
+  --line: #DDE2E6; /* Off-White Border Line (#DDE2E6) */
+  --line-light: #EAE6DF;
+  
+  --ink-muted: #6B7A8F;
+  --ink-light: #9C6E55;
   --white: #FFFFFF;
 
-  /* Three Distinct Typographic Voices */
-  --font-serif: "Playfair Display", Georgia, serif; /* Voice 1: Destination names, stories, evocative language */
-  --font-sans: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; /* Voice 2: Navigation, planning, practical info */
-  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; /* Voice 3: Times, dates, coordinates, distances, location metadata */
+  /* 04. Three Distinct Typographic Voices (Brand Guidelines v1.0) */
+  --font-sans: "Sora", "Plus Jakarta Sans", system-ui, sans-serif; /* Voice 1: Primary Sans-Serif Typeface */
+  --font-serif: "Playfair Display", Georgia, serif; /* Voice 2: Secondary Editorial Serif Typeface */
+  --font-mono: "IBM Plex Mono", "JetBrains Mono", monospace; /* Voice 3: Monospace / Accent Voice */
 
   /* Elevation Shadows */
-  --shadow-sm: 0 2px 8px rgba(23, 24, 23, 0.04);
-  --shadow-md: 0 6px 18px rgba(23, 24, 23, 0.07);
-  --shadow-lg: 0 12px 32px rgba(23, 24, 23, 0.12);
-  --shadow-fab: 0 8px 24px rgba(217, 74, 58, 0.35);
+  --shadow-sm: 0 2px 8px rgba(15, 27, 43, 0.04);
+  --shadow-md: 0 6px 18px rgba(15, 27, 43, 0.07);
+  --shadow-lg: 0 12px 32px rgba(15, 27, 43, 0.12);
+  --shadow-fab: 0 8px 24px rgba(255, 85, 0, 0.35);
 
   --radius-sm: 8px;
   --radius-md: 14px;
@@ -140,23 +143,122 @@ input, select, textarea {
 }
 
 .btn--primary {
-  background: var(--red-gradient);
+  background: var(--orange);
   color: var(--white);
-  box-shadow: 0 4px 12px rgba(217, 74, 58, 0.25);
+  box-shadow: 0 4px 14px rgba(255, 85, 0, 0.3);
 }
 .btn--primary:hover {
   transform: translateY(-1px);
-  box-shadow: 0 6px 16px rgba(217, 74, 58, 0.35);
+  box-shadow: 0 6px 18px rgba(255, 85, 0, 0.4);
 }
 
 .btn--outline {
-  border: 1px solid var(--line);
-  background: var(--white);
+  border: 1.5px solid var(--line);
+  background: var(--paper-card);
   color: var(--ink);
 }
 .btn--outline:hover {
   background: var(--paper-subtle);
-  border-color: var(--ink-light);
+  border-color: var(--ink);
+}
+
+.btn--brand-secondary {
+  border: 1.5px solid var(--ink);
+  background: var(--paper-card);
+  color: var(--ink);
+  border-radius: var(--radius-pill);
+  font-weight: 700;
+}
+
+/* ==========================================================================
+   07. BRAND PATTERNS & ELEMENTS (Brand Guidelines v1.0)
+   ========================================================================== */
+.brand-stamp-badge {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  border: 1.5px dashed var(--slate);
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: var(--ink);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  text-align: center;
+  padding: 6px;
+  background: var(--paper-card);
+  box-shadow: var(--shadow-sm);
+  user-select: none;
+}
+.brand-stamp-badge__center {
+  font-family: var(--font-serif);
+  font-weight: 800;
+  font-size: 0.85rem;
+  letter-spacing: 1px;
+  color: var(--orange);
+  margin: 2px 0;
+}
+
+.route-line-dashed {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+}
+.route-line-dashed::before {
+  content: "";
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  top: 50%;
+  border-top: 2px dashed var(--line);
+  z-index: 1;
+}
+.route-node-pin {
+  position: relative;
+  z-index: 2;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--orange);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.72rem;
+  font-weight: 800;
+  box-shadow: var(--shadow-sm);
+}
+
+.location-tag-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: var(--paper-card);
+  border: 1.5px solid var(--line);
+  border-radius: var(--radius-pill);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--ink);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  box-shadow: var(--shadow-sm);
+}
+.location-tag-pill__close {
+  color: var(--ink-muted);
+  cursor: pointer;
+  font-weight: 800;
+  margin-left: 2px;
+}
+.location-tag-pill__close:hover {
+  color: var(--orange);
 }
 
 .btn--light {
@@ -308,6 +410,14 @@ input, select, textarea {
   flex-direction: column;
   cursor: pointer;
 }
+.trip-main-logo {
+  height: 26px;
+  width: auto;
+  aspect-ratio: 210 / 50;
+  display: block;
+  flex-shrink: 0;
+  object-fit: contain;
+}
 .brand-monogram__logo {
   font-family: var(--font-serif);
   font-size: 1.4rem;
@@ -407,6 +517,109 @@ input, select, textarea {
   border-radius: var(--radius-lg);
   padding: 16px 20px;
   box-shadow: var(--shadow-sm);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Card Background Patterns (Brand Guidelines Section 07) */
+.dashboard-card,
+.trip-context-card,
+.overview-hero-card,
+.hero-card,
+.live-status-hero,
+.editorial-story-card,
+.search-map-card,
+.account-card,
+.upcoming-card,
+.weather-card,
+.note-card,
+.journal-media-card,
+.nearby-place-card,
+.feature-card,
+.card-pattern-map,
+.card-pattern-poly {
+  position: relative !important;
+  overflow: hidden !important;
+}
+
+/* Base Pattern Overlay Setup */
+.dashboard-card::after,
+.trip-context-card::after,
+.overview-hero-card::after,
+.hero-card::after,
+.live-status-hero::after,
+.editorial-story-card::after,
+.search-map-card::after,
+.account-card::after,
+.upcoming-card::after,
+.weather-card::after,
+.note-card::after,
+.journal-media-card::after,
+.nearby-place-card::after,
+.feature-card::after,
+.card-pattern-map::after,
+.card-pattern-poly::after {
+  content: "";
+  position: absolute;
+  bottom: -15px;
+  right: -15px;
+  width: 180px;
+  height: 180px;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: bottom right;
+  opacity: 0.22;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* MapPattern Overlay Cards */
+.dashboard-card::after,
+.trip-context-card::after,
+.overview-hero-card::after,
+.hero-card::after,
+.weather-card::after,
+.card-pattern-map::after {
+  background-image: url("./assets/trip_MapPattern.svg");
+  opacity: 0.22;
+}
+
+/* PolyLines Overlay Cards (Featured on Stories, Account, Search, and Even Cards) */
+.editorial-story-card::after,
+.search-map-card::after,
+.live-status-hero::after,
+.account-card::after,
+.feature-card::after,
+.nearby-place-card:nth-child(even)::after,
+.note-card:nth-child(even)::after,
+.journal-media-card:nth-child(even)::after,
+.card-pattern-poly::after {
+  background-image: url("./assets/trip_PolyLines.svg") !important;
+  opacity: 0.32 !important;
+  width: 200px !important;
+  height: 200px !important;
+  bottom: -25px !important;
+  right: -25px !important;
+}
+
+.dashboard-card > *,
+.trip-context-card > *,
+.overview-hero-card > *,
+.hero-card > *,
+.live-status-hero > *,
+.editorial-story-card > *,
+.search-map-card > *,
+.account-card > *,
+.upcoming-card > *,
+.weather-card > *,
+.note-card > *,
+.journal-media-card > *,
+.nearby-place-card > *,
+.feature-card > *,
+.card-pattern-map > *,
+.card-pattern-poly > * {
+  position: relative;
+  z-index: 2;
 }
 
 .card-eyebrow-row {

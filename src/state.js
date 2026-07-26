@@ -5,7 +5,7 @@ import { fetchOpenMeteoWeather } from "./services/weatherService.js";
 
 class AppState {
   constructor() {
-    this.activeView = "home"; // "home" | "live" | "plan" | "search" | "profile" | "landing"
+    this.activeView = "landing"; // Initial entry view: "landing" | "home" | "live" | "plan" | "search" | "profile"
     this.activeTripId = "paris"; // "paris" | "crete"
     this.tripMode = false; // Default: Planning mode ("Before you go" / Just got home from Crete!)
     

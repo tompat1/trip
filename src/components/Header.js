@@ -1,5 +1,6 @@
 import { state } from "../state.js";
 import { renderIcon } from "../utils/icons.js";
+import { TRIP_LOGO_SVG } from "./BrandAssets.js";
 
 export function renderHeader() {
   const isLanding = state.activeView === "landing";
@@ -8,13 +9,12 @@ export function renderHeader() {
     return `
       <header class="top-nav top-nav--landing">
         <div class="top-nav__brand">
-          <span class="top-nav__logo">T R I P</span>
-          <span class="top-nav__sublogo">Trip Planner Deluxe</span>
+          ${TRIP_LOGO_SVG("", 24)}
         </div>
         <div class="top-nav__actions">
           <button class="btn btn--primary btn--sm" data-action="go-app">Get started</button>
           <button class="btn btn--icon" aria-label="Menu">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+            ${renderIcon("menu")}
           </button>
         </div>
       </header>
@@ -28,8 +28,8 @@ export function renderHeader() {
   return `
     <header class="app-header">
       <div class="app-header__top">
-        <div class="brand-monogram" data-action="cycle-next-trip" title="Click logo to cycle trip context">
-          <span class="brand-monogram__logo">T R I P</span>
+        <div class="brand-monogram" data-action="go-home">
+          ${TRIP_LOGO_SVG("", 26)}
         </div>
         <div class="app-header__user">
           <div class="header-live-time-pill" title="Live Open-Meteo weather in ${escapeHtml(trip.destination.split(',')[0])} & time">
