@@ -1,0 +1,12 @@
+# Main HTML / Page Navigation - Never cache HTML aggressively
+/*
+  Cache-Control: no-cache, no-store, must-revalidate
+  Vary: User-Agent, Accept-Encoding
+
+# Immutable Static Assets (Vite bundled JS, CSS, SVG)
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Service Worker - Always fetch fresh
+/sw.js
+  Cache-Control: no-cache, no-store, must-revalidate
