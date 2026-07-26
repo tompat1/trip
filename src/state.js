@@ -52,6 +52,7 @@ function readStoredTourismDiscovery(tripId) {
     return {
       tourismPois: Array.isArray(discovery.tourismPois) ? discovery.tourismPois : [],
       hiddenGems: Array.isArray(discovery.hiddenGems) ? discovery.hiddenGems : [],
+      osmPlaces: Array.isArray(discovery.osmPlaces) ? discovery.osmPlaces : [],
       updatedAt: discovery.updatedAt || "",
     };
   } catch {
@@ -99,12 +100,14 @@ function normalizeTourismIdea(place = {}, kind = "poi") {
     reviewsCount: "OpenTripMap",
     duration: category === "Museum" ? "1-2 hours" : "45-90 min",
     image: place.imageUrl || TOURISM_IMAGE_BY_CATEGORY[category] || TOURISM_IMAGE_BY_CATEGORY.Place,
-    source: place.source || "OpenTripMap",
-    sourceRole: place.sourceRole || "opentripmap",
-    sourceUrl: place.sourceUrl || "",
+    source: place.source || (kind === "osm" ? "OpenStreetMap" : "OpenTripMap"),
+    sourceRole: place.sourceRole || (kind === "osm" ? "osm" : "opentripmap"),
+    sourceUrl: place.sourceUrl || place.officialWebsite || "",
     coordinates: place.coordinates || null,
     distance: place.distance || "",
     distanceMeters: place.distanceMeters,
+    openingHours: place.openingHours || "",
+    categories: place.categories || [category],
     kind,
   };
 }
@@ -190,6 +193,7 @@ class AppState {
       if (storedDiscovery) {
         tripsData[tripId].tourismPois = storedDiscovery.tourismPois;
         tripsData[tripId].hiddenGems = storedDiscovery.hiddenGems;
+        tripsData[tripId].osmPlaces = storedDiscovery.osmPlaces;
         this.tourismDiscoveryStatus[tripId] = {
           status: "cached",
           error: "",
@@ -198,6 +202,7 @@ class AppState {
       } else {
         tripsData[tripId].tourismPois = tripsData[tripId].tourismPois || [];
         tripsData[tripId].hiddenGems = tripsData[tripId].hiddenGems || [];
+        tripsData[tripId].osmPlaces = tripsData[tripId].osmPlaces || [];
         this.tourismDiscoveryStatus[tripId] = { status: "idle", error: "", updatedAt: "" };
       }
     });
@@ -272,7 +277,8 @@ class AppState {
               ideas: [],
               events: [],
               tourismPois: [],
-              hiddenGems: []
+              hiddenGems: [],
+              osmPlaces: []
             };
           } else {
             tripsData[t.id].flag = resolvedFlag;
@@ -404,7 +410,7 @@ class AppState {
     const trip = tripsData[tripId];
     if (!trip || !Array.isArray(trip.center)) return;
 
-    const existing = [...(trip.tourismPois || []), ...(trip.hiddenGems || [])];
+    const existing = [...(trip.tourismPois || []), ...(trip.hiddenGems || []), ...(trip.osmPlaces || [])];
     if (this.tourismDiscoveryStatus[tripId]?.status === "loading" && !options.force) return;
     if (existing.length && !options.force) return;
 
@@ -416,7 +422,7 @@ class AppState {
     if (options.notify !== false) this.notify();
 
     try {
-      const [topResult, hiddenResult] = await Promise.all([
+      const [topResult, hiddenResult, osmResult] = await Promise.all([
         enrichmentService.discoverTopPois({
           coordinates: trip.center,
           radiusMeters: options.radiusMeters || 4500,
@@ -427,23 +433,30 @@ class AppState {
           radiusMeters: options.hiddenRadiusMeters || 6500,
           limit: options.hiddenLimit || 10,
         }),
+        enrichmentService.discoverNearby({
+          coordinates: trip.center,
+          radiusMeters: options.osmRadiusMeters || 2200,
+          intent: "traveler",
+        }),
       ]);
 
       const tourismPois = (topResult?.places || []).map((place) => normalizeTourismIdea(place, "poi"));
       const hiddenGems = (hiddenResult?.places || []).map((place) => normalizeTourismIdea(place, "hidden"));
+      const osmPlaces = (osmResult?.places || []).map((place) => normalizeTourismIdea(place, "osm"));
       const status = getOpenTripMapStatus([topResult, hiddenResult]);
       const updatedAt = new Date().toISOString();
 
       trip.tourismPois = tourismPois;
       trip.hiddenGems = hiddenGems;
+      trip.osmPlaces = osmPlaces;
       this.tourismDiscoveryStatus[tripId] = {
-        status: tourismPois.length || hiddenGems.length ? "ready" : status,
+        status: tourismPois.length || hiddenGems.length || osmPlaces.length ? "ready" : status,
         error: status === "not-configured" ? "missing-opentripmap-api-key" : (topResult?.error || hiddenResult?.error || ""),
         updatedAt,
       };
 
-      if (tourismPois.length || hiddenGems.length) {
-        writeStoredTourismDiscovery(tripId, { tourismPois, hiddenGems, updatedAt });
+      if (tourismPois.length || hiddenGems.length || osmPlaces.length) {
+        writeStoredTourismDiscovery(tripId, { tourismPois, hiddenGems, osmPlaces, updatedAt });
       }
     } catch (error) {
       this.tourismDiscoveryStatus[tripId] = {
@@ -526,7 +539,8 @@ class AppState {
       ideas: [],
       events: [],
       tourismPois: [],
-      hiddenGems: []
+      hiddenGems: [],
+      osmPlaces: []
     };
 
     tripsData[id] = newTrip;

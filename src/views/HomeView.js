@@ -53,6 +53,8 @@ export function renderHomeView() {
           <div class="horizontal-scroll-container">
             ${tripIdeas.map(idea => {
               const isOpenTripMap = idea.source === "OpenTripMap";
+              const isOpenStreetMap = String(idea.source || "").startsWith("OpenStreetMap") || idea.sourceRole === "osm";
+              const providerLabel = isOpenStreetMap ? "OpenStreetMap" : "OpenTripMap";
               return `
               <div class="idea-card">
                 <div class="idea-card__image" style="background-image: url('${idea.image}')">
@@ -64,8 +66,8 @@ export function renderHomeView() {
                   <h4 class="idea-card__title">${escapeHtml(idea.title)}</h4>
                   <p class="idea-card__subtitle">${escapeHtml(idea.subtitle)}</p>
                   <div class="idea-card__meta">
-                    <span class="rating-badge">${isOpenTripMap ? 'OpenTripMap' : `★ ${escapeHtml(idea.rating)}`}</span>
-                    <span class="duration-badge">${isOpenTripMap ? escapeHtml(idea.distance || idea.category) : `⏱ ${escapeHtml(idea.duration)}`}</span>
+                    <span class="rating-badge">${isOpenTripMap || isOpenStreetMap ? providerLabel : `★ ${escapeHtml(idea.rating)}`}</span>
+                    <span class="duration-badge">${isOpenTripMap || isOpenStreetMap ? escapeHtml(idea.distance || idea.category) : `⏱ ${escapeHtml(idea.duration)}`}</span>
                   </div>
                 </div>
               </div>
@@ -109,7 +111,7 @@ export function renderHomeView() {
 }
 
 function getHomeTripIdeas(trip) {
-  const liveIdeas = [...(trip.tourismPois || []), ...(trip.hiddenGems || [])].slice(0, 3);
+  const liveIdeas = [...(trip.tourismPois || []), ...(trip.hiddenGems || []), ...(trip.osmPlaces || [])].slice(0, 3);
   return [...liveIdeas, ...(trip.ideas || [])].slice(0, 6);
 }
 

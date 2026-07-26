@@ -480,7 +480,7 @@ function getSavedPlacesForTrip(trip) {
     }
   });
 
-  [...(trip.tourismPois || []), ...(trip.hiddenGems || [])].forEach(idea => {
+  [...(trip.tourismPois || []), ...(trip.hiddenGems || []), ...(trip.osmPlaces || [])].forEach(idea => {
     if (savedSet.has(idea.id) && !places.some(p => p.id === idea.id || p.title === idea.title)) {
       places.push(idea);
     }
@@ -529,6 +529,7 @@ function renderExploreSubTab(trip) {
   const curatedIdeas = trip.ideas || [];
   const tourismPois = trip.tourismPois || [];
   const hiddenGems = trip.hiddenGems || [];
+  const osmPlaces = trip.osmPlaces || [];
   const discoveryStatus = state.getTourismDiscoveryStatus ? state.getTourismDiscoveryStatus(trip.id) : { status: "idle" };
   const events = trip.calendarEvents || [];
 
@@ -539,10 +540,11 @@ function renderExploreSubTab(trip) {
         <p style="font-size: 0.85rem; color: var(--ink-muted);">Tourism POIs, hidden gems, and curated local recommendations for your trip</p>
       </div>
 
-      ${renderTourismStatus(discoveryStatus, tourismPois.length + hiddenGems.length)}
+      ${renderTourismStatus(discoveryStatus, tourismPois.length + hiddenGems.length + osmPlaces.length)}
 
       ${tourismPois.length ? renderExploreSection("Top POIs", "Attractions, museums, monuments, architecture, and nature from OpenTripMap.", tourismPois, events) : ""}
       ${hiddenGems.length ? renderExploreSection("Hidden Gems", "Lower-noise interesting places around your destination.", hiddenGems, events) : ""}
+      ${osmPlaces.length ? renderExploreSection("OpenStreetMap Nearby", "Cafes, food, shops, toilets, water, parks, viewpoints, and tagged access details from OSM.", osmPlaces, events) : ""}
       ${renderExploreSection("Curated Picks", "Hand-picked starting points already in your trip.", curatedIdeas, events)}
     </div>
   `;
@@ -590,7 +592,9 @@ function renderExploreIdeaCard(idea, events) {
   const isSaved = state.savedPlaceIds.has(idea.id);
   const isAdded = events.some(e => e.title === idea.title);
   const isOpenTripMap = idea.source === "OpenTripMap";
+  const isOpenStreetMap = String(idea.source || "").startsWith("OpenStreetMap") || idea.sourceRole === "osm";
   const sourceMeta = idea.distance || idea.source || "OpenTripMap";
+  const providerLabel = isOpenStreetMap ? "OpenStreetMap" : "OpenTripMap";
   return `
     <div class="explore-card" style="background: var(--paper-card); border: 1px solid var(--line); border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow-sm); display: flex; flex-direction: column;">
       <div style="height: 160px; background-image: url('${idea.image}'); background-size: cover; background-position: center; position: relative;">
@@ -606,11 +610,11 @@ function renderExploreIdeaCard(idea, events) {
             <h3 style="font-size: 1.1rem; font-weight: 700; color: var(--ink); margin-bottom: 2px;">${escapeHtml(idea.title)}</h3>
             <p style="font-size: 0.82rem; color: var(--ink-muted); margin: 0;">${escapeHtml(idea.subtitle)}</p>
           </div>
-          <span class="voice-mono" style="font-size: 0.76rem; font-weight: 700; color: ${isOpenTripMap ? 'var(--orange)' : 'var(--sun)'}; background: ${isOpenTripMap ? 'rgba(210,104,43,0.12)' : 'rgba(233,199,107,0.18)'}; padding: 3px 8px; border-radius: var(--radius-pill); white-space: nowrap;">${isOpenTripMap ? escapeHtml(sourceMeta) : `★ ${escapeHtml(idea.rating)}`}</span>
+          <span class="voice-mono" style="font-size: 0.76rem; font-weight: 700; color: ${isOpenTripMap || isOpenStreetMap ? 'var(--orange)' : 'var(--sun)'}; background: ${isOpenTripMap || isOpenStreetMap ? 'rgba(210,104,43,0.12)' : 'rgba(233,199,107,0.18)'}; padding: 3px 8px; border-radius: var(--radius-pill); white-space: nowrap;">${isOpenTripMap || isOpenStreetMap ? escapeHtml(sourceMeta) : `★ ${escapeHtml(idea.rating)}`}</span>
         </div>
 
         <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 8px; padding-top: 10px; border-top: 1px solid var(--line-light); gap: 10px;">
-          <span class="voice-mono" style="font-size: 0.78rem; color: var(--ink-muted);">${isOpenTripMap ? "OpenTripMap" : `${renderIcon("clock")} ${escapeHtml(idea.duration || '2 hours')}`}</span>
+          <span class="voice-mono" style="font-size: 0.78rem; color: var(--ink-muted);">${isOpenTripMap || isOpenStreetMap ? providerLabel : `${renderIcon("clock")} ${escapeHtml(idea.duration || '2 hours')}`}</span>
           ${isAdded ? `
             <button class="btn btn--outline btn--xs" disabled style="opacity: 0.65; cursor: default; background: var(--paper-subtle); color: var(--ink-muted); border-color: var(--line);">
               ${renderIcon("check")} Added

@@ -98,6 +98,56 @@ test("Worker OpenTripMap route reports missing key clearly", async () => {
   assert.equal(payload.error.code, "missing_opentripmap_key");
 });
 
+test("Worker nearby route queries OpenStreetMap open-first categories through Overpass", async () => {
+  const originalFetch = globalThis.fetch;
+  let overpassQuery = "";
+  globalThis.fetch = async (_url, options = {}) => {
+    overpassQuery = options.body?.get ? options.body.get("data") : String(options.body || "");
+    return {
+      ok: true,
+      async json() {
+        return {
+          elements: [
+            {
+              type: "node",
+              id: 101,
+              lat: 48.8568,
+              lon: 2.3524,
+              tags: { name: "Rue Cafe", amenity: "cafe", opening_hours: "Mo-Fr 08:00-18:00" },
+            },
+            {
+              type: "node",
+              id: 102,
+              lat: 48.857,
+              lon: 2.353,
+              tags: { name: "Pocket Fountain", amenity: "drinking_water", wheelchair: "yes" },
+            },
+          ],
+        };
+      },
+    };
+  };
+
+  try {
+    const response = await worker.fetch(new Request("https://trip.test/api/places/nearby?lat=48.8566&lng=2.3522&radius=1500"), {}, {});
+    assert.equal(response.status, 200);
+    const payload = await response.json();
+    assert.match(overpassQuery, /\["amenity"~"cafe\|restaurant/);
+    assert.match(overpassQuery, /\["tourism"~"attraction\|museum\|viewpoint\|gallery"/);
+    assert.match(overpassQuery, /\["historic"\]/);
+    assert.match(overpassQuery, /\["leisure"~"park\|garden"/);
+    assert.match(overpassQuery, /\["shop"\]/);
+    assert.match(overpassQuery, /\["amenity"~"toilets\|drinking_water"/);
+    assert.match(overpassQuery, /\["entrance"\]/);
+    assert.match(overpassQuery, /\["wheelchair"\]/);
+    assert.match(overpassQuery, /\["opening_hours"\]/);
+    assert.equal(payload.places[0].source.startsWith("OpenStreetMap"), true);
+    assert.equal(payload.places.some((place) => place.category === "Water"), true);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("Worker attribution endpoint returns stored image provenance", async () => {
   const imageRows = [{
     id: "image-1",

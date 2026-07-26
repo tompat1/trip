@@ -2422,9 +2422,17 @@ function buildNearbyOverpassQuery([lat, lng], radius) {
       way(around:${primaryRadius},${lat},${lng})["tourism"~"attraction|museum|viewpoint|gallery"];
       node(around:${primaryRadius},${lat},${lng})["historic"];
       way(around:${primaryRadius},${lat},${lng})["historic"];
-      node(around:${primaryRadius},${lat},${lng})["shop"~"bakery|coffee|books|deli"];
-      way(around:${primaryRadius},${lat},${lng})["shop"~"bakery|coffee|books|deli"];
+      node(around:${primaryRadius},${lat},${lng})["leisure"~"park|garden"];
+      way(around:${primaryRadius},${lat},${lng})["leisure"~"park|garden"];
+      node(around:${primaryRadius},${lat},${lng})["shop"];
+      way(around:${primaryRadius},${lat},${lng})["shop"];
       node(around:${primaryRadius},${lat},${lng})["amenity"~"toilets|drinking_water"];
+      node(around:${primaryRadius},${lat},${lng})["entrance"];
+      way(around:${primaryRadius},${lat},${lng})["entrance"];
+      node(around:${primaryRadius},${lat},${lng})["wheelchair"];
+      way(around:${primaryRadius},${lat},${lng})["wheelchair"];
+      node(around:${primaryRadius},${lat},${lng})["opening_hours"];
+      way(around:${primaryRadius},${lat},${lng})["opening_hours"];
     );
     out center tags 36;
   `;
@@ -2644,7 +2652,8 @@ function normalizeOverpassElement(element = {}, origin, options = {}) {
     wikidataId,
     wikipediaUrl: getWikipediaUrl(tags),
     officialWebsite: sanitizeUrl(tags.website || tags.contact?.website || ""),
-    categories: [category, tags.amenity, tags.tourism, tags.historic, tags.shop].filter(Boolean).map(String),
+    sourceUrl: getOpenStreetMapObjectUrl({ osm_type: osmType, osm_id: osmId }),
+    categories: [category, tags.amenity, tags.tourism, tags.historic, tags.leisure, tags.shop, tags.entrance, tags.wheelchair].filter(Boolean).map(String),
     confidence: wikidataId || tags.website ? 0.72 : 0.62,
     distanceMeters,
     distance: formatDistance(distanceMeters),
@@ -2669,6 +2678,8 @@ function classifyNearbyPlace(tags) {
   if (["museum", "gallery"].includes(tags.tourism)) return "Culture";
   if (["viewpoint", "attraction"].includes(tags.tourism) || tags.historic) return "Sight";
   if (["park", "garden"].includes(tags.leisure)) return "Reset";
+  if (tags.entrance) return "Entrance";
+  if (tags.wheelchair) return "Accessibility";
   if (tags.shop) return "Shop";
   return "Nearby";
 }

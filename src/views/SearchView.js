@@ -175,7 +175,7 @@ function filterPlacesByQuery(places, query) {
 }
 
 function getTourismSearchPlaces(trip) {
-  return [...(trip?.tourismPois || []), ...(trip?.hiddenGems || [])].map((place) => ({
+  return [...(trip?.tourismPois || []), ...(trip?.hiddenGems || []), ...(trip?.osmPlaces || [])].map((place) => ({
     ...place,
     name: place.name || place.title,
     neighborhood: place.neighborhood || place.subtitle || place.distance || trip.destination,
@@ -189,6 +189,8 @@ function renderSearchPlaceCard(place) {
   const location = place.neighborhood || place.subtitle || place.distance || "";
   const description = place.description || place.reason || "";
   const isOpenTripMap = place.source === "OpenTripMap";
+  const isOpenStreetMap = String(place.source || "").startsWith("OpenStreetMap") || place.sourceRole === "osm";
+  const providerLabel = isOpenStreetMap ? "OpenStreetMap" : "OpenTripMap";
   const image = place.image || "https://images.unsplash.com/photo-1488646953014-85cb44e25828?auto=format&fit=crop&w=700&q=80";
   return `
     <div class="search-place-card" style="transition: transform 0.15s ease, box-shadow 0.2s ease;">
@@ -204,8 +206,8 @@ function renderSearchPlaceCard(place) {
         </div>
 
         <div class="search-place-card__rating" style="margin-top: 6px;">
-          ${isOpenTripMap ? `
-            <span class="rating-star" style="color: var(--orange); font-weight: 700;">OpenTripMap</span>
+          ${isOpenTripMap || isOpenStreetMap ? `
+            <span class="rating-star" style="color: var(--orange); font-weight: 700;">${providerLabel}</span>
             ${place.distance ? `<span class="rating-count">${escapeHtml(place.distance)}</span>` : ""}
           ` : `
             <span class="rating-star" style="color: var(--sun); font-weight: 700;">★ ${escapeHtml(place.rating)}</span>
@@ -213,7 +215,7 @@ function renderSearchPlaceCard(place) {
           `}
           <span class="rating-sep">•</span>
           <span class="rating-category">${escapeHtml(place.category)}</span>
-          ${isOpenTripMap ? "" : `
+          ${isOpenTripMap || isOpenStreetMap ? "" : `
             <span class="rating-sep">•</span>
             <span style="font-size: 0.72rem; color: var(--green); font-weight: 600;">Open now 🟢</span>
           `}
