@@ -324,10 +324,6 @@ document.addEventListener("click", async (e) => {
       const current = state.activeDayIndex || 0;
       state.setActiveDay(Math.min(6, current + 1));
     }
-    else if (action === "set-calendar-day-filter") {
-      const filter = target.dataset.filter || "all";
-      state.setCalendarDayFilter(filter);
-    }
     else if (action === "clear-search-query") {
       state.setSearchQuery("");
     }

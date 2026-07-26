@@ -118,7 +118,6 @@ class AppState {
     this.quickCaptureOpen = false;
     this.activeLightboxMedia = null;
     this.activeEventDrawer = null; // { mode: 'create'|'edit', event: {} }
-    this.calendarDayFilter = "all"; // 'all' or '0'..'6'
     this.listeners = new Set();
     this.checkBackendHealth();
     this.loadD1Trips();
@@ -132,11 +131,6 @@ class AppState {
 
   setGeneratedStory(tripId, story) {
     this.generatedStories[tripId] = story;
-    this.notify();
-  }
-
-  setCalendarDayFilter(filter) {
-    this.calendarDayFilter = String(filter);
     this.notify();
   }
 

@@ -9,13 +9,11 @@ export function renderCalendarGrid(options = {}) {
   const events = trip.calendarEvents || [];
   const mode = options.mode || "week";
   const isDayMode = mode === "day";
-  const activeFilter = isDayMode ? String(state.activeDayIndex || 0) : (state.calendarDayFilter || "all");
+  const activeDay = String(state.activeDayIndex || 0);
 
   const visibleDayIndices = isDayMode
     ? [state.activeDayIndex || 0]
-    : activeFilter === "all" 
-    ? [0, 1, 2, 3, 4, 5, 6] 
-    : [parseInt(activeFilter, 10)];
+    : [0, 1, 2, 3, 4, 5, 6];
   const wrapperClasses = [
     "calendar-grid-wrapper",
     isDayMode ? "calendar-grid-wrapper--day-edit" : "calendar-grid-wrapper--week-overview"
@@ -23,18 +21,16 @@ export function renderCalendarGrid(options = {}) {
 
   return `
     <div class="${wrapperClasses}" data-calendar-mode="${mode}">
-      <!-- Mobile Day Filter Bar -->
-      <div class="calendar-mobile-day-bar">
-        ${isDayMode ? "" : `<button class="cal-day-pill ${activeFilter === 'all' ? 'is-active' : ''}" data-action="set-calendar-day-filter" data-filter="all">
-          <span>All 7 Days</span>
-        </button>`}
-        ${DAYS_HEADER.map((dayStr, idx) => `
-          <button class="cal-day-pill ${activeFilter === String(idx) ? 'is-active' : ''}" ${isDayMode ? `data-day-select="${idx}"` : `data-action="set-calendar-day-filter" data-filter="${idx}"`}>
-            <span class="pill-day-name">${dayStr.split(' ')[0]}</span>
-            <span class="pill-day-num">${dayStr.split(' ')[1]}</span>
-          </button>
-        `).join('')}
-      </div>
+      ${isDayMode ? `
+        <div class="calendar-mobile-day-bar">
+          ${DAYS_HEADER.map((dayStr, idx) => `
+            <button class="cal-day-pill ${activeDay === String(idx) ? 'is-active' : ''}" data-day-select="${idx}">
+              <span class="pill-day-name">${dayStr.split(' ')[0]}</span>
+              <span class="pill-day-num">${dayStr.split(' ')[1]}</span>
+            </button>
+          `).join('')}
+        </div>
+      ` : ""}
 
       <div class="calendar-grid">
         <!-- Time column -->
