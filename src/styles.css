@@ -717,6 +717,7 @@ input, select, textarea {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-wrap: wrap;
 }
 
 .trip-dates {
@@ -732,11 +733,14 @@ input, select, textarea {
   gap: 6px;
   cursor: pointer;
   user-select: none;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 .trip-mode-label {
-  font-size: 0.75rem;
+  font-size: 0.78rem;
   font-weight: 600;
   color: var(--ink-muted);
+  white-space: nowrap;
 }
 .trip-mode-toggle input {
   display: none;
@@ -2732,6 +2736,32 @@ input, select, textarea {
     font-size: 0.95rem !important;
     border-radius: var(--radius-md) !important;
     min-height: 44px !important;
+  }
+
+  .trip-actions-row {
+    width: 100% !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    gap: 8px !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    scrollbar-width: none !important;
+    -webkit-overflow-scrolling: touch !important;
+    padding-bottom: 4px !important;
+  }
+  .trip-actions-row::-webkit-scrollbar {
+    display: none;
+  }
+  .trip-mode-toggle {
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+  }
+  .trip-mode-label {
+    white-space: nowrap !important;
+    font-size: 0.78rem !important;
   }
 }
 
