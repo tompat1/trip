@@ -252,6 +252,13 @@ function renderAlternativePlanView() {
   if (mode === "map") {
     return `
       <div class="plan-map-view">
+        <div class="plan-map-header">
+          <div>
+            <h3 class="plan-map-title">Itinerary map</h3>
+            <p class="plan-map-subtitle">${events.length} calendar activities plotted from your plan</p>
+          </div>
+          <button class="btn btn--outline btn--sm" data-viewmode="timeline">${renderIcon("clock")} Timeline</button>
+        </div>
         <div id="plan-map-container" class="plan-map"></div>
       </div>
     `;
