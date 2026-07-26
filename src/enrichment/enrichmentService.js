@@ -3,6 +3,10 @@ import { enrichPlaceMedia } from "./mediaAggregator.js";
 import { normalizeOsmElement, normalizeWorkerNearbyPlace } from "./normalizers.js";
 import { resolveLocationContext } from "./placeResolver.js";
 import { createPlaceProfileContract, createProviderStatus, PROVIDER_STATUS } from "./schemas.js";
+import { calculateFlightDistance, getAirportByIata, searchAirports } from "../services/airportService.js";
+import { fetchRouteDirections } from "../services/routeService.js";
+
+export { calculateFlightDistance, getAirportByIata, searchAirports, fetchRouteDirections };
 
 const DEFAULT_WORKER_API_BASE = "https://trip.thomasrynell.workers.dev";
 export const ADMIN_SESSION_STORAGE_KEY = "trip-admin-session-token-v1";

@@ -1,13 +1,11 @@
-import { state } from "../state.js";
-import { renderCalendarGrid } from "../components/CalendarGrid.js";
-import { renderHeader } from "../components/Header.js";
-import { renderIcon } from "../utils/icons.js";
-import { TRIP_STAMP_SVG } from "../components/BrandAssets.js";
+import { calculateFlightDistance, getAirportByIata } from "../services/airportService.js";
+import { getDestinationTransitGuide } from "../services/transitService.js";
 
 const SUB_TABS = [
   { id: "overview", label: "Overview", icon: renderIcon("compass") },
   { id: "explore", label: "Explore", icon: renderIcon("sparkles") },
   { id: "plan", label: "Plan", icon: renderIcon("calendar") },
+  { id: "transit", label: "Transit", icon: renderIcon("navigation") },
   { id: "journal", label: "Journal", icon: renderIcon("bookOpen") },
   { id: "story", label: "Story", icon: renderIcon("award") }
 ];
@@ -59,6 +57,9 @@ function renderSubtabContent(trip) {
   }
   if (tab === "explore") {
     return renderExploreSubTab(trip);
+  }
+  if (tab === "transit") {
+    return renderTransitSubTab(trip);
   }
   if (tab === "journal") {
     return renderJournalSubTab();
