@@ -117,7 +117,8 @@ export function renderSearchView() {
 
 export function renderSearchResults() {
   const query = state.searchQuery || "";
-  const places = filterPlacesByQuery(searchPlacesData, query);
+  const placesForTrip = filterPlacesByActiveTrip(searchPlacesData);
+  const places = filterPlacesByQuery(placesForTrip, query);
   const concerts = searchConcerts(query);
 
   return `
@@ -142,6 +143,15 @@ export function renderSearchResults() {
       }
     </div>
   `;
+}
+
+function filterPlacesByActiveTrip(places) {
+  const destinationCity = (state.activeTrip?.destination || "").split(",")[0].trim().toLowerCase();
+  if (!destinationCity) return places;
+
+  return places.filter((place) =>
+    (place.neighborhood || "").toLowerCase().includes(destinationCity)
+  );
 }
 
 function filterPlacesByQuery(places, query) {
