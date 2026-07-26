@@ -210,7 +210,7 @@ export const tripsData = {
       {
         id: "i2",
         title: "Louvre Museum",
-        subtitle: "Book tickets",
+        subtitle: "Book skip-the-line tickets",
         rating: 4.9,
         duration: "3h",
         image: "https://images.unsplash.com/photo-1499856871958-5b9627545d1a?auto=format&fit=crop&w=600&q=80"
@@ -230,6 +230,22 @@ export const tripsData = {
         rating: 4.7,
         duration: "2h",
         image: "https://images.unsplash.com/photo-1511192336575-5a79af67a629?auto=format&fit=crop&w=600&q=80"
+      },
+      {
+        id: "i5",
+        title: "Montmartre Artists Walk",
+        subtitle: "Sacré-Cœur & Place du Tertre",
+        rating: 4.8,
+        duration: "2.5h",
+        image: "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=600&q=80"
+      },
+      {
+        id: "i6",
+        title: "Le Marais Artisan Bakeries",
+        subtitle: "Pastries & vintage boutiques",
+        rating: 4.7,
+        duration: "2h",
+        image: "https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&w=600&q=80"
       }
     ],
     events: [
@@ -340,6 +356,22 @@ export const tripsData = {
         rating: 4.5,
         duration: "Half day",
         image: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=600&q=80"
+      },
+      {
+        id: "ci6",
+        title: "Cretan Wine & Olive Tasting",
+        subtitle: "Organic estate in Peza valley",
+        rating: 4.9,
+        duration: "3 hrs",
+        image: "https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?auto=format&fit=crop&w=600&q=80"
+      },
+      {
+        id: "ci7",
+        title: "Spinalonga Island Boat Tour",
+        subtitle: "Historic Venetian island fortress",
+        rating: 4.8,
+        duration: "3.5 hrs",
+        image: "https://images.unsplash.com/photo-1570077188670-e3a8d69ac5ff?auto=format&fit=crop&w=600&q=80"
       }
     ],
     events: [
@@ -409,6 +441,46 @@ export const tripsData = {
         rating: 4.8,
         duration: "2 hrs",
         image: "https://images.unsplash.com/photo-1515443961218-a51367888e4b?auto=format&fit=crop&w=600&q=80"
+      },
+      {
+        id: "spain_i2",
+        title: "Sagrada Família & Park Güell",
+        subtitle: "Gaudí architecture tour in Barcelona",
+        rating: 4.9,
+        duration: "3.5 hrs",
+        image: "https://images.unsplash.com/photo-1543783207-ec64e4d95325?auto=format&fit=crop&w=600&q=80"
+      },
+      {
+        id: "spain_i3",
+        title: "Alhambra Palace & Gardens",
+        subtitle: "Moorish palace complex in Granada",
+        rating: 4.9,
+        duration: "4 hrs",
+        image: "https://images.unsplash.com/photo-1568849676085-51415703900f?auto=format&fit=crop&w=600&q=80"
+      },
+      {
+        id: "spain_i4",
+        title: "Flamenco Show in Triana",
+        subtitle: "Authentic Andalusian dance in Seville",
+        rating: 4.8,
+        duration: "2 hrs",
+        image: "https://images.unsplash.com/photo-1533105079780-92b9be482077?auto=format&fit=crop&w=600&q=80"
+      },
+      {
+        id: "spain_i5",
+        title: "Prado Museum Art Walk",
+        subtitle: "Goya, Velázquez & El Greco masterworks",
+        rating: 4.8,
+        duration: "2.5 hrs",
+        image: "https://images.unsplash.com/photo-1582650625119-3a31f8418b0d?auto=format&fit=crop&w=600&q=80"
+      },
+      {
+        id: "spain_i6",
+        title: "Barceloneta Beach & Sangria",
+        subtitle: "Mediterranean seafront & tapas",
+        rating: 4.7,
+        duration: "2 hrs",
+        image: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=600&q=80"
       }
     ],
     events: [
