@@ -250,16 +250,35 @@ function renderAlternativePlanView() {
   }
 
   if (mode === "map") {
+    const activeDay = state.mapDayFilter;
+    const hasDayFilter = activeDay !== null && activeDay !== undefined;
+    const visibleEvents = hasDayFilter ? events.filter((event) => Number(event.dayIndex) === activeDay) : events;
     return `
       <div class="plan-map-view">
         <div class="plan-map-header">
           <div>
             <h3 class="plan-map-title">Itinerary map</h3>
-            <p class="plan-map-subtitle">${events.length} calendar activities plotted from your plan</p>
+            <p class="plan-map-subtitle">${hasDayFilter ? `Day ${activeDay + 1}` : "All days"} · ${visibleEvents.length} calendar activities plotted</p>
           </div>
           <button class="btn btn--outline btn--sm" data-viewmode="timeline">${renderIcon("clock")} Timeline</button>
         </div>
-        <div id="plan-map-container" class="plan-map"></div>
+        <div class="plan-map-day-filter ${hasDayFilter ? '' : 'is-all-days'}" aria-label="Filter map by day">
+          ${DAYS_HEADER.map((dayStr, idx) => `
+            <button class="plan-map-day-pill ${hasDayFilter && activeDay === idx ? 'is-active' : ''}" data-map-day-filter="${idx}" aria-pressed="${hasDayFilter && activeDay === idx ? 'true' : 'false'}">
+              <span class="pill-day-name">${dayStr.split(' ')[0]}</span>
+              <span class="pill-day-num">${dayStr.split(' ')[1]}</span>
+            </button>
+          `).join('')}
+        </div>
+        <div class="plan-map-shell">
+          <div id="plan-map-container" class="plan-map"></div>
+          ${visibleEvents.length ? "" : `
+            <div class="plan-map-empty">
+              <strong>${hasDayFilter ? `No activities on Day ${activeDay + 1}` : "No activities yet"}</strong>
+              <span>${hasDayFilter ? "Add an activity or pick another day." : "Add activities to start plotting your trip."}</span>
+            </div>
+          `}
+        </div>
       </div>
     `;
   }

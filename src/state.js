@@ -55,6 +55,7 @@ class AppState {
     this.planSubTab = "plan"; // "overview" | "plan" | "explore" | "journal" | "story"
     this.planViewMode = getDefaultPlanViewMode(); // "day" | "week" | "timeline" | "map"
     this.activeDayIndex = 0;
+    this.mapDayFilter = null;
 
     // Search view settings
     this.searchQuery = "";
@@ -303,6 +304,11 @@ class AppState {
 
   setActiveDay(index) {
     this.activeDayIndex = index;
+    this.notify();
+  }
+
+  setMapDayFilter(index) {
+    this.mapDayFilter = index === null || index === undefined ? null : Number(index);
     this.notify();
   }
 

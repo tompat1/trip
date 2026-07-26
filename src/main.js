@@ -152,7 +152,7 @@ function initMapsForView(view) {
     if (container) {
       const map = L.map(container, { zoomControl: true }).setView(trip.center, trip.zoom);
       L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19 }).addTo(map);
-      const mappedEvents = getMappedCalendarEvents(trip);
+      const mappedEvents = getMappedCalendarEvents(trip, state.mapDayFilter);
 
       mappedEvents.forEach(({ event, coordinates, index }) => {
         const marker = L.marker(coordinates, {
@@ -179,8 +179,9 @@ function initMapsForView(view) {
   }
 }
 
-function getMappedCalendarEvents(trip) {
+function getMappedCalendarEvents(trip, dayIndex = null) {
   return (trip.calendarEvents || [])
+    .filter((event) => dayIndex === null || dayIndex === undefined || Number(event.dayIndex) === Number(dayIndex))
     .map((event, index) => ({
       event,
       index,
@@ -264,7 +265,7 @@ function escapeHtml(str) {
 
 // Global Event Listeners Delegation
 document.addEventListener("click", async (e) => {
-  const target = e.target.closest("[data-nav], [data-action], [data-subtab], [data-viewmode], [data-day-select], [data-cat], [data-subfilter]");
+  const target = e.target.closest("[data-nav], [data-action], [data-subtab], [data-viewmode], [data-day-select], [data-map-day-filter], [data-cat], [data-subfilter]");
   if (!target) return;
 
   // Bottom dock navigation
@@ -605,6 +606,12 @@ document.addEventListener("click", async (e) => {
   // Day selector
   if (target.dataset.daySelect !== undefined) {
     state.setActiveDay(parseInt(target.dataset.daySelect, 10));
+  }
+
+  if (target.dataset.mapDayFilter !== undefined) {
+    const selectedDay = parseInt(target.dataset.mapDayFilter, 10);
+    const currentFilter = state.mapDayFilter;
+    state.setMapDayFilter(currentFilter === selectedDay ? null : selectedDay);
   }
 
   // Search categories
