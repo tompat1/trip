@@ -111,6 +111,7 @@ function renderEventCard(evt) {
       <div class="event-card-actions">
         <button class="btn btn--icon btn--ghost event-action-btn" data-action="open-edit-drawer" data-event-id="${evt.id}" title="Edit activity">${renderIcon("pencil")}</button>
       </div>
+      <button class="event-delete-btn" data-action="delete-calendar-event" data-event-id="${evt.id}" aria-label="Delete activity" title="Delete activity">${renderIcon("trash")}</button>
 
       <!-- Bottom Resize Handle for Touch/Drag Duration Resizing -->
       <div class="event-resize-handle" data-event-id="${evt.id}" title="Drag bottom edge to resize duration"></div>

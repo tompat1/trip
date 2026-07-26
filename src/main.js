@@ -550,7 +550,7 @@ document.addEventListener("pointerdown", (e) => {
   const wrapper = card ? card.closest(".calendar-grid-wrapper") : resizeHandle?.closest(".calendar-grid-wrapper");
   const isMobileWeekOverview = wrapper?.dataset.calendarMode === "week" && isTouchCalendarViewport();
 
-  if (card && isMobileWeekOverview && !e.target.closest(".event-action-btn")) {
+  if (card && isMobileWeekOverview && !e.target.closest(".event-action-btn, .event-delete-btn")) {
     activeDragState = {
       type: "tap",
       eventId: card.dataset.eventId,
@@ -581,7 +581,7 @@ document.addEventListener("pointerdown", (e) => {
     return;
   }
 
-  if (card && !e.target.closest(".event-action-btn")) {
+  if (card && !e.target.closest(".event-action-btn, .event-delete-btn")) {
     const requiresHandle = isTouchCalendarViewport();
     if (requiresHandle && !moveHandle) {
       activeDragState = {
