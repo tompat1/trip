@@ -5,7 +5,7 @@ import tripLogoUrl from "../assets/trip_logo.svg";
 export const TRIP_LOGO_SVG = (customClass = "", height = 26) => {
   const width = Math.round(height * 2.22);
   return `
-<svg class="trip-main-logo ${customClass}" viewBox="240 320 1600 720" width="${width}" height="${height}" role="img" aria-label="TRIP" style="aspect-ratio: 1600/720; height: ${height}px; width: auto; display: block; flex-shrink: 0;">
+<svg class="trip-main-logo ${customClass}" viewBox="220 250 1640 790" width="${width}" height="${height}" role="img" aria-label="TRIP" style="aspect-ratio: 1640/790; height: ${height}px; width: auto; display: block; flex-shrink: 0; overflow: visible;">
   <image href="${tripLogoUrl}" width="2047" height="1535" preserveAspectRatio="xMidYMid meet" />
 </svg>
 `;

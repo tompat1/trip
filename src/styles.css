@@ -519,9 +519,9 @@ textarea {
 
 .brand-monogram {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: flex-start;
-  height: 38px;
+  min-height: 42px;
   cursor: pointer;
 }
 
@@ -532,6 +532,7 @@ textarea {
   display: block;
   flex-shrink: 0;
   object-fit: contain;
+  overflow: visible;
 }
 
 .brand-monogram__logo {
@@ -1032,9 +1033,10 @@ textarea {
 
 .top-nav__brand {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: flex-start;
-  height: 38px;
+  min-height: 42px;
+  cursor: pointer;
 }
 
 .top-nav__logo {
