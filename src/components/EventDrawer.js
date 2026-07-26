@@ -30,13 +30,18 @@ export function renderEventDrawer() {
 
   return `
     <div class="drawer-overlay" data-action="close-event-drawer">
-      <div class="drawer-sheet" onclick="event.stopPropagation()">
+      <div class="drawer-sheet">
         <!-- Top Drag Pill Indicator -->
         <div class="drawer-drag-handle" data-action="close-event-drawer"></div>
 
-        <div class="drawer-header">
-          <h3 class="drawer-title">${isEdit ? 'Edit Activity' : 'New Activity'}</h3>
-          <span class="drawer-subtitle">${isEdit ? 'Update time, color & details' : 'Add to your trip itinerary'}</span>
+        <div class="drawer-header" style="display: flex; justify-content: space-between; align-items: flex-start;">
+          <div>
+            <h3 class="drawer-title">${isEdit ? 'Edit Activity' : 'New Activity'}</h3>
+            <span class="drawer-subtitle">${isEdit ? 'Update time, color & details' : 'Add to your trip itinerary'}</span>
+          </div>
+          <button class="btn btn--icon btn--ghost" data-action="close-event-drawer" aria-label="Close">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide-icon"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>
+          </button>
         </div>
 
         <form id="event-drawer-form" onsubmit="event.preventDefault();">

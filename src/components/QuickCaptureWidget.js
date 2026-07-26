@@ -13,14 +13,14 @@ export function renderQuickCaptureWidget() {
 
     <!-- Glassmorphic Quick Capture Sheet Modal -->
     <div class="quick-capture-overlay ${isOpen ? 'is-open' : ''}" data-action="close-quick-capture">
-      <div class="quick-capture-modal" onclick="event.stopPropagation()">
+      <div class="quick-capture-modal">
         <div class="quick-capture-header" style="display: flex; justify-content: space-between; align-items: center;">
           <div>
             <span class="voice-mono" style="font-size: 0.72rem; font-weight: 700; color: var(--red); text-transform: uppercase; letter-spacing: 0.5px;">UNIVERSAL QUICK CAPTURE</span>
             <h3 style="font-size: 1.15rem; font-weight: 700; color: var(--ink); margin: 2px 0 0 0;">Record Travel Moment</h3>
           </div>
           <button class="btn btn--icon btn--ghost" data-action="close-quick-capture" aria-label="Close">
-            ${renderIcon("x")}
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide-icon"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>
           </button>
         </div>
 
