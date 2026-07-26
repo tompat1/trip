@@ -21,11 +21,11 @@ export function renderLandingView() {
           <h1 class="hero-title voice-serif" style="font-size: 2.2rem; font-weight: 700; line-height: 1.15; color: #fff; margin-bottom: 8px;">Every place becomes a story.</h1>
           <p class="hero-subtitle" style="font-size: 0.95rem; opacity: 0.9; margin-bottom: 20px; max-width: 90%;">Plan your trips. Discover what matters. Capture every moment. Keep it all together.</p>
 
-          <div class="hero-actions" style="display: flex; gap: 12px;">
-            <button class="btn btn--primary btn--lg" data-action="go-app" style="background: var(--orange); flex: 1;">
+          <div class="hero-actions">
+            <button class="btn btn--primary btn--lg" data-action="go-app">
               ${renderIcon("compass")} Create your first trip
             </button>
-            <button class="btn btn--outline btn--lg" data-action="go-search" style="background: rgba(255,255,255,0.9); border: none; flex: 1;">
+            <button class="btn btn--outline btn--lg" data-action="go-search" style="background: rgba(255,255,255,0.92); border: none; color: var(--ink);">
               ${renderIcon("search")} Explore ideas
             </button>
           </div>
