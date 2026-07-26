@@ -92,7 +92,7 @@ function renderSubtabContent(trip) {
 
     <!-- Content Area (Calendar Grid or Vertical Timeline/Map) -->
     <main class="plan-content-area">
-      ${state.planViewMode === "week" ? renderCalendarGrid() : renderAlternativePlanView(trip)}
+      ${state.planViewMode === "week" ? renderCalendarGrid({ mode: "week" }) : renderAlternativePlanView(trip)}
     </main>
   `;
 }
@@ -242,52 +242,9 @@ function renderAlternativePlanView() {
   const events = trip.calendarEvents || [];
 
   if (mode === "day") {
-    const activeEvents = events.filter((e) => Number(e.dayIndex) === (state.activeDayIndex || 0));
-    const activeDayIdx = state.activeDayIndex || 0;
-
     return `
       <div class="day-schedule-view">
-        <!-- Day Switcher Bar -->
-        <div class="day-switcher-bar">
-          <div class="day-switcher-pills">
-            ${DAYS_HEADER.map((dayLabel, idx) => `
-              <button class="day-pill-btn ${activeDayIdx === idx ? 'is-active' : ''}" data-day-select="${idx}">
-                <span>${dayLabel.split(' ')[0]} ${dayLabel.split(' ')[1]}</span>
-              </button>
-            `).join('')}
-          </div>
-        </div>
-
-        <div class="day-schedule-list">
-          <div class="day-schedule-header">
-            <h3>Schedule for ${DAYS_HEADER[activeDayIdx]}</h3>
-          </div>
-
-          ${activeEvents.length === 0 ? `
-            <div class="empty-day-box" style="padding: 20px; text-align: center; color: var(--ink-muted); background: var(--paper-card); border-radius: var(--radius-md); border: 1px dashed var(--line);">
-              <p class="empty-text" style="margin: 0;">No activities scheduled for ${DAYS_HEADER[activeDayIdx]} yet.</p>
-            </div>
-          ` : `
-            <div class="day-events-vertical">
-              ${activeEvents.map(evt => `
-                <div class="day-event-row event-card--${evt.colorScheme || 'peach'}" data-action="open-edit-drawer" data-event-id="${evt.id}" style="display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-radius: var(--radius-md); margin-bottom: 8px; cursor: pointer;">
-                  <div class="day-event-detail">
-                    <div style="font-size: 0.78rem; font-weight: 700; opacity: 0.8; margin-bottom: 2px;">${evt.startTime} – ${evt.endTime}</div>
-                    <h4 style="margin: 0; font-size: 0.95rem; font-weight: 700;">${escapeHtml(evt.title)}</h4>
-                    ${evt.location ? `<div style="font-size: 0.8rem; opacity: 0.85; margin-top: 2px;">${renderIcon("pin")} ${escapeHtml(evt.location)}</div>` : ''}
-                  </div>
-                  <button class="btn btn--icon btn--ghost event-edit-btn" data-action="open-edit-drawer" data-event-id="${evt.id}">
-                    ${renderIcon("pencil")}
-                  </button>
-                </div>
-              `).join('')}
-            </div>
-          `}
-
-          <button class="timeline-empty-slot mt-md" data-action="add-event-for-day" data-day-index="${activeDayIdx}">
-            <span>${renderIcon("plus")} Add activity for ${DAYS_HEADER[activeDayIdx]}</span>
-          </button>
-        </div>
+        ${renderCalendarGrid({ mode: "day" })}
       </div>
     `;
   }

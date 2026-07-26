@@ -21,7 +21,7 @@ export function renderLandingView() {
 
           <div class="hero-actions">
             <button class="btn btn--primary btn--lg" data-action="go-app">
-              ${renderIcon("compass")} Create your first trip
+              ${renderIcon("compass")} Create your trip
             </button>
             <button class="btn btn--outline btn--lg" data-action="go-search" style="background: rgba(255,255,255,0.92); border: none; color: var(--ink);">
               ${renderIcon("search")} Explore ideas

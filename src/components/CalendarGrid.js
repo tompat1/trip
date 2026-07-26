@@ -4,24 +4,32 @@ import { renderIcon } from "../utils/icons.js";
 const DAYS_HEADER = ["Sat 3 Oct", "Sun 4 Oct", "Mon 5 Oct", "Tue 6 Oct", "Wed 7 Oct", "Thu 8 Oct", "Fri 9 Oct"];
 const TIME_SLOTS = ["08:00", "10:00", "12:00", "14:00", "16:00", "18:00", "20:00", "22:00"];
 
-export function renderCalendarGrid() {
+export function renderCalendarGrid(options = {}) {
   const trip = state.activeTrip;
   const events = trip.calendarEvents || [];
-  const activeFilter = state.calendarDayFilter || "all";
+  const mode = options.mode || "week";
+  const isDayMode = mode === "day";
+  const activeFilter = isDayMode ? String(state.activeDayIndex || 0) : (state.calendarDayFilter || "all");
 
-  const visibleDayIndices = activeFilter === "all" 
+  const visibleDayIndices = isDayMode
+    ? [state.activeDayIndex || 0]
+    : activeFilter === "all" 
     ? [0, 1, 2, 3, 4, 5, 6] 
     : [parseInt(activeFilter, 10)];
+  const wrapperClasses = [
+    "calendar-grid-wrapper",
+    isDayMode ? "calendar-grid-wrapper--day-edit" : "calendar-grid-wrapper--week-overview"
+  ].join(" ");
 
   return `
-    <div class="calendar-grid-wrapper">
+    <div class="${wrapperClasses}" data-calendar-mode="${mode}">
       <!-- Mobile Day Filter Bar -->
       <div class="calendar-mobile-day-bar">
-        <button class="cal-day-pill ${activeFilter === 'all' ? 'is-active' : ''}" data-action="set-calendar-day-filter" data-filter="all">
+        ${isDayMode ? "" : `<button class="cal-day-pill ${activeFilter === 'all' ? 'is-active' : ''}" data-action="set-calendar-day-filter" data-filter="all">
           <span>All 7 Days</span>
-        </button>
+        </button>`}
         ${DAYS_HEADER.map((dayStr, idx) => `
-          <button class="cal-day-pill ${activeFilter === String(idx) ? 'is-active' : ''}" data-action="set-calendar-day-filter" data-filter="${idx}">
+          <button class="cal-day-pill ${activeFilter === String(idx) ? 'is-active' : ''}" ${isDayMode ? `data-day-select="${idx}"` : `data-action="set-calendar-day-filter" data-filter="${idx}"`}>
             <span class="pill-day-name">${dayStr.split(' ')[0]}</span>
             <span class="pill-day-num">${dayStr.split(' ')[1]}</span>
           </button>
@@ -87,11 +95,12 @@ function renderEventCard(evt) {
 
   return `
     <div class="event-card event-card--${evt.colorScheme || 'peach'}" 
-         draggable="true"
          data-event-id="${evt.id}"
          data-day-index="${evt.dayIndex}"
+         data-duration-hours="${duration}"
          style="top: ${Math.max(0, topPercent)}%; height: ${Math.min(100, heightPercent)}%;"
          title="${escapeHtml(evt.title)} (${evt.startTime} - ${evt.endTime})">
+      <div class="event-drag-handle" data-event-id="${evt.id}" title="Move activity">${renderIcon("gripVertical")}</div>
       <div class="event-card__header">
         <span class="event-card__title">${escapeHtml(evt.title)}</span>
       </div>
