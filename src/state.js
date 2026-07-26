@@ -213,6 +213,7 @@ class AppState {
     this.generatedStories = {};
 
     this.quickCaptureOpen = false;
+    this.quickCaptureUpload = { status: "idle", progress: 0, fileName: "", type: "" };
     this.activeLightboxMedia = null;
     this.activeEventDrawer = null; // { mode: 'create'|'edit', event: {} }
     this.tripCreateOpen = false;
@@ -226,6 +227,19 @@ class AppState {
 
   toggleQuickCapture(open) {
     this.quickCaptureOpen = open !== undefined ? open : !this.quickCaptureOpen;
+    if (!this.quickCaptureOpen) {
+      this.quickCaptureUpload = { status: "idle", progress: 0, fileName: "", type: "" };
+    }
+    this.notify();
+  }
+
+  setQuickCaptureUpload(upload = {}) {
+    this.quickCaptureUpload = {
+      status: upload.status || "idle",
+      progress: Number(upload.progress || 0),
+      fileName: upload.fileName || "",
+      type: upload.type || "",
+    };
     this.notify();
   }
 

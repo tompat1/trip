@@ -353,6 +353,7 @@ document.addEventListener("click", async (e) => {
       state.toggleQuickCapture();
     }
     else if (action === "close-quick-capture") {
+      if (target.classList.contains("quick-capture-overlay") && e.target !== target) return;
       state.toggleQuickCapture(false);
     }
     else if (action === "change-avatar") {
@@ -383,12 +384,13 @@ document.addEventListener("click", async (e) => {
       showToast(`🔍 Filtered for ${target.innerText.trim()}`);
     }
     else if (action === "trigger-file-upload") {
-      const fileInput = document.getElementById("capture-file-input");
+      const fileInput = document.getElementById("quick-capture-file-input");
       if (fileInput) fileInput.click();
     }
     else if (action === "submit-quick-capture") {
       const titleInput = document.getElementById("capture-title");
       const textInput = document.getElementById("capture-text");
+      const selectedType = document.querySelector('input[name="captureType"]:checked')?.value || "note";
       const title = titleInput ? titleInput.value.trim() : "";
       const text = textInput ? textInput.value.trim() : "";
       if (!title) {
@@ -398,11 +400,11 @@ document.addEventListener("click", async (e) => {
       state.addMoment({
         title,
         text,
-        type: "note",
-        media_url: "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=600&q=80"
+        type: selectedType,
+        media_url: selectedType === "note" ? "" : "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=600&q=80"
       });
       state.toggleQuickCapture(false);
-      showToast(`📸 Saved "${title}" to your Journal & Story!`);
+      showToast(`Saved "${title}" to your Journal & Story!`);
     }
     else if (action === "toggle-bookmark") {
       const placeId = target.dataset.placeId;
@@ -767,15 +769,54 @@ document.addEventListener("change", (e) => {
   if (e.target.id === "quick-capture-file-input" && e.target.files && e.target.files[0]) {
     const file = e.target.files[0];
     const reader = new FileReader();
+    const selectedType = file.type.startsWith("video") ? "video" : "photo";
+    state.setQuickCaptureUpload({
+      status: "reading",
+      progress: 8,
+      fileName: file.name,
+      type: selectedType,
+    });
+    reader.onprogress = (evt) => {
+      if (!evt.lengthComputable) return;
+      const progress = Math.min(92, Math.max(8, Math.round((evt.loaded / evt.total) * 92)));
+      state.setQuickCaptureUpload({
+        status: "reading",
+        progress,
+        fileName: file.name,
+        type: selectedType,
+      });
+    };
     reader.onload = (evt) => {
       const dataUrl = evt.target.result;
+      state.setQuickCaptureUpload({
+        status: "saving",
+        progress: 96,
+        fileName: file.name,
+        type: selectedType,
+      });
       state.addMoment({
-        title: `Captured ${file.type.startsWith('video') ? 'Video' : 'Photo'}`,
+        title: `Captured ${selectedType === 'video' ? 'Video' : 'Photo'}`,
         text: file.name,
-        type: file.type.startsWith('video') ? 'video' : 'photo',
+        type: selectedType,
         media_url: dataUrl
       });
-      alert(`📸 ${file.name} uploaded & recorded to your trip memory timeline!`);
+      state.setQuickCaptureUpload({
+        status: "complete",
+        progress: 100,
+        fileName: file.name,
+        type: selectedType,
+      });
+      showToast(`${file.name} saved to your Journal.`);
+      setTimeout(() => state.toggleQuickCapture(false), 650);
+    };
+    reader.onerror = () => {
+      state.setQuickCaptureUpload({
+        status: "error",
+        progress: 100,
+        fileName: file.name,
+        type: selectedType,
+      });
+      showToast("Could not read that media file.");
     };
     reader.readAsDataURL(file);
   }

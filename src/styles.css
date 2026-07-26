@@ -3720,6 +3720,74 @@ textarea {
   transform: translateY(0);
 }
 
+.quick-capture-progress {
+  display: grid;
+  grid-template-columns: 34px 1fr;
+  gap: 10px 12px;
+  align-items: center;
+  margin-top: 14px;
+  padding: 12px;
+  border: 1px solid rgba(210, 104, 43, 0.28);
+  border-radius: var(--radius-md);
+  background:
+    linear-gradient(135deg, rgba(210, 104, 43, 0.1), rgba(56, 92, 115, 0.08)),
+    var(--paper-subtle);
+}
+
+.quick-capture-progress__orb {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 3px solid rgba(210, 104, 43, 0.2);
+  border-top-color: var(--orange);
+  border-right-color: var(--blue);
+  animation: quickCaptureSpin 0.9s linear infinite;
+}
+
+.quick-capture-progress__copy {
+  min-width: 0;
+}
+
+.quick-capture-progress__copy span {
+  display: block;
+  font-size: 0.68rem;
+  font-weight: 800;
+  color: var(--orange);
+  text-transform: uppercase;
+}
+
+.quick-capture-progress__copy strong {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.82rem;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.quick-capture-progress__track {
+  grid-column: 1 / -1;
+  height: 6px;
+  overflow: hidden;
+  border-radius: var(--radius-pill);
+  background: rgba(23, 24, 23, 0.08);
+}
+
+.quick-capture-progress__track span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--orange), var(--blue));
+  transition: width 0.18s ease-out;
+}
+
+@keyframes quickCaptureSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 /* ==========================================================================
    MOBILE BUTTON & HERO ACTIONS OPTIMIZATIONS
    ========================================================================== */

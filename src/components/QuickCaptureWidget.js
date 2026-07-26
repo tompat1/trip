@@ -4,6 +4,8 @@ import { renderIcon } from "../utils/icons.js";
 export function renderQuickCaptureWidget() {
   const isOpen = state.quickCaptureOpen;
   const trip = state.activeTrip;
+  const upload = state.quickCaptureUpload || { status: "idle", progress: 0 };
+  const isUploading = upload.status === "reading" || upload.status === "saving";
 
   return `
     <!-- Universal Floating Action FAB -->
@@ -33,6 +35,8 @@ export function renderQuickCaptureWidget() {
         </div>
 
         <form id="quick-capture-form" onsubmit="return false;">
+          <input type="file" id="quick-capture-file-input" accept="image/*,video/*" style="display: none;" />
+
           <!-- Quick Capture Type Selector -->
           <div class="quick-capture-types" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 16px;">
             <label class="capture-type-card" style="cursor: pointer;">
@@ -73,17 +77,37 @@ export function renderQuickCaptureWidget() {
           </div>
 
           <div style="display: flex; gap: 10px; align-items: center; margin-top: 16px;">
-            <button type="button" class="btn btn--outline btn--sm" data-action="trigger-file-upload" style="flex: 1;">
-              ${renderIcon("image")} Attach Photo
+            <button type="button" class="btn btn--outline btn--sm" data-action="trigger-file-upload" style="flex: 1;" ${isUploading ? "disabled" : ""}>
+              ${renderIcon("image")} ${isUploading ? "Preparing..." : "Attach Media"}
             </button>
-            <button type="submit" class="btn btn--primary btn--sm" data-action="submit-quick-capture" style="flex: 1;">
+            <button type="submit" class="btn btn--primary btn--sm" data-action="submit-quick-capture" style="flex: 1;" ${isUploading ? "disabled" : ""}>
               ${renderIcon("check")} Save Moment
             </button>
           </div>
+
+          ${upload.status !== "idle" ? `
+            <div class="quick-capture-progress" aria-live="polite">
+              <div class="quick-capture-progress__orb"></div>
+              <div class="quick-capture-progress__copy">
+                <span class="voice-mono">${escapeHtml(getUploadStatusLabel(upload))}</span>
+                <strong>${escapeHtml(upload.fileName || "Travel media")}</strong>
+              </div>
+              <div class="quick-capture-progress__track">
+                <span style="width: ${Math.max(8, Math.min(100, Number(upload.progress || 0)))}%;"></span>
+              </div>
+            </div>
+          ` : ""}
         </form>
       </div>
     </div>
   `;
+}
+
+function getUploadStatusLabel(upload) {
+  if (upload.status === "complete") return "Saved to Journal";
+  if (upload.status === "saving") return "Saving moment";
+  if (upload.status === "error") return "Upload failed";
+  return "Reading media";
 }
 
 function escapeHtml(str) {
