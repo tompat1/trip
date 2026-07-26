@@ -6,8 +6,9 @@ import { createPlaceProfileContract, createProviderStatus, PROVIDER_STATUS } fro
 import { calculateFlightDistance, getAirportByIata, searchAirports } from "../services/airportService.js";
 import { fetchRouteDirections } from "../services/routeService.js";
 import { fetchConcertsForTrip, searchConcerts } from "../services/concertService.js";
+import { fetchOpenTripMapPlaceDetails, fetchOpenTripMapPlaces, OPENTRIPMAP_HIDDEN_GEMS_KINDS, OPENTRIPMAP_TOURISM_KINDS } from "../services/openTripMapService.js";
 
-export { calculateFlightDistance, getAirportByIata, searchAirports, fetchRouteDirections, fetchConcertsForTrip, searchConcerts };
+export { calculateFlightDistance, getAirportByIata, searchAirports, fetchRouteDirections, fetchConcertsForTrip, searchConcerts, fetchOpenTripMapPlaceDetails, fetchOpenTripMapPlaces };
 
 const DEFAULT_WORKER_API_BASE = "https://trip.thomasrynell.workers.dev";
 export const ADMIN_SESSION_STORAGE_KEY = "trip-admin-session-token-v1";
@@ -106,6 +107,41 @@ export function createEnrichmentService(options = {}) {
           providerStatus: [createProviderStatus({ provider: "trip-worker", status: PROVIDER_STATUS.error, error: error?.message || "worker-nearby-failed" })],
         };
       }
+    },
+
+    async discoverTopPois(input = {}) {
+      return discoverOpenTripMapViaWorker({
+        ...input,
+        kinds: input.kinds || OPENTRIPMAP_TOURISM_KINDS,
+        rate: input.rate || "2",
+        limit: input.limit || 24,
+      }, { apiBase, fetchImpl }).catch(() => fetchOpenTripMapPlaces({
+        ...input,
+        kinds: input.kinds || OPENTRIPMAP_TOURISM_KINDS,
+        rate: input.rate || "2",
+        limit: input.limit || 24,
+        fetchImpl,
+      }));
+    },
+
+    async discoverHiddenGems(input = {}) {
+      return discoverOpenTripMapViaWorker({
+        ...input,
+        kinds: input.kinds || OPENTRIPMAP_HIDDEN_GEMS_KINDS,
+        rate: input.rate || "1",
+        limit: input.limit || 18,
+      }, { apiBase, fetchImpl }).catch(() => fetchOpenTripMapPlaces({
+        ...input,
+        kinds: input.kinds || OPENTRIPMAP_HIDDEN_GEMS_KINDS,
+        rate: input.rate || "1",
+        limit: input.limit || 18,
+        fetchImpl,
+      }));
+    },
+
+    async fetchOpenTripMapDetails(xid, options = {}) {
+      return fetchOpenTripMapDetailsViaWorker(xid, { ...options, apiBase, fetchImpl })
+        .catch(() => fetchOpenTripMapPlaceDetails(xid, { ...options, fetchImpl }));
     },
 
     createFacts(place, context = {}) {
@@ -309,6 +345,38 @@ function getDefaultApiBase() {
 function buildApiUrl(base, path) {
   if (!base) return new URL(path, typeof window !== "undefined" ? window.location.origin : "https://trip.rynell.org");
   return new URL(path, base.endsWith("/") ? base : `${base}/`);
+}
+
+async function discoverOpenTripMapViaWorker(input = {}, options = {}) {
+  const coordinates = normalizeCoordinates(input.coordinates || [input.lat, input.lng]);
+  if (!coordinates) throw new Error("invalid-coordinates");
+  const url = buildApiUrl(options.apiBase, "/api/opentripmap/places");
+  url.searchParams.set("lat", String(coordinates[0]));
+  url.searchParams.set("lng", String(coordinates[1]));
+  url.searchParams.set("radius", String(input.radiusMeters || input.radius || 2000));
+  url.searchParams.set("limit", String(input.limit || 24));
+  url.searchParams.set("kinds", input.kinds || OPENTRIPMAP_TOURISM_KINDS);
+  if (input.rate) url.searchParams.set("rate", String(input.rate));
+  if (input.lang) url.searchParams.set("lang", input.lang);
+  const res = await options.fetchImpl(url.href, { headers: { Accept: "application/json" } });
+  if (!res.ok) throw new Error(`worker-opentripmap-http-${res.status}`);
+  const data = await res.json();
+  return {
+    status: "ok",
+    places: data.places || [],
+    providerStatus: data.providerStatus || [],
+    error: "",
+  };
+}
+
+async function fetchOpenTripMapDetailsViaWorker(xid, options = {}) {
+  if (!xid) return null;
+  const url = buildApiUrl(options.apiBase, `/api/opentripmap/places/${encodeURIComponent(xid)}`);
+  if (options.lang) url.searchParams.set("lang", options.lang);
+  const res = await options.fetchImpl(url.href, { headers: { Accept: "application/json" } });
+  if (!res.ok) throw new Error(`worker-opentripmap-details-http-${res.status}`);
+  const data = await res.json();
+  return data.place || null;
 }
 
 function normalizeCoordinates(value) {

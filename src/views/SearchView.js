@@ -117,14 +117,17 @@ export function renderSearchView() {
 
 export function renderSearchResults() {
   const query = state.searchQuery || "";
-  const placesForTrip = filterPlacesByActiveTrip(searchPlacesData);
+  const placesForTrip = [
+    ...filterPlacesByActiveTrip(searchPlacesData),
+    ...getTourismSearchPlaces(state.activeTrip),
+  ];
   const places = filterPlacesByQuery(placesForTrip, query);
   const concerts = searchConcerts(query);
 
   return `
     <!-- Results Header Bar -->
     <div class="results-header">
-      <span class="results-count">${state.searchCategory === "Concerts" ? `${concerts.length} live concerts` : `${places.length} curated spots`}</span>
+      <span class="results-count">${state.searchCategory === "Concerts" ? `${concerts.length} live concerts` : `${places.length} trip spots`}</span>
       <div class="results-sort">
         <span class="sort-label">Sort:</span>
         <select class="sort-select" data-action="change-sort">
@@ -157,37 +160,65 @@ function filterPlacesByActiveTrip(places) {
 function filterPlacesByQuery(places, query) {
   if (!query || !query.trim()) return places;
   const q = query.toLowerCase().trim();
-  return places.filter(p =>
-    p.name.toLowerCase().includes(q) ||
-    p.category.toLowerCase().includes(q) ||
-    p.neighborhood.toLowerCase().includes(q) ||
-    (p.description && p.description.toLowerCase().includes(q))
-  );
+  return places.filter(p => {
+    const name = p.name || p.title || "";
+    const category = p.category || "";
+    const neighborhood = p.neighborhood || p.subtitle || p.distance || "";
+    const description = p.description || p.reason || "";
+    return (
+      name.toLowerCase().includes(q) ||
+      category.toLowerCase().includes(q) ||
+      neighborhood.toLowerCase().includes(q) ||
+      description.toLowerCase().includes(q)
+    );
+  });
+}
+
+function getTourismSearchPlaces(trip) {
+  return [...(trip?.tourismPois || []), ...(trip?.hiddenGems || [])].map((place) => ({
+    ...place,
+    name: place.name || place.title,
+    neighborhood: place.neighborhood || place.subtitle || place.distance || trip.destination,
+    description: place.description || place.reason || `${place.category || "Place"} from OpenTripMap.`,
+    image: place.image || "https://images.unsplash.com/photo-1488646953014-85cb44e25828?auto=format&fit=crop&w=700&q=80",
+  }));
 }
 
 function renderSearchPlaceCard(place) {
+  const name = place.name || place.title || "Place";
+  const location = place.neighborhood || place.subtitle || place.distance || "";
+  const description = place.description || place.reason || "";
+  const isOpenTripMap = place.source === "OpenTripMap";
+  const image = place.image || "https://images.unsplash.com/photo-1488646953014-85cb44e25828?auto=format&fit=crop&w=700&q=80";
   return `
     <div class="search-place-card" style="transition: transform 0.15s ease, box-shadow 0.2s ease;">
-      <div class="search-place-card__thumb" style="background-image: url('${place.image}')">
+      <div class="search-place-card__thumb" style="background-image: url('${image}')">
       </div>
       <div class="search-place-card__content">
         <div class="search-place-card__header" style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
           <div>
-            <h3 class="search-place-card__title">${escapeHtml(place.name)}</h3>
-            <p class="search-place-card__location" style="margin-top: 2px;">📍 ${escapeHtml(place.neighborhood)}</p>
+            <h3 class="search-place-card__title">${escapeHtml(name)}</h3>
+            <p class="search-place-card__location" style="margin-top: 2px;">📍 ${escapeHtml(location)}</p>
           </div>
-          <button class="btn btn--outline btn--xs" data-action="add-idea-to-itinerary" data-title="${escapeHtml(place.name)}" data-location="${escapeHtml(place.neighborhood)}" style="font-size: 0.72rem; padding: 3px 9px; flex-shrink: 0;" title="Add to itinerary">+ Itinerary</button>
+          <button class="btn btn--outline btn--xs" data-action="add-idea-to-itinerary" data-title="${escapeHtml(name)}" data-location="${escapeHtml(location)}" style="font-size: 0.72rem; padding: 3px 9px; flex-shrink: 0;" title="Add to itinerary">+ Itinerary</button>
         </div>
 
         <div class="search-place-card__rating" style="margin-top: 6px;">
-          <span class="rating-star" style="color: var(--sun); font-weight: 700;">★ ${place.rating}</span>
-          <span class="rating-count">(${place.reviewsCount})</span>
+          ${isOpenTripMap ? `
+            <span class="rating-star" style="color: var(--orange); font-weight: 700;">OpenTripMap</span>
+            ${place.distance ? `<span class="rating-count">${escapeHtml(place.distance)}</span>` : ""}
+          ` : `
+            <span class="rating-star" style="color: var(--sun); font-weight: 700;">★ ${escapeHtml(place.rating)}</span>
+            <span class="rating-count">(${escapeHtml(place.reviewsCount)})</span>
+          `}
           <span class="rating-sep">•</span>
           <span class="rating-category">${escapeHtml(place.category)}</span>
-          <span class="rating-sep">•</span>
-          <span style="font-size: 0.72rem; color: var(--green); font-weight: 600;">Open now 🟢</span>
+          ${isOpenTripMap ? "" : `
+            <span class="rating-sep">•</span>
+            <span style="font-size: 0.72rem; color: var(--green); font-weight: 600;">Open now 🟢</span>
+          `}
         </div>
-        <p class="search-place-card__desc" style="margin-top: 6px; font-size: 0.82rem; color: var(--ink-muted); line-height: 1.4;">${escapeHtml(place.description)}</p>
+        <p class="search-place-card__desc" style="margin-top: 6px; font-size: 0.82rem; color: var(--ink-muted); line-height: 1.4;">${escapeHtml(description)}</p>
       </div>
     </div>
   `;

@@ -12,6 +12,16 @@ function getDefaultPlanViewMode() {
 }
 
 const CALENDAR_EVENTS_STORAGE_PREFIX = "trip_calendar_events_";
+const TOURISM_DISCOVERY_STORAGE_PREFIX = "trip_tourism_discovery_";
+
+const TOURISM_IMAGE_BY_CATEGORY = {
+  Food: "https://images.unsplash.com/photo-1551218808-94e220e084d2?auto=format&fit=crop&w=700&q=80",
+  Museum: "https://images.unsplash.com/photo-1564399580075-5dfe19c205f3?auto=format&fit=crop&w=700&q=80",
+  Sight: "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=700&q=80",
+  Nature: "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&w=700&q=80",
+  Shopping: "https://images.unsplash.com/photo-1519567241046-7f570eee3ce6?auto=format&fit=crop&w=700&q=80",
+  Place: "https://images.unsplash.com/photo-1488646953014-85cb44e25828?auto=format&fit=crop&w=700&q=80",
+};
 
 function readStoredCalendarEvents(tripId) {
   if (typeof localStorage === "undefined") return null;
@@ -32,6 +42,30 @@ function writeStoredCalendarEvents(tripId, events) {
   } catch {}
 }
 
+function readStoredTourismDiscovery(tripId) {
+  if (typeof localStorage === "undefined") return null;
+  try {
+    const stored = localStorage.getItem(`${TOURISM_DISCOVERY_STORAGE_PREFIX}${tripId}`);
+    if (!stored) return null;
+    const discovery = JSON.parse(stored);
+    if (!discovery || typeof discovery !== "object") return null;
+    return {
+      tourismPois: Array.isArray(discovery.tourismPois) ? discovery.tourismPois : [],
+      hiddenGems: Array.isArray(discovery.hiddenGems) ? discovery.hiddenGems : [],
+      updatedAt: discovery.updatedAt || "",
+    };
+  } catch {
+    return null;
+  }
+}
+
+function writeStoredTourismDiscovery(tripId, discovery) {
+  if (typeof localStorage === "undefined") return;
+  try {
+    localStorage.setItem(`${TOURISM_DISCOVERY_STORAGE_PREFIX}${tripId}`, JSON.stringify(discovery || {}));
+  } catch {}
+}
+
 function mergeCalendarEvents(baseEvents = [], savedEvents = []) {
   const merged = [...baseEvents];
   savedEvents.forEach((savedEvent) => {
@@ -43,6 +77,46 @@ function mergeCalendarEvents(baseEvents = [], savedEvents = []) {
     }
   });
   return merged;
+}
+
+function normalizeTourismIdea(place = {}, kind = "poi") {
+  const title = place.title || place.canonicalName || place.name || "Interesting place";
+  const category = place.category || (kind === "hidden" ? "Hidden gem" : "Place");
+  const subtitle = place.distance
+    ? `${place.distance} from trip center`
+    : place.neighborhood || category;
+
+  return {
+    id: place.id || (place.xid ? `otm-${place.xid}` : `otm-${Date.now()}`),
+    xid: place.xid || "",
+    title,
+    name: title,
+    category,
+    subtitle,
+    neighborhood: subtitle,
+    description: place.description || place.reason || `${category} from OpenTripMap.`,
+    rating: place.rating || "",
+    reviewsCount: "OpenTripMap",
+    duration: category === "Museum" ? "1-2 hours" : "45-90 min",
+    image: place.imageUrl || TOURISM_IMAGE_BY_CATEGORY[category] || TOURISM_IMAGE_BY_CATEGORY.Place,
+    source: place.source || "OpenTripMap",
+    sourceRole: place.sourceRole || "opentripmap",
+    sourceUrl: place.sourceUrl || "",
+    coordinates: place.coordinates || null,
+    distance: place.distance || "",
+    distanceMeters: place.distanceMeters,
+    kind,
+  };
+}
+
+function getOpenTripMapStatus(results = []) {
+  const statuses = results
+    .flatMap((result) => result?.providerStatus || [])
+    .filter((status) => status.provider === "opentripmap" || !status.provider);
+  const missingKey = statuses.some((status) => status.status === "not-configured" || status.error === "missing-opentripmap-api-key" || status.error === "missing-opentripmap-key");
+  if (missingKey) return "not-configured";
+  if (statuses.some((status) => status.status === "error")) return "error";
+  return "ready";
 }
 
 class AppState {
@@ -89,6 +163,7 @@ class AppState {
     this.locationResolved = null; // { area, town, city, country }
     this.liveNearbyPlaces = [];
     this.backendHealth = { status: "checking", bindings: {} };
+    this.tourismDiscoveryStatus = {};
 
     // Moments & Captures
     this.moments = [
@@ -111,6 +186,20 @@ class AppState {
       if (storedEvents) {
         tripsData[tripId].calendarEvents = storedEvents;
       }
+      const storedDiscovery = readStoredTourismDiscovery(tripId);
+      if (storedDiscovery) {
+        tripsData[tripId].tourismPois = storedDiscovery.tourismPois;
+        tripsData[tripId].hiddenGems = storedDiscovery.hiddenGems;
+        this.tourismDiscoveryStatus[tripId] = {
+          status: "cached",
+          error: "",
+          updatedAt: storedDiscovery.updatedAt,
+        };
+      } else {
+        tripsData[tripId].tourismPois = tripsData[tripId].tourismPois || [];
+        tripsData[tripId].hiddenGems = tripsData[tripId].hiddenGems || [];
+        this.tourismDiscoveryStatus[tripId] = { status: "idle", error: "", updatedAt: "" };
+      }
     });
 
     // Generated AI Editorial Stories store
@@ -124,6 +213,7 @@ class AppState {
     this.checkBackendHealth();
     this.loadD1Trips();
     this.refreshWeather();
+    this.refreshTourismDiscovery();
   }
 
   toggleQuickCapture(open) {
@@ -180,7 +270,9 @@ class AppState {
               checklist: [{ id: "stay", label: "Book your stay", completed: false }],
               calendarEvents: [],
               ideas: [],
-              events: []
+              events: [],
+              tourismPois: [],
+              hiddenGems: []
             };
           } else {
             tripsData[t.id].flag = resolvedFlag;
@@ -209,6 +301,7 @@ class AppState {
           }
         }));
         this.notify();
+        this.refreshTourismDiscovery(this.activeTripId);
       }
     } catch (e) {
       console.warn("D1 trips load fallback:", e);
@@ -225,6 +318,7 @@ class AppState {
     const currentIndex = keys.indexOf(this.activeTripId);
     const nextIndex = (currentIndex + 1) % keys.length;
     this.activeTripId = keys[nextIndex];
+    this.refreshTourismDiscovery(this.activeTripId);
     this.notify();
   }
 
@@ -284,6 +378,7 @@ class AppState {
     if (tripsData[tripId] && this.activeTripId !== tripId) {
       this.activeTripId = tripId;
       this.refreshWeather();
+      this.refreshTourismDiscovery(tripId);
       this.notify();
     }
   }
@@ -299,6 +394,66 @@ class AppState {
       };
       this.notify();
     }
+  }
+
+  getTourismDiscoveryStatus(tripId = this.activeTripId) {
+    return this.tourismDiscoveryStatus[tripId] || { status: "idle", error: "", updatedAt: "" };
+  }
+
+  async refreshTourismDiscovery(tripId = this.activeTripId, options = {}) {
+    const trip = tripsData[tripId];
+    if (!trip || !Array.isArray(trip.center)) return;
+
+    const existing = [...(trip.tourismPois || []), ...(trip.hiddenGems || [])];
+    if (this.tourismDiscoveryStatus[tripId]?.status === "loading" && !options.force) return;
+    if (existing.length && !options.force) return;
+
+    this.tourismDiscoveryStatus[tripId] = {
+      status: "loading",
+      error: "",
+      updatedAt: new Date().toISOString(),
+    };
+    if (options.notify !== false) this.notify();
+
+    try {
+      const [topResult, hiddenResult] = await Promise.all([
+        enrichmentService.discoverTopPois({
+          coordinates: trip.center,
+          radiusMeters: options.radiusMeters || 4500,
+          limit: options.topLimit || 14,
+        }),
+        enrichmentService.discoverHiddenGems({
+          coordinates: trip.center,
+          radiusMeters: options.hiddenRadiusMeters || 6500,
+          limit: options.hiddenLimit || 10,
+        }),
+      ]);
+
+      const tourismPois = (topResult?.places || []).map((place) => normalizeTourismIdea(place, "poi"));
+      const hiddenGems = (hiddenResult?.places || []).map((place) => normalizeTourismIdea(place, "hidden"));
+      const status = getOpenTripMapStatus([topResult, hiddenResult]);
+      const updatedAt = new Date().toISOString();
+
+      trip.tourismPois = tourismPois;
+      trip.hiddenGems = hiddenGems;
+      this.tourismDiscoveryStatus[tripId] = {
+        status: tourismPois.length || hiddenGems.length ? "ready" : status,
+        error: status === "not-configured" ? "missing-opentripmap-api-key" : (topResult?.error || hiddenResult?.error || ""),
+        updatedAt,
+      };
+
+      if (tourismPois.length || hiddenGems.length) {
+        writeStoredTourismDiscovery(tripId, { tourismPois, hiddenGems, updatedAt });
+      }
+    } catch (error) {
+      this.tourismDiscoveryStatus[tripId] = {
+        status: "error",
+        error: error?.message || "opentripmap-discovery-failed",
+        updatedAt: new Date().toISOString(),
+      };
+    }
+
+    this.notify();
   }
 
   toggleTripMode(enabled) {
@@ -369,7 +524,9 @@ class AppState {
       mapPins: [],
       calendarEvents: [],
       ideas: [],
-      events: []
+      events: [],
+      tourismPois: [],
+      hiddenGems: []
     };
 
     tripsData[id] = newTrip;
@@ -380,6 +537,7 @@ class AppState {
     this.planSubTab = "plan";
     this.planViewMode = getDefaultPlanViewMode();
     this.notify();
+    this.refreshTourismDiscovery(id);
 
     // Async sync with Cloudflare D1
     try {

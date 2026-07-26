@@ -9,6 +9,7 @@ export function renderHomeView() {
   const checklist = state.checklists ? (state.checklists[trip.id] || trip.checklist) : (trip.checklist || []);
   const liveTimeStr = formatLiveTimeString();
   const statusText = getDynamicTripCountdown(trip);
+  const tripIdeas = getHomeTripIdeas(trip);
 
   return `
     <div class="home-page">
@@ -50,7 +51,9 @@ export function renderHomeView() {
             <button class="btn btn--link" data-action="go-search">See all</button>
           </div>
           <div class="horizontal-scroll-container">
-            ${trip.ideas.map(idea => `
+            ${tripIdeas.map(idea => {
+              const isOpenTripMap = idea.source === "OpenTripMap";
+              return `
               <div class="idea-card">
                 <div class="idea-card__image" style="background-image: url('${idea.image}')">
                   <button class="btn-bookmark ${state.savedPlaceIds.has(idea.id) ? 'is-saved' : ''}" data-action="toggle-bookmark" data-place-id="${idea.id}" aria-label="Bookmark">
@@ -61,12 +64,13 @@ export function renderHomeView() {
                   <h4 class="idea-card__title">${escapeHtml(idea.title)}</h4>
                   <p class="idea-card__subtitle">${escapeHtml(idea.subtitle)}</p>
                   <div class="idea-card__meta">
-                    <span class="rating-badge">★ ${idea.rating}</span>
-                    <span class="duration-badge">⏱ ${idea.duration}</span>
+                    <span class="rating-badge">${isOpenTripMap ? 'OpenTripMap' : `★ ${escapeHtml(idea.rating)}`}</span>
+                    <span class="duration-badge">${isOpenTripMap ? escapeHtml(idea.distance || idea.category) : `⏱ ${escapeHtml(idea.duration)}`}</span>
                   </div>
                 </div>
               </div>
-            `).join('')}
+            `;
+            }).join('')}
           </div>
         </section>
 
@@ -102,6 +106,11 @@ export function renderHomeView() {
       </div>
     </div>
   `;
+}
+
+function getHomeTripIdeas(trip) {
+  const liveIdeas = [...(trip.tourismPois || []), ...(trip.hiddenGems || [])].slice(0, 3);
+  return [...liveIdeas, ...(trip.ideas || [])].slice(0, 6);
 }
 
 function renderPlanningModules(trip, checklist) {

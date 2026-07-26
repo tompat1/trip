@@ -56,6 +56,8 @@ function matchRoute(method, pathname) {
     ["GET", /^\/api\/places\/nearby$/, nearbyPlacesHandler],
     ["POST", /^\/api\/places\/enrich-location$/, enrichLocationHandler],
     ["GET", /^\/api\/places\/enrich$/, enrichPlaceHandler],
+    ["GET", /^\/api\/opentripmap\/places$/, openTripMapPlacesHandler],
+    ["GET", /^\/api\/opentripmap\/places\/([^/]+)$/, openTripMapPlaceDetailsHandler],
     ["POST", /^\/api\/places\/([^/]+)\/media\/refresh$/, mediaRefreshHandler],
     ["POST", /^\/api\/media\/light$/, lightMediaPutHandler],
     ["GET", /^\/api\/media\/light\/([^/]+)$/, lightMediaGetHandler],
@@ -323,6 +325,39 @@ async function enrichPlaceHandler(context) {
 
   return json(partialResponse("places.enrich", {
     placeProfile: createCoordinatesOnlyProfile({ id: placeId, title: placeId }),
+  }, context));
+}
+
+async function openTripMapPlacesHandler(context) {
+  const url = new URL(context.request.url);
+  const coordinates = normalizeCoordinates([url.searchParams.get("lat"), url.searchParams.get("lng")]);
+  if (!coordinates) return jsonError("invalid_coordinates", "Provide lat and lng query parameters.", 400);
+  if (!context.env.OPENTRIPMAP_API_KEY) return jsonError("missing_opentripmap_key", "OPENTRIPMAP_API_KEY is not configured.", 503);
+
+  const radiusMeters = clampNumber(url.searchParams.get("radius"), 250, 10000, 2000);
+  const limit = clampNumber(url.searchParams.get("limit"), 1, 50, 24);
+  const kinds = url.searchParams.get("kinds") || "interesting_places,cultural,architecture,historic,museums,monuments,natural";
+  const rate = url.searchParams.get("rate") || "";
+  const lang = url.searchParams.get("lang") || "en";
+  const result = await fetchOpenTripMapPlaces(context, { coordinates, radiusMeters, limit, kinds, rate, lang });
+
+  return json(partialResponse("opentripmap.places", {
+    places: result.places,
+    query: { coordinates, radiusMeters, limit, kinds, rate, lang },
+    providerStatus: [result.providerStatus],
+  }, context));
+}
+
+async function openTripMapPlaceDetailsHandler(context) {
+  const xid = context.params[0];
+  if (!context.env.OPENTRIPMAP_API_KEY) return jsonError("missing_opentripmap_key", "OPENTRIPMAP_API_KEY is not configured.", 503);
+  const lang = new URL(context.request.url).searchParams.get("lang") || "en";
+  const result = await fetchOpenTripMapPlaceDetails(context, xid, { lang });
+  if (!result.place) return jsonError("opentripmap_not_found", result.error || "OpenTripMap place not found.", 404);
+
+  return json(partialResponse("opentripmap.placeDetails", {
+    place: result.place,
+    providerStatus: [result.providerStatus],
   }, context));
 }
 
@@ -2395,6 +2430,179 @@ function buildNearbyOverpassQuery([lat, lng], radius) {
   `;
 }
 
+async function fetchOpenTripMapPlaces(context, options = {}) {
+  const [lat, lng] = options.coordinates;
+  const startedAt = Date.now();
+  const url = new URL(`https://api.opentripmap.com/0.1/${options.lang || "en"}/places/radius`);
+  url.searchParams.set("apikey", context.env.OPENTRIPMAP_API_KEY);
+  url.searchParams.set("lat", String(lat));
+  url.searchParams.set("lon", String(lng));
+  url.searchParams.set("radius", String(options.radiusMeters || 2000));
+  url.searchParams.set("limit", String(options.limit || 24));
+  url.searchParams.set("format", "json");
+  url.searchParams.set("kinds", options.kinds || "interesting_places,cultural,architecture,historic,museums,monuments,natural");
+  if (options.rate) url.searchParams.set("rate", String(options.rate));
+
+  try {
+    const response = await fetchWithTimeout(url.href, context.request, 7000);
+    if (!response.ok) {
+      return createOpenTripMapFailure(`opentripmap-http-${response.status}`, Date.now() - startedAt);
+    }
+    const payload = await response.json();
+    const places = normalizeOpenTripMapPlaces(payload, options.coordinates).slice(0, options.limit || 24);
+
+    if (context.hasDb) {
+      for (const place of places) {
+        await persistPlaceProfile(context, {
+          place,
+          facts: createOpenTripMapPlaceFacts(place),
+          editorial: createPendingEditorial(place.canonicalName),
+          source: createOpenTripMapSource(place),
+        });
+      }
+    }
+
+    return {
+      ok: true,
+      places,
+      error: "",
+      providerStatus: {
+        provider: "opentripmap",
+        status: "ok",
+        error: "",
+        count: places.length,
+        latencyMs: Date.now() - startedAt,
+        checkedAt: new Date().toISOString(),
+      },
+    };
+  } catch (error) {
+    return createOpenTripMapFailure(error?.name === "AbortError" ? "opentripmap-timeout" : error?.message || "opentripmap-failed", Date.now() - startedAt);
+  }
+}
+
+async function fetchOpenTripMapPlaceDetails(context, xid, options = {}) {
+  const startedAt = Date.now();
+  const url = new URL(`https://api.opentripmap.com/0.1/${options.lang || "en"}/places/xid/${encodeURIComponent(xid)}`);
+  url.searchParams.set("apikey", context.env.OPENTRIPMAP_API_KEY);
+
+  try {
+    const response = await fetchWithTimeout(url.href, context.request, 7000);
+    if (!response.ok) {
+      return { place: null, error: `opentripmap-details-http-${response.status}`, providerStatus: createOpenTripMapStatus("error", `opentripmap-details-http-${response.status}`, 0, Date.now() - startedAt) };
+    }
+    const details = await response.json();
+    return {
+      place: normalizeOpenTripMapDetails(details),
+      error: "",
+      providerStatus: createOpenTripMapStatus("ok", "", 1, Date.now() - startedAt),
+    };
+  } catch (error) {
+    const message = error?.name === "AbortError" ? "opentripmap-details-timeout" : error?.message || "opentripmap-details-failed";
+    return { place: null, error: message, providerStatus: createOpenTripMapStatus("error", message, 0, Date.now() - startedAt) };
+  }
+}
+
+function createOpenTripMapFailure(error, latencyMs = 0) {
+  return {
+    ok: false,
+    places: [],
+    error,
+    providerStatus: createOpenTripMapStatus("error", error, 0, latencyMs),
+  };
+}
+
+function createOpenTripMapStatus(status, error = "", count = 0, latencyMs = 0) {
+  return {
+    provider: "opentripmap",
+    status,
+    error,
+    count,
+    latencyMs,
+    checkedAt: new Date().toISOString(),
+  };
+}
+
+function normalizeOpenTripMapPlaces(payload, origin = null) {
+  const items = Array.isArray(payload)
+    ? payload
+    : Array.isArray(payload?.features)
+      ? payload.features.map((feature) => ({ ...feature.properties, point: feature.geometry }))
+      : [];
+  const seen = new Set();
+  return items
+    .map((item) => normalizeOpenTripMapPlace(item, origin))
+    .filter(Boolean)
+    .filter((place) => {
+      const key = `${normalizeLookupText(place.canonicalName)}-${Math.round(place.coordinates[0] * 10000)}-${Math.round(place.coordinates[1] * 10000)}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .sort((a, b) => a.score - b.score);
+}
+
+function normalizeOpenTripMapPlace(item = {}, origin = null) {
+  const point = item.point || item.geometry || {};
+  const coordinates = normalizeCoordinates([
+    point.lat ?? item.lat ?? point.coordinates?.[1],
+    point.lon ?? item.lon ?? point.lng ?? point.coordinates?.[0],
+  ]);
+  const title = String(item.name || item.title || "").trim();
+  if (!title || !coordinates) return null;
+  const kinds = String(item.kinds || "").split(",").map((kind) => kind.trim()).filter(Boolean);
+  const distanceMeters = Number.isFinite(Number(item.dist))
+    ? Math.round(Number(item.dist))
+    : origin ? Math.round(getDistanceMeters(origin, coordinates)) : null;
+  const rateScore = Number(String(item.rate || "0").replace("h", "")) || 0;
+
+  return {
+    id: item.xid ? `otm-${item.xid}` : stableId("otm", [title, coordinates.join(",")]),
+    xid: item.xid || "",
+    canonicalName: cleanAreaName(title),
+    localName: "",
+    aliases: [title],
+    countryCode: "",
+    region: "",
+    municipality: "",
+    coordinates,
+    osmType: "",
+    osmId: "",
+    wikidataId: "",
+    wikipediaUrl: "",
+    officialWebsite: "",
+    categories: kinds,
+    confidence: rateScore >= 2 ? 0.74 : 0.64,
+    distanceMeters,
+    distance: formatDistance(distanceMeters),
+    category: classifyOpenTripMapKinds(kinds),
+    tag: classifyOpenTripMapKinds(kinds),
+    reason: buildOpenTripMapReason(kinds),
+    source: "OpenTripMap",
+    sourceRole: "opentripmap",
+    sourceUrl: item.xid ? `https://opentripmap.com/en/card/${encodeURIComponent(item.xid)}` : "",
+    openingHours: "",
+    score: (distanceMeters || 0) - rateScore * 450,
+  };
+}
+
+function normalizeOpenTripMapDetails(details = {}) {
+  const coordinates = normalizeCoordinates([details.point?.lat, details.point?.lon]);
+  return {
+    xid: details.xid || "",
+    title: details.name || "",
+    canonicalName: details.name || "",
+    address: details.address || {},
+    wikipedia: details.wikipedia || "",
+    website: sanitizeUrl(details.url || ""),
+    sourceUrl: details.otm || (details.xid ? `https://opentripmap.com/en/card/${encodeURIComponent(details.xid)}` : ""),
+    imageUrl: details.preview?.source || "",
+    description: details.wikipedia_extracts?.text || details.info?.descr || "",
+    coordinates,
+    categories: String(details.kinds || "").split(",").map((kind) => kind.trim()).filter(Boolean),
+    source: "OpenTripMap",
+  };
+}
+
 function normalizeOverpassElements(elements = [], origin, options = {}) {
   const seen = new Set();
   return elements
@@ -2498,6 +2706,46 @@ function createOsmPlaceFacts(place) {
     createFact(place.id, "wikidataId", place.wikidataId, 0.7, false, now),
     createFact(place.id, "website", place.officialWebsite, 0.56, true, now),
   ].filter((fact) => fact.value !== "" && fact.value !== undefined && fact.value !== null);
+}
+
+function createOpenTripMapPlaceFacts(place) {
+  const now = new Date().toISOString();
+  return [
+    createFact(place.id, "name", place.canonicalName, 0.8, false, now),
+    createFact(place.id, "coordinates", place.coordinates, 0.78, false, now),
+    createFact(place.id, "category", place.category, 0.7, false, now),
+    createFact(place.id, "distanceMeters", place.distanceMeters, 0.62, true, now),
+    createFact(place.id, "xid", place.xid, 0.76, false, now),
+    createFact(place.id, "sourceUrl", place.sourceUrl, 0.68, true, now),
+  ].filter((fact) => fact.value !== "" && fact.value !== undefined && fact.value !== null);
+}
+
+function createOpenTripMapSource(place = {}) {
+  return {
+    provider: "opentripmap",
+    providerId: place.xid || place.id,
+    url: place.sourceUrl || "",
+    license: "OpenTripMap open data aggregation",
+    retrievedAt: new Date().toISOString(),
+  };
+}
+
+function classifyOpenTripMapKinds(kinds = []) {
+  const key = kinds.join(" ").toLowerCase();
+  if (/museums|galleries/.test(key)) return "Museum";
+  if (/monuments|historic|architecture|fortifications|archaeology/.test(key)) return "Sight";
+  if (/natural|beaches|parks|view_points/.test(key)) return "Nature";
+  if (/cultural|theatres|urban_environment/.test(key)) return "Culture";
+  return "POI";
+}
+
+function buildOpenTripMapReason(kinds = []) {
+  const category = classifyOpenTripMapKinds(kinds);
+  if (category === "Museum") return "Museum or gallery from OpenTripMap.";
+  if (category === "Sight") return "Historic, architectural, or monument POI from OpenTripMap.";
+  if (category === "Nature") return "Natural attraction from OpenTripMap.";
+  if (category === "Culture") return "Cultural attraction from OpenTripMap.";
+  return "Interesting place from OpenTripMap.";
 }
 
 function createOsmSource(place) {

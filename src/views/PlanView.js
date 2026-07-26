@@ -480,6 +480,12 @@ function getSavedPlacesForTrip(trip) {
     }
   });
 
+  [...(trip.tourismPois || []), ...(trip.hiddenGems || [])].forEach(idea => {
+    if (savedSet.has(idea.id) && !places.some(p => p.id === idea.id || p.title === idea.title)) {
+      places.push(idea);
+    }
+  });
+
   (trip.events || []).forEach(evt => {
     const evtId = evt.id || evt.title;
     if (savedSet.has(evtId) && !places.some(p => p.id === evtId || p.title === evt.title)) {
@@ -520,55 +526,101 @@ function getSavedPlacesForTrip(trip) {
 }
 
 function renderExploreSubTab(trip) {
-  const ideas = trip.ideas || [];
+  const curatedIdeas = trip.ideas || [];
+  const tourismPois = trip.tourismPois || [];
+  const hiddenGems = trip.hiddenGems || [];
+  const discoveryStatus = state.getTourismDiscoveryStatus ? state.getTourismDiscoveryStatus(trip.id) : { status: "idle" };
   const events = trip.calendarEvents || [];
 
   return `
     <div class="explore-subtab-view">
       <div class="explore-header mb-md">
         <h2 class="voice-serif" style="font-size: 1.4rem; font-weight: 700; margin-bottom: 4px;">Explore ${escapeHtml(trip.destination)}</h2>
-        <p style="font-size: 0.85rem; color: var(--ink-muted);">Curated local recommendations & sights for your trip</p>
+        <p style="font-size: 0.85rem; color: var(--ink-muted);">Tourism POIs, hidden gems, and curated local recommendations for your trip</p>
       </div>
 
-      <!-- Recommendation Cards Feed -->
-      <div class="explore-ideas-grid" style="display: flex; flex-direction: column; gap: 14px; margin-bottom: 24px;">
-        ${ideas.map(idea => {
-          const isSaved = state.savedPlaceIds.has(idea.id);
-          const isAdded = events.some(e => e.title === idea.title);
-          return `
-            <div class="explore-card" style="background: var(--paper-card); border: 1px solid var(--line); border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow-sm); display: flex; flex-direction: column;">
-              <div style="height: 160px; background-image: url('${idea.image}'); background-size: cover; background-position: center; position: relative;">
-                <button class="btn-bookmark ${isSaved ? 'is-saved' : ''}" data-action="toggle-bookmark" data-place-id="${idea.id}" style="position: absolute; top: 12px; right: 12px; background: rgba(255,255,255,0.9); border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border: none; box-shadow: var(--shadow-sm);" aria-label="Bookmark">
-                  ${renderIcon("bookmark")}
-                </button>
-                <span class="category-badge" style="position: absolute; bottom: 12px; left: 12px; background: rgba(23,24,23,0.85); color: #fff; padding: 4px 10px; border-radius: var(--radius-pill); font-size: 0.72rem; font-weight: 700;">${escapeHtml(idea.category)}</span>
-              </div>
+      ${renderTourismStatus(discoveryStatus, tourismPois.length + hiddenGems.length)}
 
-              <div style="padding: 16px; display: flex; flex-direction: column; gap: 8px;">
-                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                  <div>
-                    <h3 style="font-size: 1.1rem; font-weight: 700; color: var(--ink); margin-bottom: 2px;">${escapeHtml(idea.title)}</h3>
-                    <p style="font-size: 0.82rem; color: var(--ink-muted); margin: 0;">${escapeHtml(idea.subtitle)}</p>
-                  </div>
-                  <span class="voice-mono" style="font-size: 0.8rem; font-weight: 700; color: var(--sun); background: rgba(233,199,107,0.18); padding: 3px 8px; border-radius: var(--radius-pill);">★ ${idea.rating}</span>
-                </div>
+      ${tourismPois.length ? renderExploreSection("Top POIs", "Attractions, museums, monuments, architecture, and nature from OpenTripMap.", tourismPois, events) : ""}
+      ${hiddenGems.length ? renderExploreSection("Hidden Gems", "Lower-noise interesting places around your destination.", hiddenGems, events) : ""}
+      ${renderExploreSection("Curated Picks", "Hand-picked starting points already in your trip.", curatedIdeas, events)}
+    </div>
+  `;
+}
 
-                <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 8px; padding-top: 10px; border-top: 1px solid var(--line-light);">
-                  <span class="voice-mono" style="font-size: 0.78rem; color: var(--ink-muted);">${renderIcon("clock")} ${idea.duration || '2 hours'}</span>
-                  ${isAdded ? `
-                    <button class="btn btn--outline btn--xs" disabled style="opacity: 0.65; cursor: default; background: var(--paper-subtle); color: var(--ink-muted); border-color: var(--line);">
-                      ${renderIcon("check")} Added
-                    </button>
-                  ` : `
-                    <button class="btn btn--primary btn--xs" data-action="add-idea-to-itinerary" data-title="${escapeHtml(idea.title)}" data-location="${escapeHtml(idea.subtitle)}">
-                      ${renderIcon("plus")} Add to Itinerary
-                    </button>
-                  `}
-                </div>
-              </div>
-            </div>
-          `;
-        }).join('')}
+function renderTourismStatus(discoveryStatus, resultCount) {
+  if (resultCount || discoveryStatus.status === "ready" || discoveryStatus.status === "cached") return "";
+  if (discoveryStatus.status === "loading") {
+    return `
+      <div class="dashboard-card" style="padding: 14px 16px; margin-bottom: 16px; border-color: rgba(210,104,43,0.28);">
+        <span class="voice-mono" style="font-size: 0.76rem; font-weight: 700; color: var(--orange);">OPENTRIPMAP</span>
+        <p style="font-size: 0.85rem; color: var(--ink-muted); margin: 4px 0 0 0;">Loading live tourism POIs around this trip...</p>
+      </div>
+    `;
+  }
+  if (discoveryStatus.status === "not-configured") {
+    return `
+      <div class="dashboard-card" style="padding: 14px 16px; margin-bottom: 16px;">
+        <span class="voice-mono" style="font-size: 0.76rem; font-weight: 700; color: var(--orange);">OPENTRIPMAP READY</span>
+        <p style="font-size: 0.85rem; color: var(--ink-muted); margin: 4px 0 0 0;">Add an OpenTripMap API key to show live Top POIs and Hidden Gems here. Curated picks still work.</p>
+      </div>
+    `;
+  }
+  return "";
+}
+
+function renderExploreSection(title, subtitle, ideas, events) {
+  if (!ideas.length) return "";
+  return `
+    <section class="explore-section" style="margin-bottom: 24px;">
+      <div class="section-header" style="margin-bottom: 10px;">
+        <div>
+          <h3 class="section-title">${escapeHtml(title)}</h3>
+          <p style="font-size: 0.8rem; color: var(--ink-muted); margin: 2px 0 0 0;">${escapeHtml(subtitle)}</p>
+        </div>
+      </div>
+      <div class="explore-ideas-grid" style="display: flex; flex-direction: column; gap: 14px;">
+        ${ideas.map((idea) => renderExploreIdeaCard(idea, events)).join("")}
+      </div>
+    </section>
+  `;
+}
+
+function renderExploreIdeaCard(idea, events) {
+  const isSaved = state.savedPlaceIds.has(idea.id);
+  const isAdded = events.some(e => e.title === idea.title);
+  const isOpenTripMap = idea.source === "OpenTripMap";
+  const sourceMeta = idea.distance || idea.source || "OpenTripMap";
+  return `
+    <div class="explore-card" style="background: var(--paper-card); border: 1px solid var(--line); border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow-sm); display: flex; flex-direction: column;">
+      <div style="height: 160px; background-image: url('${idea.image}'); background-size: cover; background-position: center; position: relative;">
+        <button class="btn-bookmark ${isSaved ? 'is-saved' : ''}" data-action="toggle-bookmark" data-place-id="${idea.id}" style="position: absolute; top: 12px; right: 12px; background: rgba(255,255,255,0.9); border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border: none; box-shadow: var(--shadow-sm);" aria-label="Bookmark">
+          ${renderIcon("bookmark")}
+        </button>
+        <span class="category-badge" style="position: absolute; bottom: 12px; left: 12px; background: rgba(23,24,23,0.85); color: #fff; padding: 4px 10px; border-radius: var(--radius-pill); font-size: 0.72rem; font-weight: 700;">${escapeHtml(idea.category)}</span>
+      </div>
+
+      <div style="padding: 16px; display: flex; flex-direction: column; gap: 8px;">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 10px;">
+          <div>
+            <h3 style="font-size: 1.1rem; font-weight: 700; color: var(--ink); margin-bottom: 2px;">${escapeHtml(idea.title)}</h3>
+            <p style="font-size: 0.82rem; color: var(--ink-muted); margin: 0;">${escapeHtml(idea.subtitle)}</p>
+          </div>
+          <span class="voice-mono" style="font-size: 0.76rem; font-weight: 700; color: ${isOpenTripMap ? 'var(--orange)' : 'var(--sun)'}; background: ${isOpenTripMap ? 'rgba(210,104,43,0.12)' : 'rgba(233,199,107,0.18)'}; padding: 3px 8px; border-radius: var(--radius-pill); white-space: nowrap;">${isOpenTripMap ? escapeHtml(sourceMeta) : `★ ${escapeHtml(idea.rating)}`}</span>
+        </div>
+
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 8px; padding-top: 10px; border-top: 1px solid var(--line-light); gap: 10px;">
+          <span class="voice-mono" style="font-size: 0.78rem; color: var(--ink-muted);">${isOpenTripMap ? "OpenTripMap" : `${renderIcon("clock")} ${escapeHtml(idea.duration || '2 hours')}`}</span>
+          ${isAdded ? `
+            <button class="btn btn--outline btn--xs" disabled style="opacity: 0.65; cursor: default; background: var(--paper-subtle); color: var(--ink-muted); border-color: var(--line);">
+              ${renderIcon("check")} Added
+            </button>
+          ` : `
+            <button class="btn btn--primary btn--xs" data-action="add-idea-to-itinerary" data-title="${escapeHtml(idea.title)}" data-location="${escapeHtml(idea.subtitle)}">
+              ${renderIcon("plus")} Add to Itinerary
+            </button>
+          `}
+        </div>
       </div>
     </div>
   `;

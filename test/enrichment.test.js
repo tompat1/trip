@@ -3,6 +3,7 @@ import test from "node:test";
 import { composeEditorialProfile, createVerifiedFactBundle, validateEditorialProfile } from "../src/enrichment/editorialComposer.js";
 import { createEnrichmentService } from "../src/enrichment/enrichmentService.js";
 import { calculateImageScore, dedupeImages } from "../src/enrichment/mediaAggregator.js";
+import { normalizeOpenTripMapPlaces } from "../src/services/openTripMapService.js";
 import { areAliasesEquivalent, buildPlaceAliases, createResolvedPlaceIdentity } from "../src/enrichment/placeResolver.js";
 import { createNormalizedFact, createNormalizedImage, createPlaceProfileContract, ENRICHMENT_COVERAGE } from "../src/enrichment/schemas.js";
 import worker, { createRequestPrincipal } from "../worker/index.js";
@@ -70,6 +71,31 @@ test("Worker force media refresh requires admin", async () => {
   assert.equal(response.status, 403);
   const payload = await response.json();
   assert.equal(payload.error.code, "forbidden");
+});
+
+test("OpenTripMap service normalizes tourism POIs", () => {
+  const places = normalizeOpenTripMapPlaces([{
+    xid: "W123",
+    name: "Arc de Triomphe",
+    kinds: "interesting_places,architecture,historic,monuments",
+    rate: "3",
+    dist: 240,
+    point: { lat: 48.8738, lon: 2.2950 },
+  }], [48.872, 2.297]);
+
+  assert.equal(places.length, 1);
+  assert.equal(places[0].id, "otm-W123");
+  assert.equal(places[0].title, "Arc de Triomphe");
+  assert.equal(places[0].category, "Sight");
+  assert.deepEqual(places[0].coordinates, [48.8738, 2.295]);
+  assert.equal(places[0].source, "OpenTripMap");
+});
+
+test("Worker OpenTripMap route reports missing key clearly", async () => {
+  const response = await worker.fetch(new Request("https://trip.test/api/opentripmap/places?lat=48.8566&lng=2.3522"), {}, {});
+  assert.equal(response.status, 503);
+  const payload = await response.json();
+  assert.equal(payload.error.code, "missing_opentripmap_key");
 });
 
 test("Worker attribution endpoint returns stored image provenance", async () => {
