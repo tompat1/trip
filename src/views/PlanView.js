@@ -1,3 +1,8 @@
+import { state } from "../state.js";
+import { renderCalendarGrid } from "../components/CalendarGrid.js";
+import { renderHeader } from "../components/Header.js";
+import { renderIcon } from "../utils/icons.js";
+import { TRIP_STAMP_SVG } from "../components/BrandAssets.js";
 import { calculateFlightDistance, getAirportByIata } from "../services/airportService.js";
 import { getDestinationTransitGuide } from "../services/transitService.js";
 
@@ -564,4 +569,76 @@ function escapeHtml(str) {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
+}
+
+function renderTransitSubTab(trip) {
+  const flightDetails = calculateFlightDistance("CDG", "HER");
+  const guide = getDestinationTransitGuide(trip.destination);
+
+  return `
+    <div class="transit-subtab-container" style="display: flex; flex-direction: column; gap: 20px; padding-bottom: 40px;">
+      <!-- Flight Planning & Air Route Card -->
+      <div class="dashboard-card card-pattern-poly" style="padding: 24px;">
+        <div class="card-eyebrow-row">
+          <span class="badge badge--brand">${renderIcon("navigation")} Flight Route & Air Master Data</span>
+          <span class="voice-mono" style="font-size: 0.8rem; color: var(--journey-orange); font-weight: 700;">OPTD / OurAirports</span>
+        </div>
+        
+        <h3 style="font-family: 'Playfair Display', serif; font-size: 1.4rem; margin: 10px 0 6px; color: var(--ink);">Flight Route: ${flightDetails.fromAirport.city} (${flightDetails.fromAirport.iata}) ✈️ ${flightDetails.toAirport.city} (${flightDetails.toAirport.iata})</h3>
+        <p style="font-size: 0.9rem; color: var(--ink-muted); margin-bottom: 16px;">Direct flight estimate across master airport coordinates.</p>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin-bottom: 16px;">
+          <div style="background: var(--paper-subtle); padding: 12px; border-radius: var(--radius-md); border: 1px solid var(--line-light);">
+            <span style="font-size: 0.75rem; color: var(--ink-muted); display: block;">Air Distance</span>
+            <span class="voice-mono" style="font-weight: 700; font-size: 1.1rem; color: var(--ink);">${flightDetails.distanceKm} km</span>
+          </div>
+          <div style="background: var(--paper-subtle); padding: 12px; border-radius: var(--radius-md); border: 1px solid var(--line-light);">
+            <span style="font-size: 0.75rem; color: var(--ink-muted); display: block;">Flight Duration</span>
+            <span class="voice-mono" style="font-weight: 700; font-size: 1.1rem; color: var(--journey-orange);">${flightDetails.estimatedFlightTime}</span>
+          </div>
+          <div style="background: var(--paper-subtle); padding: 12px; border-radius: var(--radius-md); border: 1px solid var(--line-light);">
+            <span style="font-size: 0.75rem; color: var(--ink-muted); display: block;">Departure Airport</span>
+            <span style="font-weight: 700; font-size: 0.95rem; color: var(--ink);">${flightDetails.fromAirport.flag} ${flightDetails.fromAirport.name}</span>
+          </div>
+          <div style="background: var(--paper-subtle); padding: 12px; border-radius: var(--radius-md); border: 1px solid var(--line-light);">
+            <span style="font-size: 0.75rem; color: var(--ink-muted); display: block;">Arrival Airport</span>
+            <span style="font-weight: 700; font-size: 0.95rem; color: var(--ink);">${flightDetails.toAirport.flag} ${flightDetails.toAirport.name}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Arrival Survival Guide & Local Transport Card -->
+      <div class="dashboard-card card-pattern-map" style="padding: 24px;">
+        <div class="card-eyebrow-row">
+          <span class="badge badge--brand" style="background: rgba(101,112,91,0.15); color: var(--field-green);">${renderIcon("compass")} Arrival Survival Guide</span>
+          <span class="voice-mono" style="font-size: 0.8rem; color: var(--field-green); font-weight: 700;">First-Mile Transport</span>
+        </div>
+
+        <h3 style="font-family: 'Playfair Display', serif; font-size: 1.4rem; margin: 10px 0 6px; color: var(--ink);">Arriving in ${escapeHtml(guide.city)}</h3>
+        <p style="font-size: 0.92rem; color: var(--ink-muted); margin-bottom: 20px; line-height: 1.45;">${escapeHtml(guide.summary)}</p>
+
+        <h4 style="font-size: 1rem; font-weight: 700; color: var(--ink); margin-bottom: 12px;">Airport to City Transport Options:</h4>
+        <div style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 20px;">
+          ${guide.arrivalOptions.map(opt => `
+            <div style="display: flex; gap: 14px; background: var(--paper); padding: 14px 16px; border-radius: var(--radius-md); border: 1px solid var(--line);">
+              <span style="font-size: 1.6rem; line-height: 1;">${opt.icon}</span>
+              <div style="flex: 1;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                  <h5 style="margin: 0; font-size: 0.98rem; font-weight: 700; color: var(--ink);">${escapeHtml(opt.mode)}</h5>
+                  <span class="voice-mono" style="font-size: 0.82rem; font-weight: 700; color: var(--journey-orange);">${escapeHtml(opt.cost)}</span>
+                </div>
+                <p style="margin: 0 0 4px; font-size: 0.85rem; color: var(--ink-muted);">${escapeHtml(opt.description)}</p>
+                <span class="voice-mono" style="font-size: 0.78rem; color: var(--atlas-blue); font-weight: 600;">⏱ Travel time: ${escapeHtml(opt.duration)}</span>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+
+        <h4 style="font-size: 1rem; font-weight: 700; color: var(--ink); margin-bottom: 10px;">Pro Tips for Arrival Day:</h4>
+        <ul style="margin: 0; padding-left: 20px; font-size: 0.88rem; color: var(--ink-muted); line-height: 1.6;">
+          ${guide.localTips.map(tip => `<li>${escapeHtml(tip)}</li>`).join('')}
+        </ul>
+      </div>
+    </div>
+  `;
 }
