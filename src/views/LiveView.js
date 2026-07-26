@@ -126,12 +126,13 @@ export function renderProfileView() {
       <div class="profile-page__content">
         <!-- Main Profile Header Card -->
         <div class="profile-header-card card-pattern-poly">
-          <div class="profile-avatar-wrap">
-            <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=240&q=80" alt="Thomas R." />
-            <div class="profile-avatar-edit-badge" title="Change photo">
+          <div class="profile-avatar-wrap" data-action="change-avatar" title="Click to change profile picture">
+            <img src="${state.userAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=240&q=80'}" alt="Thomas R." />
+            <div class="profile-avatar-edit-badge" data-action="change-avatar" title="Change photo">
               ${renderIcon("pencil")}
             </div>
           </div>
+          <input type="file" id="avatar-file-input" accept="image/*" style="display:none;" />
 
           <h2 class="profile-user-name">Thomas R.</h2>
           <div class="profile-user-badge">

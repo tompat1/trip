@@ -27,6 +27,13 @@ class AppState {
     } catch {}
     this.savedPlaceIds = new Set(localSaved.length ? localSaved : ["i1", "i2", "i3", "i4", "sp1", "sp2"]);
 
+    // User Profile Avatar
+    this.userAvatar = "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=240&q=80";
+    try {
+      const savedAvatar = localStorage.getItem("trip_user_avatar");
+      if (savedAvatar) this.userAvatar = savedAvatar;
+    } catch {}
+
     // Live Geolocation & Worker API Integration State
     this.userLocation = null; // [lat, lng]
     this.locationResolved = null; // { area, town, city, country }
@@ -145,6 +152,15 @@ class AppState {
 
   closeLightbox() {
     this.activeLightboxMedia = null;
+    this.notify();
+  }
+
+  updateUserAvatar(url) {
+    if (!url) return;
+    this.userAvatar = url;
+    try {
+      localStorage.setItem("trip_user_avatar", url);
+    } catch {}
     this.notify();
   }
 

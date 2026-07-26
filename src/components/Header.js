@@ -13,9 +13,6 @@ export function renderHeader() {
         </div>
         <div class="top-nav__actions">
           <button class="btn btn--primary btn--sm" data-action="go-app">Get started</button>
-          <button class="btn btn--icon" aria-label="Menu">
-            ${renderIcon("menu")}
-          </button>
         </div>
       </header>
     `;
@@ -44,7 +41,10 @@ export function renderHeader() {
           </button>
 
           <div class="avatar-badge" data-action="go-profile" title="View Profile">
-            <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=120&q=80" alt="Thomas avatar" class="avatar-img" />
+            <img src="${state.userAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=120&q=80'}" alt="Thomas avatar" class="avatar-img" />
+            <div class="header-profile-icon-fallback" aria-label="Profile">
+              ${renderIcon("user")}
+            </div>
             <span class="avatar-online-dot"></span>
           </div>
         </div>
@@ -75,9 +75,9 @@ export function renderHeader() {
               <button class="btn btn--outline btn--icon" data-action="toggle-map-view" title="Toggle Map">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l-6 3V6l6-3 6 3 6-3v15l-6 3-6-3z"/><path d="M9 3v15"/><path d="M15 6v15"/></svg>
               </button>
-              <button class="btn btn--outline btn--sm" data-action="share-trip">
+              <button class="btn btn--outline btn--sm share-btn" data-action="share-trip" title="Share trip">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
-                <span>Share</span>
+                <span class="share-btn-text">Share</span>
               </button>
               <button class="btn btn--primary btn--sm" data-action="create-trip" title="Create a new custom trip">
                 <span>+ New trip</span>

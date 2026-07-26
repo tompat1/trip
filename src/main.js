@@ -190,6 +190,18 @@ document.addEventListener("click", async (e) => {
     else if (action === "close-quick-capture") {
       state.toggleQuickCapture(false);
     }
+    else if (action === "change-avatar") {
+      const fileInput = document.getElementById("avatar-file-input");
+      if (fileInput) {
+        fileInput.click();
+      } else {
+        const newUrl = prompt("Enter profile picture image URL:", state.userAvatar);
+        if (newUrl && newUrl.trim()) {
+          state.updateUserAvatar(newUrl.trim());
+          showToast("📸 Profile photo updated!");
+        }
+      }
+    }
     else if (action === "trigger-file-upload") {
       const fileInput = document.getElementById("capture-file-input");
       if (fileInput) fileInput.click();
@@ -751,3 +763,18 @@ export function showToast(message) {
     setTimeout(() => toast.remove(), 300);
   }, 2500);
 }
+
+// Global File Change Handler for Profile Avatar Uploads
+document.addEventListener("change", (e) => {
+  if (e.target && e.target.id === "avatar-file-input" && e.target.files && e.target.files[0]) {
+    const file = e.target.files[0];
+    const reader = new FileReader();
+    reader.onload = function(evt) {
+      if (evt.target && evt.target.result) {
+        state.updateUserAvatar(evt.target.result);
+        showToast("📸 Profile photo updated!");
+      }
+    };
+    reader.readAsDataURL(file);
+  }
+});

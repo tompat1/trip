@@ -1,22 +1,22 @@
 import { state } from "../state.js";
 import { renderHeader } from "../components/Header.js";
 import { renderIcon } from "../utils/icons.js";
-import { TRIP_STAMP_SVG, TRIP_ROUTE_LINE_SVG } from "../components/BrandAssets.js";
+import { TRIP_ROUTE_LINE_SVG } from "../components/BrandAssets.js";
 
 export function renderHomeView() {
   const trip = state.activeTrip;
   const isLiveMode = state.tripMode;
-  const checklist = state.checklists[trip.id] || trip.checklist;
-  const statusText = getDynamicTripCountdown(trip);
+  const checklist = state.checklists ? (state.checklists[trip.id] || trip.checklist) : (trip.checklist || []);
   const liveTimeStr = formatLiveTimeString();
+  const statusText = getDynamicTripCountdown(trip);
 
   return `
     <div class="home-page">
       ${renderHeader()}
 
       <div class="home-page__content">
-        <!-- Morning Greeting with Brand Stamp Badge & Dynamic Mode Status -->
-        <section class="greeting-row" style="position: relative; display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px;">
+        <!-- Morning Greeting Card with Map Pattern Background -->
+        <section class="greeting-row card-pattern-map">
           <div class="greeting-text">
             <h2 class="greeting-title voice-serif" style="font-size: 1.45rem; font-weight: 700; color: var(--ink);">Good morning, Thomas 👋</h2>
             <p class="greeting-status">
@@ -24,11 +24,6 @@ export function renderHomeView() {
                 ? `<span class="live-pulse-dot"></span> <strong>You are in ${escapeHtml(trip.destination)}</strong> <span class="status-meta">${trip.weather?.condition || 'Fair'} • ${trip.weather?.temp || '20°C'} • ${liveTimeStr}</span>` 
                 : `<span class="upcoming-badge">${statusText}</span>`}
             </p>
-          </div>
-
-          <!-- Brand Stamp Emblem (Guidelines Section 07) -->
-          <div style="transform: scale(0.85); margin: -8px -8px 0 0;">
-            ${TRIP_STAMP_SVG("", 72)}
           </div>
         </section>
 

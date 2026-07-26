@@ -13,9 +13,7 @@ export function renderLandingView() {
         <div class="hero-card__content">
           <div style="display: flex; justify-content: flex-end; align-items: flex-start; margin-bottom: 12px;">
             <!-- Brand Stamp Emblem -->
-            <div style="background: rgba(255,255,255,0.92); backdrop-filter: blur(8px); border-radius: 50%; padding: 4px; display: inline-flex;">
-              ${TRIP_STAMP_SVG("", 68)}
-            </div>
+            ${TRIP_STAMP_SVG("", 68)}
           </div>
 
           <h1 class="hero-title voice-serif" style="font-size: 2.2rem; font-weight: 700; line-height: 1.15; color: #fff; margin-bottom: 8px;">Every place becomes a story.</h1>
