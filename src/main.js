@@ -420,13 +420,15 @@ document.addEventListener("click", async (e) => {
         return;
       }
       state.addMoment({
+        tripId: state.quickCaptureTripId || state.activeTripId,
         title,
         text,
         type: selectedType,
         media_url: selectedType === "note" ? "" : "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=600&q=80"
       });
+      const receiverTrip = state.getAllTrips().find((trip) => trip.id === (state.quickCaptureTripId || state.activeTripId)) || state.activeTrip;
       state.toggleQuickCapture(false);
-      showToast(`Saved "${title}" to your Journal & Story!`);
+      showToast(`Saved "${title}" to ${receiverTrip.destination} Journal & Story!`);
     }
     else if (action === "toggle-bookmark") {
       const placeId = target.dataset.placeId;
@@ -633,6 +635,25 @@ document.addEventListener("click", async (e) => {
       const media = (state.moments || []).find((m) => m.id === momentId);
       if (media) state.openLightbox(media);
     }
+    else if (action === "edit-journal-media") {
+      const momentId = target.dataset.momentId;
+      const moment = (state.moments || []).find((m) => m.id === momentId);
+      if (!moment) return;
+      const title = prompt("Media title:", moment.title || "");
+      if (title === null) return;
+      const placeTitle = prompt("Place / restaurant / coffee shop:", moment.placeTitle || "");
+      if (placeTitle === null) return;
+      const placeCategory = prompt("Category:", moment.placeCategory || "Place");
+      if (placeCategory === null) return;
+      state.updateMoment(momentId, {
+        title: title.trim() || moment.title,
+        placeTitle: placeTitle.trim(),
+        placeCategory: placeCategory.trim() || "Place",
+        tags: [placeCategory.trim() || "Place"].filter(Boolean),
+        geoSource: moment.geoSource || "manual",
+      });
+      showToast("Media tags updated.");
+    }
     else if (action === "close-lightbox") {
       state.closeLightbox();
     }
@@ -780,6 +801,130 @@ function resolveTripCenter(destination = "") {
   return match ? match[1] : [48.8566, 2.3522];
 }
 
+async function enrichCapturedMediaFile(file, trip) {
+  const coordinates = await extractPhotoGpsCoordinates(file);
+  if (!coordinates) {
+    return {
+      tags: ["Needs place tag"],
+      geoSource: "manual-needed",
+      geoLabel: "",
+    };
+  }
+
+  const [location, nearby] = await Promise.all([
+    enrichmentService.resolveLocation({ coordinates }).catch(() => null),
+    enrichmentService.discoverNearby({ coordinates, radiusMeters: 180, intent: "traveler" }).catch(() => null),
+  ]);
+  const place = (nearby?.places || [])[0] || null;
+  const geoLabel = location?.locality || location?.area?.city || location?.area?.town || location?.displayName || "";
+  const placeCategory = place?.category || place?.tag || inferMomentCategory(place?.categories || []);
+
+  return {
+    coordinates,
+    geoSource: "photo-exif",
+    geoLabel: geoLabel || trip.destination,
+    placeTitle: place?.title || place?.canonicalName || "",
+    placeCategory: placeCategory || "",
+    placeDistance: place?.distance || "",
+    tags: [placeCategory, geoLabel || trip.destination].filter(Boolean),
+    locationResolved: location || null,
+  };
+}
+
+async function extractPhotoGpsCoordinates(file) {
+  if (!file || !/^image\/jpe?g$/i.test(file.type || "")) return null;
+  const buffer = await file.arrayBuffer();
+  const view = new DataView(buffer);
+  if (view.getUint16(0, false) !== 0xffd8) return null;
+
+  let offset = 2;
+  while (offset + 4 < view.byteLength) {
+    const marker = view.getUint16(offset, false);
+    const length = view.getUint16(offset + 2, false);
+    if (marker === 0xffe1 && length > 8 && readAscii(view, offset + 4, 6) === "Exif\0\0") {
+      return readGpsFromTiff(view, offset + 10);
+    }
+    offset += 2 + length;
+  }
+  return null;
+}
+
+function readGpsFromTiff(view, tiffStart) {
+  const little = readAscii(view, tiffStart, 2) === "II";
+  const get16 = (offset) => view.getUint16(offset, little);
+  const get32 = (offset) => view.getUint32(offset, little);
+  const firstIfd = tiffStart + get32(tiffStart + 4);
+  const gpsPointer = findIfdValue(view, firstIfd, 0x8825, little, tiffStart);
+  if (!gpsPointer) return null;
+
+  const gpsIfd = tiffStart + gpsPointer;
+  const latRef = findIfdValue(view, gpsIfd, 0x0001, little, tiffStart);
+  const lat = findIfdValue(view, gpsIfd, 0x0002, little, tiffStart);
+  const lngRef = findIfdValue(view, gpsIfd, 0x0003, little, tiffStart);
+  const lng = findIfdValue(view, gpsIfd, 0x0004, little, tiffStart);
+  if (!lat || !lng) return null;
+
+  const latitude = dmsToDecimal(lat) * (String(latRef).toUpperCase().startsWith("S") ? -1 : 1);
+  const longitude = dmsToDecimal(lng) * (String(lngRef).toUpperCase().startsWith("W") ? -1 : 1);
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
+  return [Number(latitude.toFixed(6)), Number(longitude.toFixed(6))];
+}
+
+function findIfdValue(view, ifdOffset, tag, little, tiffStart) {
+  const get16 = (offset) => view.getUint16(offset, little);
+  const get32 = (offset) => view.getUint32(offset, little);
+  const entries = get16(ifdOffset);
+  for (let i = 0; i < entries; i += 1) {
+    const entry = ifdOffset + 2 + i * 12;
+    if (get16(entry) !== tag) continue;
+    const type = get16(entry + 2);
+    const count = get32(entry + 4);
+    const valueOffset = entry + 8;
+    const dataOffset = getTypeSize(type) * count <= 4 ? valueOffset : tiffStart + get32(valueOffset);
+    return readExifValue(view, dataOffset, type, count, little);
+  }
+  return null;
+}
+
+function readExifValue(view, offset, type, count, little) {
+  if (type === 2) return readAscii(view, offset, count).replace(/\0/g, "");
+  if (type === 3) return count === 1 ? view.getUint16(offset, little) : Array.from({ length: count }, (_, i) => view.getUint16(offset + i * 2, little));
+  if (type === 4) return count === 1 ? view.getUint32(offset, little) : Array.from({ length: count }, (_, i) => view.getUint32(offset + i * 4, little));
+  if (type === 5) {
+    return Array.from({ length: count }, (_, i) => {
+      const numerator = view.getUint32(offset + i * 8, little);
+      const denominator = view.getUint32(offset + i * 8 + 4, little) || 1;
+      return numerator / denominator;
+    });
+  }
+  return null;
+}
+
+function getTypeSize(type) {
+  if (type === 2) return 1;
+  if (type === 3) return 2;
+  if (type === 4) return 4;
+  if (type === 5) return 8;
+  return 1;
+}
+
+function readAscii(view, offset, length) {
+  return Array.from({ length }, (_, i) => String.fromCharCode(view.getUint8(offset + i))).join("");
+}
+
+function dmsToDecimal(values) {
+  return Number(values[0] || 0) + Number(values[1] || 0) / 60 + Number(values[2] || 0) / 3600;
+}
+
+function inferMomentCategory(categories = []) {
+  const text = categories.join(" ").toLowerCase();
+  if (/coffee|cafe/.test(text)) return "Coffee";
+  if (/restaurant|food|bar|pub/.test(text)) return "Restaurant";
+  if (/museum|gallery|culture/.test(text)) return "Museum";
+  if (/park|garden|viewpoint|nature/.test(text)) return "Outdoor";
+  return "";
+}
+
 // Trip mode & dropdown change listener
 document.addEventListener("change", (e) => {
   if (e.target.dataset.action === "select-trip-dropdown") {
@@ -787,6 +932,9 @@ document.addEventListener("change", (e) => {
   }
   if (e.target.dataset.action === "toggle-trip-mode") {
     state.toggleTripMode(e.target.checked);
+  }
+  if (e.target.dataset.action === "select-quick-capture-trip") {
+    state.setQuickCaptureTrip(e.target.value);
   }
   if (e.target.id === "quick-capture-file-input" && e.target.files && e.target.files[0]) {
     const file = e.target.files[0];
@@ -808,7 +956,7 @@ document.addEventListener("change", (e) => {
         type: selectedType,
       });
     };
-    reader.onload = (evt) => {
+    reader.onload = async (evt) => {
       const dataUrl = evt.target.result;
       state.setQuickCaptureUpload({
         status: "saving",
@@ -816,11 +964,18 @@ document.addEventListener("change", (e) => {
         fileName: file.name,
         type: selectedType,
       });
+      const receiverTripId = state.quickCaptureTripId || state.activeTripId;
+      const receiverTrip = state.getAllTrips().find((trip) => trip.id === receiverTripId) || state.activeTrip;
+      const enrichment = selectedType === "photo"
+        ? await enrichCapturedMediaFile(file, receiverTrip).catch(() => ({ tags: ["Needs place tag"] }))
+        : { tags: ["Video"] };
       state.addMoment({
+        tripId: receiverTripId,
         title: `Captured ${selectedType === 'video' ? 'Video' : 'Photo'}`,
         text: file.name,
         type: selectedType,
-        media_url: dataUrl
+        media_url: dataUrl,
+        ...enrichment
       });
       state.setQuickCaptureUpload({
         status: "complete",
@@ -828,7 +983,7 @@ document.addEventListener("change", (e) => {
         fileName: file.name,
         type: selectedType,
       });
-      showToast(`${file.name} saved to your Journal.`);
+      showToast(`${file.name} saved to ${receiverTrip.destination} Journal.`);
       setTimeout(() => state.toggleQuickCapture(false), 650);
     };
     reader.onerror = () => {

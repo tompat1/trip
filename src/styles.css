@@ -2835,6 +2835,29 @@ textarea {
   box-shadow: var(--shadow-md);
 }
 
+.journal-media-edit-btn {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+}
+
+.journal-media-edit-btn:hover,
+.journal-media-edit-btn:focus-visible {
+  color: var(--orange);
+  transform: scale(1.04);
+}
+
 .journal-media-thumb {
   height: 110px;
   background-size: cover;
@@ -2868,6 +2891,26 @@ textarea {
 .journal-media-date {
   font-size: 0.7rem;
   color: var(--ink-muted);
+}
+
+.journal-media-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 7px;
+}
+
+.journal-media-tags span {
+  max-width: 100%;
+  padding: 2px 6px;
+  border-radius: var(--radius-pill);
+  background: rgba(210, 104, 43, 0.1);
+  color: var(--orange);
+  font-size: 0.66rem;
+  font-weight: 800;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* ==========================================================================
@@ -3725,6 +3768,46 @@ textarea {
 
 .quick-capture-overlay.is-open .quick-capture-modal {
   transform: translateY(0);
+}
+
+.quick-capture-receiver {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  margin: 12px 0 16px 0;
+  padding: 8px 12px;
+  background: var(--paper-subtle);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+}
+
+.quick-capture-receiver label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: var(--orange);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.quick-capture-receiver select {
+  min-width: 0;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font-size: 0.86rem;
+  font-weight: 700;
+  outline: none;
+}
+
+.quick-capture-receiver > span {
+  font-size: 0.72rem;
+  color: var(--ink-light);
+  white-space: nowrap;
 }
 
 .quick-capture-progress {

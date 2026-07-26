@@ -98,7 +98,7 @@ function renderSubtabContent(trip) {
 }
 
 function renderJournalSubTab() {
-  const moments = state.moments || [];
+  const moments = getMomentsForTrip(state.activeTrip.id);
   const mediaMoments = moments.filter(m => m.media_url);
   const noteMoments = moments.filter(m => !m.media_url);
 
@@ -127,10 +127,12 @@ function renderJournalSubTab() {
                   <span class="media-type-badge voice-mono" style="position: absolute; bottom: 6px; right: 6px; background: rgba(23,24,23,0.8); color: #fff; padding: 2px 8px; border-radius: var(--radius-pill); font-size: 0.68rem; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">
                     ${m.type === 'video' ? renderIcon("video") : renderIcon("camera")} ${m.type}
                   </span>
+                  <button class="journal-media-edit-btn" data-action="edit-journal-media" data-moment-id="${m.id}" title="Edit place tags" aria-label="Edit place tags">${renderIcon("pencil")}</button>
                 </div>
                 <div class="journal-media-body" style="padding: 10px;">
                   <h4 class="journal-media-title" style="font-size: 0.85rem; font-weight: 700; margin: 0 0 2px 0; color: var(--ink); truncate;">${escapeHtml(m.title || 'Trip Moment')}</h4>
                   <p class="journal-media-date voice-mono" style="font-size: 0.72rem; color: var(--ink-muted); margin: 0;">${escapeHtml(m.date || 'Oct 2026')}</p>
+                  ${renderMomentTags(m)}
                 </div>
               </div>
             `).join('')}
@@ -220,7 +222,7 @@ function renderStorySubTab(trip) {
 
           <h3 class="story-h3" style="margin-top: 24px;">Captured Memories & Notes</h3>
           <div class="story-moments-list">
-            ${(state.moments || []).map(m => `
+            ${getMomentsForTrip(trip.id).map(m => `
               <blockquote class="story-quote" style="position: relative;">
                 <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 8px;">
                   <p contenteditable="true" data-story-moment-id="${m.id}" style="outline: none; margin: 0; flex: 1;" title="Click to edit note">"${escapeHtml(m.text || m.title)}"</p>
@@ -626,6 +628,30 @@ function renderExploreIdeaCard(idea, events) {
           `}
         </div>
       </div>
+    </div>
+  `;
+}
+
+function getMomentsForTrip(tripId) {
+  return (state.moments || []).filter((moment) => {
+    if (!moment.tripId) return tripId === "paris";
+    return moment.tripId === tripId;
+  });
+}
+
+function renderMomentTags(moment) {
+  const tags = [
+    moment.placeTitle,
+    moment.placeCategory,
+    moment.geoLabel,
+    ...(moment.tags || []),
+  ].filter(Boolean);
+  if (!tags.length) {
+    return `<div class="journal-media-tags"><span>Untagged</span></div>`;
+  }
+  return `
+    <div class="journal-media-tags">
+      ${[...new Set(tags)].slice(0, 3).map((tag) => `<span>${escapeHtml(tag)}</span>`).join("")}
     </div>
   `;
 }

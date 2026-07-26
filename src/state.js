@@ -229,7 +229,7 @@ class AppState {
 
   toggleQuickCapture(open) {
     this.quickCaptureOpen = open !== undefined ? open : !this.quickCaptureOpen;
-    if (this.quickCaptureOpen && !tripsData[this.quickCaptureTripId]) {
+    if (this.quickCaptureOpen) {
       this.quickCaptureTripId = this.activeTripId;
     }
     if (!this.quickCaptureOpen) {
@@ -825,6 +825,13 @@ class AppState {
     } catch (e) {
       console.warn("D1 moment sync fallback:", e);
     }
+  }
+
+  updateMoment(momentId, updates = {}) {
+    const moment = this.moments.find((item) => item.id === momentId);
+    if (!moment) return;
+    Object.assign(moment, updates, { updatedAt: new Date().toISOString() });
+    this.notify();
   }
 
   // --- Cloudflare Worker & OpenStreetMap Integration Methods ---
