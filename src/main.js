@@ -543,8 +543,41 @@ document.addEventListener("pointerdown", (e) => {
   const resizeHandle = e.target.closest(".event-resize-handle");
   const moveHandle = e.target.closest(".event-drag-handle");
   const card = e.target.closest(".event-card");
+  const timelineRow = e.target.closest(".timeline-event-row");
+  const timelineGrab = e.target.closest(".timeline-card-grab");
   const wrapper = card ? card.closest(".calendar-grid-wrapper") : resizeHandle?.closest(".calendar-grid-wrapper");
   const isMobileWeekOverview = wrapper?.dataset.calendarMode === "week" && isTouchCalendarViewport();
+
+  if (timelineRow && !e.target.closest(".timeline-edit-btn, .timeline-delete-btn")) {
+    const requiresHandle = isTouchCalendarViewport();
+    if (requiresHandle && !timelineGrab) {
+      activeDragState = {
+        type: "timeline-tap",
+        eventId: timelineRow.dataset.eventId,
+        card: timelineRow,
+        startX: e.clientX,
+        startY: e.clientY,
+        hasMoved: false
+      };
+      return;
+    }
+
+    e.preventDefault();
+    e.stopPropagation();
+    captureCalendarPointer(timelineRow, e.pointerId);
+    activeDragState = {
+      type: "timeline-move",
+      eventId: timelineRow.dataset.eventId,
+      card: timelineRow,
+      pointerId: e.pointerId,
+      startX: e.clientX,
+      startY: e.clientY,
+      sourceDayIndex: parseInt(timelineRow.dataset.dayIndex, 10) || 0,
+      targetDayGroup: timelineRow.closest(".timeline-day-group"),
+      hasMoved: false
+    };
+    return;
+  }
 
   if (card && isMobileWeekOverview && !e.target.closest(".event-action-btn, .event-delete-btn")) {
     activeDragState = {
@@ -611,6 +644,35 @@ document.addEventListener("pointerdown", (e) => {
 document.addEventListener("pointermove", (e) => {
   if (!activeDragState) return;
 
+  if (activeDragState.type === "timeline-tap") {
+    const dx = e.clientX - activeDragState.startX;
+    const dy = e.clientY - activeDragState.startY;
+    if (Math.hypot(dx, dy) > 8) activeDragState.hasMoved = true;
+    return;
+  }
+
+  if (activeDragState.type === "timeline-move") {
+    const dx = e.clientX - activeDragState.startX;
+    const dy = e.clientY - activeDragState.startY;
+
+    if (Math.hypot(dx, dy) > 8) {
+      activeDragState.hasMoved = true;
+      e.preventDefault();
+      activeDragState.card.classList.add("is-dragging");
+      activeDragState.card.style.transform = `translate(${dx}px, ${dy}px) scale(0.98)`;
+
+      const targetElem = document.elementFromPoint(e.clientX, e.clientY);
+      const targetDayGroup = targetElem ? targetElem.closest(".timeline-day-group") : null;
+
+      document.querySelectorAll(".timeline-day-group").forEach((group) => group.classList.remove("drag-hover"));
+      if (targetDayGroup) {
+        targetDayGroup.classList.add("drag-hover");
+        activeDragState.targetDayGroup = targetDayGroup;
+      }
+    }
+    return;
+  }
+
   if (activeDragState.type === "tap") {
     const dx = e.clientX - activeDragState.startX;
     const dy = e.clientY - activeDragState.startY;
@@ -667,6 +729,35 @@ document.addEventListener("pointermove", (e) => {
 // Touch & Mouse Up / Cancel End Listener
 document.addEventListener("pointerup", (e) => {
   if (!activeDragState) return;
+
+  if (activeDragState.type === "timeline-tap") {
+    if (!activeDragState.hasMoved) {
+      openCalendarEventDrawer(activeDragState.eventId);
+    }
+    activeDragState = null;
+    return;
+  }
+
+  if (activeDragState.type === "timeline-move") {
+    releaseCalendarPointer(activeDragState.card, activeDragState.pointerId);
+    activeDragState.card.classList.remove("is-dragging");
+    activeDragState.card.style.transform = "";
+    document.querySelectorAll(".timeline-day-group").forEach((group) => group.classList.remove("drag-hover"));
+
+    if (activeDragState.hasMoved && activeDragState.targetDayGroup) {
+      const targetDayIndex = parseInt(activeDragState.targetDayGroup.dataset.dayIndex, 10);
+      if (Number.isFinite(targetDayIndex) && targetDayIndex !== activeDragState.sourceDayIndex) {
+        state.updateCalendarEvent(state.activeTripId, activeDragState.eventId, {
+          dayIndex: targetDayIndex
+        });
+      }
+    } else if (!activeDragState.hasMoved) {
+      openCalendarEventDrawer(activeDragState.eventId);
+    }
+
+    activeDragState = null;
+    return;
+  }
 
   if (activeDragState.type === "tap") {
     if (!activeDragState.hasMoved) {
@@ -749,6 +840,7 @@ function resetActiveCalendarDrag() {
     activeDragState.card.style.height = activeDragState.initialHeightStyle || activeDragState.card.style.height;
   }
   document.querySelectorAll(".calendar-col").forEach((c) => c.classList.remove("drag-hover"));
+  document.querySelectorAll(".timeline-day-group").forEach((group) => group.classList.remove("drag-hover"));
   activeDragState = null;
 }
 

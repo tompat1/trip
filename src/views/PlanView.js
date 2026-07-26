@@ -281,27 +281,32 @@ function renderVerticalTimeline(trip) {
       ${days.map((dayLabel, dayIdx) => {
         const dayEvents = events.filter((e) => Number(e.dayIndex) === dayIdx);
         return `
-          <div class="timeline-day-group">
+          <div class="timeline-day-group" data-day-index="${dayIdx}">
             <div class="timeline-day-node">
               <span class="timeline-day-badge">${renderIcon("pin")} Day ${dayIdx + 1} &bull; ${dayLabel}</span>
             </div>
 
             <div class="timeline-day-events">
               ${dayEvents.map((evt) => `
-                <div class="timeline-event-row" data-action="open-edit-drawer" data-event-id="${evt.id}">
+                <div class="timeline-event-row" data-action="open-edit-drawer" data-event-id="${evt.id}" data-day-index="${dayIdx}">
                   <div class="timeline-node-point">
                     <span class="timeline-node-dot timeline-dot--${evt.colorScheme || 'peach'}"></span>
                   </div>
                   
                   <div class="timeline-time-badge">${evt.startTime}</div>
 
-                  <div class="timeline-card-box event-card--${evt.colorScheme || 'peach'}">
+                  <div class="timeline-card-box event-card--${evt.colorScheme || 'peach'}" data-event-id="${evt.id}">
+                    <div class="timeline-card-grab" data-action="drag-timeline-event" data-event-id="${evt.id}" title="Move activity">${renderIcon("gripVertical")}</div>
                     <div class="timeline-card-header">
                       <h4 class="timeline-card-title">${escapeHtml(evt.title)}</h4>
                       <span class="timeline-duration-tag">${renderIcon("clock")} ${evt.startTime} – ${evt.endTime}</span>
                     </div>
                     ${evt.location ? `<div class="timeline-card-location">${renderIcon("pin")} ${escapeHtml(evt.location)}</div>` : ''}
                     ${evt.reminder && evt.reminder !== 'none' ? `<div class="timeline-card-reminder">${renderIcon("bell")} ${escapeHtml(evt.reminder)} before</div>` : ''}
+                    <div class="timeline-card-actions">
+                      <button class="btn btn--icon btn--ghost timeline-edit-btn" data-action="open-edit-drawer" data-event-id="${evt.id}" title="Edit activity" aria-label="Edit activity">${renderIcon("pencil")}</button>
+                      <button class="btn btn--icon btn--ghost timeline-delete-btn" data-action="delete-calendar-event" data-event-id="${evt.id}" title="Delete activity" aria-label="Delete activity">${renderIcon("trash")}</button>
+                    </div>
                   </div>
                 </div>
               `).join('')}

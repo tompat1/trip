@@ -2636,6 +2636,16 @@ textarea {
   margin-bottom: 24px;
 }
 
+.timeline-day-group.drag-hover .timeline-day-badge {
+  border-color: var(--red);
+  color: var(--red);
+}
+
+.timeline-day-group.drag-hover .timeline-day-events {
+  background: color-mix(in srgb, var(--sun) 12%, transparent);
+  border-radius: var(--radius-md);
+}
+
 .timeline-day-node {
   margin-bottom: 12px;
 }
@@ -2665,6 +2675,13 @@ textarea {
   gap: 10px;
   position: relative;
   cursor: pointer;
+  touch-action: pan-y;
+}
+
+.timeline-event-row.is-dragging {
+  z-index: 20;
+  opacity: 0.92;
+  pointer-events: none;
 }
 
 .timeline-node-point {
@@ -2721,8 +2738,9 @@ textarea {
 
 .timeline-card-box {
   flex: 1;
+  position: relative;
   border-radius: 12px;
-  padding: 10px 14px;
+  padding: 10px 52px 34px 38px;
   box-shadow: var(--shadow-sm);
   border: 1px solid var(--line-light);
   transition: transform 0.2s var(--ease-out);
@@ -2743,6 +2761,43 @@ textarea {
 .timeline-card-title {
   font-size: 0.88rem;
   font-weight: 700;
+}
+
+.timeline-card-grab {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  width: 24px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-sm);
+  color: var(--ink-muted);
+  cursor: grab;
+  touch-action: none;
+}
+
+.timeline-card-grab:active {
+  cursor: grabbing;
+}
+
+.timeline-card-actions {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.timeline-edit-btn,
+.timeline-delete-btn {
+  width: 30px;
+  height: 30px;
+}
+
+.timeline-delete-btn {
+  color: var(--red);
 }
 
 .timeline-duration-tag {
