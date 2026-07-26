@@ -5,8 +5,9 @@ import { resolveLocationContext } from "./placeResolver.js";
 import { createPlaceProfileContract, createProviderStatus, PROVIDER_STATUS } from "./schemas.js";
 import { calculateFlightDistance, getAirportByIata, searchAirports } from "../services/airportService.js";
 import { fetchRouteDirections } from "../services/routeService.js";
+import { fetchConcertsForTrip, searchConcerts } from "../services/concertService.js";
 
-export { calculateFlightDistance, getAirportByIata, searchAirports, fetchRouteDirections };
+export { calculateFlightDistance, getAirportByIata, searchAirports, fetchRouteDirections, fetchConcertsForTrip, searchConcerts };
 
 const DEFAULT_WORKER_API_BASE = "https://trip.thomasrynell.workers.dev";
 export const ADMIN_SESSION_STORAGE_KEY = "trip-admin-session-token-v1";

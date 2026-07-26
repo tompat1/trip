@@ -1,8 +1,9 @@
 import { state } from "../state.js";
 import { searchPlacesData } from "../data/tripsData.js";
 import { renderHeader } from "../components/Header.js";
+import { searchConcerts } from "../services/concertService.js";
 
-const PRIMARY_CATEGORIES = ["All", "Places", "Events", "Guides", "Stories", "People", "Collections"];
+const PRIMARY_CATEGORIES = ["All", "Places", "Concerts", "Events", "Guides", "Stories"];
 const SUB_FILTERS = [
   { id: "All", label: "All" },
   { id: "Cafes", label: "Cafes ⌄" },
@@ -14,6 +15,7 @@ const SUB_FILTERS = [
 export function renderSearchView() {
   const query = state.searchQuery;
   const places = searchPlacesData;
+  const concerts = searchConcerts(query);
 
   return `
     <div class="search-page">
@@ -76,20 +78,21 @@ export function renderSearchView() {
 
         <!-- Results Header Bar -->
         <div class="results-header">
-          <span class="results-count">125 results</span>
+          <span class="results-count">${state.searchCategory === "Concerts" ? `${concerts.length} live concerts` : `${places.length} results`}</span>
           <div class="results-sort">
             <span class="sort-label">Sort:</span>
             <select class="sort-select" data-action="change-sort">
-              <option value="top-rated">Top rated ⌄</option>
-              <option value="closest">Closest ⌄</option>
-              <option value="popular">Most popular ⌄</option>
+              <option value="top-rated">Upcoming dates ⌄</option>
+              <option value="popular">Popular tours ⌄</option>
             </select>
           </div>
         </div>
 
         <!-- Results List -->
         <div class="results-list">
-          ${places.map((place) => renderSearchPlaceCard(place)).join("")}
+          ${state.searchCategory === "Concerts"
+            ? concerts.map((c) => renderConcertCard(c)).join("")
+            : places.map((place) => renderSearchPlaceCard(place)).join("")}
         </div>
 
         <!-- Floating Sticky "View on map" button -->
@@ -125,6 +128,31 @@ function renderSearchPlaceCard(place) {
           <span class="rating-category">${escapeHtml(place.category)}</span>
         </div>
         <p class="search-place-card__desc">${escapeHtml(place.description)}</p>
+      </div>
+    </div>
+  `;
+}
+
+function renderConcertCard(concert) {
+  return `
+    <div class="search-place-card concert-card" style="border-left: 3px solid var(--orange);">
+      <div class="search-place-card__thumb" style="background-image: url('${concert.image}'); display: flex; align-items: flex-start; padding: 6px;">
+        <span style="background: rgba(23,24,23,0.85); color: #fff; font-size: 0.7rem; font-weight: 700; padding: 2px 8px; border-radius: 10px;">${concert.icon} ${escapeHtml(concert.genre)}</span>
+      </div>
+      <div class="search-place-card__content">
+        <div class="search-place-card__header">
+          <h3 class="search-place-card__title">${escapeHtml(concert.artist)}</h3>
+          <button class="btn btn--outline btn--xs" data-action="add-idea-to-itinerary" data-title="${escapeHtml(concert.title)}" data-location="${escapeHtml(concert.venue)}" style="font-size: 0.72rem; padding: 2px 8px;">+ Itinerary</button>
+        </div>
+        <p class="search-place-card__location" style="color: var(--orange); font-weight: 600;">📍 ${escapeHtml(concert.venue)} • ${escapeHtml(concert.city)}</p>
+        <div class="search-place-card__rating" style="margin-top: 4px;">
+          <span class="voice-mono" style="font-size: 0.75rem; color: var(--ink-muted);">${escapeHtml(concert.dates)}</span>
+          <span class="rating-sep">•</span>
+          <span class="rating-category" style="font-size: 0.75rem;">${escapeHtml(concert.tour)}</span>
+        </div>
+        <div style="margin-top: 8px; display: flex; gap: 8px;">
+          <a href="${concert.ticketUrl}" target="_blank" rel="noopener" class="btn btn--primary btn--xs" style="text-decoration: none; font-size: 0.72rem; padding: 4px 10px;">🎟️ Get Tickets</a>
+        </div>
       </div>
     </div>
   `;

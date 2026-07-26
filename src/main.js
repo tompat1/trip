@@ -10,6 +10,9 @@ import { renderBottomNav } from "./components/BottomNav.js";
 import { renderLightbox } from "./components/Lightbox.js";
 import { renderEventDrawer } from "./components/EventDrawer.js";
 import { renderQuickCaptureWidget } from "./components/QuickCaptureWidget.js";
+import { fetchConcertsForTrip } from "./services/concertService.js";
+import { fetchOpenMeteoWeather } from "./services/weatherService.js";
+import { enrichmentService } from "./enrichment/enrichmentService.js";
 import "./styles.css";
 
 let activeMaps = new Map();
@@ -779,16 +782,11 @@ async function runBackgroundEnrichmentScan() {
     }
 
     // 3. Enrich trip events with Live Concerts & Music performances
-    const concertEnrichmentData = [
-      { id: "c1", title: "Live Rock Concert at L'Olympia", dates: "Tonight • 20:00", icon: "🎸", venue: "L'Olympia Paris", category: "Concert" },
-      { id: "c2", title: "Philharmonie Symphony Special", dates: "Tomorrow • 19:30", icon: "🎻", venue: "Philharmonie de Paris", category: "Concert" },
-      { id: "c3", title: "Jazz & Blues Night at Le Caveau", dates: "Oct 5 • 21:00", icon: "🎷", venue: "Saint-Germain-des-Prés", category: "Concert" },
-      { id: "c4", title: "Indie Pop Gig at La Cigale", dates: "Oct 6 • 20:30", icon: "🎤", venue: "Montmartre", category: "Concert" }
-    ];
+    const concertEnrichmentData = await fetchConcertsForTrip(trip.destination, coords);
 
     if (!trip.events) trip.events = [];
     const existingTitles = new Set(trip.events.map(e => e.title));
-    concertEnrichmentData.forEach(concert => {
+    (concertEnrichmentData || []).forEach(concert => {
       if (!existingTitles.has(concert.title)) {
         trip.events.unshift(concert);
       }
