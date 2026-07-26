@@ -11,6 +11,16 @@ export const tripsData = {
     tripMode: true,
     center: [48.8566, 2.3522],
     zoom: 13,
+    flightRoute: {
+      originIata: "CPH",
+      destinationIata: "CDG",
+      originLabel: "Copenhagen (CPH) - Copenhagen Airport",
+      destinationLabel: "Paris (CDG) - Charles de Gaulle Airport",
+      flightType: "regular",
+      departureDate: "2026-10-03"
+    },
+    flightPreference: "regular",
+    flightSearch: { status: "idle", offers: [], updatedAt: "" },
     weather: {
       temp: "18°C",
       condition: "Partly cloudy",
@@ -267,6 +277,16 @@ export const tripsData = {
     tripMode: true,
     center: [35.3391, 25.132],
     zoom: 13,
+    flightRoute: {
+      originIata: "CPH",
+      destinationIata: "HER",
+      originLabel: "Copenhagen (CPH) - Copenhagen Airport",
+      destinationLabel: "Heraklion (Crete) (HER) - Heraklion International Airport",
+      flightType: "charter",
+      departureDate: "2026-07-17"
+    },
+    flightPreference: "charter",
+    flightSearch: { status: "idle", offers: [], updatedAt: "" },
     weather: {
       temp: "28°C",
       condition: "Sunny",

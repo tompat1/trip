@@ -5,6 +5,7 @@ import { renderIcon } from "../utils/icons.js";
 import { TRIP_STAMP_SVG } from "../components/BrandAssets.js";
 import { calculateFlightDistance, getAirportByIata } from "../services/airportService.js";
 import { getDestinationTransitGuide } from "../services/transitService.js";
+import { FLIGHT_TYPE_OPTIONS, getFlightRouteForTrip } from "../services/flightService.js";
 import { CONCERTS_DATABASE } from "../services/concertService.js";
 
 const SUB_TABS = [
@@ -725,37 +726,55 @@ function escapeHtml(str) {
 }
 
 function renderTransitSubTab(trip) {
-  const flightDetails = calculateFlightDistance("CDG", "HER");
+  const route = getFlightRouteForTrip(trip);
+  const flightDetails = route.originIata && route.destinationIata ? calculateFlightDistance(route.originIata, route.destinationIata) : null;
   const guide = getDestinationTransitGuide(trip.destination);
+  const flightType = FLIGHT_TYPE_OPTIONS.find((option) => option.id === route.flightType) || FLIGHT_TYPE_OPTIONS[0];
+  const flightSearch = trip.flightSearch || { status: "idle", offers: [] };
 
   return `
     <div class="transit-subtab-container" style="display: flex; flex-direction: column; gap: 20px; padding-bottom: 40px;">
       <!-- Flight Planning & Air Route Card -->
       <div class="dashboard-card card-pattern-poly" style="padding: 24px;">
         <div class="card-eyebrow-row">
-          <span class="badge badge--brand">${renderIcon("navigation")} Flight Route & Air Master Data</span>
-          <span class="voice-mono" style="font-size: 0.8rem; color: var(--journey-orange); font-weight: 700;">OPTD / OurAirports</span>
+          <span class="badge badge--brand">${renderIcon("navigation")} Flight Search</span>
+          <span class="voice-mono" style="font-size: 0.8rem; color: var(--journey-orange); font-weight: 700;">${escapeHtml(getFlightProviderLabel(flightSearch))}</span>
         </div>
         
-        <h3 style="font-family: 'Playfair Display', serif; font-size: 1.4rem; margin: 10px 0 6px; color: var(--ink);">Flight Route: ${flightDetails.fromAirport.city} (${flightDetails.fromAirport.iata}) ✈️ ${flightDetails.toAirport.city} (${flightDetails.toAirport.iata})</h3>
-        <p style="font-size: 0.9rem; color: var(--ink-muted); margin-bottom: 16px;">Direct flight estimate across master airport coordinates.</p>
+        <h3 style="font-family: 'Playfair Display', serif; font-size: 1.4rem; margin: 10px 0 6px; color: var(--ink);">Flight Route: ${escapeHtml(route.originIata || "Origin")} to ${escapeHtml(route.destinationIata || "Destination")}</h3>
+        <p style="font-size: 0.9rem; color: var(--ink-muted); margin-bottom: 16px;">${escapeHtml(route.originAirport?.name || route.originLabel || "Choose origin airport")} → ${escapeHtml(route.destinationAirport?.name || route.destinationLabel || "Choose destination airport")}</p>
 
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin-bottom: 16px;">
           <div style="background: var(--paper-subtle); padding: 12px; border-radius: var(--radius-md); border: 1px solid var(--line-light);">
             <span style="font-size: 0.75rem; color: var(--ink-muted); display: block;">Air Distance</span>
-            <span class="voice-mono" style="font-weight: 700; font-size: 1.1rem; color: var(--ink);">${flightDetails.distanceKm} km</span>
+            <span class="voice-mono" style="font-weight: 700; font-size: 1.1rem; color: var(--ink);">${flightDetails ? `${flightDetails.distanceKm} km` : "Set route"}</span>
           </div>
           <div style="background: var(--paper-subtle); padding: 12px; border-radius: var(--radius-md); border: 1px solid var(--line-light);">
-            <span style="font-size: 0.75rem; color: var(--ink-muted); display: block;">Flight Duration</span>
-            <span class="voice-mono" style="font-weight: 700; font-size: 1.1rem; color: var(--journey-orange);">${flightDetails.estimatedFlightTime}</span>
+            <span style="font-size: 0.75rem; color: var(--ink-muted); display: block;">Flight Type</span>
+            <span class="voice-mono" style="font-weight: 700; font-size: 1.1rem; color: var(--journey-orange);">${escapeHtml(flightType.label)}</span>
           </div>
           <div style="background: var(--paper-subtle); padding: 12px; border-radius: var(--radius-md); border: 1px solid var(--line-light);">
             <span style="font-size: 0.75rem; color: var(--ink-muted); display: block;">Departure Airport</span>
-            <span style="font-weight: 700; font-size: 0.95rem; color: var(--ink);">${flightDetails.fromAirport.flag} ${flightDetails.fromAirport.name}</span>
+            <span style="font-weight: 700; font-size: 0.95rem; color: var(--ink);">${route.originAirport ? `${route.originAirport.flag} ${route.originAirport.name}` : "Missing"}</span>
           </div>
           <div style="background: var(--paper-subtle); padding: 12px; border-radius: var(--radius-md); border: 1px solid var(--line-light);">
             <span style="font-size: 0.75rem; color: var(--ink-muted); display: block;">Arrival Airport</span>
-            <span style="font-weight: 700; font-size: 0.95rem; color: var(--ink);">${flightDetails.toAirport.flag} ${flightDetails.toAirport.name}</span>
+            <span style="font-weight: 700; font-size: 0.95rem; color: var(--ink);">${route.destinationAirport ? `${route.destinationAirport.flag} ${route.destinationAirport.name}` : "Missing"}</span>
+          </div>
+        </div>
+
+        <div class="flight-search-panel">
+          <div class="flight-search-panel__header">
+            <div>
+              <h4>Flight options</h4>
+              <p>${escapeHtml(getFlightSearchCopy(flightSearch))}</p>
+            </div>
+            <button class="btn btn--primary btn--sm" data-action="search-trip-flights" ${flightSearch.status === "loading" || !route.originIata || !route.destinationIata ? "disabled" : ""}>
+              ${renderIcon("refresh")} ${flightSearch.status === "loading" ? "Searching" : "Search flights"}
+            </button>
+          </div>
+          <div class="flight-offers-list">
+            ${renderFlightOffers(flightSearch.offers || [])}
           </div>
         </div>
       </div>
@@ -794,4 +813,48 @@ function renderTransitSubTab(trip) {
       </div>
     </div>
   `;
+}
+
+function getFlightProviderLabel(flightSearch = {}) {
+  if (flightSearch.status === "ready" && flightSearch.source === "amadeus") return "Amadeus live";
+  if (flightSearch.status === "not-configured") return "Amadeus ready";
+  if (flightSearch.status === "loading") return "Searching";
+  return "Airport data + estimates";
+}
+
+function getFlightSearchCopy(flightSearch = {}) {
+  if (flightSearch.status === "loading") return "Checking configured flight providers for this route.";
+  if (flightSearch.status === "ready" && flightSearch.source === "amadeus") return "Live offers from Amadeus Flight Offers Search.";
+  if (flightSearch.status === "not-configured") return "Add Amadeus keys to switch this from estimates to live fares.";
+  if (flightSearch.status === "fallback" && flightSearch.offers?.length) return "Estimated options based on route distance and selected flight type.";
+  if (flightSearch.status === "error") return "Flight search failed. Try again or use the route estimate.";
+  return "Search to populate route-aware options for this trip.";
+}
+
+function renderFlightOffers(offers = []) {
+  if (!offers.length) {
+    return `
+      <div class="flight-offer-empty">
+        <strong>No offers loaded yet</strong>
+        <span>Use Search flights to fetch live results or route estimates.</span>
+      </div>
+    `;
+  }
+
+  return offers.map((offer) => `
+    <article class="flight-offer-card">
+      <div class="flight-offer-card__main">
+        <span class="flight-offer-card__code voice-mono">${escapeHtml(offer.airlineCode || "")}</span>
+        <div>
+          <h5>${escapeHtml(offer.airline || "Flight option")}</h5>
+          <p>${escapeHtml(offer.originIata)} ${escapeHtml(offer.departureTime || "")} → ${escapeHtml(offer.destinationIata)} ${escapeHtml(offer.arrivalTime || "")}</p>
+        </div>
+      </div>
+      <div class="flight-offer-card__meta">
+        <strong>${offer.price ? `${escapeHtml(offer.currency || "EUR")} ${escapeHtml(String(offer.price))}` : "Check fare"}</strong>
+        <span>${escapeHtml(offer.duration || "")} · ${offer.stops ? `${offer.stops} stop` : "Direct"}</span>
+      </div>
+      <p class="flight-offer-card__hint">${escapeHtml(offer.bookingHint || offer.source || "")}</p>
+    </article>
+  `).join("");
 }

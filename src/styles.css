@@ -2973,6 +2973,141 @@ textarea {
   text-overflow: ellipsis;
 }
 
+.flight-search-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line-light);
+}
+
+.flight-search-panel__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.flight-search-panel__header h4 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.flight-search-panel__header p {
+  margin: 3px 0 0;
+  color: var(--ink-muted);
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
+.flight-offers-list {
+  display: grid;
+  gap: 10px;
+}
+
+.flight-offer-card,
+.flight-offer-empty {
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.flight-offer-card {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px 12px;
+  align-items: start;
+}
+
+.flight-offer-card__main {
+  display: flex;
+  min-width: 0;
+  gap: 10px;
+  align-items: center;
+}
+
+.flight-offer-card__code {
+  display: inline-flex;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  color: var(--orange);
+  background: rgba(210, 104, 43, 0.12);
+  font-weight: 900;
+}
+
+.flight-offer-card h5 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 0.92rem;
+  font-weight: 800;
+}
+
+.flight-offer-card p {
+  margin: 2px 0 0;
+  color: var(--ink-muted);
+  font-size: 0.76rem;
+}
+
+.flight-offer-card__meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  white-space: nowrap;
+}
+
+.flight-offer-card__meta strong {
+  color: var(--ink);
+  font-size: 0.95rem;
+}
+
+.flight-offer-card__meta span {
+  color: var(--ink-muted);
+  font-size: 0.72rem;
+}
+
+.flight-offer-card__hint {
+  grid-column: 1 / -1;
+}
+
+.flight-offer-empty {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  color: var(--ink-muted);
+  font-size: 0.8rem;
+}
+
+.flight-offer-empty strong {
+  color: var(--ink);
+}
+
+@media (max-width: 540px) {
+  .flight-search-panel__header,
+  .flight-offer-card {
+    grid-template-columns: 1fr;
+  }
+
+  .flight-search-panel__header {
+    flex-direction: column;
+  }
+
+  .flight-search-panel__header .btn {
+    width: 100%;
+  }
+
+  .flight-offer-card__meta {
+    align-items: flex-start;
+  }
+}
+
 /* ==========================================================================
    VERTICAL GRAPHIC TIMELINE VIEW
    ========================================================================== */
@@ -3542,6 +3677,7 @@ textarea {
 
 .trip-create-field--wide {
   min-width: 0;
+  grid-column: 1 / -1;
 }
 
 .trip-create-input-wrap {
@@ -3568,6 +3704,54 @@ textarea {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
+}
+
+.flight-type-segment {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.flight-type-option {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--paper);
+  cursor: pointer;
+  transition: border-color 0.18s ease-out, background 0.18s ease-out, transform 0.18s ease-out;
+}
+
+.flight-type-option input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.flight-type-option:has(input:checked) {
+  border-color: var(--orange);
+  background: rgba(210, 104, 43, 0.08);
+}
+
+.flight-type-option:hover,
+.flight-type-option:focus-within {
+  border-color: var(--orange);
+  transform: translateY(-1px);
+}
+
+.flight-type-option strong {
+  color: var(--ink);
+  font-size: 0.78rem;
+  line-height: 1.2;
+}
+
+.flight-type-option span {
+  color: var(--ink-muted);
+  font-size: 0.68rem;
+  line-height: 1.28;
 }
 
 .trip-create-pill {
@@ -3710,6 +3894,10 @@ textarea {
 
   .trip-create-grid,
   .trip-create-preview {
+    grid-template-columns: 1fr;
+  }
+
+  .flight-type-segment {
     grid-template-columns: 1fr;
   }
 

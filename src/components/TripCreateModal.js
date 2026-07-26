@@ -1,6 +1,8 @@
 import { state } from "../state.js";
 import { renderIcon } from "../utils/icons.js";
 import { TRIP_STAMP_SVG } from "./BrandAssets.js";
+import { AIRPORTS_DATABASE, formatAirportLabel } from "../services/airportService.js";
+import { FLIGHT_TYPE_OPTIONS } from "../services/flightService.js";
 
 const TRIP_LENGTH_OPTIONS = [
   { days: 3, label: "3 days" },
@@ -10,6 +12,7 @@ const TRIP_LENGTH_OPTIONS = [
 ];
 
 const STARTER_OPTIONS = [
+  { id: "flight", label: "Search flights", icon: "navigation" },
   { id: "stay", label: "Book your stay", icon: "home" },
   { id: "food", label: "Find food spots", icon: "utensils" },
   { id: "map", label: "Build route map", icon: "map" },
@@ -31,7 +34,7 @@ export function renderTripCreateModal() {
           <div>
             <span class="trip-create-kicker voice-mono">New journey</span>
             <h2 class="trip-create-title" id="trip-create-title">Create a trip</h2>
-            <p class="trip-create-subtitle">Start with the place and dates. The planning board comes next.</p>
+            <p class="trip-create-subtitle">Start with the route, dates, and flight style. The planning board comes next.</p>
           </div>
           <button class="btn btn--icon btn--ghost" data-action="close-trip-create" aria-label="Close">
             ${renderIcon("x")}
@@ -49,11 +52,31 @@ export function renderTripCreateModal() {
             </label>
 
             <label class="trip-create-field">
+              <span class="drawer-label">From city / airport</span>
+              <div class="trip-create-input-wrap">
+                ${renderIcon("navigation")}
+                <input class="drawer-input trip-create-input" name="originAirport" type="text" placeholder="Copenhagen (CPH)" list="trip-create-airports" autocomplete="off" required />
+              </div>
+            </label>
+
+            <label class="trip-create-field">
+              <span class="drawer-label">To airport</span>
+              <div class="trip-create-input-wrap">
+                ${renderIcon("flag")}
+                <input class="drawer-input trip-create-input" name="destinationAirport" type="text" placeholder="Paris (CDG)" list="trip-create-airports" autocomplete="off" required />
+              </div>
+            </label>
+
+            <label class="trip-create-field">
               <span class="drawer-label">Start date</span>
               <input class="drawer-input" name="startDate" type="date" value="${today}" required />
             </label>
 
           </div>
+
+          <datalist id="trip-create-airports">
+            ${AIRPORTS_DATABASE.map((airport) => `<option value="${escapeHtml(formatAirportLabel(airport))}"></option>`).join("")}
+          </datalist>
 
           <div class="trip-create-field">
             <span class="drawer-label">Length</span>
@@ -67,6 +90,19 @@ export function renderTripCreateModal() {
             <input type="hidden" name="daysCount" id="trip-create-days-count" value="7" />
           </div>
 
+          <div class="trip-create-field">
+            <span class="drawer-label">Flight type</span>
+            <div class="flight-type-segment" role="radiogroup" aria-label="Flight type">
+              ${FLIGHT_TYPE_OPTIONS.map((option, index) => `
+                <label class="flight-type-option ${index === 0 ? "is-selected" : ""}">
+                  <input type="radio" name="flightType" value="${option.id}" ${index === 0 ? "checked" : ""} />
+                  <strong>${escapeHtml(option.label)}</strong>
+                  <span>${escapeHtml(option.hint)}</span>
+                </label>
+              `).join("")}
+            </div>
+          </div>
+
           <div class="trip-create-preview">
             <div class="trip-create-preview__map">
               <span class="route-node-pin">${renderIcon("pin")}</span>
@@ -75,7 +111,7 @@ export function renderTripCreateModal() {
             </div>
             <div class="trip-create-preview__copy">
               <strong>Trip board setup</strong>
-              <span>Checklist, day plan, timeline, and map will be ready to fill.</span>
+              <span>Checklist, flight search, day plan, timeline, and map will be ready to fill.</span>
             </div>
           </div>
 

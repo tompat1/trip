@@ -3,6 +3,8 @@ import { enrichmentService } from "./enrichment/enrichmentService.js";
 import { getCountryFlagEmoji } from "./utils/countryEmoji.js";
 import { fetchOpenMeteoWeather } from "./services/weatherService.js";
 import { fetchConcertsForTrip } from "./services/concertService.js";
+import { findPrimaryAirportForDestination, formatAirportLabel, getAirportByIata } from "./services/airportService.js";
+import { normalizeFlightType, searchFlightsForTrip } from "./services/flightService.js";
 
 function getDefaultPlanViewMode() {
   if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
@@ -121,6 +123,24 @@ function getOpenTripMapStatus(results = []) {
   if (missingKey) return "not-configured";
   if (statuses.some((status) => status.status === "error")) return "error";
   return "ready";
+}
+
+function buildTripFlightRoute(row = {}, existingTrip = {}) {
+  const destinationAirport = getAirportByIata(row.destination_iata || row.destinationIata)
+    || getAirportByIata(existingTrip.flightRoute?.destinationIata)
+    || findPrimaryAirportForDestination(row.destination || existingTrip.destination);
+  const originAirport = getAirportByIata(row.origin_iata || row.originIata)
+    || getAirportByIata(existingTrip.flightRoute?.originIata);
+  const flightType = normalizeFlightType(row.flight_type || existingTrip.flightRoute?.flightType || existingTrip.flightPreference || "regular");
+
+  return {
+    originIata: originAirport?.iata || row.origin_iata || row.originIata || existingTrip.flightRoute?.originIata || "",
+    destinationIata: destinationAirport?.iata || row.destination_iata || row.destinationIata || existingTrip.flightRoute?.destinationIata || "",
+    originLabel: row.origin_label || existingTrip.flightRoute?.originLabel || formatAirportLabel(originAirport),
+    destinationLabel: row.destination_label || existingTrip.flightRoute?.destinationLabel || formatAirportLabel(destinationAirport),
+    flightType,
+    departureDate: row.start_date || row.startDate || existingTrip.startDate || "",
+  };
 }
 
 class AppState {
@@ -298,6 +318,9 @@ class AppState {
               tripMode: false,
               center: [t.latitude || 40.4168, t.longitude || -3.7038],
               zoom: 12,
+              flightRoute: buildTripFlightRoute(t),
+              flightPreference: normalizeFlightType(t.flight_type || "regular"),
+              flightSearch: { status: "idle", offers: [], updatedAt: "" },
               weather: { temp: "22°C", condition: "Sunny", forecast: [] },
               upcomingActivity: { title: t.destination, subtitle: t.dates || "Upcoming", image: "https://images.unsplash.com/photo-1543783207-ec64e4d95325?auto=format&fit=crop&w=600&q=80" },
               checklist: [{ id: "stay", label: "Book your stay", completed: false }],
@@ -313,6 +336,8 @@ class AppState {
             tripsData[t.id].dates = t.dates || tripsData[t.id].dates;
             tripsData[t.id].daysCount = Number(t.days_count || t.daysCount) || tripsData[t.id].daysCount;
             tripsData[t.id].startDate = t.start_date || t.startDate || tripsData[t.id].startDate;
+            tripsData[t.id].flightRoute = buildTripFlightRoute(t, tripsData[t.id]);
+            tripsData[t.id].flightPreference = normalizeFlightType(t.flight_type || tripsData[t.id].flightPreference || "regular");
           }
         });
         await Promise.all(res.trips.map(async (t) => {
@@ -623,11 +648,21 @@ class AppState {
       tripMode: true,
       center: tripInput.center || [48.8566, 2.3522],
       zoom: 13,
+      flightRoute: {
+        originIata: tripInput.originAirport?.iata || "",
+        destinationIata: tripInput.destinationAirport?.iata || "",
+        originLabel: formatAirportLabel(tripInput.originAirport),
+        destinationLabel: formatAirportLabel(tripInput.destinationAirport),
+        flightType: normalizeFlightType(tripInput.flightType || "regular"),
+        departureDate: tripInput.startDate || "",
+      },
+      flightPreference: normalizeFlightType(tripInput.flightType || "regular"),
+      flightSearch: { status: "idle", offers: [], updatedAt: "" },
       weather: { temp: "20°C", condition: "Fair", forecast: [] },
       upcomingActivity: { title: destination, subtitle: tripInput.dates, image: "https://images.unsplash.com/photo-1488646953014-85cb44e25828?auto=format&fit=crop&w=600&q=80" },
       checklist: Array.isArray(tripInput.checklist) && tripInput.checklist.length
         ? tripInput.checklist
-        : [{ id: "stay", label: "Book your stay", completed: false }, { id: "exp", label: "Choose experiences", completed: false }],
+        : [{ id: "flight", label: "Search flights", completed: false }, { id: "stay", label: "Book your stay", completed: false }, { id: "exp", label: "Choose experiences", completed: false }],
       mapPins: [],
       calendarEvents: [],
       ideas: [],
@@ -658,7 +693,12 @@ class AppState {
         daysCount: newTrip.daysCount,
         startDate: newTrip.startDate,
         latitude: newTrip.center[0],
-        longitude: newTrip.center[1]
+        longitude: newTrip.center[1],
+        originIata: newTrip.flightRoute.originIata,
+        destinationIata: newTrip.flightRoute.destinationIata,
+        originLabel: newTrip.flightRoute.originLabel,
+        destinationLabel: newTrip.flightRoute.destinationLabel,
+        flightType: newTrip.flightRoute.flightType,
       });
     } catch (e) {
       console.warn("D1 trip sync fallback:", e);
@@ -686,6 +726,36 @@ class AppState {
     } catch (e) {
       console.warn("D1 trip title update fallback:", e);
     }
+  }
+
+  async searchFlightsForActiveTrip(options = {}) {
+    const trip = this.activeTrip;
+    if (!trip) return;
+    trip.flightSearch = {
+      ...(trip.flightSearch || {}),
+      status: "loading",
+      error: "",
+      offers: trip.flightSearch?.offers || [],
+    };
+    this.notify();
+
+    try {
+      const result = await searchFlightsForTrip(trip, options);
+      trip.flightSearch = {
+        ...result,
+        status: result.status || "ready",
+        offers: result.offers || [],
+        updatedAt: new Date().toISOString(),
+      };
+    } catch (error) {
+      trip.flightSearch = {
+        status: "error",
+        error: error?.message || "flight-search-failed",
+        offers: [],
+        updatedAt: new Date().toISOString(),
+      };
+    }
+    this.notify();
   }
 
   async addCalendarEvent(tripId, eventInput) {

@@ -4,6 +4,7 @@ const NOMINATIM_REVERSE_ENDPOINT = "https://nominatim.openstreetmap.org/reverse"
 const COMMONS_API = "https://commons.wikimedia.org/w/api.php";
 const WIKIDATA_ENTITY_DATA = "https://www.wikidata.org/wiki/Special:EntityData/";
 const OPENVERSE_IMAGES_API = "https://api.openverse.org/v1/images/";
+const AMADEUS_API_BASE = "https://test.api.amadeus.com";
 const OVERPASS_ENDPOINTS = [
   "https://overpass-api.de/api/interpreter",
   "https://overpass.kumi.systems/api/interpreter",
@@ -55,6 +56,7 @@ function matchRoute(method, pathname) {
     ["POST", /^\/api\/location\/resolve$/, locationResolveHandler],
     ["GET", /^\/api\/places\/nearby$/, nearbyPlacesHandler],
     ["GET", /^\/api\/events\/discover$/, eventsDiscoverHandler],
+    ["GET", /^\/api\/flights\/search$/, flightsSearchHandler],
     ["POST", /^\/api\/places\/enrich-location$/, enrichLocationHandler],
     ["GET", /^\/api\/places\/enrich$/, enrichPlaceHandler],
     ["GET", /^\/api\/opentripmap\/places$/, openTripMapPlacesHandler],
@@ -385,6 +387,79 @@ async function eventsDiscoverHandler(context) {
     query: { coordinates, destination, radiusKm, keyword, artists },
     providerStatus: [ticketmaster.providerStatus, bandsintown.providerStatus],
   }, context));
+}
+
+async function flightsSearchHandler(context) {
+  const url = new URL(context.request.url);
+  const originIata = normalizeIata(url.searchParams.get("originIata"));
+  const destinationIata = normalizeIata(url.searchParams.get("destinationIata"));
+  const departureDate = url.searchParams.get("departureDate") || "";
+  const adults = Math.max(1, Math.min(9, Number(url.searchParams.get("adults") || 1)));
+  const flightType = normalizeFlightType(url.searchParams.get("flightType") || "regular");
+
+  if (!originIata || !destinationIata || !departureDate) {
+    return jsonError("invalid_flight_search", "originIata, destinationIata, and departureDate are required.", 400);
+  }
+
+  if (!context.env.AMADEUS_CLIENT_ID || !context.env.AMADEUS_CLIENT_SECRET) {
+    return json({
+      ok: true,
+      status: "not-configured",
+      source: "amadeus",
+      offers: [],
+      providerStatus: [{ provider: "amadeus", status: "not-configured", error: "missing-amadeus-secrets", count: 0 }],
+    }, 503);
+  }
+
+  const startedAt = Date.now();
+  try {
+    const token = await fetchAmadeusToken(context);
+    const apiBase = context.env.AMADEUS_API_BASE || AMADEUS_API_BASE;
+    const searchUrl = new URL(`${apiBase}/v2/shopping/flight-offers`);
+    searchUrl.searchParams.set("originLocationCode", originIata);
+    searchUrl.searchParams.set("destinationLocationCode", destinationIata);
+    searchUrl.searchParams.set("departureDate", departureDate);
+    searchUrl.searchParams.set("adults", String(adults));
+    searchUrl.searchParams.set("currencyCode", "EUR");
+    searchUrl.searchParams.set("max", "8");
+    if (flightType === "regular") searchUrl.searchParams.set("nonStop", "false");
+
+    const response = await fetch(searchUrl.href, {
+      headers: {
+        Accept: "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    if (!response.ok) {
+      return json({
+        ok: true,
+        status: "fallback",
+        source: "amadeus",
+        offers: [],
+        error: `amadeus-flight-offers-http-${response.status}`,
+        providerStatus: [{ provider: "amadeus", status: "error", error: `http-${response.status}`, count: 0, latencyMs: Date.now() - startedAt }],
+      });
+    }
+
+    const payload = await response.json();
+    const offers = normalizeAmadeusFlightOffers(payload, { originIata, destinationIata, flightType });
+    return json({
+      ok: true,
+      status: offers.length ? "ready" : "fallback",
+      source: "amadeus",
+      offers,
+      providerStatus: [{ provider: "amadeus", status: "ok", error: "", count: offers.length, latencyMs: Date.now() - startedAt }],
+    });
+  } catch (error) {
+    return json({
+      ok: true,
+      status: "fallback",
+      source: "amadeus",
+      offers: [],
+      error: error?.message || "amadeus-flight-search-failed",
+      providerStatus: [{ provider: "amadeus", status: "error", error: error?.message || "failed", count: 0, latencyMs: Date.now() - startedAt }],
+    });
+  }
 }
 
 async function mediaRefreshHandler(context) {
@@ -2536,6 +2611,78 @@ async function fetchOpenTripMapPlaceDetails(context, xid, options = {}) {
   }
 }
 
+async function fetchAmadeusToken(context) {
+  const apiBase = context.env.AMADEUS_API_BASE || AMADEUS_API_BASE;
+  const body = new URLSearchParams();
+  body.set("grant_type", "client_credentials");
+  body.set("client_id", context.env.AMADEUS_CLIENT_ID);
+  body.set("client_secret", context.env.AMADEUS_CLIENT_SECRET);
+
+  const response = await fetch(`${apiBase}/v1/security/oauth2/token`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+      Accept: "application/json",
+    },
+    body,
+  });
+  if (!response.ok) throw new Error(`amadeus-token-http-${response.status}`);
+  const payload = await response.json();
+  if (!payload.access_token) throw new Error("amadeus-token-missing");
+  return payload.access_token;
+}
+
+function normalizeAmadeusFlightOffers(payload = {}, query = {}) {
+  const carriers = payload.dictionaries?.carriers || {};
+  return (payload.data || []).slice(0, 8).map((offer, index) => {
+    const itinerary = offer.itineraries?.[0] || {};
+    const segments = itinerary.segments || [];
+    const first = segments[0] || {};
+    const last = segments[segments.length - 1] || first;
+    const carrierCode = first.carrierCode || offer.validatingAirlineCodes?.[0] || "";
+    const departure = first.departure?.at || "";
+    const arrival = last.arrival?.at || "";
+    const price = Number(offer.price?.grandTotal || offer.price?.total || 0);
+    return {
+      id: offer.id || `amadeus-${index}`,
+      airline: carriers[carrierCode] || carrierCode || "Airline",
+      airlineCode: carrierCode,
+      originIata: first.departure?.iataCode || query.originIata,
+      destinationIata: last.arrival?.iataCode || query.destinationIata,
+      departureDate: departure.slice(0, 10),
+      departureTime: departure.slice(11, 16),
+      arrivalTime: arrival.slice(11, 16),
+      duration: formatIsoDuration(itinerary.duration || ""),
+      stops: Math.max(0, segments.length - 1),
+      price: price ? Math.round(price) : 0,
+      currency: offer.price?.currency || "EUR",
+      flightType: query.flightType || "regular",
+      score: 96 - index * 4 - Math.max(0, segments.length - 1) * 8,
+      source: "Amadeus Flight Offers Search",
+      bookingHint: "Live fare candidate. Re-price before booking.",
+    };
+  });
+}
+
+function normalizeIata(value = "") {
+  const match = String(value).trim().toUpperCase().match(/^[A-Z]{3}$/);
+  return match ? match[0] : "";
+}
+
+function normalizeFlightType(value = "") {
+  return ["regular", "lowfare", "charter"].includes(value) ? value : "regular";
+}
+
+function formatIsoDuration(value = "") {
+  const match = String(value).match(/PT(?:(\d+)H)?(?:(\d+)M)?/);
+  if (!match) return value;
+  const hours = Number(match[1] || 0);
+  const minutes = Number(match[2] || 0);
+  if (hours && minutes) return `${hours}h ${minutes}m`;
+  if (hours) return `${hours}h`;
+  return `${minutes}m`;
+}
+
 async function fetchTicketmasterEvents(context, options = {}) {
   const startedAt = Date.now();
   if (!context.env.TICKETMASTER_API_KEY) {
@@ -3272,12 +3419,17 @@ async function tripsCreateHandler({ request, env }) {
   const startDate = body.startDate || body.start_date || "";
   const lat = Number(body.latitude) || 0.0;
   const lng = Number(body.longitude) || 0.0;
+  const originIata = normalizeIata(body.originIata || body.origin_iata);
+  const destinationIata = normalizeIata(body.destinationIata || body.destination_iata);
+  const originLabel = body.originLabel || body.origin_label || "";
+  const destinationLabel = body.destinationLabel || body.destination_label || "";
+  const flightType = normalizeFlightType(body.flightType || body.flight_type || "regular");
 
   try {
     await env.TRIP_DB.prepare(
-      `INSERT INTO user_trips (id, destination, flag, dates, days_count, start_date, latitude, longitude) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-    ).bind(id, destination, flag, dates, daysCount, startDate, lat, lng).run();
-    return json({ ok: true, trip: { id, destination, flag, dates, daysCount, startDate, latitude: lat, longitude: lng } });
+      `INSERT INTO user_trips (id, destination, flag, dates, days_count, start_date, latitude, longitude, origin_iata, destination_iata, origin_label, destination_label, flight_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    ).bind(id, destination, flag, dates, daysCount, startDate, lat, lng, originIata, destinationIata, originLabel, destinationLabel, flightType).run();
+    return json({ ok: true, trip: { id, destination, flag, dates, daysCount, startDate, latitude: lat, longitude: lng, originIata, destinationIata, originLabel, destinationLabel, flightType } });
   } catch (e) {
     return jsonError("db_error", e.message, 500);
   }

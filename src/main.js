@@ -13,6 +13,8 @@ import { renderTripCreateModal } from "./components/TripCreateModal.js";
 import { renderQuickCaptureWidget } from "./components/QuickCaptureWidget.js";
 import { fetchConcertsForTrip } from "./services/concertService.js";
 import { fetchOpenMeteoWeather } from "./services/weatherService.js";
+import { resolveAirportInput } from "./services/airportService.js";
+import { normalizeFlightType } from "./services/flightService.js";
 import { enrichmentService } from "./enrichment/enrichmentService.js";
 import "./styles.css";
 
@@ -347,6 +349,18 @@ document.addEventListener("click", async (e) => {
         showToast("Live event providers returned no new matches. Showing saved events.");
       } else {
         showToast("Events refreshed.");
+      }
+    }
+    else if (action === "search-trip-flights") {
+      showToast("Searching flights for this route...");
+      await state.searchFlightsForActiveTrip();
+      const search = state.activeTrip.flightSearch || {};
+      if (search.status === "ready" && search.source === "amadeus") {
+        showToast(`Found ${search.offers.length} live flight options.`);
+      } else if (search.offers?.length) {
+        showToast(`Showing ${search.offers.length} route-based flight estimates.`);
+      } else {
+        showToast("No flight options found for this route yet.");
       }
     }
     else if (action === "view-notifications") {
@@ -747,12 +761,22 @@ document.addEventListener("submit", async (e) => {
   const errorEl = document.getElementById("trip-create-error");
   const submitButton = form.querySelector(".trip-create-submit");
   const destination = form.destination.value.trim();
+  const originAirport = resolveAirportInput(form.originAirport?.value || "");
+  const destinationAirport = resolveAirportInput(form.destinationAirport?.value || destination);
   const startDate = form.startDate.value;
   const daysCount = Number(form.daysCount.value) || 7;
+  const flightType = normalizeFlightType(form.flightType?.value || "regular");
 
   if (!destination) {
     if (errorEl) errorEl.textContent = "Add a destination to create your trip.";
     form.destination.focus();
+    return;
+  }
+
+  if (!originAirport || !destinationAirport) {
+    if (errorEl) errorEl.textContent = "Choose a valid origin and destination airport.";
+    if (!originAirport) form.originAirport.focus();
+    else form.destinationAirport.focus();
     return;
   }
 
@@ -772,6 +796,9 @@ document.addEventListener("submit", async (e) => {
     daysCount,
     center: resolveTripCenter(destination),
     checklist: createStarterChecklist(starterTasks),
+    originAirport,
+    destinationAirport,
+    flightType,
   });
 });
 
@@ -786,6 +813,7 @@ function formatTripDateRange(startDate, daysCount) {
 
 function createStarterChecklist(selected = []) {
   const tasks = {
+    flight: { id: "flight", label: "Search flights", completed: false },
     stay: { id: "stay", label: "Book your stay", completed: false },
     food: { id: "food", label: "Find food spots", completed: false },
     map: { id: "map", label: "Build route map", completed: false },
