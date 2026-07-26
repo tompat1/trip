@@ -28,12 +28,15 @@ export function renderHomeView() {
         </section>
 
         <!-- Dotted Route Line Banner (Guidelines Section 07) -->
-        <div class="route-line-dashed-banner" style="display: flex; flex-direction: column; gap: 6px; background: var(--paper-card); border: 1px solid var(--line); border-radius: var(--radius-md); padding: 14px; margin-bottom: 16px; box-shadow: var(--shadow-sm); cursor: pointer;" data-action="go-plan">
-          <div style="display: flex; align-items: center; justify-content: space-between;">
-            <span class="voice-mono" style="font-size: 0.8rem; font-weight: 700; color: var(--ink);">${escapeHtml(trip.destination.toUpperCase())} ROUTE PATH</span>
-            <span class="voice-mono" style="font-size: 0.72rem; font-weight: 700; color: var(--orange);">${escapeHtml(trip.upcomingActivity.title)} &rsaquo;</span>
+        <div class="route-line-dashed-banner" data-action="go-plan-timeline" role="button" tabindex="0" aria-label="Open trip timeline">
+          <div class="route-line-dashed-banner__header">
+            <span class="route-line-dashed-banner__title voice-mono">${escapeHtml(trip.destination.toUpperCase())} ROUTE PATH</span>
+            <span class="route-line-dashed-banner__cta voice-mono">
+              ${escapeHtml(trip.upcomingActivity.title)}
+              <span class="route-line-dashed-banner__arrow">${renderIcon("arrowRight")}</span>
+            </span>
           </div>
-          <div style="width: 100%; border-radius: var(--radius-sm); background: rgba(248, 96, 8, 0.04); padding: 4px 8px;">
+          <div class="route-line-dashed-banner__map">
             ${TRIP_ROUTE_LINE_SVG()}
           </div>
         </div>

@@ -154,6 +154,11 @@ document.addEventListener("click", async (e) => {
   if (action) {
     if (action === "go-app" || action === "go-home") state.setView("home");
     else if (action === "go-plan") state.setView("plan");
+    else if (action === "go-plan-timeline") {
+      state.setPlanSubTab("plan");
+      state.setPlanViewMode("timeline");
+      state.setView("plan");
+    }
     else if (action === "go-search") state.setView("search");
     else if (action === "go-live") state.setView("live");
     else if (action === "go-moments") {
@@ -486,6 +491,16 @@ document.addEventListener("input", (e) => {
     state.setSearchQuery(e.target.value, { notify: false });
     updateSearchResultsInPlace(e.target);
   }
+});
+
+document.addEventListener("keydown", (e) => {
+  if (e.key !== "Enter" && e.key !== " ") return;
+  const routeCard = e.target.closest?.('[data-action="go-plan-timeline"]');
+  if (!routeCard) return;
+  e.preventDefault();
+  state.setPlanSubTab("plan");
+  state.setPlanViewMode("timeline");
+  state.setView("plan");
 });
 
 function updateSearchResultsInPlace(input) {

@@ -233,6 +233,71 @@ textarea {
   filter: drop-shadow(0px 2px 4px rgba(248, 96, 8, 0.35));
 }
 
+.route-line-dashed-banner {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: var(--paper-card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: 14px;
+  margin-bottom: 16px;
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+  transition:
+    border-color 0.2s var(--ease-out),
+    box-shadow 0.2s var(--ease-out),
+    transform 0.2s var(--ease-out);
+}
+
+.route-line-dashed-banner:hover,
+.route-line-dashed-banner:focus-visible {
+  border-color: var(--orange);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+  outline: none;
+}
+
+.route-line-dashed-banner__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.route-line-dashed-banner__title {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.route-line-dashed-banner__cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--orange);
+}
+
+.route-line-dashed-banner__arrow {
+  display: inline-flex;
+  transition: transform 0.2s var(--ease-out);
+}
+
+.route-line-dashed-banner:hover .route-line-dashed-banner__arrow,
+.route-line-dashed-banner:focus-visible .route-line-dashed-banner__arrow {
+  transform: translateX(3px);
+}
+
+.route-line-dashed-banner__map {
+  width: 100%;
+  border-radius: var(--radius-sm);
+  background: rgba(248, 96, 8, 0.04);
+  padding: 4px 8px;
+}
+
 .route-line-dashed {
   position: relative;
   display: flex;
