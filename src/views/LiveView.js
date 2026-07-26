@@ -116,49 +116,182 @@ export function renderLiveView() {
 }
 
 export function renderProfileView() {
+  const savedCount = state.savedPlaceIds ? state.savedPlaceIds.size : 156;
+  const tripsCount = Object.keys(state.getAllTrips ? state.getAllTrips() : {}).length || 14;
+
   return `
     <div class="profile-page">
       ${renderHeader()}
 
       <div class="profile-page__content">
-        <div class="profile-header-card" style="position: relative; display: flex; flex-direction: column; align-items: center; text-align: center;">
-          <!-- Brand Stamp Emblem (Guidelines Section 07) -->
-          <div style="position: absolute; top: 12px; right: 12px;">
-            ${TRIP_STAMP_SVG("", 68)}
+        <!-- Main Profile Header Card -->
+        <div class="profile-header-card card-pattern-poly">
+          <div class="profile-avatar-wrap">
+            <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=240&q=80" alt="Thomas R." />
+            <div class="profile-avatar-edit-badge" title="Change photo">
+              ${renderIcon("pencil")}
+            </div>
           </div>
 
-          <div class="profile-avatar-lg">
-            <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=240&q=80" alt="Thomas Rynell" />
+          <h2 class="profile-user-name">Thomas R.</h2>
+          <div class="profile-user-badge">
+            <span>💎</span> Premium Traveler
           </div>
-          <h2 class="profile-name">Thomas Rynell</h2>
-          <p class="profile-handle">@thomasrynell</p>
-          <p class="profile-bio">Curious traveler, specialty coffee lover, and memory keeper.</p>
+
+          <div class="profile-stats-grid">
+            <div class="profile-stat-box">
+              <span class="profile-stat-num">${tripsCount}</span>
+              <span class="profile-stat-label">Trips</span>
+            </div>
+            <div class="profile-stat-box">
+              <span class="profile-stat-num">${savedCount}</span>
+              <span class="profile-stat-label">Saved</span>
+            </div>
+            <div class="profile-stat-box">
+              <span class="profile-stat-num">48</span>
+              <span class="profile-stat-label">Moments</span>
+            </div>
+            <div class="profile-stat-box">
+              <span class="profile-stat-num">12</span>
+              <span class="profile-stat-label">Countries</span>
+            </div>
+          </div>
         </div>
 
-        <div class="profile-stats-row">
-          <div class="profile-stat-box">
-            <span class="stat-num">14</span>
-            <span class="stat-label">Trips</span>
+        <!-- Group 1: User Account Settings Menu -->
+        <div class="profile-menu-card">
+          <button class="profile-menu-item">
+            <div class="profile-menu-item__left">
+              <span class="profile-menu-item__icon">👤</span>
+              <div>
+                <h4 class="profile-menu-item__title">My profile</h4>
+                <p class="profile-menu-item__sub">Edit your personal info</p>
+              </div>
+            </div>
+            <span class="profile-menu-item__arrow">&rsaquo;</span>
+          </button>
+
+          <button class="profile-menu-item">
+            <div class="profile-menu-item__left">
+              <span class="profile-menu-item__icon">⚙️</span>
+              <div>
+                <h4 class="profile-menu-item__title">Travel preferences</h4>
+                <p class="profile-menu-item__sub">Tell us what you love</p>
+              </div>
+            </div>
+            <span class="profile-menu-item__arrow">&rsaquo;</span>
+          </button>
+
+          <button class="profile-menu-item">
+            <div class="profile-menu-item__left">
+              <span class="profile-menu-item__icon">🔔</span>
+              <div>
+                <h4 class="profile-menu-item__title">Notifications</h4>
+                <p class="profile-menu-item__sub">Manage your alerts</p>
+              </div>
+            </div>
+            <span class="profile-menu-item__arrow">&rsaquo;</span>
+          </button>
+
+          <button class="profile-menu-item">
+            <div class="profile-menu-item__left">
+              <span class="profile-menu-item__icon">🔒</span>
+              <div>
+                <h4 class="profile-menu-item__title">Privacy & security</h4>
+                <p class="profile-menu-item__sub">Control your data</p>
+              </div>
+            </div>
+            <span class="profile-menu-item__arrow">&rsaquo;</span>
+          </button>
+        </div>
+
+        <!-- 2x2 Activity Grid -->
+        <div class="profile-activity-section">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h3 class="profile-section-title">Your activity</h3>
+            <button class="btn btn--link btn--xs" data-action="go-search">View all</button>
           </div>
-          <div class="profile-stat-box">
-            <span class="stat-num">89</span>
-            <span class="stat-label">Places</span>
-          </div>
-          <div class="profile-stat-box">
-            <span class="stat-num">240</span>
-            <span class="stat-label">Moments</span>
+
+          <div class="profile-activity-grid">
+            <div class="profile-activity-card" data-action="go-search">
+              <span class="profile-activity-icon">🕒</span>
+              <div>
+                <h4 class="profile-activity-title">Recently viewed</h4>
+                <p class="profile-activity-sub">24 places</p>
+              </div>
+            </div>
+
+            <div class="profile-activity-card" data-action="go-search">
+              <span class="profile-activity-icon">🔖</span>
+              <div>
+                <h4 class="profile-activity-title">Saved places</h4>
+                <p class="profile-activity-sub">${savedCount} places</p>
+              </div>
+            </div>
+
+            <div class="profile-activity-card" data-action="go-plan" data-subtab="journal">
+              <span class="profile-activity-icon">📥</span>
+              <div>
+                <h4 class="profile-activity-title">Your moments</h4>
+                <p class="profile-activity-sub">48 moments</p>
+              </div>
+            </div>
+
+            <div class="profile-activity-card" data-action="go-plan">
+              <span class="profile-activity-icon">🗺️</span>
+              <div>
+                <h4 class="profile-activity-title">Your trips</h4>
+                <p class="profile-activity-sub">${tripsCount} trips</p>
+              </div>
+            </div>
           </div>
         </div>
 
-        <div class="dashboard-card account-card mb-md">
-          <h3 class="dashboard-card__title mb-sm">Account & Authentication</h3>
-          <p class="account-status-desc mb-sm">Signed in as <strong>thomas@rynell.org</strong> (TRIP Traveler Profile)</p>
-          <button class="btn btn--outline btn--sm" data-action="admin-login-dialog">🔑 Sign in to Cloudflare D1 Account</button>
-        </div>
+        <!-- Group 2: Help & Cloudflare D1 Account Menu -->
+        <div class="profile-menu-card mb-md">
+          <button class="profile-menu-item">
+            <div class="profile-menu-item__left">
+              <span class="profile-menu-item__icon">👥</span>
+              <div>
+                <h4 class="profile-menu-item__title">Invite friends</h4>
+                <p class="profile-menu-item__sub">Share Trip Planner Deluxe</p>
+              </div>
+            </div>
+            <span class="profile-menu-item__arrow">&rsaquo;</span>
+          </button>
 
-        <div class="profile-actions-list">
-          <button class="btn btn--outline full-width-btn mb-sm" data-action="switch-to-landing">View Marketing / Landing Page</button>
-          <button class="btn btn--primary full-width-btn" data-action="switch-trip">Toggle Paris / Crete Trip Context</button>
+          <button class="profile-menu-item">
+            <div class="profile-menu-item__left">
+              <span class="profile-menu-item__icon">❓</span>
+              <div>
+                <h4 class="profile-menu-item__title">Help & support</h4>
+                <p class="profile-menu-item__sub">FAQs and contact</p>
+              </div>
+            </div>
+            <span class="profile-menu-item__arrow">&rsaquo;</span>
+          </button>
+
+          <button class="profile-menu-item">
+            <div class="profile-menu-item__left">
+              <span class="profile-menu-item__icon">⚙️</span>
+              <div>
+                <h4 class="profile-menu-item__title">App Settings</h4>
+                <p class="profile-menu-item__sub">App preferences</p>
+              </div>
+            </div>
+            <span class="profile-menu-item__arrow">&rsaquo;</span>
+          </button>
+
+          <button class="profile-menu-item" data-action="admin-login-dialog">
+            <div class="profile-menu-item__left">
+              <span class="profile-menu-item__icon">🔑</span>
+              <div>
+                <h4 class="profile-menu-item__title">Cloudflare D1 Storage</h4>
+                <p class="profile-menu-item__sub">Sign in & sync cloud database</p>
+              </div>
+            </div>
+            <span class="profile-menu-item__arrow">&rsaquo;</span>
+          </button>
         </div>
       </div>
     </div>
