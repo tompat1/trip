@@ -54,6 +54,7 @@ function matchRoute(method, pathname) {
     ["DELETE", /^\/api\/admin\/session$/, adminSessionDeleteHandler],
     ["POST", /^\/api\/location\/resolve$/, locationResolveHandler],
     ["GET", /^\/api\/places\/nearby$/, nearbyPlacesHandler],
+    ["GET", /^\/api\/events\/discover$/, eventsDiscoverHandler],
     ["POST", /^\/api\/places\/enrich-location$/, enrichLocationHandler],
     ["GET", /^\/api\/places\/enrich$/, enrichPlaceHandler],
     ["GET", /^\/api\/opentripmap\/places$/, openTripMapPlacesHandler],
@@ -358,6 +359,31 @@ async function openTripMapPlaceDetailsHandler(context) {
   return json(partialResponse("opentripmap.placeDetails", {
     place: result.place,
     providerStatus: [result.providerStatus],
+  }, context));
+}
+
+async function eventsDiscoverHandler(context) {
+  const url = new URL(context.request.url);
+  const coordinates = normalizeCoordinates([url.searchParams.get("lat"), url.searchParams.get("lng")]);
+  const destination = url.searchParams.get("destination") || "";
+  const radiusKm = clampNumber(url.searchParams.get("radius"), 1, 150, 50);
+  const keyword = url.searchParams.get("keyword") || destination;
+  const artists = url.searchParams.getAll("artist")
+    .flatMap((value) => String(value).split(","))
+    .map((value) => value.trim())
+    .filter(Boolean)
+    .slice(0, 8);
+
+  const [ticketmaster, bandsintown] = await Promise.all([
+    fetchTicketmasterEvents(context, { coordinates, destination, radiusKm, keyword }),
+    fetchBandsintownEvents(context, { coordinates, destination, artists }),
+  ]);
+  const events = dedupeEventsByTitleVenue([...ticketmaster.events, ...bandsintown.events]).slice(0, 24);
+
+  return json(partialResponse("events.discover", {
+    events,
+    query: { coordinates, destination, radiusKm, keyword, artists },
+    providerStatus: [ticketmaster.providerStatus, bandsintown.providerStatus],
   }, context));
 }
 
@@ -2508,6 +2534,156 @@ async function fetchOpenTripMapPlaceDetails(context, xid, options = {}) {
     const message = error?.name === "AbortError" ? "opentripmap-details-timeout" : error?.message || "opentripmap-details-failed";
     return { place: null, error: message, providerStatus: createOpenTripMapStatus("error", message, 0, Date.now() - startedAt) };
   }
+}
+
+async function fetchTicketmasterEvents(context, options = {}) {
+  const startedAt = Date.now();
+  if (!context.env.TICKETMASTER_API_KEY) {
+    return createEventsProviderResult("ticketmaster", [], "not-configured", "missing-ticketmaster-api-key", startedAt);
+  }
+  const url = new URL("https://app.ticketmaster.com/discovery/v2/events.json");
+  url.searchParams.set("apikey", context.env.TICKETMASTER_API_KEY);
+  url.searchParams.set("classificationName", "music");
+  url.searchParams.set("size", "20");
+  url.searchParams.set("sort", "date,asc");
+  if (Array.isArray(options.coordinates)) {
+    url.searchParams.set("latlong", `${options.coordinates[0]},${options.coordinates[1]}`);
+    url.searchParams.set("radius", String(options.radiusKm || 50));
+    url.searchParams.set("unit", "km");
+  }
+  if (options.keyword) url.searchParams.set("keyword", options.keyword);
+
+  try {
+    const response = await fetchWithTimeout(url.href, context.request, 7000);
+    if (!response.ok) return createEventsProviderResult("ticketmaster", [], "error", `ticketmaster-http-${response.status}`, startedAt);
+    const payload = await response.json();
+    const events = (payload._embedded?.events || []).map((event) => normalizeTicketmasterEvent(event)).filter(Boolean);
+    return createEventsProviderResult("ticketmaster", events, events.length ? "ok" : "empty", "", startedAt);
+  } catch (error) {
+    return createEventsProviderResult("ticketmaster", [], "error", error?.name === "AbortError" ? "ticketmaster-timeout" : "ticketmaster-failed", startedAt);
+  }
+}
+
+async function fetchBandsintownEvents(context, options = {}) {
+  const startedAt = Date.now();
+  if (!context.env.BANDSINTOWN_APP_ID) {
+    return createEventsProviderResult("bandsintown", [], "not-configured", "missing-bandsintown-app-id", startedAt);
+  }
+  const artists = (options.artists || []).filter(Boolean).slice(0, 8);
+  if (!artists.length) return createEventsProviderResult("bandsintown", [], "skipped", "artist-list-required", startedAt);
+
+  try {
+    const batches = await Promise.all(artists.map(async (artist) => {
+      const url = new URL(`https://rest.bandsintown.com/artists/${encodeURIComponent(artist)}/events/`);
+      url.searchParams.set("app_id", context.env.BANDSINTOWN_APP_ID);
+      url.searchParams.set("date", "upcoming");
+      const response = await fetchWithTimeout(url.href, context.request, 7000);
+      if (!response.ok) return [];
+      const payload = await response.json();
+      return Array.isArray(payload) ? payload.map((event) => normalizeBandsintownEvent(event, artist, options)).filter(Boolean) : [];
+    }));
+    const events = batches.flat();
+    return createEventsProviderResult("bandsintown", events, events.length ? "ok" : "empty", "", startedAt);
+  } catch (error) {
+    return createEventsProviderResult("bandsintown", [], "error", error?.name === "AbortError" ? "bandsintown-timeout" : "bandsintown-failed", startedAt);
+  }
+}
+
+function normalizeTicketmasterEvent(event = {}) {
+  const venue = event._embedded?.venues?.[0] || {};
+  const lat = Number(venue.location?.latitude || 0);
+  const lng = Number(venue.location?.longitude || 0);
+  const localDate = event.dates?.start?.localDate || "";
+  const localTime = event.dates?.start?.localTime || "";
+  return {
+    id: event.id ? `tm-${event.id}` : stableId("tm-event", [event.name, venue.name, localDate]),
+    provider: "ticketmaster",
+    artist: event.name || "Live Performance",
+    tour: event.promoter?.name || event.classifications?.[0]?.segment?.name || "Major event",
+    title: event.name || "Ticketmaster Event",
+    venue: venue.name || "Venue TBA",
+    city: venue.city?.name || "",
+    country: venue.country?.name || venue.country?.countryCode || "",
+    lat,
+    lng,
+    dates: localDate ? `${localDate} • ${localTime ? localTime.slice(0, 5) : "20:00"}` : "Upcoming",
+    genre: event.classifications?.[0]?.genre?.name || event.classifications?.[0]?.segment?.name || "Live Event",
+    icon: "🎵",
+    image: selectEventImage(event.images),
+    ticketUrl: event.url || "https://www.ticketmaster.com",
+    source: "Ticketmaster",
+    sourceRole: "ticketmaster",
+    isPopularTour: true,
+  };
+}
+
+function normalizeBandsintownEvent(event = {}, artist = "", options = {}) {
+  const venue = event.venue || {};
+  const lat = Number(venue.latitude || 0);
+  const lng = Number(venue.longitude || 0);
+  if (Array.isArray(options.coordinates) && Number.isFinite(lat) && Number.isFinite(lng)) {
+    const km = getDistanceMeters(options.coordinates, [lat, lng]) / 1000;
+    if (km > 120) return null;
+  } else if (options.destination) {
+    const destination = normalizeLookupText(options.destination);
+    const haystack = normalizeLookupText([venue.city, venue.region, venue.country, venue.name].filter(Boolean).join(" "));
+    if (destination && !haystack.includes(destination.split(" ")[0])) return null;
+  }
+  const date = event.datetime ? new Date(event.datetime) : null;
+  const offer = Array.isArray(event.offers) ? event.offers.find((item) => item.url) : null;
+  return {
+    id: event.id ? `bit-${event.id}` : stableId("bit-event", [artist, venue.name, event.datetime]),
+    provider: "bandsintown",
+    artist: artist || event.lineup?.[0] || event.title || "Live Artist",
+    tour: event.title || "Artist tour date",
+    title: event.title || `${artist} live`,
+    venue: venue.name || "Venue TBA",
+    city: venue.city || "",
+    country: venue.country || "",
+    lat,
+    lng,
+    dates: event.datetime ? `${event.datetime.slice(0, 10)} • ${event.datetime.slice(11, 16) || "20:00"}` : "Upcoming",
+    genre: "Live Music",
+    icon: venue.type === "Virtual" ? "📡" : "🎵",
+    image: "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=600&q=80",
+    ticketUrl: offer?.url || event.url || "https://www.bandsintown.com",
+    source: "Bandsintown",
+    sourceRole: "bandsintown",
+    isPopularTour: false,
+    sortTime: date ? date.getTime() : Number.MAX_SAFE_INTEGER,
+  };
+}
+
+function createEventsProviderResult(provider, events = [], status = "ok", error = "", startedAt = Date.now()) {
+  return {
+    events,
+    providerStatus: {
+      provider,
+      status,
+      error,
+      count: events.length,
+      latencyMs: Date.now() - startedAt,
+      checkedAt: new Date().toISOString(),
+    },
+  };
+}
+
+function dedupeEventsByTitleVenue(events = []) {
+  const seen = new Set();
+  return events
+    .filter(Boolean)
+    .sort((a, b) => Number(a.sortTime || 0) - Number(b.sortTime || 0))
+    .filter((event) => {
+      const key = normalizeLookupText(`${event.title}-${event.venue}-${event.dates}`);
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+}
+
+function selectEventImage(images = []) {
+  const sorted = [...(images || [])].sort((a, b) => Number(b.width || 0) - Number(a.width || 0));
+  return sorted.find((image) => image.url)?.url || "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&w=600&q=80";
 }
 
 function createOpenTripMapFailure(error, latencyMs = 0) {

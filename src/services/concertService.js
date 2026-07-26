@@ -173,9 +173,67 @@ export async function fetchTicketmasterConcerts(options = {}) {
   }
 }
 
+export async function fetchBandsintownEvents(options = {}) {
+  const appId = options.appId || import.meta.env?.VITE_BANDSINTOWN_APP_ID;
+  const artists = (options.artists || []).filter(Boolean).slice(0, 8);
+  if (!appId || !artists.length) return null;
+
+  try {
+    const batches = await Promise.all(artists.map(async (artist) => {
+      const url = new URL(`https://rest.bandsintown.com/artists/${encodeURIComponent(artist)}/events/`);
+      url.searchParams.set("app_id", appId);
+      url.searchParams.set("date", "upcoming");
+      const res = await fetch(url.toString(), { headers: { Accept: "application/json" } });
+      if (!res.ok) return [];
+      const data = await res.json();
+      return Array.isArray(data) ? data.map((event) => normalizeBandsintownEvent(event, artist, options)).filter(Boolean) : [];
+    }));
+    return batches.flat();
+  } catch (err) {
+    console.warn("Bandsintown API fallback:", err);
+    return null;
+  }
+}
+
+export async function fetchLiveEventsFromWorker(options = {}) {
+  try {
+    const apiBase = getTripApiBase();
+    const url = new URL("/api/events/discover", apiBase || window.location.origin);
+    if (options.destination) url.searchParams.set("destination", options.destination);
+    if (options.lat && options.lng) {
+      url.searchParams.set("lat", String(options.lat));
+      url.searchParams.set("lng", String(options.lng));
+    }
+    if (options.radius) url.searchParams.set("radius", String(options.radius));
+    if (options.keyword) url.searchParams.set("keyword", options.keyword);
+    (options.artists || []).slice(0, 8).forEach((artist) => url.searchParams.append("artist", artist));
+    const res = await fetch(url.href, { headers: { Accept: "application/json" } });
+    if (!res.ok) throw new Error(`worker-events-http-${res.status}`);
+    const data = await res.json();
+    return data.events || [];
+  } catch (err) {
+    console.warn("Worker events fallback:", err);
+    return null;
+  }
+}
+
 // Fetch concerts tailored for a specific trip destination or coordinates
 export async function fetchConcertsForTrip(destination = "Paris", coords = [48.8566, 2.3522]) {
-  // 1. Try Ticketmaster API first
+  const artists = getDestinationArtistSeeds(destination);
+
+  // 1. Try Worker-backed Ticketmaster + Bandsintown first
+  const workerResults = await fetchLiveEventsFromWorker({
+    destination,
+    lat: coords[0],
+    lng: coords[1],
+    keyword: destination,
+    artists,
+  });
+  if (workerResults && workerResults.length > 0) {
+    return workerResults;
+  }
+
+  // 2. Try browser Ticketmaster API when a local dev key is configured
   const apiResults = await fetchTicketmasterConcerts({
     lat: coords[0],
     lng: coords[1],
@@ -185,7 +243,13 @@ export async function fetchConcertsForTrip(destination = "Paris", coords = [48.8
     return apiResults;
   }
 
-  // 2. Fallback to rich curated destination database
+  // 3. Try browser Bandsintown artist feeds when a local dev app id is configured
+  const bandResults = await fetchBandsintownEvents({ artists, destination, lat: coords[0], lng: coords[1] });
+  if (bandResults && bandResults.length > 0) {
+    return bandResults;
+  }
+
+  // 4. Fallback to rich curated destination database
   const destLower = destination.toLowerCase();
   const matched = CONCERTS_DATABASE.filter(c => 
     c.city.toLowerCase().includes(destLower) || 
@@ -194,6 +258,65 @@ export async function fetchConcertsForTrip(destination = "Paris", coords = [48.8
   );
 
   return matched.length ? matched : CONCERTS_DATABASE.slice(0, 4);
+}
+
+function normalizeBandsintownEvent(event = {}, artist = "", options = {}) {
+  const venue = event.venue || {};
+  const lat = Number(venue.latitude || 0);
+  const lng = Number(venue.longitude || 0);
+  if (Number.isFinite(lat) && Number.isFinite(lng) && options.lat && options.lng) {
+    const km = getDistanceKm([options.lat, options.lng], [lat, lng]);
+    if (km > 120) return null;
+  }
+  const offer = Array.isArray(event.offers) ? event.offers.find((item) => item.url) : null;
+  return {
+    id: event.id ? `bit-${event.id}` : `bit-${slugify(`${artist}-${venue.name}-${event.datetime}`)}`,
+    artist: artist || event.lineup?.[0] || event.title || "Live Artist",
+    tour: event.title || "Artist tour date",
+    title: event.title || `${artist} live`,
+    venue: venue.name || "Venue TBA",
+    city: venue.city || "",
+    country: venue.country || "",
+    lat,
+    lng,
+    dates: event.datetime ? `${event.datetime.slice(0, 10)} • ${event.datetime.slice(11, 16) || "20:00"}` : "Upcoming",
+    genre: "Live Music",
+    icon: venue.type === "Virtual" ? "📡" : "🎵",
+    image: "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=600&q=80",
+    ticketUrl: offer?.url || event.url || "https://www.bandsintown.com",
+    provider: "bandsintown",
+    source: "Bandsintown",
+    sourceRole: "bandsintown",
+    isPopularTour: false
+  };
+}
+
+function getDestinationArtistSeeds(destination = "") {
+  const key = destination.toLowerCase();
+  if (key.includes("paris") || key.includes("france")) return ["Coldplay", "Ludovico Einaudi", "Peggy Gou", "Arctic Monkeys"];
+  if (key.includes("crete") || key.includes("greece") || key.includes("heraklion")) return ["Marina Satti", "Villagers of Ioannina City", "Alkinoos Ioannidis"];
+  if (key.includes("copenhagen") || key.includes("denmark")) return ["MØ", "Trentemøller", "Efterklang"];
+  if (key.includes("tokyo") || key.includes("japan")) return ["Hans Zimmer", "King Gnu", "One Ok Rock"];
+  return [];
+}
+
+function getTripApiBase() {
+  return import.meta.env?.VITE_TRIP_API_BASE || (typeof window !== "undefined" && window.location.origin.includes("8787") ? "" : "https://trip.thomasrynell.workers.dev");
+}
+
+function getDistanceKm(from, to) {
+  const earthRadiusKm = 6371;
+  const toRadians = (value) => (Number(value) * Math.PI) / 180;
+  const lat1 = toRadians(from[0]);
+  const lat2 = toRadians(to[0]);
+  const deltaLat = toRadians(to[0] - from[0]);
+  const deltaLng = toRadians(to[1] - from[1]);
+  const haversine = Math.sin(deltaLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(deltaLng / 2) ** 2;
+  return earthRadiusKm * 2 * Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine));
+}
+
+function slugify(value = "") {
+  return String(value).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
 }
 
 // Search concerts by artist name, tour, genre, or city

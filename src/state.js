@@ -2,6 +2,7 @@ import { tripsData } from "./data/tripsData.js";
 import { enrichmentService } from "./enrichment/enrichmentService.js";
 import { getCountryFlagEmoji } from "./utils/countryEmoji.js";
 import { fetchOpenMeteoWeather } from "./services/weatherService.js";
+import { fetchConcertsForTrip } from "./services/concertService.js";
 
 function getDefaultPlanViewMode() {
   if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
@@ -167,6 +168,7 @@ class AppState {
     this.liveNearbyPlaces = [];
     this.backendHealth = { status: "checking", bindings: {} };
     this.tourismDiscoveryStatus = {};
+    this.eventDiscoveryStatus = {};
 
     // Moments & Captures
     this.moments = [
@@ -219,6 +221,7 @@ class AppState {
     this.loadD1Trips();
     this.refreshWeather();
     this.refreshTourismDiscovery();
+    this.refreshEventDiscovery();
   }
 
   toggleQuickCapture(open) {
@@ -308,6 +311,7 @@ class AppState {
         }));
         this.notify();
         this.refreshTourismDiscovery(this.activeTripId);
+        this.refreshEventDiscovery(this.activeTripId);
       }
     } catch (e) {
       console.warn("D1 trips load fallback:", e);
@@ -325,6 +329,7 @@ class AppState {
     const nextIndex = (currentIndex + 1) % keys.length;
     this.activeTripId = keys[nextIndex];
     this.refreshTourismDiscovery(this.activeTripId);
+    this.refreshEventDiscovery(this.activeTripId);
     this.notify();
   }
 
@@ -385,6 +390,7 @@ class AppState {
       this.activeTripId = tripId;
       this.refreshWeather();
       this.refreshTourismDiscovery(tripId);
+      this.refreshEventDiscovery(tripId);
       this.notify();
     }
   }
@@ -443,6 +449,7 @@ class AppState {
       const tourismPois = (topResult?.places || []).map((place) => normalizeTourismIdea(place, "poi"));
       const hiddenGems = (hiddenResult?.places || []).map((place) => normalizeTourismIdea(place, "hidden"));
       const osmPlaces = (osmResult?.places || []).map((place) => normalizeTourismIdea(place, "osm"));
+      await this.enrichDiscoveryMedia([...tourismPois, ...hiddenGems, ...osmPlaces].slice(0, 8));
       const status = getOpenTripMapStatus([topResult, hiddenResult]);
       const updatedAt = new Date().toISOString();
 
@@ -462,6 +469,61 @@ class AppState {
       this.tourismDiscoveryStatus[tripId] = {
         status: "error",
         error: error?.message || "opentripmap-discovery-failed",
+        updatedAt: new Date().toISOString(),
+      };
+    }
+
+    this.notify();
+  }
+
+  async enrichDiscoveryMedia(ideas = []) {
+    await Promise.allSettled(ideas.map(async (idea) => {
+      if (!idea || !idea.id) return;
+      const media = await enrichmentService.refreshMedia({
+        id: idea.id,
+        title: idea.title,
+        canonicalName: idea.title,
+        coordinates: idea.coordinates,
+        wikidataId: idea.wikidataId || "",
+        categories: idea.categories || [idea.category].filter(Boolean),
+        sourceUrl: idea.sourceUrl || "",
+      });
+      const hero = media?.hero;
+      if (hero?.imageUrl && !hero.illustrativeOnly) {
+        idea.image = hero.imageUrl;
+        idea.imageProvider = hero.provider || "";
+        idea.imageAttribution = hero.attributionText || hero.creatorName || "";
+        idea.media = media;
+      }
+    }));
+  }
+
+  async refreshEventDiscovery(tripId = this.activeTripId, options = {}) {
+    const trip = tripsData[tripId];
+    if (!trip || !Array.isArray(trip.center)) return;
+    if (this.eventDiscoveryStatus[tripId]?.status === "loading" && !options.force) return;
+    if ((trip.events || []).some((event) => ["ticketmaster", "bandsintown"].includes(event.sourceRole || event.provider)) && !options.force) return;
+
+    this.eventDiscoveryStatus[tripId] = {
+      status: "loading",
+      error: "",
+      updatedAt: new Date().toISOString(),
+    };
+
+    try {
+      const events = await fetchConcertsForTrip(trip.destination, trip.center);
+      const existingTitles = new Set((trip.events || []).map((event) => event.title));
+      const liveEvents = (events || []).filter((event) => !existingTitles.has(event.title));
+      trip.events = [...liveEvents, ...(trip.events || [])].slice(0, 24);
+      this.eventDiscoveryStatus[tripId] = {
+        status: liveEvents.length ? "ready" : "fallback",
+        error: "",
+        updatedAt: new Date().toISOString(),
+      };
+    } catch (error) {
+      this.eventDiscoveryStatus[tripId] = {
+        status: "error",
+        error: error?.message || "event-discovery-failed",
         updatedAt: new Date().toISOString(),
       };
     }
@@ -552,6 +614,7 @@ class AppState {
     this.planViewMode = getDefaultPlanViewMode();
     this.notify();
     this.refreshTourismDiscovery(id);
+    this.refreshEventDiscovery(id);
 
     // Async sync with Cloudflare D1
     try {

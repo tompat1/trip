@@ -148,6 +148,79 @@ test("Worker nearby route queries OpenStreetMap open-first categories through Ov
   }
 });
 
+test("Worker event discovery combines Ticketmaster and Bandsintown providers", async () => {
+  const originalFetch = globalThis.fetch;
+  const requestedUrls = [];
+  globalThis.fetch = async (url) => {
+    requestedUrls.push(String(url));
+    if (String(url).includes("ticketmaster.com")) {
+      return {
+        ok: true,
+        async json() {
+          return {
+            _embedded: {
+              events: [{
+                id: "tm-1",
+                name: "Major Paris Concert",
+                url: "https://ticketmaster.test/event",
+                images: [{ url: "https://ticketmaster.test/image.jpg", width: 1200 }],
+                dates: { start: { localDate: "2026-10-03", localTime: "20:00:00" } },
+                classifications: [{ genre: { name: "Rock" }, segment: { name: "Music" } }],
+                _embedded: {
+                  venues: [{
+                    name: "Paris Arena",
+                    city: { name: "Paris" },
+                    country: { name: "France" },
+                    location: { latitude: "48.8566", longitude: "2.3522" },
+                  }],
+                },
+              }],
+            },
+          };
+        },
+      };
+    }
+    if (String(url).includes("bandsintown.com")) {
+      return {
+        ok: true,
+        async json() {
+          return [{
+            id: "bit-1",
+            title: "Artist Night",
+            datetime: "2026-10-04T21:00:00",
+            url: "https://bandsintown.test/event",
+            venue: {
+              name: "Small Paris Club",
+              city: "Paris",
+              country: "France",
+              latitude: "48.86",
+              longitude: "2.35",
+            },
+            offers: [{ url: "https://bandsintown.test/tickets" }],
+          }];
+        },
+      };
+    }
+    throw new Error(`unexpected url ${url}`);
+  };
+
+  try {
+    const response = await worker.fetch(new Request("https://trip.test/api/events/discover?lat=48.8566&lng=2.3522&destination=Paris&artist=Phoenix"), {
+      TICKETMASTER_API_KEY: "tm-key",
+      BANDSINTOWN_APP_ID: "bit-app",
+    }, {});
+    assert.equal(response.status, 200);
+    const payload = await response.json();
+    assert.equal(payload.events.length, 2);
+    assert.ok(requestedUrls.some((url) => url.includes("app.ticketmaster.com/discovery/v2/events.json")));
+    assert.ok(requestedUrls.some((url) => url.includes("rest.bandsintown.com/artists/Phoenix/events/")));
+    assert.equal(payload.providerStatus.some((status) => status.provider === "ticketmaster" && status.status === "ok"), true);
+    assert.equal(payload.providerStatus.some((status) => status.provider === "bandsintown" && status.status === "ok"), true);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("Worker attribution endpoint returns stored image provenance", async () => {
   const imageRows = [{
     id: "image-1",

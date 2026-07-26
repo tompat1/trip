@@ -122,7 +122,7 @@ export function renderSearchResults() {
     ...getTourismSearchPlaces(state.activeTrip),
   ];
   const places = filterPlacesByQuery(placesForTrip, query);
-  const concerts = searchConcerts(query);
+  const concerts = filterConcertsByQuery(getTripConcerts(state.activeTrip), query);
 
   return `
     <!-- Results Header Bar -->
@@ -182,6 +182,29 @@ function getTourismSearchPlaces(trip) {
     description: place.description || place.reason || `${place.category || "Place"} from OpenTripMap.`,
     image: place.image || "https://images.unsplash.com/photo-1488646953014-85cb44e25828?auto=format&fit=crop&w=700&q=80",
   }));
+}
+
+function getTripConcerts(trip) {
+  const seen = new Set();
+  return [...(trip?.events || []), ...searchConcerts("")]
+    .filter((concert) => {
+      const key = `${concert.title}-${concert.venue}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+}
+
+function filterConcertsByQuery(concerts, query) {
+  if (!query || !query.trim()) return concerts;
+  const q = query.toLowerCase().trim();
+  return concerts.filter(c =>
+    (c.artist || "").toLowerCase().includes(q) ||
+    (c.title || "").toLowerCase().includes(q) ||
+    (c.venue || "").toLowerCase().includes(q) ||
+    (c.city || "").toLowerCase().includes(q) ||
+    (c.genre || "").toLowerCase().includes(q)
+  );
 }
 
 function renderSearchPlaceCard(place) {
