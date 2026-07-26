@@ -24,8 +24,6 @@ const SUB_FILTERS = [
 
 export function renderSearchView() {
   const query = state.searchQuery || "";
-  const places = filterPlacesByQuery(searchPlacesData, query);
-  const concerts = searchConcerts(query);
   const currentTrip = state.activeTrip;
 
   return `
@@ -101,25 +99,8 @@ export function renderSearchView() {
           </button>
         </div>
 
-        <!-- Results Header Bar -->
-        <div class="results-header">
-          <span class="results-count">${state.searchCategory === "Concerts" ? `${concerts.length} live concerts` : `${places.length} curated spots`}</span>
-          <div class="results-sort">
-            <span class="sort-label">Sort:</span>
-            <select class="sort-select" data-action="change-sort">
-              <option value="top-rated">Top rated ⌄</option>
-              <option value="closest">Closest ⌄</option>
-              <option value="popular">Most popular ⌄</option>
-            </select>
-          </div>
-        </div>
-
-        <!-- Results List -->
-        <div class="results-list">
-          ${state.searchCategory === "Concerts"
-            ? (concerts.length ? concerts.map((c) => renderConcertCard(c)).join("") : renderEmptySearch("No live concerts found for this search."))
-            : (places.length ? places.map((place) => renderSearchPlaceCard(place)).join("") : renderEmptySearch("No places matched your query."))
-          }
+        <div id="search-results-region">
+          ${renderSearchResults()}
         </div>
 
         <!-- Floating Sticky "View on map" button -->
@@ -130,6 +111,35 @@ export function renderSearchView() {
           </button>
         </div>
       </div>
+    </div>
+  `;
+}
+
+export function renderSearchResults() {
+  const query = state.searchQuery || "";
+  const places = filterPlacesByQuery(searchPlacesData, query);
+  const concerts = searchConcerts(query);
+
+  return `
+    <!-- Results Header Bar -->
+    <div class="results-header">
+      <span class="results-count">${state.searchCategory === "Concerts" ? `${concerts.length} live concerts` : `${places.length} curated spots`}</span>
+      <div class="results-sort">
+        <span class="sort-label">Sort:</span>
+        <select class="sort-select" data-action="change-sort">
+          <option value="top-rated">Top rated ⌄</option>
+          <option value="closest">Closest ⌄</option>
+          <option value="popular">Most popular ⌄</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Results List -->
+    <div class="results-list">
+      ${state.searchCategory === "Concerts"
+        ? (concerts.length ? concerts.map((c) => renderConcertCard(c)).join("") : renderEmptySearch("No live concerts found for this search."))
+        : (places.length ? places.map((place) => renderSearchPlaceCard(place)).join("") : renderEmptySearch("No places matched your query."))
+      }
     </div>
   `;
 }

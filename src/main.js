@@ -3,7 +3,7 @@ import "leaflet/dist/leaflet.css";
 import { state } from "./state.js";
 import { renderHomeView } from "./views/HomeView.js";
 import { renderPlanView } from "./views/PlanView.js";
-import { renderSearchView } from "./views/SearchView.js";
+import { renderSearchResults, renderSearchView } from "./views/SearchView.js";
 import { renderLandingView } from "./views/LandingView.js";
 import { renderLiveView, renderProfileView } from "./views/LiveView.js";
 import { renderBottomNav } from "./components/BottomNav.js";
@@ -487,9 +487,30 @@ document.addEventListener("click", async (e) => {
 // Search input field listener
 document.addEventListener("input", (e) => {
   if (e.target.matches(".search-input-field")) {
-    state.setSearchQuery(e.target.value);
+    state.setSearchQuery(e.target.value, { notify: false });
+    updateSearchResultsInPlace(e.target);
   }
 });
+
+function updateSearchResultsInPlace(input) {
+  const resultsRegion = document.getElementById("search-results-region");
+  if (resultsRegion) {
+    resultsRegion.innerHTML = renderSearchResults();
+  }
+
+  const wrapper = input.closest(".search-input-wrapper");
+  if (!wrapper) return;
+
+  const clearButton = wrapper.querySelector(".search-clear-btn");
+  if (input.value && !clearButton) {
+    wrapper.insertAdjacentHTML(
+      "beforeend",
+      '<button class="search-clear-btn" data-action="clear-search-query" title="Clear query">✕</button>'
+    );
+  } else if (!input.value && clearButton) {
+    clearButton.remove();
+  }
+}
 
 // Trip mode & dropdown change listener
 document.addEventListener("change", (e) => {

@@ -245,9 +245,11 @@ class AppState {
     this.notify();
   }
 
-  setSearchQuery(query) {
+  setSearchQuery(query, options = {}) {
     this.searchQuery = query;
-    this.notify();
+    if (options.notify !== false) {
+      this.notify();
+    }
   }
 
   setSearchCategory(category) {
