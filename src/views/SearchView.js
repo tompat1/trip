@@ -166,14 +166,9 @@ function filterPlacesByQuery(places, query) {
 }
 
 function renderSearchPlaceCard(place) {
-  const isSaved = state.savedPlaceIds.has(place.id);
-
   return `
     <div class="search-place-card" style="transition: transform 0.15s ease, box-shadow 0.2s ease;">
       <div class="search-place-card__thumb" style="background-image: url('${place.image}')">
-        <button class="btn-bookmark ${isSaved ? 'is-saved' : ''}" data-action="toggle-bookmark" data-place-id="${place.id}" style="position: absolute; top: 10px; right: 10px; background: rgba(255,255,255,0.92); border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: justify-content; border: none; box-shadow: var(--shadow-sm); cursor: pointer;" aria-label="Bookmark" title="${isSaved ? 'Saved to planning bucket' : 'Bookmark spot'}">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="${isSaved ? 'var(--orange)' : 'none'}" stroke="${isSaved ? 'var(--orange)' : 'currentColor'}" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
-        </button>
       </div>
       <div class="search-place-card__content">
         <div class="search-place-card__header" style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
