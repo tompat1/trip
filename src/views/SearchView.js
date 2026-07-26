@@ -2,44 +2,69 @@ import { state } from "../state.js";
 import { searchPlacesData } from "../data/tripsData.js";
 import { renderHeader } from "../components/Header.js";
 import { searchConcerts } from "../services/concertService.js";
+import { renderIcon } from "../utils/icons.js";
 
 const PRIMARY_CATEGORIES = ["All", "Places", "Concerts", "Events", "Guides", "Stories"];
+const QUICK_INTENT_CHIPS = [
+  { id: "coffee", label: "☕ Specialty Coffee", query: "Best coffee shops" },
+  { id: "concerts", label: "🎵 Live Concerts", query: "Live concerts & gigs", cat: "Concerts" },
+  { id: "food", label: "🍕 Local Eats & Bistros", query: "Top rated restaurants" },
+  { id: "museums", label: "🖼️ Museums & Art", query: "Museums and galleries" },
+  { id: "sunset", label: "🌅 Sunset Spots", query: "Best sunset views" },
+  { id: "bars", label: "🍷 Wine Bars", query: "Cozy wine bars" }
+];
+
 const SUB_FILTERS = [
-  { id: "All", label: "All" },
-  { id: "Cafes", label: "Cafes ⌄" },
-  { id: "Specialty coffee", label: "Specialty coffee ⌄" },
-  { id: "Open now", label: "Open now ⌄" },
-  { id: "More filters", label: "More filters" }
+  { id: "All", label: "All Spots" },
+  { id: "Open now", label: "Open now 🟢" },
+  { id: "Top rated", label: "Top rated ★ 4.8+" },
+  { id: "Specialty coffee", label: "Specialty coffee ☕" },
+  { id: "Walking distance", label: "Walking distance 🚶" }
 ];
 
 export function renderSearchView() {
-  const query = state.searchQuery;
-  const places = searchPlacesData;
+  const query = state.searchQuery || "";
+  const places = filterPlacesByQuery(searchPlacesData, query);
   const concerts = searchConcerts(query);
+  const currentTrip = state.activeTrip;
 
   return `
     <div class="search-page">
       ${renderHeader()}
 
       <div class="search-page__content">
-        <!-- Search Input Bar -->
-        <div class="search-input-card">
-          <div class="search-input-wrapper">
-            <svg class="search-input-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            <input type="text" class="search-input-field" value="${escapeHtml(query)}" placeholder="Search places, cafes, sights..." data-action="update-search-query" />
-            ${query ? '<button class="search-clear-btn" data-action="clear-search-query">✕</button>' : ''}
+        <!-- Hero Search Header Card -->
+        <div class="search-hero-card card-pattern-map" style="background: var(--paper-card); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 20px; box-shadow: var(--shadow-sm); position: relative; overflow: hidden; margin-bottom: 14px;">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+            <div>
+              <span class="voice-mono" style="font-size: 0.72rem; color: var(--orange); font-weight: 700; letter-spacing: 1px; text-transform: uppercase;">Intelligent Search</span>
+              <h2 class="voice-serif" style="font-size: 1.4rem; font-weight: 800; color: var(--ink); margin-top: 2px;">Discover ${escapeHtml(currentTrip.destination)} ${currentTrip.flag || ''}</h2>
+            </div>
+            <span style="font-size: 0.7rem; background: rgba(56,92,115,0.12); color: var(--blue); padding: 4px 10px; border-radius: 12px; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;">
+              ⚡ Live Enriched
+            </span>
           </div>
-          <button class="btn btn--icon search-filter-btn" aria-label="Filters" data-action="toggle-filters">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
-          </button>
-        </div>
 
-        <!-- Brand Guidelines Section 07: Active Location Tag Pill -->
-        <div class="search-location-tags" style="display: flex; align-items: center; gap: 8px; margin: 8px 0 12px 0;">
-          <span class="location-tag-pill">
-            <span>📍 ${escapeHtml(state.activeTrip.destination.toUpperCase())}</span>
-            <span class="location-tag-pill__close" data-action="clear-search-query">×</span>
-          </span>
+          <!-- Main Search Input -->
+          <div class="search-input-card" style="box-shadow: var(--shadow-sm); border: 1px solid var(--line-light);">
+            <div class="search-input-wrapper">
+              <svg class="search-input-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <input type="text" class="search-input-field" value="${escapeHtml(query)}" placeholder="Search cafes, concerts, sights in ${escapeHtml(currentTrip.destination)}..." data-action="update-search-query" />
+              ${query ? '<button class="search-clear-btn" data-action="clear-search-query" title="Clear query">✕</button>' : ''}
+            </div>
+            <button class="btn btn--icon search-filter-btn" aria-label="Filters" data-action="toggle-filters" title="Filter results">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+            </button>
+          </div>
+
+          <!-- Quick Intent Shortcut Chips -->
+          <div class="quick-intents-scroll" style="display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; margin-top: 12px; padding-bottom: 2px;">
+            ${QUICK_INTENT_CHIPS.map(chip => `
+              <button class="chip" data-action="apply-quick-intent" data-query="${escapeHtml(chip.query)}" data-cat="${chip.cat || 'All'}" style="white-space: nowrap; font-size: 0.78rem; padding: 6px 12px; border-radius: 18px; border: 1px solid var(--line-light); background: rgba(255,255,255,0.85); cursor: pointer; transition: transform 0.15s ease;">
+                ${chip.label}
+              </button>
+            `).join('')}
+          </div>
         </div>
 
         <!-- Primary Category Tabs -->
@@ -47,7 +72,7 @@ export function renderSearchView() {
           ${PRIMARY_CATEGORIES.map(
             (cat) => `
               <button class="primary-tab-btn ${state.searchCategory === cat ? 'is-active' : ''}" data-cat="${cat}">
-                ${cat}
+                ${cat === 'Concerts' ? '🎵 Concerts' : cat}
               </button>
             `
           ).join("")}
@@ -64,7 +89,7 @@ export function renderSearchView() {
           ).join("")}
         </div>
 
-        <!-- Inline Leaflet Map Card -->
+        <!-- Inline Interactive Leaflet Map Card -->
         <div class="search-map-card">
           <div id="search-map-container" class="search-map"></div>
           <button class="btn btn--light search-area-btn" data-action="search-this-area">
@@ -78,12 +103,13 @@ export function renderSearchView() {
 
         <!-- Results Header Bar -->
         <div class="results-header">
-          <span class="results-count">${state.searchCategory === "Concerts" ? `${concerts.length} live concerts` : `${places.length} results`}</span>
+          <span class="results-count">${state.searchCategory === "Concerts" ? `${concerts.length} live concerts` : `${places.length} curated spots`}</span>
           <div class="results-sort">
             <span class="sort-label">Sort:</span>
             <select class="sort-select" data-action="change-sort">
-              <option value="top-rated">Upcoming dates ⌄</option>
-              <option value="popular">Popular tours ⌄</option>
+              <option value="top-rated">Top rated ⌄</option>
+              <option value="closest">Closest ⌄</option>
+              <option value="popular">Most popular ⌄</option>
             </select>
           </div>
         </div>
@@ -91,8 +117,9 @@ export function renderSearchView() {
         <!-- Results List -->
         <div class="results-list">
           ${state.searchCategory === "Concerts"
-            ? concerts.map((c) => renderConcertCard(c)).join("")
-            : places.map((place) => renderSearchPlaceCard(place)).join("")}
+            ? (concerts.length ? concerts.map((c) => renderConcertCard(c)).join("") : renderEmptySearch("No live concerts found for this search."))
+            : (places.length ? places.map((place) => renderSearchPlaceCard(place)).join("") : renderEmptySearch("No places matched your query."))
+          }
         </div>
 
         <!-- Floating Sticky "View on map" button -->
@@ -107,27 +134,45 @@ export function renderSearchView() {
   `;
 }
 
+function filterPlacesByQuery(places, query) {
+  if (!query || !query.trim()) return places;
+  const q = query.toLowerCase().trim();
+  return places.filter(p =>
+    p.name.toLowerCase().includes(q) ||
+    p.category.toLowerCase().includes(q) ||
+    p.neighborhood.toLowerCase().includes(q) ||
+    (p.description && p.description.toLowerCase().includes(q))
+  );
+}
+
 function renderSearchPlaceCard(place) {
   const isSaved = state.savedPlaceIds.has(place.id);
 
   return `
-    <div class="search-place-card">
-      <div class="search-place-card__thumb" style="background-image: url('${place.image}')"></div>
+    <div class="search-place-card" style="transition: transform 0.15s ease, box-shadow 0.2s ease;">
+      <div class="search-place-card__thumb" style="background-image: url('${place.image}')">
+        <button class="btn-bookmark ${isSaved ? 'is-saved' : ''}" data-action="toggle-bookmark" data-place-id="${place.id}" style="position: absolute; top: 10px; right: 10px; background: rgba(255,255,255,0.92); border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: justify-content; border: none; box-shadow: var(--shadow-sm); cursor: pointer;" aria-label="Bookmark" title="${isSaved ? 'Saved to planning bucket' : 'Bookmark spot'}">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="${isSaved ? 'var(--orange)' : 'none'}" stroke="${isSaved ? 'var(--orange)' : 'currentColor'}" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+        </button>
+      </div>
       <div class="search-place-card__content">
-        <div class="search-place-card__header">
-          <h3 class="search-place-card__title">${escapeHtml(place.name)}</h3>
-          <button class="btn-bookmark ${isSaved ? 'is-saved' : ''}" data-action="toggle-bookmark" data-place-id="${place.id}" aria-label="Bookmark">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="${isSaved ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
-          </button>
+        <div class="search-place-card__header" style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
+          <div>
+            <h3 class="search-place-card__title">${escapeHtml(place.name)}</h3>
+            <p class="search-place-card__location" style="margin-top: 2px;">📍 ${escapeHtml(place.neighborhood)}</p>
+          </div>
+          <button class="btn btn--outline btn--xs" data-action="add-idea-to-itinerary" data-title="${escapeHtml(place.name)}" data-location="${escapeHtml(place.neighborhood)}" style="font-size: 0.72rem; padding: 3px 9px; flex-shrink: 0;" title="Add to itinerary">+ Itinerary</button>
         </div>
-        <p class="search-place-card__location">${escapeHtml(place.neighborhood)}</p>
-        <div class="search-place-card__rating">
-          <span class="rating-star">★ ${place.rating}</span>
+
+        <div class="search-place-card__rating" style="margin-top: 6px;">
+          <span class="rating-star" style="color: var(--sun); font-weight: 700;">★ ${place.rating}</span>
           <span class="rating-count">(${place.reviewsCount})</span>
           <span class="rating-sep">•</span>
           <span class="rating-category">${escapeHtml(place.category)}</span>
+          <span class="rating-sep">•</span>
+          <span style="font-size: 0.72rem; color: var(--green); font-weight: 600;">Open now 🟢</span>
         </div>
-        <p class="search-place-card__desc">${escapeHtml(place.description)}</p>
+        <p class="search-place-card__desc" style="margin-top: 6px; font-size: 0.82rem; color: var(--ink-muted); line-height: 1.4;">${escapeHtml(place.description)}</p>
       </div>
     </div>
   `;
@@ -138,16 +183,16 @@ function renderConcertCard(concert) {
 
   return `
     <div class="search-place-card concert-card" style="border-left: 3px solid var(--orange);">
-      <div class="search-place-card__thumb" style="background-image: url('${concert.image}'); display: flex; align-items: flex-start; justify-content: space-between; padding: 6px;">
+      <div class="search-place-card__thumb" style="background-image: url('${concert.image}'); display: flex; align-items: flex-start; justify-content: space-between; padding: 8px;">
         <span style="background: rgba(23,24,23,0.85); color: #fff; font-size: 0.7rem; font-weight: 700; padding: 2px 8px; border-radius: 10px;">${concert.icon} ${escapeHtml(concert.genre)}</span>
-        <button class="btn-bookmark ${isSaved ? 'is-saved' : ''}" data-action="toggle-bookmark" data-place-id="${concert.id}" style="background: rgba(255,255,255,0.9); border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border: none; box-shadow: var(--shadow-sm); cursor: pointer;" aria-label="Bookmark event" title="${isSaved ? 'Saved to planning bucket' : 'Bookmark event'}">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="${isSaved ? 'var(--orange)' : 'none'}" stroke="${isSaved ? 'var(--orange)' : 'currentColor'}" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+        <button class="btn-bookmark ${isSaved ? 'is-saved' : ''}" data-action="toggle-bookmark" data-place-id="${concert.id}" style="background: rgba(255,255,255,0.92); border-radius: 50%; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border: none; box-shadow: var(--shadow-sm); cursor: pointer;" aria-label="Bookmark event" title="${isSaved ? 'Saved to planning bucket' : 'Bookmark event'}">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="${isSaved ? 'var(--orange)' : 'none'}" stroke="${isSaved ? 'var(--orange)' : 'currentColor'}" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
         </button>
       </div>
       <div class="search-place-card__content">
         <div class="search-place-card__header">
           <h3 class="search-place-card__title">${escapeHtml(concert.artist)}</h3>
-          <button class="btn btn--outline btn--xs" data-action="add-idea-to-itinerary" data-title="${escapeHtml(concert.title)}" data-location="${escapeHtml(concert.venue)}" style="font-size: 0.72rem; padding: 2px 8px;">+ Itinerary</button>
+          <button class="btn btn--outline btn--xs" data-action="add-idea-to-itinerary" data-title="${escapeHtml(concert.title)}" data-location="${escapeHtml(concert.venue)}" style="font-size: 0.72rem; padding: 3px 9px;">+ Itinerary</button>
         </div>
         <p class="search-place-card__location" style="color: var(--orange); font-weight: 600;">📍 ${escapeHtml(concert.venue)} • ${escapeHtml(concert.city)}</p>
         <div class="search-place-card__rating" style="margin-top: 4px;">
@@ -155,10 +200,20 @@ function renderConcertCard(concert) {
           <span class="rating-sep">•</span>
           <span class="rating-category" style="font-size: 0.75rem;">${escapeHtml(concert.tour)}</span>
         </div>
-        <div style="margin-top: 8px; display: flex; gap: 8px;">
-          <a href="${concert.ticketUrl}" target="_blank" rel="noopener" class="btn btn--primary btn--xs" style="text-decoration: none; font-size: 0.72rem; padding: 4px 10px;">🎟️ Get Tickets</a>
+        <div style="margin-top: 10px; display: flex; gap: 8px;">
+          <a href="${concert.ticketUrl}" target="_blank" rel="noopener" class="btn btn--primary btn--xs" style="text-decoration: none; font-size: 0.75rem; padding: 5px 12px;">🎟️ Get Tickets</a>
         </div>
       </div>
+    </div>
+  `;
+}
+
+function renderEmptySearch(msg) {
+  return `
+    <div style="text-align: center; padding: 40px 20px; background: var(--paper-card); border: 1px dashed var(--line); border-radius: var(--radius-lg);">
+      <span style="font-size: 2rem; display: block; margin-bottom: 8px;">🔍</span>
+      <h4 style="font-weight: 700; color: var(--ink);">${escapeHtml(msg)}</h4>
+      <p style="font-size: 0.82rem; color: var(--ink-muted); margin-top: 4px;">Try searching for coffee, concerts, food, or sights.</p>
     </div>
   `;
 }

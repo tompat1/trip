@@ -213,6 +213,13 @@ document.addEventListener("click", async (e) => {
         showToast(isActive ? `✨ Profile updated with ${persona}!` : `Removed ${persona} from profile.`);
       }
     }
+    else if (action === "apply-quick-intent") {
+      const q = target.dataset.query || "";
+      const cat = target.dataset.cat || "All";
+      state.setSearchQuery(q);
+      state.setSearchCategory(cat);
+      showToast(`🔍 Filtered for ${target.innerText.trim()}`);
+    }
     else if (action === "trigger-file-upload") {
       const fileInput = document.getElementById("capture-file-input");
       if (fileInput) fileInput.click();
