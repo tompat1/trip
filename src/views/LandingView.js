@@ -31,7 +31,7 @@ export function renderLandingView() {
       </section>
 
       <section class="landing-features" style="display: flex; flex-direction: column; gap: 12px; margin: 20px 0;">
-        <div class="feature-card" data-action="go-plan" style="display: flex; align-items: center; justify-content: space-between; background: var(--paper-card); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 16px; box-shadow: var(--shadow-sm);">
+        <div class="feature-card" data-action="go-plan" role="button" tabindex="0" style="display: flex; align-items: center; justify-content: space-between; background: var(--paper-card); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 16px; box-shadow: var(--shadow-sm);">
           <div style="display: flex; align-items: center; gap: 14px;">
             <div style="width: 42px; height: 42px; border-radius: 50%; background: rgba(56, 92, 115, 0.12); color: var(--blue); display: flex; align-items: center; justify-content: center;">
               ${renderIcon("compass")}
@@ -41,10 +41,10 @@ export function renderLandingView() {
               <p style="font-size: 0.82rem; color: var(--ink-muted); margin: 2px 0 0 0;">Plan with intelligent guides, maps, events and local tips.</p>
             </div>
           </div>
-          <span style="color: var(--ink-muted);">${renderIcon("chevronRight")}</span>
+          <span class="landing-feature-cta">${renderIcon("arrowRight")}</span>
         </div>
 
-        <div class="feature-card" data-action="go-live" style="display: flex; align-items: center; justify-content: space-between; background: var(--paper-card); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 16px; box-shadow: var(--shadow-sm);">
+        <div class="feature-card" data-action="go-live" role="button" tabindex="0" style="display: flex; align-items: center; justify-content: space-between; background: var(--paper-card); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 16px; box-shadow: var(--shadow-sm);">
           <div style="display: flex; align-items: center; gap: 14px;">
             <div style="width: 42px; height: 42px; border-radius: 50%; background: rgba(101, 112, 91, 0.12); color: var(--green); display: flex; align-items: center; justify-content: center;">
               ${renderIcon("mapPin")}
@@ -54,10 +54,10 @@ export function renderLandingView() {
               <p style="font-size: 0.82rem; color: var(--ink-muted); margin: 2px 0 0 0;">Navigate, capture and get real-time recommendations.</p>
             </div>
           </div>
-          <span style="color: var(--ink-muted);">${renderIcon("chevronRight")}</span>
+          <span class="landing-feature-cta">${renderIcon("arrowRight")}</span>
         </div>
 
-        <div class="feature-card" data-action="go-moments" style="display: flex; align-items: center; justify-content: space-between; background: var(--paper-card); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 16px; box-shadow: var(--shadow-sm);">
+        <div class="feature-card" data-action="go-moments" role="button" tabindex="0" style="display: flex; align-items: center; justify-content: space-between; background: var(--paper-card); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 16px; box-shadow: var(--shadow-sm);">
           <div style="display: flex; align-items: center; gap: 14px;">
             <div style="width: 42px; height: 42px; border-radius: 50%; background: rgba(156, 110, 85, 0.12); color: var(--clay); display: flex; align-items: center; justify-content: center;">
               ${renderIcon("camera")}
@@ -67,7 +67,7 @@ export function renderLandingView() {
               <p style="font-size: 0.82rem; color: var(--ink-muted); margin: 2px 0 0 0;">Turn your memories into stories, films and keepsakes.</p>
             </div>
           </div>
-          <span style="color: var(--ink-muted);">${renderIcon("chevronRight")}</span>
+          <span class="landing-feature-cta">${renderIcon("arrowRight")}</span>
         </div>
       </section>
 

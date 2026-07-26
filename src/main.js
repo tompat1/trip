@@ -495,12 +495,10 @@ document.addEventListener("input", (e) => {
 
 document.addEventListener("keydown", (e) => {
   if (e.key !== "Enter" && e.key !== " ") return;
-  const routeCard = e.target.closest?.('[data-action="go-plan-timeline"]');
-  if (!routeCard) return;
+  const actionCard = e.target.closest?.('[role="button"][data-action]');
+  if (!actionCard) return;
   e.preventDefault();
-  state.setPlanSubTab("plan");
-  state.setPlanViewMode("timeline");
-  state.setView("plan");
+  actionCard.click();
 });
 
 function updateSearchResultsInPlace(input) {

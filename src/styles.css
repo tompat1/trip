@@ -1135,6 +1135,26 @@ textarea {
   box-shadow: var(--shadow-md);
 }
 
+.feature-card:hover,
+.feature-card:focus-visible {
+  border-color: var(--orange);
+  outline: none;
+}
+
+.landing-feature-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  color: var(--orange);
+  transition: transform 0.2s var(--ease-out);
+}
+
+.feature-card:hover .landing-feature-cta,
+.feature-card:focus-visible .landing-feature-cta {
+  transform: translateX(3px);
+}
+
 .feature-card__icon {
   width: 48px;
   height: 48px;
