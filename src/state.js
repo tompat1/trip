@@ -3,6 +3,14 @@ import { enrichmentService } from "./enrichment/enrichmentService.js";
 import { getCountryFlagEmoji } from "./utils/countryEmoji.js";
 import { fetchOpenMeteoWeather } from "./services/weatherService.js";
 
+function getDefaultPlanViewMode() {
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
+    return "week";
+  }
+
+  return window.matchMedia("(pointer: coarse), (max-width: 540px)").matches ? "day" : "week";
+}
+
 class AppState {
   constructor() {
     this.activeView = "landing"; // Initial entry view: "landing" | "home" | "live" | "plan" | "search" | "profile"
@@ -11,7 +19,7 @@ class AppState {
     
     // Plan view settings
     this.planSubTab = "plan"; // "overview" | "plan" | "explore" | "journal" | "story"
-    this.planViewMode = "week"; // "day" | "week" | "timeline" | "map"
+    this.planViewMode = getDefaultPlanViewMode(); // "day" | "week" | "timeline" | "map"
     this.activeDayIndex = 0;
 
     // Search view settings
