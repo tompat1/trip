@@ -231,6 +231,7 @@ function renderLiveHeadsUpDisclosure(item = {}) {
           <strong>${escapeHtml(title)}</strong>
           <span>${escapeHtml(detail)}</span>
         </span>
+        <span class="live-intel-row__chevron" aria-hidden="true">${renderIcon("chevronDown")}</span>
       </summary>
       <p class="live-intel-row__full">${escapeHtml(detail)}</p>
       ${actionUrl ? `

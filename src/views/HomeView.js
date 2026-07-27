@@ -212,6 +212,7 @@ function renderHeadsUpDisclosure(item = {}) {
           <span>${escapeHtml(detail)}</span>
         </span>
         <small class="trip-heads-up__source">${escapeHtml(item.source || "Guidance")}</small>
+        <span class="trip-heads-up__chevron" aria-hidden="true">${renderIcon("chevronDown")}</span>
       </summary>
       <p class="trip-heads-up__full">${escapeHtml(detail)}</p>
       ${actionUrl ? `

@@ -23,7 +23,8 @@ const ALIASES = {
   cloudSun: "CloudSun",
   shoppingBag: "ShoppingBag",
   chevronRight: "ChevronRight",
-  chevronLeft: "ChevronLeft"
+  chevronLeft: "ChevronLeft",
+  chevronDown: "ChevronDown"
 };
 
 function nodeToSvg(children, customClass = "") {

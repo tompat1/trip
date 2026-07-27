@@ -61,7 +61,11 @@ export const DESTINATION_TRANSIT_GUIDES = {
       }
     ],
     localTips: [
-      "Download 'IDF Mobilités' app to load Navigo tickets directly onto your iPhone or Android phone.",
+      {
+        text: "Download 'IDF Mobilités' app to load Navigo tickets directly onto your iPhone or Android phone.",
+        linkLabel: "Open IDF Mobilités",
+        url: "https://www.iledefrance-mobilites.fr/en/tickets-fares/media/smartphone",
+      },
       "Avoid illegal taxi solicitors inside the terminal building; follow official 'Taxis' signs."
     ]
   },

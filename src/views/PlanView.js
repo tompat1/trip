@@ -725,6 +725,15 @@ function escapeHtml(str) {
     .replace(/"/g, "&quot;");
 }
 
+function sanitizeHref(value = "") {
+  try {
+    const url = new URL(String(value || "").trim());
+    return ["http:", "https:"].includes(url.protocol) ? url.href : "";
+  } catch {
+    return "";
+  }
+}
+
 function renderTransitSubTab(trip) {
   const route = getFlightRouteForTrip(trip);
   const flightDetails = route.originIata && route.destinationIata ? calculateFlightDistance(route.originIata, route.destinationIata) : null;
@@ -808,10 +817,27 @@ function renderTransitSubTab(trip) {
 
         <h4 style="font-size: 1rem; font-weight: 700; color: var(--ink); margin-bottom: 10px;">Pro Tips for Arrival Day:</h4>
         <ul style="margin: 0; padding-left: 20px; font-size: 0.88rem; color: var(--ink-muted); line-height: 1.6;">
-          ${guide.localTips.map(tip => `<li>${escapeHtml(tip)}</li>`).join('')}
+          ${guide.localTips.map(renderTransitTip).join('')}
         </ul>
       </div>
     </div>
+  `;
+}
+
+function renderTransitTip(tip) {
+  if (typeof tip === "string") return `<li>${escapeHtml(tip)}</li>`;
+  const text = tip?.text || "";
+  const url = sanitizeHref(tip?.url || "");
+  return `
+    <li>
+      ${escapeHtml(text)}
+      ${url ? `
+        <a class="transit-tip-link" href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">
+          ${escapeHtml(tip.linkLabel || "Open link")}
+          ${renderIcon("arrowRight")}
+        </a>
+      ` : ""}
+    </li>
   `;
 }
 
