@@ -23,6 +23,8 @@ const DESTINATION_HEADS_UPS = [
     speed: "Typical France limits: 50 km/h urban, 80 km/h rural, 110 km/h expressway, 130 km/h motorway; rain lowers motorway and rural limits.",
     commute: "Metro and RER coverage is strong, but strikes, works and late-night service gaps can affect transfers.",
     commuteRating: "Good, with disruption checks",
+    commuteProvider: "Île-de-France Mobilités",
+    commuteProviderUrl: "https://www.iledefrance-mobilites.fr/en",
     rules: "Validate transit tickets and keep them until exit; central Paris driving can involve parking, bus-lane and low-emission-zone rules.",
     sources: ["Eau de Paris", "Santé publique France", "European Commission road-safety guidance"],
   },
@@ -35,6 +37,8 @@ const DESTINATION_HEADS_UPS = [
     speed: "Typical Greece limits: 50 km/h urban, 90 km/h rural and up to 130 km/h on motorways unless signs say otherwise.",
     commute: "Island travel leans on buses, taxis and rental cars; build in buffer time outside main towns.",
     commuteRating: "Mixed, plan buffers",
+    commuteProvider: "KTEL Heraklion-Lasithi",
+    commuteProviderUrl: "https://www.ktelherlas.gr/en/",
     rules: "For beaches, monasteries and archaeological sites, check local opening times, dress expectations and access restrictions.",
     sources: ["EEA bathing-water assessment", "Greek Ministry of Health", "European road-safety guidance"],
   },
@@ -47,6 +51,8 @@ const DESTINATION_HEADS_UPS = [
     speed: "Typical city driving is heavily cyclist-aware; follow posted limits and watch turning rules around bike lanes.",
     commute: "Cycling and metro are usually excellent; bikes may beat cars for short central trips.",
     commuteRating: "Excellent",
+    commuteProvider: "DOT",
+    commuteProviderUrl: "https://dinoffentligetransport.dk/en/",
     rules: "Use marked harbour baths for swimming, and keep to bike-lane etiquette if renting a bike.",
     sources: ["Local guidance profile", "Danish Ministry of Health"],
   },
@@ -59,6 +65,8 @@ const DESTINATION_HEADS_UPS = [
     speed: "Urban speed and low-emission rules vary by city; rental drivers should check posted limits before entering the center.",
     commute: "Public transport is usually useful, but airport transfers and late-night service need a quick check.",
     commuteRating: "Usually good",
+    commuteProvider: "Local transit operator",
+    commuteProviderUrl: "",
     rules: "Tourist taxes, beach rules, transit validation and restricted driving zones can apply.",
     sources: ["Local guidance profile"],
   },
@@ -341,6 +349,8 @@ function buildHeadsUps(trip, outdoor = {}, signals = [], mobility = []) {
     detail: mobility.length
       ? `${mobility[0].provider} has nearby availability; nearest station is ${mobility[0].distance}.`
       : profile.commute || "Check transit frequency and late-night coverage before committing to transfers.",
+    actionLabel: profile.commuteProvider ? `Open ${profile.commuteProvider}` : "",
+    actionUrl: profile.commuteProviderUrl || "",
     source: mobility.length ? "GBFS" : "Local guidance profile",
   });
 
@@ -369,6 +379,8 @@ function getDestinationHeadsUpProfile(trip = {}) {
     speed: "Driving limits, tolls and low-emission zones vary locally; follow posted signs.",
     commute: "Check transit frequency, airport transfers and late-night coverage before committing to a route.",
     commuteRating: "Check locally",
+    commuteProvider: "Local transit operator",
+    commuteProviderUrl: "",
     rules: "Look for local tourist taxes, transit validation rules, access restrictions and opening-hour changes.",
     sources: ["Local guidance profile"],
   };

@@ -195,9 +195,7 @@ function renderLiveIntelligenceModules(trip) {
           </div>
         </div>
         <div class="live-intel-list">
-          ${headsUps.length ? headsUps.slice(0, 4).map((item) => `
-            ${renderLiveHeadsUpDisclosure(item)}
-          `).join("").replace(/^/, visibleHeadsUps.length ? "" : "") : `
+          ${visibleHeadsUps.length ? visibleHeadsUps.map(renderLiveHeadsUpDisclosure).join("") : `
             <div class="live-intel-row">
               <span class="live-intel-row__icon">${renderIcon("info")}</span>
               <div class="live-intel-row__body">
@@ -224,6 +222,7 @@ function prioritizeHeadsUps(headsUps = []) {
 function renderLiveHeadsUpDisclosure(item = {}) {
   const title = item.title || "Things to know";
   const detail = item.detail || "";
+  const actionUrl = sanitizeHref(item.actionUrl || "");
   return `
     <details class="live-intel-row live-intel-row--${escapeHtml(item.severity || "info")}">
       <summary class="live-intel-row__summary" aria-label="${escapeHtml(`${title}. Open full note`)}">
@@ -234,6 +233,12 @@ function renderLiveHeadsUpDisclosure(item = {}) {
         </span>
       </summary>
       <p class="live-intel-row__full">${escapeHtml(detail)}</p>
+      ${actionUrl ? `
+        <a class="live-intel-row__link" href="${escapeHtml(actionUrl)}" target="_blank" rel="noopener noreferrer">
+          ${escapeHtml(item.actionLabel || "Open provider")}
+          <span aria-hidden="true">${renderIcon("arrowRight")}</span>
+        </a>
+      ` : ""}
     </details>
   `;
 }
@@ -459,4 +464,13 @@ function escapeHtml(str) {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
+}
+
+function sanitizeHref(value = "") {
+  try {
+    const url = new URL(String(value || "").trim());
+    return ["http:", "https:"].includes(url.protocol) ? url.href : "";
+  } catch {
+    return "";
+  }
 }

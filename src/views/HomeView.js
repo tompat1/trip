@@ -140,7 +140,6 @@ function renderTripIntelligenceCard(trip) {
   const label = isLoading ? "Refreshing" : status.status === "error" ? "Needs attention" : `${liveProviderCount || 0} live sources`;
   const primarySignal = signals[0];
   const visibleHeadsUps = prioritizeHeadsUps(headsUps);
-  const commuteNote = headsUps.find((item) => item.id === "local-commute" || item.type === "commute");
   const facts = [
     {
       icon: "mountain",
@@ -156,11 +155,6 @@ function renderTripIntelligenceCard(trip) {
       icon: "alertTriangle",
       label: primarySignal?.title || outdoor.flood?.label || "Travel signals",
       value: primarySignal?.distance || `${signals.length} active`,
-    },
-    {
-      icon: "bike",
-      label: "Local commute",
-      value: commuteNote?.title ? commuteNote.title.replace(/^Local commute:\s*/i, "") : mobility[0] ? `${mobility[0].bikes} bikes · ${mobility[0].distance}` : "Checking feeds",
     },
   ].filter(Boolean);
 
@@ -208,6 +202,7 @@ function prioritizeHeadsUps(headsUps = []) {
 function renderHeadsUpDisclosure(item = {}) {
   const title = item.title || "Things to know";
   const detail = item.detail || "";
+  const actionUrl = sanitizeHref(item.actionUrl || "");
   return `
     <details class="trip-heads-up trip-heads-up--${escapeHtml(item.severity || "info")}">
       <summary class="trip-heads-up__summary" aria-label="${escapeHtml(`${title}. Open full note`)}">
@@ -219,6 +214,12 @@ function renderHeadsUpDisclosure(item = {}) {
         <small class="trip-heads-up__source">${escapeHtml(item.source || "Guidance")}</small>
       </summary>
       <p class="trip-heads-up__full">${escapeHtml(detail)}</p>
+      ${actionUrl ? `
+        <a class="trip-heads-up__link" href="${escapeHtml(actionUrl)}" target="_blank" rel="noopener noreferrer">
+          ${escapeHtml(item.actionLabel || "Open provider")}
+          <span aria-hidden="true">${renderIcon("arrowRight")}</span>
+        </a>
+      ` : ""}
     </details>
   `;
 }
@@ -377,4 +378,13 @@ function escapeHtml(str) {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
+}
+
+function sanitizeHref(value = "") {
+  try {
+    const url = new URL(String(value || "").trim());
+    return ["http:", "https:"].includes(url.protocol) ? url.href : "";
+  } catch {
+    return "";
+  }
 }
