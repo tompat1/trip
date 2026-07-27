@@ -3,6 +3,7 @@ import test from "node:test";
 import { composeEditorialProfile, createVerifiedFactBundle, validateEditorialProfile } from "../src/enrichment/editorialComposer.js";
 import { createEnrichmentService } from "../src/enrichment/enrichmentService.js";
 import { calculateImageScore, dedupeImages } from "../src/enrichment/mediaAggregator.js";
+import { resolveAirportInput } from "../src/services/airportService.js";
 import { normalizeOpenTripMapPlaces } from "../src/services/openTripMapService.js";
 import { areAliasesEquivalent, buildPlaceAliases, createResolvedPlaceIdentity } from "../src/enrichment/placeResolver.js";
 import { createNormalizedFact, createNormalizedImage, createPlaceProfileContract, ENRICHMENT_COVERAGE } from "../src/enrichment/schemas.js";
@@ -39,6 +40,12 @@ test("resolver keeps known Greek and Latin aliases equivalent", () => {
   assert.ok(aliases.includes("Rethymnon"));
   assert.equal(areAliasesEquivalent("Rethymnon", "Rethymno"), true);
   assert.equal(areAliasesEquivalent("Ηράκλειο", "Iraklio"), true);
+});
+
+test("airport resolver supports city names without diacritics", () => {
+  const gdansk = resolveAirportInput("Gdansk");
+  assert.equal(gdansk?.iata, "GDN");
+  assert.equal(resolveAirportInput("Gdańsk")?.iata, "GDN");
 });
 
 test("Worker request principal distinguishes anonymous, traveler, and admin", () => {

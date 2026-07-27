@@ -757,14 +757,14 @@ function renderTransitSubTab(trip) {
           <label class="transit-route-field">
             <span>From airport</span>
             <div class="airport-autocomplete">
-              <input class="drawer-input airport-autocomplete-input" name="originAirport" type="text" value="${escapeHtml(formatAirportLabel(route.originAirport) || route.originLabel || route.originIata || "")}" placeholder="Copenhagen (CPH)" autocomplete="off" required />
+              <input class="drawer-input airport-autocomplete-input" name="originAirport" type="text" value="${escapeHtml(formatAirportLabel(route.originAirport) || route.originLabel || route.originIata || "")}" placeholder="City or airport, e.g. Gdansk" autocomplete="off" required />
               <div class="airport-autocomplete-menu" role="listbox"></div>
             </div>
           </label>
           <label class="transit-route-field">
             <span>To airport</span>
             <div class="airport-autocomplete">
-              <input class="drawer-input airport-autocomplete-input" name="destinationAirport" type="text" value="${escapeHtml(formatAirportLabel(route.destinationAirport) || route.destinationLabel || route.destinationIata || "")}" placeholder="Paris (CDG)" autocomplete="off" required />
+              <input class="drawer-input airport-autocomplete-input" name="destinationAirport" type="text" value="${escapeHtml(formatAirportLabel(route.destinationAirport) || route.destinationLabel || route.destinationIata || "")}" placeholder="City or airport, e.g. Paris" autocomplete="off" required />
               <div class="airport-autocomplete-menu" role="listbox"></div>
             </div>
           </label>

@@ -429,7 +429,7 @@ async function airportsSearchHandler(context) {
     const token = await fetchAmadeusToken(context);
     const apiBase = context.env.AMADEUS_API_BASE || AMADEUS_API_BASE;
     const searchUrl = new URL(`${apiBase}/v1/reference-data/locations`);
-    searchUrl.searchParams.set("subType", "AIRPORT");
+    searchUrl.searchParams.set("subType", "AIRPORT,CITY");
     searchUrl.searchParams.set("keyword", keyword);
     searchUrl.searchParams.set("sort", "analytics.travelers.score");
     searchUrl.searchParams.set("view", "FULL");
@@ -454,10 +454,10 @@ async function airportsSearchHandler(context) {
     }
 
     const payload = await response.json();
-    const airports = (payload.data || [])
+    const airports = dedupeAirportLocations((payload.data || [])
       .map(normalizeAmadeusAirportLocation)
       .filter((airport) => airport.iata)
-      .slice(0, max);
+    ).slice(0, max);
     return json({
       ok: true,
       status: airports.length ? "ready" : "empty",
@@ -3283,17 +3283,31 @@ function normalizeAmadeusAirportLocation(location = {}) {
   const city = titleCase(address.cityName || location.name || "");
   const country = titleCase(address.countryName || countryCode || "");
   const name = titleCase(location.name || location.detailedName || "");
+  const subType = String(location.subType || "").toUpperCase();
   return {
     iata: normalizeIata(location.iataCode || ""),
-    name: name || location.iataCode || "",
+    name: subType === "CITY" && name && !/airport/i.test(name) ? `${name} airport area` : name || location.iataCode || "",
     city,
     country,
     countryCode,
     flag: countryCodeToFlag(countryCode),
     lat: Number(geo.latitude || 0),
     lng: Number(geo.longitude || 0),
+    subType,
     source: "Amadeus Airport & City Search",
   };
+}
+
+function dedupeAirportLocations(airports = []) {
+  const seen = new Map();
+  for (const airport of airports) {
+    if (!airport?.iata) continue;
+    const existing = seen.get(airport.iata);
+    if (!existing || (existing.subType === "CITY" && airport.subType === "AIRPORT")) {
+      seen.set(airport.iata, airport);
+    }
+  }
+  return [...seen.values()];
 }
 
 function normalizeIata(value = "") {

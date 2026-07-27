@@ -54,7 +54,7 @@ export function renderTripCreateModal() {
               <span class="drawer-label">From city / airport</span>
               <div class="trip-create-input-wrap airport-autocomplete">
                 ${renderIcon("navigation")}
-                <input class="drawer-input trip-create-input airport-autocomplete-input" name="originAirport" type="text" placeholder="Copenhagen (CPH)" autocomplete="off" required />
+                <input class="drawer-input trip-create-input airport-autocomplete-input" name="originAirport" type="text" placeholder="City or airport, e.g. Gdansk" autocomplete="off" required />
                 <div class="airport-autocomplete-menu" role="listbox"></div>
               </div>
             </label>
@@ -63,7 +63,7 @@ export function renderTripCreateModal() {
               <span class="drawer-label">To airport</span>
               <div class="trip-create-input-wrap airport-autocomplete">
                 ${renderIcon("flag")}
-                <input class="drawer-input trip-create-input airport-autocomplete-input" name="destinationAirport" type="text" placeholder="Paris (CDG)" autocomplete="off" required />
+                <input class="drawer-input trip-create-input airport-autocomplete-input" name="destinationAirport" type="text" placeholder="City or airport, e.g. Paris" autocomplete="off" required />
                 <div class="airport-autocomplete-menu" role="listbox"></div>
               </div>
             </label>

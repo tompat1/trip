@@ -22,6 +22,11 @@ export const AIRPORTS_DATABASE = [
   { iata: 'AMS', name: 'Amsterdam Schiphol Airport', city: 'Amsterdam', country: 'Netherlands', flag: '🇳🇱', lat: 52.3105, lng: 4.7683 },
   { iata: 'BUD', name: 'Budapest Ferenc Liszt International Airport', city: 'Budapest', country: 'Hungary', flag: '🇭🇺', lat: 47.4394, lng: 19.2619 },
   { iata: 'WAW', name: 'Warsaw Chopin Airport', city: 'Warsaw', country: 'Poland', flag: '🇵🇱', lat: 52.1657, lng: 20.9671 },
+  { iata: 'GDN', name: 'Gdańsk Lech Wałęsa Airport', city: 'Gdańsk', country: 'Poland', flag: '🇵🇱', lat: 54.3776, lng: 18.4662 },
+  { iata: 'KRK', name: 'Kraków John Paul II International Airport', city: 'Kraków', country: 'Poland', flag: '🇵🇱', lat: 50.0777, lng: 19.7848 },
+  { iata: 'KTW', name: 'Katowice Airport', city: 'Katowice', country: 'Poland', flag: '🇵🇱', lat: 50.4743, lng: 19.0800 },
+  { iata: 'WRO', name: 'Wrocław Airport', city: 'Wrocław', country: 'Poland', flag: '🇵🇱', lat: 51.1027, lng: 16.8858 },
+  { iata: 'POZ', name: 'Poznań-Ławica Airport', city: 'Poznań', country: 'Poland', flag: '🇵🇱', lat: 52.4210, lng: 16.8263 },
   { iata: 'HND', name: 'Tokyo Haneda Airport', city: 'Tokyo', country: 'Japan', flag: '🇯🇵', lat: 35.5494, lng: 139.7798 },
   { iata: 'SYD', name: 'Sydney Kingsford Smith', city: 'Sydney', country: 'Australia', flag: '🇦🇺', lat: -33.9461, lng: 151.1772 }
 ];
@@ -36,12 +41,12 @@ export function getAirportByIata(iata) {
 export function searchAirports(query) {
   const airports = getAllKnownAirports();
   if (!query || query.trim().length === 0) return airports;
-  const q = query.toLowerCase().trim();
+  const q = normalizeAirportSearchText(query);
   return airports.filter(a => 
-    a.iata.toLowerCase().includes(q) ||
-    a.city.toLowerCase().includes(q) ||
-    a.name.toLowerCase().includes(q) ||
-    a.country.toLowerCase().includes(q)
+    normalizeAirportSearchText(a.iata).includes(q) ||
+    normalizeAirportSearchText(a.city).includes(q) ||
+    normalizeAirportSearchText(a.name).includes(q) ||
+    normalizeAirportSearchText(a.country).includes(q)
   );
 }
 
@@ -143,6 +148,14 @@ function registerDynamicAirports(airports = []) {
       flag: airport.flag || "✈️",
     });
   });
+}
+
+function normalizeAirportSearchText(value = "") {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
 }
 
 function getTripApiBase() {
