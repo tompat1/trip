@@ -122,6 +122,7 @@ function renderLiveIntelligenceModules(trip) {
   const signals = trip.travelSignals || trip.tripIntelligence?.signals || [];
   const mobility = trip.mobilityOptions || trip.tripIntelligence?.mobility || [];
   const outdoor = trip.outdoorIntel || trip.tripIntelligence?.outdoor || {};
+  const headsUps = trip.headsUps || trip.tripIntelligence?.headsUps || [];
 
   return `
     <section class="live-intel-grid" aria-label="Live trip intelligence">
@@ -179,6 +180,34 @@ function renderLiveIntelligenceModules(trip) {
               <div class="live-intel-row__body">
                 <strong>${status.status === "loading" ? "Checking local mobility" : "No local GBFS feed matched yet"}</strong>
                 <span>Paris is wired first; more city feeds can be added per destination.</span>
+              </div>
+            </div>
+          `}
+        </div>
+      </div>
+
+      <div class="dashboard-card live-intel-card live-intel-card--wide">
+        <div class="live-intel-card__header">
+          <div>
+            <h3 class="dashboard-card__title" style="margin: 0; font-size: 1.05rem;">Heads-up</h3>
+            <p class="live-intel-card__sub">Water, rules, commute and practical things that can affect the stay</p>
+          </div>
+        </div>
+        <div class="live-intel-list">
+          ${headsUps.length ? headsUps.slice(0, 4).map((item) => `
+            <div class="live-intel-row live-intel-row--${escapeHtml(item.severity || "info")}">
+              <span class="live-intel-row__icon">${renderIcon(item.icon || "info")}</span>
+              <div class="live-intel-row__body">
+                <strong>${escapeHtml(item.title)}</strong>
+                <span>${escapeHtml(item.detail)}</span>
+              </div>
+            </div>
+          `).join("") : `
+            <div class="live-intel-row">
+              <span class="live-intel-row__icon">${renderIcon("info")}</span>
+              <div class="live-intel-row__body">
+                <strong>${status.status === "loading" ? "Checking local heads-up notes" : "Local heads-up notes pending"}</strong>
+                <span>Refresh trip intelligence to update practical travel notes.</span>
               </div>
             </div>
           `}

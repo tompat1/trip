@@ -13,6 +13,45 @@ const GBFS_FEEDS = [
   },
 ];
 
+const DESTINATION_HEADS_UPS = [
+  {
+    match: ["paris", "france"],
+    coastal: false,
+    water: "Paris tap water is closely monitored and generally drinkable; refill fountains are useful for city days.",
+    speed: "Typical France limits: 50 km/h urban, 80 km/h rural, 110 km/h expressway, 130 km/h motorway; rain lowers motorway and rural limits.",
+    commute: "Metro and RER coverage is strong, but strikes, works and late-night service gaps can affect transfers.",
+    rules: "Validate transit tickets and keep them until exit; central Paris driving can involve parking, bus-lane and low-emission-zone rules.",
+    sources: ["Eau de Paris", "European Commission road-safety guidance"],
+  },
+  {
+    match: ["crete", "heraklion", "greece"],
+    coastal: true,
+    water: "Beach water is usually strong across Greece, but check local beach flags and post-rain advisories before swimming.",
+    speed: "Typical Greece limits: 50 km/h urban, 90 km/h rural and up to 130 km/h on motorways unless signs say otherwise.",
+    commute: "Island travel leans on buses, taxis and rental cars; build in buffer time outside main towns.",
+    rules: "For beaches, monasteries and archaeological sites, check local opening times, dress expectations and access restrictions.",
+    sources: ["EEA bathing-water assessment", "European road-safety guidance"],
+  },
+  {
+    match: ["copenhagen", "denmark"],
+    coastal: true,
+    water: "Harbour swimming depends on official swim-zone status; check local signs before entering the water.",
+    speed: "Typical city driving is heavily cyclist-aware; follow posted limits and watch turning rules around bike lanes.",
+    commute: "Cycling and metro are usually excellent; bikes may beat cars for short central trips.",
+    rules: "Use marked harbour baths for swimming, and keep to bike-lane etiquette if renting a bike.",
+    sources: ["Local guidance profile"],
+  },
+  {
+    match: ["barcelona", "lisbon", "amsterdam", "rome"],
+    coastal: true,
+    water: "For beach or canal-adjacent stays, check local bathing notices before swimming.",
+    speed: "Urban speed and low-emission rules vary by city; rental drivers should check posted limits before entering the center.",
+    commute: "Public transport is usually useful, but airport transfers and late-night service need a quick check.",
+    rules: "Tourist taxes, beach rules, transit validation and restricted driving zones can apply.",
+    sources: ["Local guidance profile"],
+  },
+];
+
 export async function fetchTripIntelligence(trip = {}, options = {}) {
   const coordinates = normalizeCoordinates(trip.center);
   if (!coordinates) {
@@ -23,17 +62,19 @@ export async function fetchTripIntelligence(trip = {}, options = {}) {
       signals: [],
       mobility: [],
       civicEvents: [],
+      headsUps: [],
       providerStatus: [],
       updatedAt: new Date().toISOString(),
     };
   }
 
   const [outdoor, signals, mobility, civicEvents] = await Promise.all([
-    fetchOutdoorConditions(coordinates),
+    fetchOutdoorConditions(trip, coordinates),
     fetchTravelSignals(coordinates),
     fetchSharedMobility(trip, coordinates),
     fetchOpenAgendaEvents(trip, coordinates, options),
   ]);
+  const headsUps = buildHeadsUps(trip, outdoor, signals.signals || [], mobility.mobility || []);
 
   const providerStatus = [
     ...(outdoor.providerStatus || []),
@@ -48,20 +89,26 @@ export async function fetchTripIntelligence(trip = {}, options = {}) {
     signals: signals.signals || [],
     mobility: mobility.mobility || [],
     civicEvents: civicEvents.events || [],
+    headsUps,
     providerStatus,
     updatedAt: new Date().toISOString(),
   };
 }
 
-async function fetchOutdoorConditions([lat, lng]) {
+async function fetchOutdoorConditions(trip, [lat, lng]) {
+  const coastal = isCoastalDestination(trip);
   const [elevation, marine, flood] = await Promise.all([
     fetchElevation(lat, lng),
-    fetchMarine(lat, lng),
+    coastal ? fetchMarine(lat, lng) : Promise.resolve({
+      marine: null,
+      status: createStatus("open-meteo-marine", "skipped", "destination-not-coastal", 0),
+    }),
     fetchFlood(lat, lng),
   ]);
   return {
     elevation: elevation.elevation,
     terrainLabel: Number.isFinite(elevation.elevation) ? getTerrainLabel(elevation.elevation) : "Terrain unknown",
+    coastal,
     marine: marine.marine,
     flood: flood.flood,
     providerStatus: [elevation.status, marine.status, flood.status],
@@ -225,6 +272,75 @@ async function fetchOpenAgendaEvents(trip, coordinates, options = {}) {
   } catch (error) {
     return { events: [], providerStatus: [createStatus("openagenda", "error", error?.message || "failed", 0, startedAt)] };
   }
+}
+
+function buildHeadsUps(trip, outdoor = {}, signals = [], mobility = []) {
+  const profile = getDestinationHeadsUpProfile(trip);
+  const headsUps = [];
+  const floodWarning = outdoor.flood?.severity && outdoor.flood.severity !== "info";
+  const naturalSignal = signals[0];
+
+  headsUps.push({
+    id: "water-quality",
+    type: "water",
+    icon: "droplets",
+    severity: floodWarning ? "caution" : "info",
+    title: outdoor.coastal ? "Water quality" : "Tap water and rain runoff",
+    detail: profile.water || "Check local tap-water and bathing advisories, especially after heavy rain.",
+    source: (profile.sources || [])[0] || "Local guidance profile",
+  });
+
+  headsUps.push({
+    id: "speed-limits",
+    type: "driving",
+    icon: "gauge",
+    severity: "info",
+    title: "Speed limits",
+    detail: profile.speed || "Driving limits, tolls and low-emission zones vary locally; follow posted signs.",
+    source: (profile.sources || [])[1] || "Road-safety guidance",
+  });
+
+  headsUps.push({
+    id: "local-commute",
+    type: "commute",
+    icon: "train",
+    severity: mobility.length ? "positive" : "info",
+    title: "Local commute",
+    detail: mobility.length
+      ? `${mobility[0].provider} has nearby availability; nearest station is ${mobility[0].distance}.`
+      : profile.commute || "Check transit frequency and late-night coverage before committing to transfers.",
+    source: mobility.length ? "GBFS" : "Local guidance profile",
+  });
+
+  headsUps.push({
+    id: "tourist-rules",
+    type: "rules",
+    icon: "info",
+    severity: naturalSignal ? "caution" : "info",
+    title: naturalSignal ? "Active local signal" : "Tourist rules",
+    detail: naturalSignal
+      ? `${naturalSignal.title}${naturalSignal.distance ? ` around ${naturalSignal.distance} away` : ""}.`
+      : profile.rules || "Check local transit validation, tourist taxes, opening hours and restricted zones.",
+    source: naturalSignal?.source || "Local guidance profile",
+  });
+
+  return headsUps;
+}
+
+function getDestinationHeadsUpProfile(trip = {}) {
+  const destination = String(trip.destination || "").toLowerCase();
+  return DESTINATION_HEADS_UPS.find((profile) => profile.match.some((key) => destination.includes(key))) || {
+    coastal: false,
+    water: "Check local tap-water and bathing advisories, especially after heavy rain.",
+    speed: "Driving limits, tolls and low-emission zones vary locally; follow posted signs.",
+    commute: "Check transit frequency, airport transfers and late-night coverage before committing to a route.",
+    rules: "Look for local tourist taxes, transit validation rules, access restrictions and opening-hour changes.",
+    sources: ["Local guidance profile"],
+  };
+}
+
+function isCoastalDestination(trip = {}) {
+  return Boolean(getDestinationHeadsUpProfile(trip).coastal);
 }
 
 function normalizeEonetSignal(event = {}, origin) {

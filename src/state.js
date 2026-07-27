@@ -618,6 +618,7 @@ class AppState {
       trip.travelSignals = result.signals || [];
       trip.mobilityOptions = result.mobility || [];
       trip.civicEvents = result.civicEvents || [];
+      trip.headsUps = result.headsUps || [];
       if (trip.civicEvents.length) {
         const existingTitles = new Set((trip.events || []).map((event) => event.title));
         trip.events = [
@@ -807,6 +808,7 @@ class AppState {
     trip.travelSignals = [];
     trip.mobilityOptions = [];
     trip.civicEvents = [];
+    trip.headsUps = [];
     trip.flightSearch = { status: "idle", offers: [], updatedAt: "" };
 
     if (trip.upcomingActivity) {

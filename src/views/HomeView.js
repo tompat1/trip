@@ -133,6 +133,7 @@ function renderTripIntelligenceCard(trip) {
   const outdoor = trip.outdoorIntel || trip.tripIntelligence?.outdoor || {};
   const signals = trip.travelSignals || trip.tripIntelligence?.signals || [];
   const mobility = trip.mobilityOptions || trip.tripIntelligence?.mobility || [];
+  const headsUps = trip.headsUps || trip.tripIntelligence?.headsUps || [];
   const isLoading = status.status === "loading";
   const providerStatus = status.providerStatus || trip.tripIntelligence?.providerStatus || [];
   const liveProviderCount = providerStatus.filter((provider) => provider.status === "ok").length;
@@ -144,11 +145,11 @@ function renderTripIntelligenceCard(trip) {
       label: outdoor.terrainLabel || "Terrain unknown",
       value: Number.isFinite(outdoor.elevation) ? `${outdoor.elevation} m` : "Pending",
     },
-    {
+    outdoor.marine ? {
       icon: "waves",
-      label: outdoor.marine?.label || "Marine context",
-      value: outdoor.marine?.waveHeightMax !== null && outdoor.marine?.waveHeightMax !== undefined ? `${outdoor.marine.waveHeightMax} m waves` : "No signal",
-    },
+      label: outdoor.marine.label || "Marine context",
+      value: outdoor.marine.waveHeightMax !== null && outdoor.marine.waveHeightMax !== undefined ? `${outdoor.marine.waveHeightMax} m waves` : "No signal",
+    } : null,
     {
       icon: "alertTriangle",
       label: primarySignal?.title || outdoor.flood?.label || "Travel signals",
@@ -159,14 +160,14 @@ function renderTripIntelligenceCard(trip) {
       label: mobility[0]?.title || "Shared mobility",
       value: mobility[0] ? `${mobility[0].bikes} bikes · ${mobility[0].distance}` : "Checking feeds",
     },
-  ];
+  ].filter(Boolean);
 
   return `
     <section class="trip-intel-card card-pattern-poly" aria-label="Trip intelligence">
       <div class="trip-intel-card__header">
         <div>
           <h3 class="trip-intel-card__title">Trip intelligence</h3>
-          <p class="trip-intel-card__subtitle">Outdoor context, safety signals and nearby services.</p>
+          <p class="trip-intel-card__subtitle">Outdoor context, safety signals, commute notes and things to know.</p>
         </div>
         <div class="trip-intel-card__actions">
           <span class="badge ${status.status === "error" ? "badge--warning" : "badge--info"} voice-mono">${escapeHtml(label)}</span>
@@ -184,6 +185,20 @@ function renderTripIntelligenceCard(trip) {
           </div>
         `).join("")}
       </div>
+      ${headsUps.length ? `
+        <div class="trip-heads-up-list" aria-label="Things to know">
+          ${headsUps.slice(0, 4).map((item) => `
+            <div class="trip-heads-up trip-heads-up--${escapeHtml(item.severity || "info")}">
+              <span class="trip-heads-up__icon">${renderIcon(item.icon || "info")}</span>
+              <div class="trip-heads-up__body">
+                <strong>${escapeHtml(item.title)}</strong>
+                <span>${escapeHtml(item.detail)}</span>
+              </div>
+              <small class="trip-heads-up__source">${escapeHtml(item.source || "Guidance")}</small>
+            </div>
+          `).join("")}
+        </div>
+      ` : ""}
     </section>
   `;
 }
