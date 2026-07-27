@@ -73,6 +73,66 @@ test("Worker force media refresh requires admin", async () => {
   assert.equal(payload.error.code, "forbidden");
 });
 
+test("Worker user moments preserves uploaded media URLs", async () => {
+  const rows = [];
+  const env = {
+    TRIP_DB: {
+      prepare(sql) {
+        return {
+          bind(...args) {
+            return {
+              async run() {
+                assert.match(sql, /INSERT INTO user_moments/);
+                rows.push({
+                  id: args[0],
+                  trip_id: args[1],
+                  type: args[2],
+                  title: args[3],
+                  text: args[4],
+                  media_url: args[5],
+                  date: args[6],
+                });
+                return { success: true };
+              },
+              async all() {
+                assert.match(sql, /FROM user_moments/);
+                return { results: rows };
+              },
+            };
+          },
+          async all() {
+            assert.match(sql, /FROM user_moments/);
+            return { results: rows };
+          },
+        };
+      },
+    },
+  };
+
+  const dataUrl = "data:image/png;base64,abc123";
+  const createResponse = await worker.fetch(new Request("https://trip.test/api/user/moments", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      id: "m-heraklion-photo",
+      tripId: "crete",
+      type: "photo",
+      title: "Heraklion photo",
+      media_url: dataUrl,
+      date: "2026-07-26",
+    }),
+  }), env, {});
+
+  assert.equal(createResponse.status, 200);
+  const created = await createResponse.json();
+  assert.equal(created.moment.media_url, dataUrl);
+
+  const listResponse = await worker.fetch(new Request("https://trip.test/api/user/moments"), env, {});
+  const listed = await listResponse.json();
+  assert.equal(listed.moments[0].media_url, dataUrl);
+  assert.equal(listed.moments[0].trip_id, "crete");
+});
+
 test("OpenTripMap service normalizes tourism POIs", () => {
   const places = normalizeOpenTripMapPlaces([{
     xid: "W123",

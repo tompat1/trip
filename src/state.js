@@ -6,6 +6,7 @@ import { fetchConcertsForTrip } from "./services/concertService.js";
 import { findPrimaryAirportForDestination, formatAirportLabel, getAirportByIata } from "./services/airportService.js";
 import { normalizeFlightType, searchFlightsForTrip } from "./services/flightService.js";
 import { fetchTripIntelligence } from "./services/tripDataGateway.js";
+import { readStoredMoments, saveStoredMoment, saveStoredMoments } from "./services/momentStore.js";
 
 function getDefaultPlanViewMode() {
   if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
@@ -113,6 +114,32 @@ function normalizeTourismIdea(place = {}, kind = "poi") {
     openingHours: place.openingHours || "",
     categories: place.categories || [category],
     kind,
+  };
+}
+
+function normalizeMomentRecord(moment = {}) {
+  const mediaUrl = moment.media_url || moment.mediaUrl || "";
+  let tags = moment.tags || [];
+  if (typeof tags === "string") {
+    try {
+      tags = JSON.parse(tags);
+    } catch {
+      tags = tags ? [tags] : [];
+    }
+  }
+
+  return {
+    ...moment,
+    tripId: moment.tripId || moment.trip_id || "paris",
+    media_url: mediaUrl,
+    mediaUrl,
+    date: moment.date || String(moment.created_at || moment.createdAt || new Date().toISOString()).slice(0, 10),
+    createdAt: moment.createdAt || moment.created_at || "",
+    updatedAt: moment.updatedAt || moment.updated_at || "",
+    tags: Array.isArray(tags) ? tags : [],
+    placeTitle: moment.placeTitle || moment.place_title || "",
+    placeCategory: moment.placeCategory || moment.place_category || "",
+    geoLabel: moment.geoLabel || moment.geo_label || "",
   };
 }
 
@@ -244,10 +271,58 @@ class AppState {
     this.listeners = new Set();
     this.checkBackendHealth();
     this.loadD1Trips();
+    this.loadPersistedMoments();
     this.refreshWeather();
     this.refreshTourismDiscovery();
     this.refreshEventDiscovery();
     this.refreshTripIntelligence();
+  }
+
+  async loadPersistedMoments() {
+    try {
+      const localMoments = await readStoredMoments();
+      if (localMoments.length) {
+        this.mergeMoments(localMoments);
+      }
+
+      const remoteMoments = await enrichmentService.fetchMoments().catch(() => []);
+      if (remoteMoments.length) {
+        this.mergeMoments(remoteMoments);
+        const momentsWithMedia = this.moments.filter((moment) => moment.media_url || moment.mediaUrl);
+        if (momentsWithMedia.length) saveStoredMoments(momentsWithMedia).catch(() => {});
+      }
+    } catch (error) {
+      console.warn("Moment restore fallback:", error);
+    }
+  }
+
+  mergeMoments(incomingMoments = []) {
+    const byId = new Map(this.moments.map((moment) => [moment.id, moment]));
+    incomingMoments.map(normalizeMomentRecord).filter((moment) => moment.id).forEach((incoming) => {
+      const existing = byId.get(incoming.id);
+      if (!existing) {
+        byId.set(incoming.id, incoming);
+        return;
+      }
+
+      byId.set(incoming.id, {
+        ...incoming,
+        ...existing,
+        media_url: existing.media_url || incoming.media_url || incoming.mediaUrl || "",
+        mediaUrl: existing.mediaUrl || incoming.mediaUrl || incoming.media_url || "",
+        tags: existing.tags || incoming.tags,
+        placeTitle: existing.placeTitle || incoming.placeTitle || incoming.place_title || "",
+        placeCategory: existing.placeCategory || incoming.placeCategory || incoming.place_category || "",
+        geoLabel: existing.geoLabel || incoming.geoLabel || incoming.geo_label || "",
+      });
+    });
+
+    this.moments = Array.from(byId.values()).sort((a, b) => {
+      const aTime = new Date(a.createdAt || a.created_at || a.groupCapturedAt || a.date || 0).getTime();
+      const bTime = new Date(b.createdAt || b.created_at || b.groupCapturedAt || b.date || 0).getTime();
+      return bTime - aTime;
+    });
+    this.notify();
   }
 
   toggleQuickCapture(open) {
@@ -1004,11 +1079,13 @@ class AppState {
       id: `m_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
       tripId: momentInput.tripId || this.quickCaptureTripId || this.activeTripId,
       date: new Date().toISOString().split("T")[0],
+      createdAt: new Date().toISOString(),
       ...momentInput
     };
 
     this.moments.unshift(newMoment);
     this.notify();
+    saveStoredMoment(newMoment).catch((error) => console.warn("Moment local save fallback:", error));
 
     // Async sync with Cloudflare D1
     try {
@@ -1025,6 +1102,7 @@ class AppState {
     if (!moment) return;
     Object.assign(moment, updates, { updatedAt: new Date().toISOString() });
     this.notify();
+    saveStoredMoment(moment).catch((error) => console.warn("Moment local update fallback:", error));
   }
 
   // --- Cloudflare Worker & OpenStreetMap Integration Methods ---

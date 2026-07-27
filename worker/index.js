@@ -3611,13 +3611,14 @@ async function userMomentsCreateHandler({ request, env }) {
   const type = body.type || "note";
   const title = body.title || "";
   const text = body.text || "";
+  const mediaUrl = body.media_url || body.mediaUrl || "";
   const date = body.date || new Date().toISOString().split("T")[0];
 
   try {
     await env.TRIP_DB.prepare(
-      `INSERT INTO user_moments (id, trip_id, type, title, text, date) VALUES (?, ?, ?, ?, ?, ?)`
-    ).bind(id, tripId, type, title, text, date).run();
-    return json({ ok: true, moment: { id, tripId, type, title, text, date } });
+      `INSERT INTO user_moments (id, trip_id, type, title, text, media_url, date) VALUES (?, ?, ?, ?, ?, ?, ?)`
+    ).bind(id, tripId, type, title, text, mediaUrl, date).run();
+    return json({ ok: true, moment: { id, tripId, trip_id: tripId, type, title, text, media_url: mediaUrl, date } });
   } catch (e) {
     return jsonError("db_error", e.message, 500);
   }
