@@ -4518,6 +4518,13 @@ textarea {
   font-size: 0.78rem;
 }
 
+.trip-create-starters-note {
+  margin: -2px 0 0;
+  color: var(--ink-soft);
+  font-size: 0.72rem;
+  line-height: 1.35;
+}
+
 .trip-create-error {
   min-height: 18px;
   color: var(--red);

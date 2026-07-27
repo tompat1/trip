@@ -124,6 +124,7 @@ export function renderTripCreateModal() {
               </label>
             `).join("")}
           </div>
+          <p class="trip-create-starters-note">These only add starter items to your checklist.</p>
 
           <p class="trip-create-error" id="trip-create-error" aria-live="polite"></p>
 
