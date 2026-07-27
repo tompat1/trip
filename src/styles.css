@@ -684,25 +684,25 @@ textarea {
 
 .trip-stage-ribbon {
   position: absolute;
-  top: -24px;
-  left: -18px;
+  top: -36px;
+  right: -34px;
   z-index: 5;
-  width: clamp(72px, 15vw, 104px);
-  aspect-ratio: 3 / 2;
-  object-fit: cover;
+  width: clamp(143px, 20.9vw, 237px);
+  aspect-ratio: 994 / 305;
+  object-fit: contain;
   object-position: center;
-  border-radius: 8px;
-  opacity: 0.96;
-  filter: drop-shadow(0 8px 18px rgba(23, 24, 23, 0.16));
+  opacity: 0.98;
+  filter:
+    drop-shadow(0 9px 10px rgba(23, 24, 23, 0.22))
+    drop-shadow(0 2px 3px rgba(23, 24, 23, 0.12));
   pointer-events: none;
 }
 
 @media (max-width: 540px) {
   .trip-stage-ribbon {
-    top: -15px;
-    left: -10px;
-    width: 64px;
-    border-radius: 7px;
+    top: -22px;
+    right: -24px;
+    width: 210px;
   }
 }
 
@@ -817,12 +817,19 @@ textarea {
 
 .trip-context-card>.trip-stage-ribbon {
   position: absolute;
-  top: -15px;
-  left: auto;
-  right: -5px;
+  top: 8px;
+  right: -10px;
   z-index: 6;
-  width: clamp(66px, 12vw, 92px);
+  width: 122px;
   pointer-events: none;
+}
+
+@media (max-width: 540px) {
+  .trip-context-card>.trip-stage-ribbon {
+    top: 8px;
+    right: -10px;
+    width: 122px;
+  }
 }
 
 .card-eyebrow-row {

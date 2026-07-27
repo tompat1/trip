@@ -2,9 +2,9 @@ import { state } from "../state.js";
 import { renderIcon } from "../utils/icons.js";
 import { TRIP_LOGO_SVG } from "./BrandAssets.js";
 import { getTripDateStatus } from "../utils/tripDates.js";
-import ribbonLive from "../assets/trip_small_ribbon_live.webp";
-import ribbonPlan from "../assets/trip_small_ribbon_plan.webp";
-import ribbonRemember from "../assets/trip_small_ribbon_rmbr.webp";
+import ribbonLive from "../assets/trip_badge_ribbon_live.webp";
+import ribbonPlan from "../assets/trip_badge_ribbon_plan.webp";
+import ribbonRemember from "../assets/trip_badge_ribbon_rmbr.webp";
 
 export function renderHeader() {
   const isLanding = state.activeView === "landing";
@@ -59,10 +59,9 @@ export function renderHeader() {
       </div>
 
       <div class="trip-context-card trip-context-card--${tripStage}">
-        <img class="trip-stage-ribbon" src="${ribbon.src}" alt="" aria-hidden="true" />
+        <img class="trip-stage-ribbon" src="${ribbon.src}" alt="${escapeHtml(ribbon.label)}" />
         <div class="trip-context-card__header">
           <div class="card-eyebrow-row">
-            <span class="eyebrow-pill eyebrow-pill--${tripStage}">${ribbon.label}</span>
             <div class="trip-selector-wrap">
               <select class="trip-select-dropdown" data-action="select-trip-dropdown">
                 ${allTrips.map(t => {
