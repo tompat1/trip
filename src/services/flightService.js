@@ -2,7 +2,7 @@ import { calculateFlightDistance, findPrimaryAirportForDestination, getAirportBy
 
 export const FLIGHT_TYPE_OPTIONS = [
   { id: "regular", label: "Regular airlines", hint: "Network carriers, better schedules, stronger baggage options." },
-  { id: "lowfare", label: "Low-fare jets", hint: "Ryanair, Wizz Air, easyJet style fares and secondary airports." },
+  { id: "lowfare", label: "Low-fare jets", hint: "Ryanair, Wizz Air, easyJet, Jet2 and secondary-airport fares." },
   { id: "charter", label: "Charter", hint: "Seasonal leisure flights, package-holiday friendly routes." },
 ];
 
@@ -13,9 +13,18 @@ const FALLBACK_AIRLINES = {
     { airline: "Lufthansa", code: "LH", score: 84 },
   ],
   lowfare: [
-    { airline: "Ryanair", code: "FR", score: 88 },
-    { airline: "Wizz Air", code: "W6", score: 84 },
-    { airline: "easyJet", code: "U2", score: 82 },
+    { airline: "Ryanair", code: "FR", score: 94 },
+    { airline: "Wizz Air", code: "W6", score: 91 },
+    { airline: "easyJet", code: "U2", score: 89 },
+    { airline: "Jet2", code: "LS", score: 86 },
+    { airline: "Vueling", code: "VY", score: 84 },
+    { airline: "Transavia", code: "HV", score: 82 },
+    { airline: "Volotea", code: "V7", score: 80 },
+    { airline: "Eurowings", code: "EW", score: 78 },
+    { airline: "Norwegian", code: "DY", score: 76 },
+    { airline: "Pegasus", code: "PC", score: 74 },
+    { airline: "SunExpress", code: "XQ", score: 72 },
+    { airline: "PLAY", code: "OG", score: 70 },
   ],
   charter: [
     { airline: "Sunclass Airlines", code: "DK", score: 86 },
@@ -107,9 +116,9 @@ export function createEstimatedFlightOffers(query = {}) {
   const basePrice = getBasePrice(distance.distanceKm, type);
 
   return airlines.map((airline, index) => {
-    const departHour = type === "charter" ? 7 + index * 2 : 6 + index * 4;
-    const stops = type === "regular" && index === 2 ? 1 : 0;
-    const price = Math.round(basePrice + index * (type === "lowfare" ? 24 : 46) + stops * 35);
+    const departHour = type === "charter" ? 7 + (index % 5) * 2 : 6 + (index % 4) * 4;
+    const stops = type === "regular" && index === 2 ? 1 : type === "lowfare" && index > 7 ? 1 : 0;
+    const price = Math.round(basePrice + index * (type === "lowfare" ? 13 : 46) + stops * 35);
     return {
       id: `estimate-${query.originIata}-${query.destinationIata}-${type}-${index}`,
       airline: airline.airline,

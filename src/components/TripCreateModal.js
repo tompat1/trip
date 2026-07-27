@@ -1,7 +1,6 @@
 import { state } from "../state.js";
 import { renderIcon } from "../utils/icons.js";
 import { TRIP_STAMP_SVG } from "./BrandAssets.js";
-import { AIRPORTS_DATABASE, formatAirportLabel } from "../services/airportService.js";
 import { FLIGHT_TYPE_OPTIONS } from "../services/flightService.js";
 
 const TRIP_LENGTH_OPTIONS = [
@@ -53,17 +52,19 @@ export function renderTripCreateModal() {
 
             <label class="trip-create-field">
               <span class="drawer-label">From city / airport</span>
-              <div class="trip-create-input-wrap">
+              <div class="trip-create-input-wrap airport-autocomplete">
                 ${renderIcon("navigation")}
-                <input class="drawer-input trip-create-input" name="originAirport" type="text" placeholder="Copenhagen (CPH)" list="trip-create-airports" autocomplete="off" required />
+                <input class="drawer-input trip-create-input airport-autocomplete-input" name="originAirport" type="text" placeholder="Copenhagen (CPH)" autocomplete="off" required />
+                <div class="airport-autocomplete-menu" role="listbox"></div>
               </div>
             </label>
 
             <label class="trip-create-field">
               <span class="drawer-label">To airport</span>
-              <div class="trip-create-input-wrap">
+              <div class="trip-create-input-wrap airport-autocomplete">
                 ${renderIcon("flag")}
-                <input class="drawer-input trip-create-input" name="destinationAirport" type="text" placeholder="Paris (CDG)" list="trip-create-airports" autocomplete="off" required />
+                <input class="drawer-input trip-create-input airport-autocomplete-input" name="destinationAirport" type="text" placeholder="Paris (CDG)" autocomplete="off" required />
+                <div class="airport-autocomplete-menu" role="listbox"></div>
               </div>
             </label>
 
@@ -73,10 +74,6 @@ export function renderTripCreateModal() {
             </label>
 
           </div>
-
-          <datalist id="trip-create-airports">
-            ${AIRPORTS_DATABASE.map((airport) => `<option value="${escapeHtml(formatAirportLabel(airport))}"></option>`).join("")}
-          </datalist>
 
           <div class="trip-create-field">
             <span class="drawer-label">Length</span>

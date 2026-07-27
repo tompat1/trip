@@ -3,7 +3,7 @@ import { renderCalendarGrid } from "../components/CalendarGrid.js";
 import { renderHeader } from "../components/Header.js";
 import { renderIcon } from "../utils/icons.js";
 import { TRIP_STAMP_SVG } from "../components/BrandAssets.js";
-import { calculateFlightDistance, getAirportByIata } from "../services/airportService.js";
+import { calculateFlightDistance, formatAirportLabel } from "../services/airportService.js";
 import { getDestinationTransitGuide } from "../services/transitService.js";
 import { FLIGHT_TYPE_OPTIONS, getFlightRouteForTrip } from "../services/flightService.js";
 import { CONCERTS_DATABASE } from "../services/concertService.js";
@@ -752,6 +752,34 @@ function renderTransitSubTab(trip) {
         
         <h3 style="font-family: 'Playfair Display', serif; font-size: 1.4rem; margin: 10px 0 6px; color: var(--ink);">Flight Route: ${escapeHtml(route.originIata || "Origin")} to ${escapeHtml(route.destinationIata || "Destination")}</h3>
         <p style="font-size: 0.9rem; color: var(--ink-muted); margin-bottom: 16px;">${escapeHtml(route.originAirport?.name || route.originLabel || "Choose origin airport")} → ${escapeHtml(route.destinationAirport?.name || route.destinationLabel || "Choose destination airport")}</p>
+
+        <form id="transit-flight-route-form" class="transit-route-form" autocomplete="off">
+          <label class="transit-route-field">
+            <span>From airport</span>
+            <div class="airport-autocomplete">
+              <input class="drawer-input airport-autocomplete-input" name="originAirport" type="text" value="${escapeHtml(formatAirportLabel(route.originAirport) || route.originLabel || route.originIata || "")}" placeholder="Copenhagen (CPH)" autocomplete="off" required />
+              <div class="airport-autocomplete-menu" role="listbox"></div>
+            </div>
+          </label>
+          <label class="transit-route-field">
+            <span>To airport</span>
+            <div class="airport-autocomplete">
+              <input class="drawer-input airport-autocomplete-input" name="destinationAirport" type="text" value="${escapeHtml(formatAirportLabel(route.destinationAirport) || route.destinationLabel || route.destinationIata || "")}" placeholder="Paris (CDG)" autocomplete="off" required />
+              <div class="airport-autocomplete-menu" role="listbox"></div>
+            </div>
+          </label>
+          <label class="transit-route-field">
+            <span>Flight type</span>
+            <select class="drawer-input" name="flightType">
+              ${FLIGHT_TYPE_OPTIONS.map((option) => `
+                <option value="${escapeHtml(option.id)}" ${option.id === route.flightType ? "selected" : ""}>${escapeHtml(option.label)}</option>
+              `).join("")}
+            </select>
+          </label>
+          <button class="btn btn--outline btn--sm transit-route-form__save" type="submit">
+            ${renderIcon("save")} Save route
+          </button>
+        </form>
 
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin-bottom: 16px;">
           <div style="background: var(--paper-subtle); padding: 12px; border-radius: var(--radius-md); border: 1px solid var(--line-light);">

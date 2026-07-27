@@ -26,20 +26,44 @@ export const AIRPORTS_DATABASE = [
   { iata: 'SYD', name: 'Sydney Kingsford Smith', city: 'Sydney', country: 'Australia', flag: '🇦🇺', lat: -33.9461, lng: 151.1772 }
 ];
 
+const dynamicAirports = new Map();
+
 export function getAirportByIata(iata) {
   if (!iata) return null;
-  return AIRPORTS_DATABASE.find(a => a.iata.toUpperCase() === iata.toUpperCase()) || null;
+  return getAllKnownAirports().find(a => a.iata.toUpperCase() === iata.toUpperCase()) || null;
 }
 
 export function searchAirports(query) {
-  if (!query || query.trim().length === 0) return AIRPORTS_DATABASE;
+  const airports = getAllKnownAirports();
+  if (!query || query.trim().length === 0) return airports;
   const q = query.toLowerCase().trim();
-  return AIRPORTS_DATABASE.filter(a => 
+  return airports.filter(a => 
     a.iata.toLowerCase().includes(q) ||
     a.city.toLowerCase().includes(q) ||
     a.name.toLowerCase().includes(q) ||
     a.country.toLowerCase().includes(q)
   );
+}
+
+export async function searchAirportsWorldwide(query, options = {}) {
+  const local = searchAirports(query).slice(0, options.localLimit || 12);
+  const keyword = String(query || "").trim();
+  if (keyword.length < 2) return local;
+
+  try {
+    const apiBase = getTripApiBase();
+    if (!apiBase && typeof window === "undefined") return local;
+    const url = new URL(`${apiBase}/api/airports/search`, typeof window !== "undefined" ? window.location.origin : "http://localhost");
+    url.searchParams.set("keyword", keyword);
+    url.searchParams.set("max", String(options.max || 18));
+    const res = await (options.fetchImpl || fetch)(url.href, { headers: { Accept: "application/json" } });
+    if (!res.ok && res.status !== 503) throw new Error(`airport-search-http-${res.status}`);
+    const data = await res.json().catch(() => ({}));
+    registerDynamicAirports(data.airports || []);
+    return dedupeAirports([...(data.airports || []), ...local]).slice(0, options.max || 24);
+  } catch {
+    return local;
+  }
 }
 
 export function formatAirportLabel(airport) {
@@ -92,4 +116,40 @@ export function calculateFlightDistance(iataFrom, iataTo) {
     fromAirport: from,
     toAirport: to
   };
+}
+
+function dedupeAirports(airports = []) {
+  const seen = new Map();
+  for (const airport of airports) {
+    if (!airport?.iata) continue;
+    const iata = airport.iata.toUpperCase();
+    if (!seen.has(iata)) seen.set(iata, { ...airport, iata });
+  }
+  return [...seen.values()];
+}
+
+function getAllKnownAirports() {
+  return dedupeAirports([...dynamicAirports.values(), ...AIRPORTS_DATABASE]);
+}
+
+function registerDynamicAirports(airports = []) {
+  airports.forEach((airport) => {
+    if (!airport?.iata) return;
+    dynamicAirports.set(airport.iata.toUpperCase(), {
+      ...airport,
+      iata: airport.iata.toUpperCase(),
+      city: airport.city || airport.name || "",
+      country: airport.country || "",
+      flag: airport.flag || "✈️",
+    });
+  });
+}
+
+function getTripApiBase() {
+  const envBase = import.meta.env?.VITE_TRIP_API_BASE;
+  if (envBase) return envBase;
+  if (typeof window !== "undefined" && /localhost|127\.0\.0\.1/.test(window.location.hostname)) {
+    return "https://trip.thomasrynell.workers.dev";
+  }
+  return "";
 }

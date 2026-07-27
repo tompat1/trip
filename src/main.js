@@ -13,7 +13,7 @@ import { renderTripCreateModal } from "./components/TripCreateModal.js";
 import { renderQuickCaptureWidget } from "./components/QuickCaptureWidget.js";
 import { fetchConcertsForTrip } from "./services/concertService.js";
 import { fetchOpenMeteoWeather } from "./services/weatherService.js";
-import { resolveAirportInput } from "./services/airportService.js";
+import { formatAirportLabel, resolveAirportInput, searchAirportsWorldwide } from "./services/airportService.js";
 import { normalizeFlightType } from "./services/flightService.js";
 import { formatTripDateRangeFromParts } from "./utils/tripDates.js";
 import { enrichmentService } from "./enrichment/enrichmentService.js";
@@ -292,7 +292,22 @@ function escapeHtml(str) {
 // Global Event Listeners Delegation
 document.addEventListener("click", async (e) => {
   const target = e.target.closest("[data-nav], [data-action], [data-subtab], [data-viewmode], [data-day-select], [data-map-day-filter], [data-trip-length], [data-cat], [data-subfilter]");
-  if (!target) return;
+  if (!target) {
+    if (!e.target.closest?.(".airport-autocomplete")) closeAirportAutocompleteMenus();
+    return;
+  }
+
+  if (target.dataset.action === "select-airport-suggestion") {
+    const wrapper = target.closest(".airport-autocomplete");
+    const input = wrapper?.querySelector(".airport-autocomplete-input");
+    if (input) {
+      input.value = target.dataset.airportValue || "";
+      input.dispatchEvent(new Event("change", { bubbles: true }));
+      input.focus();
+    }
+    closeAirportAutocompleteMenus();
+    return;
+  }
 
   // Bottom dock navigation
   if (target.dataset.nav) {
@@ -744,6 +759,9 @@ document.addEventListener("input", (e) => {
     state.setSearchQuery(e.target.value, { notify: false });
     updateSearchResultsInPlace(e.target);
   }
+  if (e.target.matches(".airport-autocomplete-input")) {
+    updateAirportAutocomplete(e.target);
+  }
 });
 
 document.addEventListener("keydown", (e) => {
@@ -780,7 +798,77 @@ function updateSearchResultsInPlace(input) {
   }
 }
 
+function closeAirportAutocompleteMenus() {
+  document.querySelectorAll(".airport-autocomplete-menu.is-open").forEach((menu) => {
+    menu.classList.remove("is-open");
+    menu.innerHTML = "";
+  });
+}
+
+async function updateAirportAutocomplete(input) {
+  const wrapper = input.closest(".airport-autocomplete");
+  const menu = wrapper?.querySelector(".airport-autocomplete-menu");
+  if (!menu) return;
+
+  const query = input.value.trim();
+  const seq = String(Date.now());
+  input.dataset.airportSearchSeq = seq;
+
+  if (query.length < 2) {
+    menu.classList.remove("is-open");
+    menu.innerHTML = "";
+    return;
+  }
+
+  menu.classList.add("is-open");
+  menu.innerHTML = `<div class="airport-autocomplete-status">Searching airports...</div>`;
+
+  const airports = await searchAirportsWorldwide(query, { max: 18 });
+  if (input.dataset.airportSearchSeq !== seq) return;
+
+  if (!airports.length) {
+    menu.innerHTML = `<div class="airport-autocomplete-status">No airports found</div>`;
+    return;
+  }
+
+  menu.innerHTML = airports.slice(0, 10).map((airport) => {
+    const label = formatAirportLabel(airport);
+    return `
+      <button type="button" class="airport-autocomplete-option" data-action="select-airport-suggestion" data-airport-value="${escapeHtml(label)}" role="option">
+        <span class="airport-autocomplete-option__code voice-mono">${escapeHtml(airport.iata)}</span>
+        <span class="airport-autocomplete-option__body">
+          <strong>${escapeHtml(`${airport.flag || "✈️"} ${airport.city || airport.name}`)}</strong>
+          <small>${escapeHtml([airport.name, airport.country].filter(Boolean).join(" · "))}</small>
+        </span>
+      </button>
+    `;
+  }).join("");
+}
+
 document.addEventListener("submit", async (e) => {
+  if (e.target.id === "transit-flight-route-form") {
+    e.preventDefault();
+    const form = e.target;
+    const originAirport = resolveAirportInput(form.originAirport?.value || "");
+    const destinationAirport = resolveAirportInput(form.destinationAirport?.value || "");
+    const flightType = normalizeFlightType(form.flightType?.value || "regular");
+
+    if (!originAirport || !destinationAirport) {
+      showToast("Choose valid from and to airports.");
+      if (!originAirport) form.originAirport?.focus();
+      else form.destinationAirport?.focus();
+      return;
+    }
+
+    await state.updateTripFlightRoute(state.activeTripId, {
+      originAirport,
+      destinationAirport,
+      flightType,
+    });
+    showToast(`Flight route saved: ${originAirport.iata} to ${destinationAirport.iata}.`);
+    return;
+  }
+
   if (e.target.id !== "trip-create-form") return;
   e.preventDefault();
 

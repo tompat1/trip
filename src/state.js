@@ -924,6 +924,40 @@ class AppState {
     }
   }
 
+  async updateTripFlightRoute(tripId, updates = {}) {
+    const trip = tripsData[tripId];
+    if (!trip) return;
+    const originAirport = updates.originAirport || getAirportByIata(updates.originIata);
+    const destinationAirport = updates.destinationAirport || getAirportByIata(updates.destinationIata);
+    const flightType = normalizeFlightType(updates.flightType || trip.flightRoute?.flightType || trip.flightPreference || "regular");
+
+    trip.flightRoute = {
+      ...(trip.flightRoute || {}),
+      originIata: originAirport?.iata || "",
+      destinationIata: destinationAirport?.iata || "",
+      originLabel: formatAirportLabel(originAirport),
+      destinationLabel: formatAirportLabel(destinationAirport),
+      flightType,
+      departureDate: trip.startDate || trip.flightRoute?.departureDate || "",
+    };
+    trip.flightPreference = flightType;
+    trip.flightSearch = { status: "idle", offers: [], updatedAt: "" };
+
+    this.notify();
+
+    try {
+      await enrichmentService.updateTrip(tripId, {
+        originIata: trip.flightRoute.originIata,
+        destinationIata: trip.flightRoute.destinationIata,
+        originLabel: trip.flightRoute.originLabel,
+        destinationLabel: trip.flightRoute.destinationLabel,
+        flightType: trip.flightRoute.flightType,
+      });
+    } catch (e) {
+      console.warn("D1 trip flight route update fallback:", e);
+    }
+  }
+
   async searchFlightsForActiveTrip(options = {}) {
     const trip = this.activeTrip;
     if (!trip) return;

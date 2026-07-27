@@ -15,6 +15,7 @@ const ALIASES = {
   pin: "MapPin",
   mapPin: "MapPin",
   "map-pin": "MapPin",
+  save: "Save",
   trash: "Trash2",
   share: "Share2",
   bookOpen: "BookOpen",

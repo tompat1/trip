@@ -64,6 +64,7 @@ function matchRoute(method, pathname) {
     ["POST", /^\/api\/location\/resolve$/, locationResolveHandler],
     ["GET", /^\/api\/places\/nearby$/, nearbyPlacesHandler],
     ["GET", /^\/api\/events\/discover$/, eventsDiscoverHandler],
+    ["GET", /^\/api\/airports\/search$/, airportsSearchHandler],
     ["GET", /^\/api\/flights\/search$/, flightsSearchHandler],
     ["POST", /^\/api\/places\/enrich-location$/, enrichLocationHandler],
     ["GET", /^\/api\/places\/enrich$/, enrichPlaceHandler],
@@ -395,6 +396,85 @@ async function eventsDiscoverHandler(context) {
     query: { coordinates, destination, radiusKm, keyword, artists },
     providerStatus: [ticketmaster.providerStatus, bandsintown.providerStatus],
   }, context));
+}
+
+async function airportsSearchHandler(context) {
+  const url = new URL(context.request.url);
+  const keyword = String(url.searchParams.get("keyword") || url.searchParams.get("q") || "").trim();
+  const countryCode = String(url.searchParams.get("countryCode") || "").trim().toUpperCase();
+  const max = clampNumber(url.searchParams.get("max"), 1, 30, 12);
+
+  if (keyword.length < 2) {
+    return json({
+      ok: true,
+      status: "empty",
+      source: "amadeus-airport-city-search",
+      airports: [],
+      providerStatus: [{ provider: "amadeus-airports", status: "empty", error: "keyword-too-short", count: 0 }],
+    });
+  }
+
+  if (!context.env.AMADEUS_CLIENT_ID || !context.env.AMADEUS_CLIENT_SECRET) {
+    return json({
+      ok: true,
+      status: "not-configured",
+      source: "amadeus-airport-city-search",
+      airports: [],
+      providerStatus: [{ provider: "amadeus-airports", status: "not-configured", error: "missing-amadeus-secrets", count: 0 }],
+    }, 503);
+  }
+
+  const startedAt = Date.now();
+  try {
+    const token = await fetchAmadeusToken(context);
+    const apiBase = context.env.AMADEUS_API_BASE || AMADEUS_API_BASE;
+    const searchUrl = new URL(`${apiBase}/v1/reference-data/locations`);
+    searchUrl.searchParams.set("subType", "AIRPORT");
+    searchUrl.searchParams.set("keyword", keyword);
+    searchUrl.searchParams.set("sort", "analytics.travelers.score");
+    searchUrl.searchParams.set("view", "FULL");
+    searchUrl.searchParams.set("page[limit]", String(max));
+    if (/^[A-Z]{2}$/.test(countryCode)) searchUrl.searchParams.set("countryCode", countryCode);
+
+    const response = await fetch(searchUrl.href, {
+      headers: {
+        Accept: "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    if (!response.ok) {
+      return json({
+        ok: true,
+        status: "fallback",
+        source: "amadeus-airport-city-search",
+        airports: [],
+        error: `amadeus-airports-http-${response.status}`,
+        providerStatus: [{ provider: "amadeus-airports", status: "error", error: `http-${response.status}`, count: 0, latencyMs: Date.now() - startedAt }],
+      });
+    }
+
+    const payload = await response.json();
+    const airports = (payload.data || [])
+      .map(normalizeAmadeusAirportLocation)
+      .filter((airport) => airport.iata)
+      .slice(0, max);
+    return json({
+      ok: true,
+      status: airports.length ? "ready" : "empty",
+      source: "amadeus-airport-city-search",
+      airports,
+      providerStatus: [{ provider: "amadeus-airports", status: "ok", error: "", count: airports.length, latencyMs: Date.now() - startedAt }],
+    });
+  } catch (error) {
+    return json({
+      ok: true,
+      status: "fallback",
+      source: "amadeus-airport-city-search",
+      airports: [],
+      error: error?.message || "amadeus-airport-search-failed",
+      providerStatus: [{ provider: "amadeus-airports", status: "error", error: error?.message || "failed", count: 0, latencyMs: Date.now() - startedAt }],
+    });
+  }
 }
 
 async function flightsSearchHandler(context) {
@@ -3196,6 +3276,26 @@ function normalizeAmadeusFlightOffers(payload = {}, query = {}) {
   });
 }
 
+function normalizeAmadeusAirportLocation(location = {}) {
+  const address = location.address || {};
+  const geo = location.geoCode || {};
+  const countryCode = String(address.countryCode || "").toUpperCase();
+  const city = titleCase(address.cityName || location.name || "");
+  const country = titleCase(address.countryName || countryCode || "");
+  const name = titleCase(location.name || location.detailedName || "");
+  return {
+    iata: normalizeIata(location.iataCode || ""),
+    name: name || location.iataCode || "",
+    city,
+    country,
+    countryCode,
+    flag: countryCodeToFlag(countryCode),
+    lat: Number(geo.latitude || 0),
+    lng: Number(geo.longitude || 0),
+    source: "Amadeus Airport & City Search",
+  };
+}
+
 function normalizeIata(value = "") {
   const match = String(value).trim().toUpperCase().match(/^[A-Z]{3}$/);
   return match ? match[0] : "";
@@ -3213,6 +3313,19 @@ function formatIsoDuration(value = "") {
   if (hours && minutes) return `${hours}h ${minutes}m`;
   if (hours) return `${hours}h`;
   return `${minutes}m`;
+}
+
+function titleCase(value = "") {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/\b([a-z])/g, (match) => match.toUpperCase())
+    .replace(/\b(\w)'(\w)/g, (_, a, b) => `${a}'${b.toLowerCase()}`);
+}
+
+function countryCodeToFlag(countryCode = "") {
+  const code = String(countryCode || "").toUpperCase();
+  if (!/^[A-Z]{2}$/.test(code)) return "✈️";
+  return [...code].map((char) => String.fromCodePoint(char.charCodeAt(0) + 127397)).join("");
 }
 
 async function fetchTicketmasterEvents(context, options = {}) {
