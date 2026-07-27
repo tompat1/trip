@@ -13,7 +13,7 @@ import { renderTripCreateModal } from "./components/TripCreateModal.js";
 import { renderQuickCaptureWidget } from "./components/QuickCaptureWidget.js";
 import { fetchConcertsForTrip } from "./services/concertService.js";
 import { fetchOpenMeteoWeather } from "./services/weatherService.js";
-import { formatAirportLabel, resolveAirportInput, searchAirportsWorldwide } from "./services/airportService.js";
+import { formatAirportLabel, getFlightRouteDisplay, resolveAirportInput, searchAirportsWorldwide } from "./services/airportService.js";
 import { normalizeFlightType } from "./services/flightService.js";
 import { formatTripDateRangeFromParts } from "./utils/tripDates.js";
 import { enrichmentService } from "./enrichment/enrichmentService.js";
@@ -304,6 +304,7 @@ document.addEventListener("click", async (e) => {
       input.value = target.dataset.airportValue || "";
       input.dispatchEvent(new Event("change", { bubbles: true }));
       input.focus();
+      updateTripCreateRoutePreview(input.form);
     }
     closeAirportAutocompleteMenus();
     return;
@@ -320,6 +321,7 @@ document.addEventListener("click", async (e) => {
       }
       return;
     }
+    if (nav === "plan") state.setPlanSubTab("overview");
     state.setView(nav);
     return;
   }
@@ -761,6 +763,7 @@ document.addEventListener("input", (e) => {
   }
   if (e.target.matches(".airport-autocomplete-input")) {
     updateAirportAutocomplete(e.target);
+    updateTripCreateRoutePreview(e.target.form);
   }
 });
 
@@ -843,6 +846,29 @@ async function updateAirportAutocomplete(input) {
       </button>
     `;
   }).join("");
+}
+
+function updateTripCreateRoutePreview(form) {
+  if (!form || form.id !== "trip-create-form") return;
+  const titleEl = form.querySelector("[data-trip-create-route-title]");
+  const subtitleEl = form.querySelector("[data-trip-create-route-subtitle]");
+  if (!titleEl || !subtitleEl) return;
+
+  const originValue = form.originAirport?.value || "";
+  const destinationValue = form.destinationAirport?.value || "";
+  const originAirport = resolveAirportInput(originValue);
+  const destinationAirport = resolveAirportInput(destinationValue);
+  const routeDisplay = getFlightRouteDisplay({
+    originAirport,
+    destinationAirport,
+    originIata: originAirport?.iata || "",
+    destinationIata: destinationAirport?.iata || "",
+    originLabel: originAirport ? formatAirportLabel(originAirport) : originValue.trim() || "Choose origin airport",
+    destinationLabel: destinationAirport ? formatAirportLabel(destinationAirport) : destinationValue.trim() || "Choose destination airport",
+  });
+
+  titleEl.textContent = `Flight Route: ${routeDisplay.title}`;
+  subtitleEl.textContent = routeDisplay.subtitle;
 }
 
 document.addEventListener("submit", async (e) => {

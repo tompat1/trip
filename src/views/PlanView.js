@@ -3,16 +3,16 @@ import { renderCalendarGrid } from "../components/CalendarGrid.js";
 import { renderHeader } from "../components/Header.js";
 import { renderIcon } from "../utils/icons.js";
 import { TRIP_STAMP_SVG } from "../components/BrandAssets.js";
-import { calculateFlightDistance, formatAirportLabel } from "../services/airportService.js";
+import { calculateFlightDistance, formatAirportLabel, getFlightRouteDisplay } from "../services/airportService.js";
 import { getDestinationTransitGuide } from "../services/transitService.js";
 import { FLIGHT_TYPE_OPTIONS, getFlightRouteForTrip } from "../services/flightService.js";
 import { CONCERTS_DATABASE } from "../services/concertService.js";
 
 const SUB_TABS = [
   { id: "overview", label: "Overview", icon: renderIcon("compass") },
+  { id: "transit", label: "Transit", icon: renderIcon("navigation") },
   { id: "explore", label: "Explore", icon: renderIcon("sparkles") },
   { id: "plan", label: "Plan", icon: renderIcon("calendar") },
-  { id: "transit", label: "Transit", icon: renderIcon("navigation") },
   { id: "journal", label: "Journal", icon: renderIcon("bookOpen") },
   { id: "story", label: "Story", icon: renderIcon("award") }
 ];
@@ -740,6 +740,7 @@ function renderTransitSubTab(trip) {
   const guide = getDestinationTransitGuide(trip.destination);
   const flightType = FLIGHT_TYPE_OPTIONS.find((option) => option.id === route.flightType) || FLIGHT_TYPE_OPTIONS[0];
   const flightSearch = trip.flightSearch || { status: "idle", offers: [] };
+  const routeDisplay = getFlightRouteDisplay(route, flightSearch);
 
   return `
     <div class="transit-subtab-container" style="display: flex; flex-direction: column; gap: 20px; padding-bottom: 40px;">
@@ -750,8 +751,8 @@ function renderTransitSubTab(trip) {
           <span class="voice-mono" style="font-size: 0.8rem; color: var(--journey-orange); font-weight: 700;">${escapeHtml(getFlightProviderLabel(flightSearch))}</span>
         </div>
         
-        <h3 style="font-family: 'Playfair Display', serif; font-size: 1.4rem; margin: 10px 0 6px; color: var(--ink);">Flight Route: ${escapeHtml(route.originIata || "Origin")} to ${escapeHtml(route.destinationIata || "Destination")}</h3>
-        <p style="font-size: 0.9rem; color: var(--ink-muted); margin-bottom: 16px;">${escapeHtml(route.originAirport?.name || route.originLabel || "Choose origin airport")} → ${escapeHtml(route.destinationAirport?.name || route.destinationLabel || "Choose destination airport")}</p>
+        <h3 class="transit-flight-title">Flight Route: ${escapeHtml(routeDisplay.title)}</h3>
+        <p class="transit-flight-subtitle">${escapeHtml(routeDisplay.subtitle)}</p>
 
         <form id="transit-flight-route-form" class="transit-route-form" autocomplete="off">
           <label class="transit-route-field">

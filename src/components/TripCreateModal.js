@@ -1,6 +1,7 @@
 import { state } from "../state.js";
 import { renderIcon } from "../utils/icons.js";
 import { TRIP_STAMP_SVG } from "./BrandAssets.js";
+import { getFlightRouteDisplay } from "../services/airportService.js";
 import { FLIGHT_TYPE_OPTIONS } from "../services/flightService.js";
 
 const TRIP_LENGTH_OPTIONS = [
@@ -21,6 +22,7 @@ export function renderTripCreateModal() {
   if (!state.tripCreateOpen) return "";
 
   const today = new Date().toISOString().split("T")[0];
+  const routeDisplay = getFlightRouteDisplay();
 
   return `
     <div class="trip-create-overlay">
@@ -107,8 +109,9 @@ export function renderTripCreateModal() {
               <span class="route-node-pin route-node-pin--end">${renderIcon("flag")}</span>
             </div>
             <div class="trip-create-preview__copy">
-              <strong>Trip board setup</strong>
-              <span>Checklist, flight search, day plan, timeline, and map will be ready to fill.</span>
+              <strong class="trip-create-route-title" data-trip-create-route-title>Flight Route: ${escapeHtml(routeDisplay.title)}</strong>
+              <span class="trip-create-route-subtitle" data-trip-create-route-subtitle>${escapeHtml(routeDisplay.subtitle)}</span>
+              <small>Checklist, flight search, day plan, timeline, and map will be ready to fill.</small>
             </div>
           </div>
 

@@ -139,6 +139,27 @@ export function formatAirportLabel(airport) {
   return `${airport.city} (${airport.iata}) - ${airport.name}`;
 }
 
+export function getAirportDisplayName(airport, fallback = "") {
+  if (airport?.name && airport?.iata) return `${airport.flag || ""} ${airport.name} (${airport.iata})`.trim();
+  if (airport?.name) return airport.name;
+  return fallback;
+}
+
+export function getFlightRouteDisplay(route = {}, flightSearch = {}) {
+  const searchRoute = flightSearch.route || {};
+  const originAirport = route.originAirport || searchRoute.originAirport || null;
+  const destinationAirport = route.destinationAirport || searchRoute.destinationAirport || null;
+  const originIata = route.originIata || searchRoute.originIata || originAirport?.iata || "";
+  const destinationIata = route.destinationIata || searchRoute.destinationIata || destinationAirport?.iata || "";
+  const originName = getAirportDisplayName(originAirport, route.originLabel || searchRoute.originLabel || originIata || "Choose origin airport");
+  const destinationName = getAirportDisplayName(destinationAirport, route.destinationLabel || searchRoute.destinationLabel || destinationIata || "Choose destination airport");
+
+  return {
+    title: `${originIata || "Origin"} to ${destinationIata || "Destination"}`,
+    subtitle: `${originName} → ${destinationName}`,
+  };
+}
+
 export function resolveAirportInput(input = "") {
   const value = input.trim();
   if (!value) return null;

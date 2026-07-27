@@ -3487,6 +3487,21 @@ textarea {
   border-top: 1px solid var(--line-light);
 }
 
+.transit-flight-title {
+  margin: 10px 0 6px;
+  color: var(--ink);
+  font-family: "Playfair Display", serif;
+  font-size: 1.4rem;
+  line-height: 1.15;
+}
+
+.transit-flight-subtitle {
+  margin: 0 0 16px;
+  color: var(--ink-muted);
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
 .transit-route-form {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(150px, 0.55fr) auto;
@@ -4470,6 +4485,12 @@ textarea {
   color: var(--ink-muted);
   font-size: 0.78rem;
   line-height: 1.4;
+}
+
+.trip-create-preview__copy small {
+  color: var(--ink-soft);
+  font-size: 0.72rem;
+  line-height: 1.35;
 }
 
 .trip-create-starter {
