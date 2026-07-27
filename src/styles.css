@@ -2117,7 +2117,7 @@ textarea {
     padding: 9px;
   }
 
-  .trip-intel-card .trip-heads-up:nth-child(n+3) {
+  .trip-intel-card .trip-heads-up:nth-child(n+4) {
     display: none;
   }
 

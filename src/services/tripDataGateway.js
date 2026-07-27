@@ -18,33 +18,41 @@ const DESTINATION_HEADS_UPS = [
     match: ["paris", "france"],
     coastal: false,
     water: "Paris tap water is closely monitored and generally drinkable; refill fountains are useful for city days.",
+    alcohol: "Alcohol sales or free public offers to under-18s are prohibited; bars and shops may ask for ID.",
+    drinkDriving: "Drink-driving limit: 0.5 g/L blood alcohol for most drivers; 0.2 g/L for probationary licence holders.",
     speed: "Typical France limits: 50 km/h urban, 80 km/h rural, 110 km/h expressway, 130 km/h motorway; rain lowers motorway and rural limits.",
     commute: "Metro and RER coverage is strong, but strikes, works and late-night service gaps can affect transfers.",
     rules: "Validate transit tickets and keep them until exit; central Paris driving can involve parking, bus-lane and low-emission-zone rules.",
-    sources: ["Eau de Paris", "European Commission road-safety guidance"],
+    sources: ["Eau de Paris", "Santé publique France", "European Commission road-safety guidance"],
   },
   {
     match: ["crete", "heraklion", "greece"],
     coastal: true,
     water: "Beach water is usually strong across Greece, but check local beach flags and post-rain advisories before swimming.",
+    alcohol: "Alcohol may not be sold, supplied or offered to minors under 18; bars and night venues may check ID.",
+    drinkDriving: "Drink-driving limit: 0.5 mg/ml for most drivers; 0.2 mg/ml for motorbike, moped, novice and professional drivers.",
     speed: "Typical Greece limits: 50 km/h urban, 90 km/h rural and up to 130 km/h on motorways unless signs say otherwise.",
     commute: "Island travel leans on buses, taxis and rental cars; build in buffer time outside main towns.",
     rules: "For beaches, monasteries and archaeological sites, check local opening times, dress expectations and access restrictions.",
-    sources: ["EEA bathing-water assessment", "European road-safety guidance"],
+    sources: ["EEA bathing-water assessment", "Greek Ministry of Health", "European road-safety guidance"],
   },
   {
     match: ["copenhagen", "denmark"],
     coastal: true,
     water: "Harbour swimming depends on official swim-zone status; check local signs before entering the water.",
+    alcohol: "Alcohol sales are 16+ for lower-strength drinks, 18+ for drinks over 6% ABV, and 18+ in nightlife zones from 22:00 to 08:00.",
+    drinkDriving: "Drink-driving limit: 0.5 mg/ml blood alcohol for standard, new and professional drivers.",
     speed: "Typical city driving is heavily cyclist-aware; follow posted limits and watch turning rules around bike lanes.",
     commute: "Cycling and metro are usually excellent; bikes may beat cars for short central trips.",
     rules: "Use marked harbour baths for swimming, and keep to bike-lane etiquette if renting a bike.",
-    sources: ["Local guidance profile"],
+    sources: ["Local guidance profile", "Danish Ministry of Health"],
   },
   {
     match: ["barcelona", "lisbon", "amsterdam", "rome"],
     coastal: true,
     water: "For beach or canal-adjacent stays, check local bathing notices before swimming.",
+    alcohol: "Alcohol age limits vary by country and venue; expect ID checks and stricter rules around nightlife, beaches and public spaces.",
+    drinkDriving: "Drink-driving limits vary by country and driver type; check the local BAC limit before renting or driving.",
     speed: "Urban speed and low-emission rules vary by city; rental drivers should check posted limits before entering the center.",
     commute: "Public transport is usually useful, but airport transfers and late-night service need a quick check.",
     rules: "Tourist taxes, beach rules, transit validation and restricted driving zones can apply.",
@@ -291,13 +299,33 @@ function buildHeadsUps(trip, outdoor = {}, signals = [], mobility = []) {
   });
 
   headsUps.push({
+    id: "alcohol-age",
+    type: "rules",
+    icon: "wine",
+    severity: "info",
+    title: "Drinking age",
+    detail: profile.alcohol || "Check the local drinking-age and alcohol-sales rules before buying alcohol or entering nightlife venues.",
+    source: (profile.sources || [])[1] || "Local guidance profile",
+  });
+
+  headsUps.push({
+    id: "drink-driving-limit",
+    type: "driving",
+    icon: "car",
+    severity: "caution",
+    title: "Drink-driving limit",
+    detail: profile.drinkDriving || "Drink-driving limits vary by country and driver type; check the local BAC limit before renting or driving.",
+    source: (profile.sources || [])[2] || (profile.sources || [])[1] || "Road-safety guidance",
+  });
+
+  headsUps.push({
     id: "speed-limits",
     type: "driving",
     icon: "gauge",
     severity: "info",
     title: "Speed limits",
     detail: profile.speed || "Driving limits, tolls and low-emission zones vary locally; follow posted signs.",
-    source: (profile.sources || [])[1] || "Road-safety guidance",
+    source: (profile.sources || [])[2] || (profile.sources || [])[1] || "Road-safety guidance",
   });
 
   headsUps.push({
@@ -332,6 +360,8 @@ function getDestinationHeadsUpProfile(trip = {}) {
   return DESTINATION_HEADS_UPS.find((profile) => profile.match.some((key) => destination.includes(key))) || {
     coastal: false,
     water: "Check local tap-water and bathing advisories, especially after heavy rain.",
+    alcohol: "Check the local drinking-age and alcohol-sales rules before buying alcohol or entering nightlife venues.",
+    drinkDriving: "Drink-driving limits vary by country and driver type; check the local BAC limit before renting or driving.",
     speed: "Driving limits, tolls and low-emission zones vary locally; follow posted signs.",
     commute: "Check transit frequency, airport transfers and late-night coverage before committing to a route.",
     rules: "Look for local tourist taxes, transit validation rules, access restrictions and opening-hour changes.",
