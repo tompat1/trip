@@ -4,6 +4,14 @@ const NOMINATIM_REVERSE_ENDPOINT = "https://nominatim.openstreetmap.org/reverse"
 const COMMONS_API = "https://commons.wikimedia.org/w/api.php";
 const WIKIDATA_ENTITY_DATA = "https://www.wikidata.org/wiki/Special:EntityData/";
 const OPENVERSE_IMAGES_API = "https://api.openverse.org/v1/images/";
+const FLICKR_PHOTOS_SEARCH_API = "https://www.flickr.com/services/rest/";
+const MAPILLARY_IMAGES_API = "https://graph.mapillary.com/images";
+const PANORAMAX_API_BASE = "https://api.panoramax.xyz/api";
+const UNSPLASH_SEARCH_PHOTOS_API = "https://api.unsplash.com/search/photos";
+const PEXELS_SEARCH_PHOTOS_API = "https://api.pexels.com/v1/search";
+const RIJKSMUSEUM_COLLECTION_API = "https://www.rijksmuseum.nl/api/en/collection";
+const SMITHSONIAN_SEARCH_API = "https://api.si.edu/openaccess/api/v1.0/search";
+const ARTIC_ARTWORK_SEARCH_API = "https://api.artic.edu/api/v1/artworks/search";
 const AMADEUS_API_BASE = "https://test.api.amadeus.com";
 const OVERPASS_ENDPOINTS = [
   "https://overpass-api.de/api/interpreter",
@@ -1332,8 +1340,17 @@ async function fetchAndPersistProviderMedia(context, place = {}) {
       website: place.website || place.officialWebsite || place.identity?.officialWebsite,
     });
     const providerResults = await Promise.all([
+      runWorkerMediaProvider("official-source", () => searchOfficialMediaForPlace(normalizedPlace)),
       runWorkerMediaProvider("commons", () => searchCommonsMediaForPlace(normalizedPlace, context.request)),
       runWorkerMediaProvider("openverse", () => searchOpenverseMediaForPlace(normalizedPlace, context.request)),
+      runOptionalWorkerMediaProvider("flickr", context.env?.FLICKR_API_KEY, "FLICKR_API_KEY", () => searchFlickrMediaForPlace(normalizedPlace, context)),
+      runOptionalWorkerMediaProvider("mapillary", context.env?.MAPILLARY_ACCESS_TOKEN, "MAPILLARY_ACCESS_TOKEN", () => searchMapillaryMediaForPlace(normalizedPlace, context)),
+      runWorkerMediaProvider("panoramax", () => searchPanoramaxMediaForPlace(normalizedPlace, context)),
+      runOptionalWorkerMediaProvider("rijksmuseum", context.env?.RIJKSMUSEUM_API_KEY, "RIJKSMUSEUM_API_KEY", () => searchRijksmuseumMediaForPlace(normalizedPlace, context)),
+      runOptionalWorkerMediaProvider("smithsonian", context.env?.SMITHSONIAN_API_KEY, "SMITHSONIAN_API_KEY", () => searchSmithsonianMediaForPlace(normalizedPlace, context)),
+      runWorkerMediaProvider("artic", () => searchArticMediaForPlace(normalizedPlace, context.request)),
+      runOptionalWorkerMediaProvider("unsplash", context.env?.UNSPLASH_ACCESS_KEY, "UNSPLASH_ACCESS_KEY", () => searchUnsplashMediaForPlace(normalizedPlace, context)),
+      runOptionalWorkerMediaProvider("pexels", context.env?.PEXELS_API_KEY, "PEXELS_API_KEY", () => searchPexelsMediaForPlace(normalizedPlace, context)),
     ]);
     const candidates = dedupeWorkerImages(providerResults.flatMap((result) => result.images));
     const ranked = candidates
@@ -1417,6 +1434,24 @@ async function runWorkerMediaProvider(provider, fn) {
       },
     };
   }
+}
+
+async function runOptionalWorkerMediaProvider(provider, credential, credentialName, fn) {
+  if (!credential) {
+    return {
+      provider,
+      images: [],
+      status: {
+        provider,
+        status: "not-configured",
+        error: `missing-${credentialName}`,
+        count: 0,
+        latencyMs: 0,
+        checkedAt: new Date().toISOString(),
+      },
+    };
+  }
+  return runWorkerMediaProvider(provider, fn);
 }
 
 async function persistPlaceImages(context, placeId, images = []) {
@@ -1567,6 +1602,179 @@ async function searchOpenverseMediaForPlace(place, request) {
   return dedupeWorkerImages(all);
 }
 
+async function searchOfficialMediaForPlace(place = {}) {
+  const imageUrl = sanitizeMediaUrl(place.imageUrl || place.image?.url || "");
+  if (!imageUrl) return [];
+  const sourcePageUrl = sanitizeUrl(place.imageSourceUrl || place.website || place.officialWebsite || place.sourceUrl || imageUrl);
+  return [{
+    id: stableId("official-image", [place.id, imageUrl]),
+    placeId: place.id || "",
+    provider: "official-source",
+    providerId: imageUrl,
+    imageUrl,
+    thumbnailUrl: imageUrl,
+    sourcePageUrl,
+    creatorName: place.imageCreator || "",
+    creatorUrl: "",
+    licenseCode: "",
+    licenseName: place.imageLicense || "",
+    licenseUrl: sanitizeUrl(place.imageLicenseUrl || ""),
+    attributionText: place.imageAttribution || place.source || "Official or curated place image",
+    width: Number(place.imageWidth || 0),
+    height: Number(place.imageHeight || 0),
+    aspectRatio: Number(place.imageWidth || 0) && Number(place.imageHeight || 0) ? Number(place.imageWidth) / Number(place.imageHeight) : 0,
+    exactLocation: Boolean(place.userAdded || place.sourceRole === "user"),
+    approximateLocation: !place.userAdded,
+    illustrativeOnly: false,
+    visualRole: "hero",
+    sourceTrust: 0.98,
+    mediaTier: inferOfficialMediaTier(sourcePageUrl),
+    checkedAt: new Date().toISOString(),
+    reviewStatus: "pending",
+    rawTitle: place.canonicalName || place.title || place.name || "",
+  }];
+}
+
+async function searchFlickrMediaForPlace(place, context) {
+  const key = context.env?.FLICKR_API_KEY;
+  const all = [];
+  for (const query of getWorkerMediaQueries(place).slice(0, 2)) {
+    const url = new URL(FLICKR_PHOTOS_SEARCH_API);
+    url.searchParams.set("method", "flickr.photos.search");
+    url.searchParams.set("api_key", key);
+    url.searchParams.set("format", "json");
+    url.searchParams.set("nojsoncallback", "1");
+    url.searchParams.set("safe_search", "1");
+    url.searchParams.set("content_type", "1");
+    url.searchParams.set("media", "photos");
+    url.searchParams.set("sort", "relevance");
+    url.searchParams.set("per_page", "12");
+    url.searchParams.set("text", query);
+    url.searchParams.set("extras", "license,date_taken,owner_name,geo,o_dims,url_l,url_c,url_z,url_m,url_o,tags");
+    if (Array.isArray(place.coordinates)) {
+      const [lat, lng] = place.coordinates;
+      url.searchParams.set("has_geo", "1");
+      url.searchParams.set("lat", String(lat));
+      url.searchParams.set("lon", String(lng));
+      url.searchParams.set("radius", String(Math.min(2, Math.max(0.2, getWorkerImageSearchRadius(place) / 1000))));
+      url.searchParams.set("radius_units", "km");
+    }
+    const response = await fetchWithTimeout(url, context.request, 7500);
+    if (!response.ok) continue;
+    const data = await response.json();
+    all.push(...(data.photos?.photo || []).map((photo) => normalizeFlickrImage(photo, place)));
+  }
+  return dedupeWorkerImages(all);
+}
+
+async function searchMapillaryMediaForPlace(place, context) {
+  if (!Array.isArray(place.coordinates)) return [];
+  const [lat, lng] = place.coordinates;
+  const radius = Math.min(0.012, Math.max(0.0015, getWorkerImageSearchRadius(place) / 111000));
+  const url = new URL(MAPILLARY_IMAGES_API);
+  url.searchParams.set("access_token", context.env?.MAPILLARY_ACCESS_TOKEN || "");
+  url.searchParams.set("fields", "id,thumb_1024_url,thumb_2048_url,computed_geometry,geometry,captured_at,creator,width,height");
+  url.searchParams.set("bbox", `${lng - radius},${lat - radius},${lng + radius},${lat + radius}`);
+  url.searchParams.set("limit", "16");
+  const response = await fetchWithTimeout(url, context.request, 7500);
+  if (!response.ok) return [];
+  const data = await response.json();
+  return dedupeWorkerImages((data.data || []).map((image) => normalizeMapillaryImage(image, place)));
+}
+
+async function searchPanoramaxMediaForPlace(place, context) {
+  if (!Array.isArray(place.coordinates)) return [];
+  const [lat, lng] = place.coordinates;
+  const radius = Math.min(0.012, Math.max(0.0015, getWorkerImageSearchRadius(place) / 111000));
+  const base = context.env?.PANORAMAX_API_BASE || PANORAMAX_API_BASE;
+  const url = new URL(`${base.replace(/\/$/, "")}/search`);
+  url.searchParams.set("bbox", `${lng - radius},${lat - radius},${lng + radius},${lat + radius}`);
+  url.searchParams.set("limit", "16");
+  const response = await fetchWithTimeout(url, context.request, 7500);
+  if (!response.ok) return [];
+  const data = await response.json();
+  return dedupeWorkerImages((data.features || data.items || []).map((feature) => normalizePanoramaxImage(feature, place, base)));
+}
+
+async function searchRijksmuseumMediaForPlace(place, context) {
+  const key = context.env?.RIJKSMUSEUM_API_KEY;
+  const all = [];
+  for (const query of getWorkerMediaQueries(place).slice(0, 2)) {
+    const url = new URL(RIJKSMUSEUM_COLLECTION_API);
+    url.searchParams.set("key", key);
+    url.searchParams.set("q", query);
+    url.searchParams.set("imgonly", "True");
+    url.searchParams.set("ps", "8");
+    const response = await fetchWithTimeout(url, context.request, 7500);
+    if (!response.ok) continue;
+    const data = await response.json();
+    all.push(...(data.artObjects || []).map((item) => normalizeRijksmuseumImage(item, place)));
+  }
+  return dedupeWorkerImages(all);
+}
+
+async function searchSmithsonianMediaForPlace(place, context) {
+  const key = context.env?.SMITHSONIAN_API_KEY;
+  const all = [];
+  for (const query of getWorkerMediaQueries(place).slice(0, 2)) {
+    const url = new URL(SMITHSONIAN_SEARCH_API);
+    url.searchParams.set("api_key", key);
+    url.searchParams.set("q", query);
+    url.searchParams.set("rows", "8");
+    const response = await fetchWithTimeout(url, context.request, 7500);
+    if (!response.ok) continue;
+    const data = await response.json();
+    all.push(...(data.response?.rows || []).map((item) => normalizeSmithsonianImage(item, place)));
+  }
+  return dedupeWorkerImages(all);
+}
+
+async function searchArticMediaForPlace(place, request) {
+  const all = [];
+  for (const query of getWorkerMediaQueries(place).slice(0, 2)) {
+    const url = new URL(ARTIC_ARTWORK_SEARCH_API);
+    url.searchParams.set("q", query);
+    url.searchParams.set("query[term][is_public_domain]", "true");
+    url.searchParams.set("limit", "8");
+    url.searchParams.set("fields", "id,title,image_id,artist_display,is_public_domain,thumbnail");
+    const response = await fetchWithTimeout(url, request, 7500);
+    if (!response.ok) continue;
+    const data = await response.json();
+    all.push(...(data.data || []).map((item) => normalizeArticImage(item, place, data.config?.iiif_url)));
+  }
+  return dedupeWorkerImages(all);
+}
+
+async function searchUnsplashMediaForPlace(place, context) {
+  const query = getEditorialImageQuery(place);
+  const url = new URL(UNSPLASH_SEARCH_PHOTOS_API);
+  url.searchParams.set("query", query);
+  url.searchParams.set("per_page", "8");
+  url.searchParams.set("orientation", "landscape");
+  url.searchParams.set("content_filter", "high");
+  const response = await fetchWithTimeout(url, context.request, 7500, {
+    Authorization: `Client-ID ${context.env?.UNSPLASH_ACCESS_KEY}`,
+    "Accept-Version": "v1",
+  });
+  if (!response.ok) return [];
+  const data = await response.json();
+  return dedupeWorkerImages((data.results || []).map((photo) => normalizeUnsplashImage(photo, place)));
+}
+
+async function searchPexelsMediaForPlace(place, context) {
+  const query = getEditorialImageQuery(place);
+  const url = new URL(PEXELS_SEARCH_PHOTOS_API);
+  url.searchParams.set("query", query);
+  url.searchParams.set("per_page", "8");
+  url.searchParams.set("orientation", "landscape");
+  const response = await fetchWithTimeout(url, context.request, 7500, {
+    Authorization: context.env?.PEXELS_API_KEY || "",
+  });
+  if (!response.ok) return [];
+  const data = await response.json();
+  return dedupeWorkerImages((data.photos || []).map((photo) => normalizePexelsImage(photo, place)));
+}
+
 function normalizeCommonsPages(pages = [], place = {}, defaults = {}) {
   return pages.map((page) => {
     const info = page.imageinfo?.[0];
@@ -1639,6 +1847,285 @@ function normalizeOpenverseImage(result = {}, place = {}) {
   };
 }
 
+function normalizeFlickrImage(photo = {}, place = {}) {
+  const imageUrl = sanitizeUrl(photo.url_o || photo.url_l || photo.url_c || photo.url_z || photo.url_m || "");
+  const width = Number(photo.width_o || photo.width_l || photo.width_c || photo.width_z || photo.width_m || 0);
+  const height = Number(photo.height_o || photo.height_l || photo.height_c || photo.height_z || photo.height_m || 0);
+  const latitude = Number(photo.latitude);
+  const longitude = Number(photo.longitude);
+  const exactLocation = Number.isFinite(latitude) && Number.isFinite(longitude);
+  return {
+    id: stableId("flickr-image", [photo.id, imageUrl]),
+    placeId: place.id || "",
+    provider: "flickr",
+    providerId: String(photo.id || ""),
+    imageUrl,
+    thumbnailUrl: sanitizeUrl(photo.url_z || photo.url_m || imageUrl),
+    sourcePageUrl: sanitizeUrl(photo.owner && photo.id ? `https://www.flickr.com/photos/${photo.owner}/${photo.id}` : ""),
+    creatorName: truncateText(photo.ownername || "", 180),
+    creatorUrl: photo.owner ? `https://www.flickr.com/photos/${photo.owner}` : "",
+    licenseCode: truncateText(photo.license || "", 80),
+    licenseName: photo.license ? `Flickr license ${photo.license}` : "",
+    licenseUrl: "",
+    attributionText: truncateText([photo.ownername, "Flickr"].filter(Boolean).join(" · "), 180),
+    width,
+    height,
+    aspectRatio: width && height ? width / height : 0,
+    exactLocation,
+    approximateLocation: !exactLocation,
+    illustrativeOnly: false,
+    latitude,
+    longitude,
+    visualRole: inferWorkerVisualRole(place, width, height),
+    sourceTrust: exactLocation ? 0.82 : 0.68,
+    mediaTier: exactLocation ? "geotagged" : "cultural",
+    checkedAt: new Date().toISOString(),
+    reviewStatus: "pending",
+    rawTitle: photo.title || photo.tags || "",
+  };
+}
+
+function normalizeMapillaryImage(image = {}, place = {}) {
+  const coords = image.computed_geometry?.coordinates || image.geometry?.coordinates || [];
+  const width = Number(image.width || 2048);
+  const height = Number(image.height || 1152);
+  return {
+    id: stableId("mapillary-image", [image.id, image.thumb_2048_url, image.thumb_1024_url]),
+    placeId: place.id || "",
+    provider: "mapillary",
+    providerId: String(image.id || ""),
+    imageUrl: sanitizeUrl(image.thumb_2048_url || image.thumb_1024_url || ""),
+    thumbnailUrl: sanitizeUrl(image.thumb_1024_url || image.thumb_2048_url || ""),
+    sourcePageUrl: image.id ? `https://www.mapillary.com/app/?pKey=${image.id}` : "",
+    creatorName: truncateText(image.creator?.username || image.creator?.name || "", 180),
+    creatorUrl: "",
+    licenseCode: "",
+    licenseName: "Mapillary image",
+    licenseUrl: "https://www.mapillary.com/terms",
+    attributionText: truncateText([image.creator?.username || image.creator?.name, "Mapillary"].filter(Boolean).join(" · "), 180),
+    width,
+    height,
+    aspectRatio: width && height ? width / height : 16 / 9,
+    exactLocation: Number.isFinite(Number(coords[1])) && Number.isFinite(Number(coords[0])),
+    approximateLocation: false,
+    illustrativeOnly: false,
+    latitude: Number(coords[1]),
+    longitude: Number(coords[0]),
+    visualRole: "approximate",
+    sourceTrust: 0.78,
+    mediaTier: "geotagged",
+    checkedAt: new Date().toISOString(),
+    reviewStatus: "pending",
+    rawTitle: `${place.canonicalName || place.title || ""} street-level`,
+  };
+}
+
+function normalizePanoramaxImage(feature = {}, place = {}, base = PANORAMAX_API_BASE) {
+  const properties = feature.properties || feature;
+  const assets = feature.assets || {};
+  const visualAsset = Object.values(assets).find((asset) => Array.isArray(asset.roles) && asset.roles.includes("visual")) || assets.visual || assets.hd || assets.sd || {};
+  const thumbnailAsset = Object.values(assets).find((asset) => Array.isArray(asset.roles) && asset.roles.includes("thumbnail")) || assets.thumbnail || {};
+  const coords = feature.geometry?.coordinates || properties.coordinates || [];
+  const id = feature.id || properties.id || properties.pic_id || properties.picture_id || "";
+  const imageUrl = sanitizeUrl(visualAsset.href || properties.picture_url || properties.image_url || thumbnailAsset.href || "");
+  const thumbnailUrl = sanitizeUrl(thumbnailAsset.href || properties.thumbnail_url || properties.thumb_url || imageUrl);
+  return {
+    id: stableId("panoramax-image", [id, imageUrl]),
+    placeId: place.id || "",
+    provider: "panoramax",
+    providerId: String(id || imageUrl),
+    imageUrl,
+    thumbnailUrl,
+    sourcePageUrl: sanitizeUrl(properties.web_url || properties.url || (id ? `https://panoramax.fr/#focus=pic&pic=${id}` : base)),
+    creatorName: truncateText(properties.author || properties.user_name || properties.creator || "", 180),
+    creatorUrl: "",
+    licenseCode: "",
+    licenseName: "Panoramax open street-level imagery",
+    licenseUrl: "https://panoramax.fr/",
+    attributionText: truncateText([properties.author || properties.user_name, "Panoramax"].filter(Boolean).join(" · "), 180),
+    width: Number(properties.width || 1600),
+    height: Number(properties.height || 900),
+    aspectRatio: Number(properties.width || 1600) / Number(properties.height || 900),
+    exactLocation: Number.isFinite(Number(coords[1])) && Number.isFinite(Number(coords[0])),
+    approximateLocation: false,
+    illustrativeOnly: false,
+    latitude: Number(coords[1]),
+    longitude: Number(coords[0]),
+    visualRole: "approximate",
+    sourceTrust: 0.76,
+    mediaTier: "geotagged",
+    checkedAt: new Date().toISOString(),
+    reviewStatus: "pending",
+    rawTitle: `${place.canonicalName || place.title || ""} street-level`,
+  };
+}
+
+function normalizeRijksmuseumImage(item = {}, place = {}) {
+  const width = Number(item.webImage?.width || 0);
+  const height = Number(item.webImage?.height || 0);
+  return {
+    id: stableId("rijksmuseum-image", [item.objectNumber, item.webImage?.url]),
+    placeId: place.id || "",
+    provider: "rijksmuseum",
+    providerId: String(item.objectNumber || ""),
+    imageUrl: sanitizeUrl(item.webImage?.url || ""),
+    thumbnailUrl: sanitizeUrl(item.headerImage?.url || item.webImage?.url || ""),
+    sourcePageUrl: sanitizeUrl(item.links?.web || ""),
+    creatorName: truncateText(item.principalOrFirstMaker || "", 180),
+    creatorUrl: "",
+    licenseCode: "",
+    licenseName: "Rijksmuseum API",
+    licenseUrl: "https://data.rijksmuseum.nl/",
+    attributionText: truncateText([item.principalOrFirstMaker, "Rijksmuseum"].filter(Boolean).join(" · "), 180),
+    width,
+    height,
+    aspectRatio: width && height ? width / height : 0,
+    exactLocation: false,
+    approximateLocation: true,
+    illustrativeOnly: false,
+    visualRole: inferWorkerVisualRole(place, width, height),
+    sourceTrust: 0.86,
+    mediaTier: "cultural",
+    checkedAt: new Date().toISOString(),
+    reviewStatus: "pending",
+    rawTitle: item.title || "",
+  };
+}
+
+function normalizeSmithsonianImage(item = {}, place = {}) {
+  const media = item.content?.descriptiveNonRepeating?.online_media?.media || [];
+  const firstImage = media.find((entry) => /image/i.test(entry.type || "") || entry.content || entry.thumbnail) || {};
+  const imageUrl = sanitizeUrl(firstImage.content || firstImage.resources?.[0]?.url || firstImage.thumbnail || "");
+  const title = item.title || item.content?.descriptiveNonRepeating?.title?.content || "";
+  const recordId = item.id || item.content?.descriptiveNonRepeating?.record_ID || "";
+  return {
+    id: stableId("smithsonian-image", [recordId, imageUrl]),
+    placeId: place.id || "",
+    provider: "smithsonian",
+    providerId: String(recordId || imageUrl),
+    imageUrl,
+    thumbnailUrl: sanitizeUrl(firstImage.thumbnail || imageUrl),
+    sourcePageUrl: sanitizeUrl(item.content?.descriptiveNonRepeating?.record_link || ""),
+    creatorName: truncateText(item.content?.indexedStructured?.name?.[0] || "", 180),
+    creatorUrl: "",
+    licenseCode: "",
+    licenseName: "Smithsonian Open Access",
+    licenseUrl: "https://www.si.edu/openaccess",
+    attributionText: truncateText(["Smithsonian", item.content?.freetext?.name?.[0]?.content].filter(Boolean).join(" · "), 180),
+    width: Number(firstImage.width || 0),
+    height: Number(firstImage.height || 0),
+    aspectRatio: Number(firstImage.width || 0) && Number(firstImage.height || 0) ? Number(firstImage.width) / Number(firstImage.height) : 0,
+    exactLocation: false,
+    approximateLocation: true,
+    illustrativeOnly: false,
+    visualRole: "gallery",
+    sourceTrust: 0.84,
+    mediaTier: "cultural",
+    checkedAt: new Date().toISOString(),
+    reviewStatus: "pending",
+    rawTitle: title,
+  };
+}
+
+function normalizeArticImage(item = {}, place = {}, iiifBase = "") {
+  const imageId = item.image_id || "";
+  const imageUrl = imageId && iiifBase ? `${iiifBase}/${imageId}/full/843,/0/default.jpg` : "";
+  const thumb = item.thumbnail || {};
+  const width = Number(thumb.width || 843);
+  const height = Number(thumb.height || 600);
+  return {
+    id: stableId("artic-image", [item.id, imageId]),
+    placeId: place.id || "",
+    provider: "artic",
+    providerId: String(item.id || imageId),
+    imageUrl,
+    thumbnailUrl: imageUrl,
+    sourcePageUrl: item.id ? `https://www.artic.edu/artworks/${item.id}` : "",
+    creatorName: truncateText(item.artist_display || "", 180),
+    creatorUrl: "",
+    licenseCode: "CC0",
+    licenseName: "Art Institute of Chicago public domain",
+    licenseUrl: "https://creativecommons.org/publicdomain/zero/1.0/",
+    attributionText: truncateText([item.artist_display, "Art Institute of Chicago"].filter(Boolean).join(" · "), 180),
+    width,
+    height,
+    aspectRatio: width && height ? width / height : 0,
+    exactLocation: false,
+    approximateLocation: true,
+    illustrativeOnly: false,
+    visualRole: "gallery",
+    sourceTrust: 0.84,
+    mediaTier: "cultural",
+    checkedAt: new Date().toISOString(),
+    reviewStatus: "pending",
+    rawTitle: item.title || "",
+  };
+}
+
+function normalizeUnsplashImage(photo = {}, place = {}) {
+  const width = Number(photo.width || 0);
+  const height = Number(photo.height || 0);
+  return {
+    id: stableId("unsplash-image", [photo.id, photo.links?.html]),
+    placeId: place.id || "",
+    provider: "unsplash",
+    providerId: String(photo.id || ""),
+    imageUrl: sanitizeUrl(photo.urls?.regular || photo.urls?.full || ""),
+    thumbnailUrl: sanitizeUrl(photo.urls?.small || photo.urls?.thumb || photo.urls?.regular || ""),
+    sourcePageUrl: sanitizeUrl(photo.links?.html || ""),
+    creatorName: truncateText(photo.user?.name || "", 180),
+    creatorUrl: sanitizeUrl(photo.user?.links?.html || ""),
+    licenseCode: "",
+    licenseName: "Unsplash License",
+    licenseUrl: "https://unsplash.com/license",
+    attributionText: truncateText([photo.user?.name, "Unsplash"].filter(Boolean).join(" · "), 180),
+    width,
+    height,
+    aspectRatio: width && height ? width / height : 0,
+    exactLocation: false,
+    approximateLocation: true,
+    illustrativeOnly: true,
+    visualRole: "illustrative",
+    sourceTrust: 0.48,
+    mediaTier: "editorial",
+    checkedAt: new Date().toISOString(),
+    reviewStatus: "pending",
+    rawTitle: photo.alt_description || photo.description || "",
+  };
+}
+
+function normalizePexelsImage(photo = {}, place = {}) {
+  const width = Number(photo.width || 0);
+  const height = Number(photo.height || 0);
+  return {
+    id: stableId("pexels-image", [photo.id, photo.url]),
+    placeId: place.id || "",
+    provider: "pexels",
+    providerId: String(photo.id || ""),
+    imageUrl: sanitizeUrl(photo.src?.large2x || photo.src?.large || photo.src?.original || ""),
+    thumbnailUrl: sanitizeUrl(photo.src?.medium || photo.src?.small || photo.src?.large || ""),
+    sourcePageUrl: sanitizeUrl(photo.url || ""),
+    creatorName: truncateText(photo.photographer || "", 180),
+    creatorUrl: sanitizeUrl(photo.photographer_url || ""),
+    licenseCode: "",
+    licenseName: "Pexels License",
+    licenseUrl: "https://www.pexels.com/license/",
+    attributionText: truncateText([photo.photographer, "Pexels"].filter(Boolean).join(" · "), 180),
+    width,
+    height,
+    aspectRatio: width && height ? width / height : 0,
+    exactLocation: false,
+    approximateLocation: true,
+    illustrativeOnly: true,
+    visualRole: "illustrative",
+    sourceTrust: 0.46,
+    mediaTier: "editorial",
+    checkedAt: new Date().toISOString(),
+    reviewStatus: "pending",
+    rawTitle: photo.alt || "",
+  };
+}
+
 function rankWorkerImageCandidate(image, place) {
   const longEdge = Math.max(Number(image.width || 0), Number(image.height || 0));
   const aspect = image.aspectRatio || (image.width && image.height ? image.width / image.height : 0);
@@ -1648,17 +2135,20 @@ function rankWorkerImageCandidate(image, place) {
   const weakNameMatch = exactNameMatch < 0.25;
   const possibleMismatch = weakNameMatch && (!image.exactLocation || distanceMeters > nearbyRadius) ? 1 : 0;
   const genericStockPenalty = isGenericWorkerRegionalImage(image, place) ? 1 : 0;
+  const editorialExactPlacePenalty = image.mediaTier === "editorial" && isSpecificWorkerPlace(place) ? 1 : 0;
   const rejectionReason = getWorkerImageRejectionReason(image, longEdge, { weakNameMatch, distanceMeters, nearbyRadius });
   const finalScore = clampNumber(
     exactNameMatch * 30 +
     getWorkerGeotagScore(distanceMeters, image.exactLocation) * 25 +
     exactNameMatch * 15 +
     (image.sourceTrust || 0.7) * 10 +
+    getWorkerMediaTierBoost(image, place) +
     Math.min(1, longEdge / 1800) * 8 +
     (aspect >= 1.2 && aspect <= 2.5 ? 1 : 0.35) * 5 +
     0.75 * 5 +
     0.3 * 2 -
     genericStockPenalty * 20 -
+    editorialExactPlacePenalty * 30 -
     possibleMismatch * 50,
     0,
     100,
@@ -1674,9 +2164,31 @@ function rankWorkerImageCandidate(image, place) {
     distanceMeters,
     rejected: Boolean(rejectionReason),
     rejectionReason,
-    illustrativeOnly: Boolean(image.illustrativeOnly || genericStockPenalty),
+    illustrativeOnly: Boolean(image.illustrativeOnly || genericStockPenalty || editorialExactPlacePenalty),
     approximateLocation: !image.exactLocation,
   };
+}
+
+function getWorkerMediaTierBoost(image = {}, place = {}) {
+  const tier = image.mediaTier || "";
+  if (tier === "official") return 28;
+  if (tier === "tourism") return 22;
+  if (tier === "cultural") return 16;
+  if (tier === "geotagged") return image.exactLocation ? 14 : 8;
+  if (tier === "editorial") return isSpecificWorkerPlace(place) ? -8 : 4;
+  if (tier === "fallback") return -20;
+  return 0;
+}
+
+function inferOfficialMediaTier(sourceUrl = "") {
+  const text = normalizeSearchText(sourceUrl);
+  if (/tourism|visit|travel|destination|official|museum|gov|city|commune|municipality/.test(text)) return "tourism";
+  return "official";
+}
+
+function isSpecificWorkerPlace(place = {}) {
+  const key = `${place.categories?.join(" ") || ""} ${place.category || ""} ${place.tag || ""}`.toLowerCase();
+  return /\b(cafe|coffee|restaurant|bar|shop|museum|monument|attraction|landmark|hotel|gallery|bakery|viewpoint)\b/.test(key);
 }
 
 function getWorkerMediaQueries(place = {}) {
@@ -1690,6 +2202,14 @@ function getWorkerMediaQueries(place = {}) {
     ...aliases.slice(0, 3).map((alias) => [alias, area || "Crete"].filter(Boolean).join(" ")),
     title,
   ].filter(Boolean).filter((query, index, all) => all.indexOf(query) === index);
+}
+
+function getEditorialImageQuery(place = {}) {
+  const title = place.canonicalName || place.title || "";
+  const area = place.municipality || place.region || "";
+  if (!isSpecificWorkerPlace(place)) return [title, area].filter(Boolean).join(" ");
+  const category = place.category || place.categories?.[0] || "travel";
+  return [area || place.region || title || "travel", category].filter(Boolean).join(" ");
 }
 
 function dedupeWorkerImages(images = []) {
@@ -1770,7 +2290,7 @@ function inferWorkerVisualRole(place, width, height) {
   return width > height ? "hero" : "gallery";
 }
 
-async function fetchWithTimeout(url, request, timeoutMs) {
+async function fetchWithTimeout(url, request, timeoutMs, headers = {}) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
   try {
@@ -1779,6 +2299,7 @@ async function fetchWithTimeout(url, request, timeoutMs) {
         Accept: "application/json",
         Referer: new URL(request.url).origin,
         "User-Agent": "Trip Planner Deluxe/0.1 (https://trip.rynell.org)",
+        ...headers,
       },
       signal: controller.signal,
     });
@@ -2182,6 +2703,17 @@ function createPlaceFromInput(input = {}) {
     wikidataId: String(input.wikidataId || ""),
     wikipediaUrl: sanitizeUrl(input.wikipediaUrl || ""),
     officialWebsite: sanitizeUrl(input.officialWebsite || input.website || ""),
+    website: sanitizeUrl(input.website || input.officialWebsite || ""),
+    imageUrl: sanitizeMediaUrl(input.imageUrl || input.image?.url || ""),
+    imageSourceUrl: sanitizeUrl(input.imageSourceUrl || input.sourceUrl || ""),
+    imageCreator: String(input.imageCreator || ""),
+    imageAttribution: String(input.imageAttribution || ""),
+    imageLicense: String(input.imageLicense || ""),
+    imageLicenseUrl: sanitizeUrl(input.imageLicenseUrl || ""),
+    imageWidth: Number(input.imageWidth || input.image?.width || 0),
+    imageHeight: Number(input.imageHeight || input.image?.height || 0),
+    userAdded: Boolean(input.userAdded),
+    sourceRole: String(input.sourceRole || ""),
     categories: Array.isArray(input.categories) ? input.categories.map(String) : [input.category || "coordinates"].filter(Boolean),
     confidence: Number(input.confidence || 0.55),
   };

@@ -123,6 +123,7 @@ function renderLiveIntelligenceModules(trip) {
   const mobility = trip.mobilityOptions || trip.tripIntelligence?.mobility || [];
   const outdoor = trip.outdoorIntel || trip.tripIntelligence?.outdoor || {};
   const headsUps = trip.headsUps || trip.tripIntelligence?.headsUps || [];
+  const visibleHeadsUps = prioritizeHeadsUps(headsUps);
 
   return `
     <section class="live-intel-grid" aria-label="Live trip intelligence">
@@ -195,14 +196,8 @@ function renderLiveIntelligenceModules(trip) {
         </div>
         <div class="live-intel-list">
           ${headsUps.length ? headsUps.slice(0, 4).map((item) => `
-            <div class="live-intel-row live-intel-row--${escapeHtml(item.severity || "info")}">
-              <span class="live-intel-row__icon">${renderIcon(item.icon || "info")}</span>
-              <div class="live-intel-row__body">
-                <strong>${escapeHtml(item.title)}</strong>
-                <span>${escapeHtml(item.detail)}</span>
-              </div>
-            </div>
-          `).join("") : `
+            ${renderLiveHeadsUpDisclosure(item)}
+          `).join("").replace(/^/, visibleHeadsUps.length ? "" : "") : `
             <div class="live-intel-row">
               <span class="live-intel-row__icon">${renderIcon("info")}</span>
               <div class="live-intel-row__body">
@@ -214,6 +209,32 @@ function renderLiveIntelligenceModules(trip) {
         </div>
       </div>
     </section>
+  `;
+}
+
+function prioritizeHeadsUps(headsUps = []) {
+  const priority = ["water-quality", "local-commute", "alcohol-age", "drink-driving-limit", "speed-limits", "tourist-rules"];
+  return [...headsUps].sort((a, b) => {
+    const aIndex = priority.indexOf(a.id);
+    const bIndex = priority.indexOf(b.id);
+    return (aIndex === -1 ? 99 : aIndex) - (bIndex === -1 ? 99 : bIndex);
+  });
+}
+
+function renderLiveHeadsUpDisclosure(item = {}) {
+  const title = item.title || "Things to know";
+  const detail = item.detail || "";
+  return `
+    <details class="live-intel-row live-intel-row--${escapeHtml(item.severity || "info")}">
+      <summary class="live-intel-row__summary" aria-label="${escapeHtml(`${title}. Open full note`)}">
+        <span class="live-intel-row__icon">${renderIcon(item.icon || "info")}</span>
+        <span class="live-intel-row__body">
+          <strong>${escapeHtml(title)}</strong>
+          <span>${escapeHtml(detail)}</span>
+        </span>
+      </summary>
+      <p class="live-intel-row__full">${escapeHtml(detail)}</p>
+    </details>
   `;
 }
 

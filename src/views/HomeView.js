@@ -139,6 +139,8 @@ function renderTripIntelligenceCard(trip) {
   const liveProviderCount = providerStatus.filter((provider) => provider.status === "ok").length;
   const label = isLoading ? "Refreshing" : status.status === "error" ? "Needs attention" : `${liveProviderCount || 0} live sources`;
   const primarySignal = signals[0];
+  const visibleHeadsUps = prioritizeHeadsUps(headsUps);
+  const commuteNote = headsUps.find((item) => item.id === "local-commute" || item.type === "commute");
   const facts = [
     {
       icon: "mountain",
@@ -157,8 +159,8 @@ function renderTripIntelligenceCard(trip) {
     },
     {
       icon: "bike",
-      label: mobility[0]?.title || "Shared mobility",
-      value: mobility[0] ? `${mobility[0].bikes} bikes · ${mobility[0].distance}` : "Checking feeds",
+      label: "Local commute",
+      value: commuteNote?.title ? commuteNote.title.replace(/^Local commute:\s*/i, "") : mobility[0] ? `${mobility[0].bikes} bikes · ${mobility[0].distance}` : "Checking feeds",
     },
   ].filter(Boolean);
 
@@ -187,19 +189,37 @@ function renderTripIntelligenceCard(trip) {
       </div>
       ${headsUps.length ? `
         <div class="trip-heads-up-list" aria-label="Things to know">
-          ${headsUps.slice(0, 4).map((item) => `
-            <div class="trip-heads-up trip-heads-up--${escapeHtml(item.severity || "info")}">
-              <span class="trip-heads-up__icon">${renderIcon(item.icon || "info")}</span>
-              <div class="trip-heads-up__body">
-                <strong>${escapeHtml(item.title)}</strong>
-                <span>${escapeHtml(item.detail)}</span>
-              </div>
-              <small class="trip-heads-up__source">${escapeHtml(item.source || "Guidance")}</small>
-            </div>
-          `).join("")}
+          ${visibleHeadsUps.map(renderHeadsUpDisclosure).join("")}
         </div>
       ` : ""}
     </section>
+  `;
+}
+
+function prioritizeHeadsUps(headsUps = []) {
+  const priority = ["water-quality", "local-commute", "alcohol-age", "drink-driving-limit", "speed-limits", "tourist-rules"];
+  return [...headsUps].sort((a, b) => {
+    const aIndex = priority.indexOf(a.id);
+    const bIndex = priority.indexOf(b.id);
+    return (aIndex === -1 ? 99 : aIndex) - (bIndex === -1 ? 99 : bIndex);
+  });
+}
+
+function renderHeadsUpDisclosure(item = {}) {
+  const title = item.title || "Things to know";
+  const detail = item.detail || "";
+  return `
+    <details class="trip-heads-up trip-heads-up--${escapeHtml(item.severity || "info")}">
+      <summary class="trip-heads-up__summary" aria-label="${escapeHtml(`${title}. Open full note`)}">
+        <span class="trip-heads-up__icon">${renderIcon(item.icon || "info")}</span>
+        <span class="trip-heads-up__body">
+          <strong>${escapeHtml(title)}</strong>
+          <span>${escapeHtml(detail)}</span>
+        </span>
+        <small class="trip-heads-up__source">${escapeHtml(item.source || "Guidance")}</small>
+      </summary>
+      <p class="trip-heads-up__full">${escapeHtml(detail)}</p>
+    </details>
   `;
 }
 

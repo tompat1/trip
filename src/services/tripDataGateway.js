@@ -22,6 +22,7 @@ const DESTINATION_HEADS_UPS = [
     drinkDriving: "Drink-driving limit: 0.5 g/L blood alcohol for most drivers; 0.2 g/L for probationary licence holders.",
     speed: "Typical France limits: 50 km/h urban, 80 km/h rural, 110 km/h expressway, 130 km/h motorway; rain lowers motorway and rural limits.",
     commute: "Metro and RER coverage is strong, but strikes, works and late-night service gaps can affect transfers.",
+    commuteRating: "Good, with disruption checks",
     rules: "Validate transit tickets and keep them until exit; central Paris driving can involve parking, bus-lane and low-emission-zone rules.",
     sources: ["Eau de Paris", "Santé publique France", "European Commission road-safety guidance"],
   },
@@ -33,6 +34,7 @@ const DESTINATION_HEADS_UPS = [
     drinkDriving: "Drink-driving limit: 0.5 mg/ml for most drivers; 0.2 mg/ml for motorbike, moped, novice and professional drivers.",
     speed: "Typical Greece limits: 50 km/h urban, 90 km/h rural and up to 130 km/h on motorways unless signs say otherwise.",
     commute: "Island travel leans on buses, taxis and rental cars; build in buffer time outside main towns.",
+    commuteRating: "Mixed, plan buffers",
     rules: "For beaches, monasteries and archaeological sites, check local opening times, dress expectations and access restrictions.",
     sources: ["EEA bathing-water assessment", "Greek Ministry of Health", "European road-safety guidance"],
   },
@@ -44,6 +46,7 @@ const DESTINATION_HEADS_UPS = [
     drinkDriving: "Drink-driving limit: 0.5 mg/ml blood alcohol for standard, new and professional drivers.",
     speed: "Typical city driving is heavily cyclist-aware; follow posted limits and watch turning rules around bike lanes.",
     commute: "Cycling and metro are usually excellent; bikes may beat cars for short central trips.",
+    commuteRating: "Excellent",
     rules: "Use marked harbour baths for swimming, and keep to bike-lane etiquette if renting a bike.",
     sources: ["Local guidance profile", "Danish Ministry of Health"],
   },
@@ -55,6 +58,7 @@ const DESTINATION_HEADS_UPS = [
     drinkDriving: "Drink-driving limits vary by country and driver type; check the local BAC limit before renting or driving.",
     speed: "Urban speed and low-emission rules vary by city; rental drivers should check posted limits before entering the center.",
     commute: "Public transport is usually useful, but airport transfers and late-night service need a quick check.",
+    commuteRating: "Usually good",
     rules: "Tourist taxes, beach rules, transit validation and restricted driving zones can apply.",
     sources: ["Local guidance profile"],
   },
@@ -333,7 +337,7 @@ function buildHeadsUps(trip, outdoor = {}, signals = [], mobility = []) {
     type: "commute",
     icon: "train",
     severity: mobility.length ? "positive" : "info",
-    title: "Local commute",
+    title: `Local commute: ${mobility.length ? "Good nearby" : profile.commuteRating || "Check locally"}`,
     detail: mobility.length
       ? `${mobility[0].provider} has nearby availability; nearest station is ${mobility[0].distance}.`
       : profile.commute || "Check transit frequency and late-night coverage before committing to transfers.",
@@ -364,6 +368,7 @@ function getDestinationHeadsUpProfile(trip = {}) {
     drinkDriving: "Drink-driving limits vary by country and driver type; check the local BAC limit before renting or driving.",
     speed: "Driving limits, tolls and low-emission zones vary locally; follow posted signs.",
     commute: "Check transit frequency, airport transfers and late-night coverage before committing to a route.",
+    commuteRating: "Check locally",
     rules: "Look for local tourist taxes, transit validation rules, access restrictions and opening-hour changes.",
     sources: ["Local guidance profile"],
   };
