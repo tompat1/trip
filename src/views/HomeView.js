@@ -2,6 +2,7 @@ import { state } from "../state.js";
 import { renderHeader } from "../components/Header.js";
 import { renderIcon } from "../utils/icons.js";
 import { TRIP_ROUTE_LINE_SVG } from "../components/BrandAssets.js";
+import { getTripDateStatus } from "../utils/tripDates.js";
 
 export function renderHomeView() {
   const trip = state.activeTrip;
@@ -253,28 +254,16 @@ function renderLiveJourneyModules(trip) {
 
 function getDynamicTripCountdown(trip) {
   if (!trip) return "Planning mode";
-  const now = new Date();
-  
-  let startDate = trip.startDate ? new Date(trip.startDate) : null;
-  if (!startDate || isNaN(startDate.getTime())) {
-    if (trip.id === "paris") startDate = new Date("2026-10-03");
-    else if (trip.id === "crete") startDate = new Date("2026-07-15");
-    else startDate = new Date();
-  }
-
-  const diffMs = startDate.getTime() - now.getTime();
-  const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+  const status = getTripDateStatus(trip);
   const destCity = (trip.destination || "").split(",")[0];
 
-  if (diffDays > 0) {
-    return `${diffDays} ${diffDays === 1 ? 'day' : 'days'} until your trip to ${destCity}`;
-  } else if (diffDays === 0) {
-    return `🎉 Your trip to ${destCity} starts today!`;
-  } else if (diffDays > -14) {
+  if (status.state === "upcoming") {
+    return `${status.daysUntil} ${status.daysUntil === 1 ? 'day' : 'days'} until your trip to ${destCity}`;
+  } else if (status.state === "active") {
     return `✈️ Trip to ${destCity} in progress`;
-  } else {
-    return `📖 Travel memory archive (${destCity})`;
   }
+  if (status.state === "done") return `🏁 Journey complete · ${destCity} archive`;
+  return `📖 Travel memory archive (${destCity})`;
 }
 
 function formatLiveTimeString() {

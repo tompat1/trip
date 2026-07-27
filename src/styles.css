@@ -664,7 +664,46 @@ textarea {
   padding: 16px 20px;
   box-shadow: var(--shadow-sm);
   position: relative;
-  overflow: hidden;
+  overflow: visible !important;
+}
+
+.trip-context-card--plan {
+  border-color: rgba(210, 104, 43, 0.22);
+}
+
+.trip-context-card--live {
+  border-color: rgba(56, 92, 115, 0.28);
+}
+
+.trip-context-card--remember {
+  border-color: rgba(101, 112, 91, 0.32);
+  background:
+    linear-gradient(135deg, rgba(101, 112, 91, 0.07), rgba(210, 104, 43, 0.04)),
+    var(--paper-card);
+}
+
+.trip-stage-ribbon {
+  position: absolute;
+  top: -24px;
+  left: -18px;
+  z-index: 5;
+  width: clamp(72px, 15vw, 104px);
+  aspect-ratio: 3 / 2;
+  object-fit: cover;
+  object-position: center;
+  border-radius: 8px;
+  opacity: 0.96;
+  filter: drop-shadow(0 8px 18px rgba(23, 24, 23, 0.16));
+  pointer-events: none;
+}
+
+@media (max-width: 540px) {
+  .trip-stage-ribbon {
+    top: -15px;
+    left: -10px;
+    width: 64px;
+    border-radius: 7px;
+  }
 }
 
 /* Card Background Patterns (Brand Guidelines Section 07) */
@@ -772,6 +811,20 @@ textarea {
   z-index: 2;
 }
 
+.trip-context-card {
+  overflow: visible !important;
+}
+
+.trip-context-card>.trip-stage-ribbon {
+  position: absolute;
+  top: -15px;
+  left: auto;
+  right: -5px;
+  z-index: 6;
+  width: clamp(66px, 12vw, 92px);
+  pointer-events: none;
+}
+
 .card-eyebrow-row {
   display: flex;
   align-items: center;
@@ -815,6 +868,33 @@ textarea {
   letter-spacing: 1.2px;
   color: var(--ink-muted);
   text-transform: uppercase;
+}
+
+.eyebrow-pill--plan,
+.eyebrow-pill--live,
+.eyebrow-pill--remember {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 9px;
+  border-radius: var(--radius-pill);
+}
+
+.eyebrow-pill--plan {
+  border: 1px solid rgba(210, 104, 43, 0.24);
+  color: var(--orange);
+  background: rgba(210, 104, 43, 0.08);
+}
+
+.eyebrow-pill--live {
+  border: 1px solid rgba(56, 92, 115, 0.22);
+  color: var(--atlas-blue);
+  background: rgba(56, 92, 115, 0.08);
+}
+
+.eyebrow-pill--remember {
+  border: 1px solid rgba(101, 112, 91, 0.25);
+  color: var(--field-green);
+  background: rgba(101, 112, 91, 0.1);
 }
 
 .trip-context-card__title-row {

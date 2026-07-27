@@ -728,6 +728,63 @@ class AppState {
     }
   }
 
+  async updateTripDetails(tripId, updates = {}) {
+    const trip = tripsData[tripId];
+    if (!trip) return;
+    const destination = updates.destination || trip.destination;
+    const flag = getCountryFlagEmoji(destination);
+    const daysCount = Math.max(1, Number(updates.daysCount) || trip.daysCount || 7);
+
+    trip.destination = destination;
+    trip.flag = flag;
+    trip.startDate = updates.startDate || trip.startDate;
+    trip.daysCount = daysCount;
+    trip.dates = updates.dates || trip.dates;
+    trip.center = updates.center || trip.center;
+    trip.statusText = "Trip updated";
+    trip.tourismPois = [];
+    trip.hiddenGems = [];
+    trip.osmPlaces = [];
+    trip.events = [];
+    trip.flightSearch = { status: "idle", offers: [], updatedAt: "" };
+
+    if (trip.upcomingActivity) {
+      trip.upcomingActivity.title = destination;
+      trip.upcomingActivity.subtitle = trip.dates;
+    }
+
+    if (updates.destinationAirport) {
+      trip.flightRoute = {
+        ...(trip.flightRoute || {}),
+        destinationIata: updates.destinationAirport.iata,
+        destinationLabel: formatAirportLabel(updates.destinationAirport),
+        departureDate: trip.startDate,
+      };
+    } else if (trip.flightRoute) {
+      trip.flightRoute.departureDate = trip.startDate;
+    }
+
+    this.notify();
+    this.refreshTourismDiscovery(tripId, { force: true });
+    this.refreshEventDiscovery(tripId, { force: true });
+
+    try {
+      await enrichmentService.updateTrip(tripId, {
+        destination,
+        flag,
+        dates: trip.dates,
+        daysCount,
+        startDate: trip.startDate,
+        latitude: trip.center?.[0],
+        longitude: trip.center?.[1],
+        destinationIata: trip.flightRoute?.destinationIata || "",
+        destinationLabel: trip.flightRoute?.destinationLabel || "",
+      });
+    } catch (e) {
+      console.warn("D1 trip details update fallback:", e);
+    }
+  }
+
   async searchFlightsForActiveTrip(options = {}) {
     const trip = this.activeTrip;
     if (!trip) return;

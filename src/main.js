@@ -15,6 +15,7 @@ import { fetchConcertsForTrip } from "./services/concertService.js";
 import { fetchOpenMeteoWeather } from "./services/weatherService.js";
 import { resolveAirportInput } from "./services/airportService.js";
 import { normalizeFlightType } from "./services/flightService.js";
+import { formatTripDateRangeFromParts } from "./utils/tripDates.js";
 import { enrichmentService } from "./enrichment/enrichmentService.js";
 import "./styles.css";
 
@@ -532,11 +533,27 @@ document.addEventListener("click", async (e) => {
       state.setView("live");
     }
     else if (action === "edit-trip-title") {
-      const current = state.activeTrip.destination || "Paris, France";
-      const updated = prompt("Edit trip destination (country flag will be added automatically):", current);
-      if (updated && updated.trim()) {
-        state.updateTripTitle(state.activeTripId, updated.trim());
-      }
+      const trip = state.activeTrip;
+      const destination = prompt("Trip destination / location:", trip.destination || "Paris, France");
+      if (destination === null) return;
+      const startDate = prompt("Start date (YYYY-MM-DD):", trip.startDate || new Date().toISOString().split("T")[0]);
+      if (startDate === null) return;
+      const daysCountInput = prompt("Trip length in days:", String(trip.daysCount || 7));
+      if (daysCountInput === null) return;
+      const destinationAirportInput = prompt("Destination city / airport for sharper flight and arrival context:", trip.flightRoute?.destinationLabel || trip.flightRoute?.destinationIata || destination);
+      if (destinationAirportInput === null) return;
+
+      const daysCount = Math.max(1, Number(daysCountInput) || trip.daysCount || 7);
+      const destinationAirport = resolveAirportInput(destinationAirportInput) || resolveAirportInput(destination);
+      await state.updateTripDetails(state.activeTripId, {
+        destination: destination.trim(),
+        startDate: startDate.trim(),
+        daysCount,
+        dates: formatTripDateRangeFromParts(startDate.trim(), daysCount),
+        center: destinationAirport ? [destinationAirport.lat, destinationAirport.lng] : resolveTripCenter(destination.trim()),
+        destinationAirport,
+      });
+      showToast("Trip details updated. Refreshing local ideas and events.");
     }
     else if (action === "create-trip") {
       state.openTripCreate();
@@ -794,7 +811,7 @@ document.addEventListener("submit", async (e) => {
     dates: formatTripDateRange(startDate, daysCount),
     startDate,
     daysCount,
-    center: resolveTripCenter(destination),
+    center: destinationAirport ? [destinationAirport.lat, destinationAirport.lng] : resolveTripCenter(destination),
     checklist: createStarterChecklist(starterTasks),
     originAirport,
     destinationAirport,

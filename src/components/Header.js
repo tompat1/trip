@@ -1,6 +1,10 @@
 import { state } from "../state.js";
 import { renderIcon } from "../utils/icons.js";
 import { TRIP_LOGO_SVG } from "./BrandAssets.js";
+import { getTripDateStatus } from "../utils/tripDates.js";
+import ribbonLive from "../assets/trip_small_ribbon_live.webp";
+import ribbonPlan from "../assets/trip_small_ribbon_plan.webp";
+import ribbonRemember from "../assets/trip_small_ribbon_rmbr.webp";
 
 export function renderHeader() {
   const isLanding = state.activeView === "landing";
@@ -21,6 +25,10 @@ export function renderHeader() {
   const trip = state.activeTrip;
   const allTrips = state.getAllTrips();
   const liveDayTime = getLiveDayTimeFormatted();
+  const dateStatus = getTripDateStatus(trip);
+  const isDoneTrip = dateStatus.state === "done";
+  const tripStage = getTripStage(dateStatus);
+  const ribbon = getTripRibbon(tripStage);
 
   return `
     <header class="app-header">
@@ -50,13 +58,18 @@ export function renderHeader() {
         </div>
       </div>
 
-      <div class="trip-context-card">
+      <div class="trip-context-card trip-context-card--${tripStage}">
+        <img class="trip-stage-ribbon" src="${ribbon.src}" alt="" aria-hidden="true" />
         <div class="trip-context-card__header">
           <div class="card-eyebrow-row">
-            <span class="eyebrow-pill">${state.tripMode ? 'LIVE JOURNEY' : 'PLANNING MODE'}</span>
+            <span class="eyebrow-pill eyebrow-pill--${tripStage}">${ribbon.label}</span>
             <div class="trip-selector-wrap">
               <select class="trip-select-dropdown" data-action="select-trip-dropdown">
-                ${allTrips.map(t => `<option value="${t.id}" ${t.id === trip.id ? 'selected' : ''}>${t.flag} ${escapeHtml(t.destination)}</option>`).join('')}
+                ${allTrips.map(t => {
+                  const status = getTripDateStatus(t);
+                  const suffix = status.state === "done" ? " - Done" : status.state === "active" ? " - Live" : "";
+                  return `<option value="${t.id}" ${t.id === trip.id ? 'selected' : ''}>${t.flag} ${escapeHtml(t.destination)}${suffix}</option>`;
+                }).join('')}
               </select>
               <button class="btn btn--ghost btn--xs cycle-trips-btn" data-action="cycle-next-trip" title="Cycle through all trips">
               </button>
@@ -64,10 +77,10 @@ export function renderHeader() {
           </div>
 
           <div class="trip-context-card__title-row">
-            <div class="editable-trip-title" data-action="edit-trip-title" title="Click to edit destination name & auto flag">
+            <div class="editable-trip-title" data-action="edit-trip-title" title="Edit destination, dates, and trip location">
               <h1 class="trip-title">${escapeHtml(trip.destination)} ${trip.flag}</h1>
-              <p class="trip-dates">${escapeHtml(trip.dates)}</p>
-              <button class="btn btn--icon btn--ghost edit-pencil-btn" aria-label="Edit trip title">
+              <p class="trip-dates">${escapeHtml(trip.dates)}${isDoneTrip ? ` • Completed ${dateStatus.daysSinceEnd} ${dateStatus.daysSinceEnd === 1 ? "day" : "days"} ago` : ""}</p>
+              <button class="btn btn--icon btn--ghost edit-pencil-btn" aria-label="Edit trip details">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
               </button>
             </div>
@@ -95,6 +108,18 @@ export function renderHeader() {
       </div>
     </header>
   `;
+}
+
+function getTripStage(dateStatus) {
+  if (dateStatus.state === "done") return "remember";
+  if (dateStatus.state === "active") return "live";
+  return "plan";
+}
+
+function getTripRibbon(stage) {
+  if (stage === "remember") return { src: ribbonRemember, label: "REMEMBER" };
+  if (stage === "live") return { src: ribbonLive, label: "LIVE JOURNEY" };
+  return { src: ribbonPlan, label: "PLANNING MODE" };
 }
 
 function getLiveDayTimeFormatted() {

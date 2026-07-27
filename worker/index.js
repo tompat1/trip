@@ -3441,12 +3441,36 @@ async function tripsUpdateHandler({ params, request, env }) {
   const body = await request.json().catch(() => ({}));
   const destination = body.destination;
   const flag = body.flag;
+  const dates = body.dates;
+  const daysCount = Number(body.daysCount || body.days_count) || null;
+  const startDate = body.startDate || body.start_date || null;
+  const lat = body.latitude === undefined ? null : Number(body.latitude);
+  const lng = body.longitude === undefined ? null : Number(body.longitude);
+  const originIata = body.originIata || body.origin_iata ? normalizeIata(body.originIata || body.origin_iata) : null;
+  const destinationIata = body.destinationIata || body.destination_iata ? normalizeIata(body.destinationIata || body.destination_iata) : null;
+  const originLabel = body.originLabel || body.origin_label || null;
+  const destinationLabel = body.destinationLabel || body.destination_label || null;
+  const flightType = body.flightType || body.flight_type ? normalizeFlightType(body.flightType || body.flight_type) : null;
 
   try {
     await env.TRIP_DB.prepare(
-      `UPDATE user_trips SET destination = COALESCE(?, destination), flag = COALESCE(?, flag), updated_at = CURRENT_TIMESTAMP WHERE id = ?`
-    ).bind(destination || null, flag || null, tripId).run();
-    return json({ ok: true, tripId, destination, flag });
+      `UPDATE user_trips
+       SET destination = COALESCE(?, destination),
+           flag = COALESCE(?, flag),
+           dates = COALESCE(?, dates),
+           days_count = COALESCE(?, days_count),
+           start_date = COALESCE(?, start_date),
+           latitude = COALESCE(?, latitude),
+           longitude = COALESCE(?, longitude),
+           origin_iata = COALESCE(?, origin_iata),
+           destination_iata = COALESCE(?, destination_iata),
+           origin_label = COALESCE(?, origin_label),
+           destination_label = COALESCE(?, destination_label),
+           flight_type = COALESCE(?, flight_type),
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = ?`
+    ).bind(destination || null, flag || null, dates || null, daysCount, startDate, Number.isFinite(lat) ? lat : null, Number.isFinite(lng) ? lng : null, originIata, destinationIata, originLabel, destinationLabel, flightType, tripId).run();
+    return json({ ok: true, tripId, destination, flag, dates, daysCount, startDate });
   } catch (e) {
     return jsonError("db_error", e.message, 500);
   }
