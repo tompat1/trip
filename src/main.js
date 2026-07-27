@@ -352,6 +352,16 @@ document.addEventListener("click", async (e) => {
         showToast("Events refreshed.");
       }
     }
+    else if (action === "refresh-trip-intelligence") {
+      showToast("Refreshing trip intelligence...");
+      const result = await state.refreshTripIntelligence(state.activeTripId, { force: true });
+      if (result?.status === "error") {
+        showToast("Could not refresh travel signals right now.");
+      } else {
+        const okCount = (result?.providerStatus || []).filter((provider) => provider.status === "ok").length;
+        showToast(okCount ? `Trip intelligence refreshed from ${okCount} live sources.` : "Trip intelligence refreshed with available fallbacks.");
+      }
+    }
     else if (action === "search-trip-flights") {
       showToast("Searching flights for this route...");
       await state.searchFlightsForActiveTrip();

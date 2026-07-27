@@ -5,6 +5,7 @@ import { fetchOpenMeteoWeather } from "./services/weatherService.js";
 import { fetchConcertsForTrip } from "./services/concertService.js";
 import { findPrimaryAirportForDestination, formatAirportLabel, getAirportByIata } from "./services/airportService.js";
 import { normalizeFlightType, searchFlightsForTrip } from "./services/flightService.js";
+import { fetchTripIntelligence } from "./services/tripDataGateway.js";
 
 function getDefaultPlanViewMode() {
   if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
@@ -189,6 +190,7 @@ class AppState {
     this.backendHealth = { status: "checking", bindings: {} };
     this.tourismDiscoveryStatus = {};
     this.eventDiscoveryStatus = {};
+    this.tripIntelligenceStatus = {};
 
     // Moments & Captures
     this.moments = [
@@ -245,6 +247,7 @@ class AppState {
     this.refreshWeather();
     this.refreshTourismDiscovery();
     this.refreshEventDiscovery();
+    this.refreshTripIntelligence();
   }
 
   toggleQuickCapture(open) {
@@ -362,6 +365,7 @@ class AppState {
         this.notify();
         this.refreshTourismDiscovery(this.activeTripId);
         this.refreshEventDiscovery(this.activeTripId);
+        this.refreshTripIntelligence(this.activeTripId, { notify: false });
       }
     } catch (e) {
       console.warn("D1 trips load fallback:", e);
@@ -380,6 +384,7 @@ class AppState {
     this.activeTripId = keys[nextIndex];
     this.refreshTourismDiscovery(this.activeTripId);
     this.refreshEventDiscovery(this.activeTripId);
+    this.refreshTripIntelligence(this.activeTripId);
     this.notify();
   }
 
@@ -444,6 +449,7 @@ class AppState {
       this.refreshWeather();
       this.refreshTourismDiscovery(tripId);
       this.refreshEventDiscovery(tripId);
+      this.refreshTripIntelligence(tripId);
       this.notify();
     }
   }
@@ -588,6 +594,55 @@ class AppState {
     return this.eventDiscoveryStatus[tripId];
   }
 
+  getTripIntelligenceStatus(tripId = this.activeTripId) {
+    return this.tripIntelligenceStatus[tripId] || { status: "idle", error: "", updatedAt: "" };
+  }
+
+  async refreshTripIntelligence(tripId = this.activeTripId, options = {}) {
+    const trip = tripsData[tripId];
+    if (!trip || !Array.isArray(trip.center)) return { status: "error", error: "invalid-trip-center" };
+    if (this.tripIntelligenceStatus[tripId]?.status === "loading" && !options.force) return this.tripIntelligenceStatus[tripId];
+    if (trip.tripIntelligence?.updatedAt && !options.force) return this.tripIntelligenceStatus[tripId] || { status: "ready", error: "" };
+
+    this.tripIntelligenceStatus[tripId] = {
+      status: "loading",
+      error: "",
+      updatedAt: new Date().toISOString(),
+    };
+    if (options.notify !== false) this.notify();
+
+    try {
+      const result = await fetchTripIntelligence(trip, options);
+      trip.tripIntelligence = result;
+      trip.outdoorIntel = result.outdoor || null;
+      trip.travelSignals = result.signals || [];
+      trip.mobilityOptions = result.mobility || [];
+      trip.civicEvents = result.civicEvents || [];
+      if (trip.civicEvents.length) {
+        const existingTitles = new Set((trip.events || []).map((event) => event.title));
+        trip.events = [
+          ...trip.civicEvents.filter((event) => !existingTitles.has(event.title)),
+          ...(trip.events || []),
+        ].slice(0, 24);
+      }
+      this.tripIntelligenceStatus[tripId] = {
+        status: "ready",
+        error: "",
+        updatedAt: result.updatedAt || new Date().toISOString(),
+        providerStatus: result.providerStatus || [],
+      };
+    } catch (error) {
+      this.tripIntelligenceStatus[tripId] = {
+        status: "error",
+        error: error?.message || "trip-intelligence-failed",
+        updatedAt: new Date().toISOString(),
+      };
+    }
+
+    this.notify();
+    return this.tripIntelligenceStatus[tripId];
+  }
+
   toggleTripMode(enabled) {
     this.tripMode = enabled !== undefined ? enabled : !this.tripMode;
     this.notify();
@@ -682,6 +737,7 @@ class AppState {
     this.notify();
     this.refreshTourismDiscovery(id);
     this.refreshEventDiscovery(id);
+    this.refreshTripIntelligence(id);
 
     // Async sync with Cloudflare D1
     try {
@@ -746,6 +802,11 @@ class AppState {
     trip.hiddenGems = [];
     trip.osmPlaces = [];
     trip.events = [];
+    trip.tripIntelligence = null;
+    trip.outdoorIntel = null;
+    trip.travelSignals = [];
+    trip.mobilityOptions = [];
+    trip.civicEvents = [];
     trip.flightSearch = { status: "idle", offers: [], updatedAt: "" };
 
     if (trip.upcomingActivity) {
@@ -767,6 +828,7 @@ class AppState {
     this.notify();
     this.refreshTourismDiscovery(tripId, { force: true });
     this.refreshEventDiscovery(tripId, { force: true });
+    this.refreshTripIntelligence(tripId, { force: true });
 
     try {
       await enrichmentService.updateTrip(tripId, {

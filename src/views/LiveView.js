@@ -42,6 +42,8 @@ export function renderLiveView() {
           </div>
         </div>
 
+        ${renderLiveIntelligenceModules(trip)}
+
         <!-- Nearby POIs & Recommendations -->
         <div class="dashboard-card" style="padding: 20px;">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
@@ -112,6 +114,77 @@ export function renderLiveView() {
         </div>
       </div>
     </div>
+  `;
+}
+
+function renderLiveIntelligenceModules(trip) {
+  const status = state.getTripIntelligenceStatus ? state.getTripIntelligenceStatus(trip.id) : { status: "idle" };
+  const signals = trip.travelSignals || trip.tripIntelligence?.signals || [];
+  const mobility = trip.mobilityOptions || trip.tripIntelligence?.mobility || [];
+  const outdoor = trip.outdoorIntel || trip.tripIntelligence?.outdoor || {};
+
+  return `
+    <section class="live-intel-grid" aria-label="Live trip intelligence">
+      <div class="dashboard-card live-intel-card">
+        <div class="live-intel-card__header">
+          <div>
+            <h3 class="dashboard-card__title" style="margin: 0; font-size: 1.05rem;">Travel signals</h3>
+            <p class="live-intel-card__sub">NASA EONET plus Open-Meteo context near ${escapeHtml(trip.destination.split(",")[0])}</p>
+          </div>
+          <button class="btn btn--icon btn--ghost" data-action="refresh-trip-intelligence" aria-label="Refresh travel signals" title="Refresh travel signals">
+            ${renderIcon("refresh")}
+          </button>
+        </div>
+        <div class="live-intel-list">
+          ${signals.length ? signals.slice(0, 3).map((signal) => `
+            <div class="live-intel-row">
+              <span class="live-intel-row__icon">${renderIcon("alertTriangle")}</span>
+              <div class="live-intel-row__body">
+                <strong>${escapeHtml(signal.title)}</strong>
+                <span>${escapeHtml(signal.source)}${signal.distance ? ` · ${escapeHtml(signal.distance)}` : ""}</span>
+              </div>
+            </div>
+          `).join("") : `
+            <div class="live-intel-row">
+              <span class="live-intel-row__icon">${renderIcon("shieldCheck")}</span>
+              <div class="live-intel-row__body">
+                <strong>${status.status === "loading" ? "Checking travel signals" : "No active natural-event signals nearby"}</strong>
+                <span>${escapeHtml(outdoor.terrainLabel || "Outdoor context will appear here")}</span>
+              </div>
+            </div>
+          `}
+        </div>
+      </div>
+
+      <div class="dashboard-card live-intel-card">
+        <div class="live-intel-card__header">
+          <div>
+            <h3 class="dashboard-card__title" style="margin: 0; font-size: 1.05rem;">Nearby mobility</h3>
+            <p class="live-intel-card__sub">GBFS bike-share feeds around the trip center</p>
+          </div>
+          <span class="badge badge--info voice-mono">${mobility.length ? `${mobility.length} nearby` : "Open feed"}</span>
+        </div>
+        <div class="live-intel-list">
+          ${mobility.length ? mobility.slice(0, 3).map((station) => `
+            <div class="live-intel-row">
+              <span class="live-intel-row__icon">${renderIcon("bike")}</span>
+              <div class="live-intel-row__body">
+                <strong>${escapeHtml(station.title)}</strong>
+                <span>${escapeHtml(station.provider)} · ${station.bikes} bikes · ${station.docks} docks · ${escapeHtml(station.distance)}</span>
+              </div>
+            </div>
+          `).join("") : `
+            <div class="live-intel-row">
+              <span class="live-intel-row__icon">${renderIcon("bike")}</span>
+              <div class="live-intel-row__body">
+                <strong>${status.status === "loading" ? "Checking local mobility" : "No local GBFS feed matched yet"}</strong>
+                <span>Paris is wired first; more city feeds can be added per destination.</span>
+              </div>
+            </div>
+          `}
+        </div>
+      </div>
+    </section>
   `;
 }
 

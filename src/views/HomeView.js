@@ -43,6 +43,8 @@ export function renderHomeView() {
           </div>
         </div>
 
+        ${renderTripIntelligenceCard(trip)}
+
         ${isLiveMode ? renderLiveJourneyModules(trip) : renderPlanningModules(trip, checklist)}
 
         <!-- Common Section: Ideas for your trip -->
@@ -124,6 +126,66 @@ export function renderHomeView() {
 function getHomeTripIdeas(trip) {
   const liveIdeas = [...(trip.tourismPois || []), ...(trip.hiddenGems || []), ...(trip.osmPlaces || [])].slice(0, 3);
   return [...liveIdeas, ...(trip.ideas || [])].slice(0, 6);
+}
+
+function renderTripIntelligenceCard(trip) {
+  const status = state.getTripIntelligenceStatus ? state.getTripIntelligenceStatus(trip.id) : { status: "idle" };
+  const outdoor = trip.outdoorIntel || trip.tripIntelligence?.outdoor || {};
+  const signals = trip.travelSignals || trip.tripIntelligence?.signals || [];
+  const mobility = trip.mobilityOptions || trip.tripIntelligence?.mobility || [];
+  const isLoading = status.status === "loading";
+  const providerStatus = status.providerStatus || trip.tripIntelligence?.providerStatus || [];
+  const liveProviderCount = providerStatus.filter((provider) => provider.status === "ok").length;
+  const label = isLoading ? "Refreshing" : status.status === "error" ? "Needs attention" : `${liveProviderCount || 0} live sources`;
+  const primarySignal = signals[0];
+  const facts = [
+    {
+      icon: "mountain",
+      label: outdoor.terrainLabel || "Terrain unknown",
+      value: Number.isFinite(outdoor.elevation) ? `${outdoor.elevation} m` : "Pending",
+    },
+    {
+      icon: "waves",
+      label: outdoor.marine?.label || "Marine context",
+      value: outdoor.marine?.waveHeightMax !== null && outdoor.marine?.waveHeightMax !== undefined ? `${outdoor.marine.waveHeightMax} m waves` : "No signal",
+    },
+    {
+      icon: "alertTriangle",
+      label: primarySignal?.title || outdoor.flood?.label || "Travel signals",
+      value: primarySignal?.distance || `${signals.length} active`,
+    },
+    {
+      icon: "bike",
+      label: mobility[0]?.title || "Shared mobility",
+      value: mobility[0] ? `${mobility[0].bikes} bikes · ${mobility[0].distance}` : "Checking feeds",
+    },
+  ];
+
+  return `
+    <section class="trip-intel-card card-pattern-poly" aria-label="Trip intelligence">
+      <div class="trip-intel-card__header">
+        <div>
+          <h3 class="trip-intel-card__title">Trip intelligence</h3>
+          <p class="trip-intel-card__subtitle">Outdoor context, safety signals and nearby services.</p>
+        </div>
+        <div class="trip-intel-card__actions">
+          <span class="badge ${status.status === "error" ? "badge--warning" : "badge--info"} voice-mono">${escapeHtml(label)}</span>
+          <button class="btn btn--icon btn--ghost" data-action="refresh-trip-intelligence" aria-label="Refresh trip intelligence" title="Refresh trip intelligence">
+            ${renderIcon("refresh")}
+          </button>
+        </div>
+      </div>
+      <div class="trip-intel-facts">
+        ${facts.map((fact) => `
+          <div class="trip-intel-fact">
+            <span class="trip-intel-fact__icon">${renderIcon(fact.icon)}</span>
+            <span class="trip-intel-fact__label">${escapeHtml(fact.label)}</span>
+            <strong class="trip-intel-fact__value">${escapeHtml(fact.value)}</strong>
+          </div>
+        `).join("")}
+      </div>
+    </section>
+  `;
 }
 
 function renderPlanningModules(trip, checklist) {
