@@ -163,12 +163,13 @@ export function getFlightRouteDisplay(route = {}, flightSearch = {}) {
 export function resolveAirportInput(input = "") {
   const value = input.trim();
   if (!value) return null;
-  const iataMatch = value.match(/\b[A-Z]{3}\b/i);
-  if (iataMatch) {
-    const airport = getAirportByIata(iataMatch[0]);
+  const iataMatches = [...value.matchAll(/(?:^|[^\p{L}])([A-Z]{3})(?=$|[^\p{L}])/giu)];
+  for (const [, iata] of iataMatches) {
+    const airport = getAirportByIata(iata);
     if (airport) return airport;
   }
-  return searchAirports(value)[0] || null;
+
+  return searchAirports(value)[0] || searchAirports(stripAirportSearchNoise(value))[0] || null;
 }
 
 export function findPrimaryAirportForDestination(destination = "") {
@@ -239,6 +240,13 @@ function normalizeAirportSearchText(value = "") {
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
+    .trim();
+}
+
+function stripAirportSearchNoise(value = "") {
+  return String(value || "")
+    .replace(/\b(airport|airports|city|from|to)\b/gi, " ")
+    .replace(/\s+/g, " ")
     .trim();
 }
 

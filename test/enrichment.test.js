@@ -48,6 +48,12 @@ test("airport resolver supports city names without diacritics", () => {
   assert.equal(resolveAirportInput("Gdańsk")?.iata, "GDN");
 });
 
+test("airport resolver accepts autofilled labels with accented city names", () => {
+  assert.equal(resolveAirportInput("Gdańsk (GDN) - Gdańsk Lech Wałęsa Airport")?.iata, "GDN");
+  assert.equal(resolveAirportInput("Milan (MXP) - Milan Malpensa Airport")?.iata, "MXP");
+  assert.equal(resolveAirportInput("Milan airports")?.iata, "MXP");
+});
+
 test("airport resolver includes major hub fallback airports", () => {
   assert.equal(resolveAirportInput("Frankfurt")?.iata, "FRA");
   assert.equal(resolveAirportInput("Dubai")?.iata, "DXB");
