@@ -821,7 +821,7 @@ async function updateAirportAutocomplete(input) {
   }
 
   menu.classList.add("is-open");
-  menu.innerHTML = `<div class="airport-autocomplete-status">Searching airports...</div>`;
+  menu.innerHTML = `<div class="airport-autocomplete-status">Searching live airport service...</div>`;
 
   const airports = await searchAirportsWorldwide(query, { max: 18 });
   if (input.dataset.airportSearchSeq !== seq) return;

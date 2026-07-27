@@ -48,6 +48,12 @@ test("airport resolver supports city names without diacritics", () => {
   assert.equal(resolveAirportInput("Gdańsk")?.iata, "GDN");
 });
 
+test("airport resolver includes major hub fallback airports", () => {
+  assert.equal(resolveAirportInput("Frankfurt")?.iata, "FRA");
+  assert.equal(resolveAirportInput("Dubai")?.iata, "DXB");
+  assert.equal(resolveAirportInput("Singapore")?.iata, "SIN");
+});
+
 test("Worker request principal distinguishes anonymous, traveler, and admin", () => {
   const anonymous = createRequestPrincipal(new Request("https://trip.test/api/session"), { TRIP_ADMIN_TOKEN: "secret" });
   assert.equal(anonymous.role, "anonymous");
