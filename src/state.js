@@ -18,6 +18,85 @@ function getDefaultPlanViewMode() {
 
 const CALENDAR_EVENTS_STORAGE_PREFIX = "trip_calendar_events_";
 const TOURISM_DISCOVERY_STORAGE_PREFIX = "trip_tourism_discovery_";
+const USER_PROFILE_STORAGE_KEY = "trip_user_profile_v1";
+const LEGACY_USER_AVATAR_STORAGE_KEY = "trip_user_avatar";
+const LEGACY_USER_PREFERENCES_STORAGE_KEY = "trip_user_preferences";
+
+const DEFAULT_USER_PROFILE = {
+  name: "Thomas R.",
+  email: "thomas@rynell.org",
+  homeAirport: "GDN",
+  homeCity: "Gdańsk",
+  avatarUrl: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=240&q=80",
+  membership: "Premium Traveler",
+  travelStyle: "balanced",
+  budget: "comfort",
+  seatPreference: "window",
+  pace: "balanced",
+  accessibilityNotes: "",
+  personas: ["☕ Coffee Lover", "🍕 Foodie", "🎵 Concert Goer", "🎨 Art Enthusiast"],
+  customPersonas: [],
+  notifications: {
+    tripReminders: true,
+    flightAlerts: true,
+    liveRecommendations: true,
+    weeklyDigest: false,
+  },
+  privacy: {
+    cloudSync: true,
+    locationInLiveMode: true,
+    personalization: true,
+    analytics: false,
+  },
+};
+
+const DEFAULT_TRAVELER_PERSONAS = [
+  "☕ Coffee Lover",
+  "🍕 Foodie",
+  "🎵 Concert Goer",
+  "🎨 Art Enthusiast",
+  "🏛️ History Buff",
+  "🌅 Sunset Chaser",
+  "🛍️ Boutique Shopper",
+  "🏖️ Beach & Island",
+];
+
+function readStoredUserProfile() {
+  const profile = { ...DEFAULT_USER_PROFILE };
+  if (typeof localStorage === "undefined") return profile;
+
+  try {
+    const stored = localStorage.getItem(USER_PROFILE_STORAGE_KEY);
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      Object.assign(profile, parsed);
+      profile.notifications = { ...DEFAULT_USER_PROFILE.notifications, ...(parsed.notifications || {}) };
+      profile.privacy = { ...DEFAULT_USER_PROFILE.privacy, ...(parsed.privacy || {}) };
+      profile.personas = Array.isArray(parsed.personas) ? parsed.personas : DEFAULT_USER_PROFILE.personas;
+      profile.customPersonas = Array.isArray(parsed.customPersonas) ? parsed.customPersonas : [];
+    }
+
+    const legacyAvatar = localStorage.getItem(LEGACY_USER_AVATAR_STORAGE_KEY);
+    if (legacyAvatar && !stored) profile.avatarUrl = legacyAvatar;
+
+    const legacyPrefs = localStorage.getItem(LEGACY_USER_PREFERENCES_STORAGE_KEY);
+    if (legacyPrefs && !stored) {
+      const parsedPrefs = JSON.parse(legacyPrefs);
+      if (Array.isArray(parsedPrefs)) profile.personas = parsedPrefs;
+    }
+  } catch {}
+
+  return profile;
+}
+
+function writeStoredUserProfile(profile) {
+  if (typeof localStorage === "undefined") return;
+  try {
+    localStorage.setItem(USER_PROFILE_STORAGE_KEY, JSON.stringify(profile));
+    localStorage.setItem(LEGACY_USER_AVATAR_STORAGE_KEY, profile.avatarUrl || "");
+    localStorage.setItem(LEGACY_USER_PREFERENCES_STORAGE_KEY, JSON.stringify(profile.personas || []));
+  } catch {}
+}
 
 const TOURISM_IMAGE_BY_CATEGORY = {
   Food: "https://images.unsplash.com/photo-1551218808-94e220e084d2?auto=format&fit=crop&w=700&q=80",
@@ -196,19 +275,12 @@ class AppState {
     } catch {}
     this.savedPlaceIds = new Set(localSaved.length ? localSaved : ["i1", "i2", "i3", "i4", "sp1", "sp2"]);
 
-    // User Profile Avatar & Preferences
-    this.userAvatar = "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=240&q=80";
-    try {
-      const savedAvatar = localStorage.getItem("trip_user_avatar");
-      if (savedAvatar) this.userAvatar = savedAvatar;
-    } catch {}
-
-    let savedPrefs = ["☕ Coffee Lover", "🍕 Foodie", "🎵 Concert Goer", "🎨 Art Enthusiast"];
-    try {
-      const stored = localStorage.getItem("trip_user_preferences");
-      if (stored) savedPrefs = JSON.parse(stored);
-    } catch {}
-    this.userPreferences = new Set(savedPrefs);
+    // User Profile & Preferences
+    this.userProfile = readStoredUserProfile();
+    this.activeProfileSection = "profile";
+    this.userSession = { status: "checking", role: "anonymous", userId: "", authType: "none" };
+    this.userAvatar = this.userProfile.avatarUrl;
+    this.userPreferences = new Set(this.userProfile.personas || []);
 
     // Live Geolocation & Worker API Integration State
     this.userLocation = null; // [lat, lng]
@@ -270,6 +342,7 @@ class AppState {
     this.tripCreateOpen = false;
     this.listeners = new Set();
     this.checkBackendHealth();
+    this.refreshUserSession();
     this.loadD1Trips();
     this.loadPersistedMoments();
     this.refreshWeather();
@@ -475,10 +548,9 @@ class AppState {
 
   updateUserAvatar(url) {
     if (!url) return;
-    this.userAvatar = url;
-    try {
-      localStorage.setItem("trip_user_avatar", url);
-    } catch {}
+    this.userProfile = { ...this.userProfile, avatarUrl: url };
+    this.userAvatar = this.userProfile.avatarUrl;
+    writeStoredUserProfile(this.userProfile);
     this.notify();
   }
 
@@ -489,9 +561,105 @@ class AppState {
     } else {
       this.userPreferences.add(pref);
     }
+    this.userProfile = { ...this.userProfile, personas: Array.from(this.userPreferences) };
+    writeStoredUserProfile(this.userProfile);
+    this.notify();
+  }
+
+  setProfileSection(section = "profile") {
+    this.activeProfileSection = section;
+    this.notify();
+  }
+
+  async refreshUserSession() {
     try {
-      localStorage.setItem("trip_user_preferences", JSON.stringify(Array.from(this.userPreferences)));
-    } catch {}
+      const session = await enrichmentService.getSession();
+      const principal = session.principal || {};
+      this.userSession = {
+        status: "ready",
+        role: principal.role || "anonymous",
+        userId: principal.userId || "",
+        authType: principal.authType || "none",
+      };
+    } catch (error) {
+      this.userSession = {
+        status: "error",
+        role: "anonymous",
+        userId: "",
+        authType: "none",
+        error: error?.message || "session-check-failed",
+      };
+    }
+    this.notify();
+    return this.userSession;
+  }
+
+  get isAdmin() {
+    return this.userSession?.role === "admin";
+  }
+
+  updateUserProfile(updates = {}, options = {}) {
+    this.userProfile = {
+      ...this.userProfile,
+      ...updates,
+      notifications: { ...this.userProfile.notifications, ...(updates.notifications || {}) },
+      privacy: { ...this.userProfile.privacy, ...(updates.privacy || {}) },
+    };
+    this.userAvatar = this.userProfile.avatarUrl;
+    this.userPreferences = new Set(this.userProfile.personas || []);
+    writeStoredUserProfile(this.userProfile);
+    if (options.notify !== false) this.notify();
+  }
+
+  updateUserProfileField(field, value, options = {}) {
+    if (!field) return;
+    this.updateUserProfile({ [field]: value }, options);
+  }
+
+  updateNestedUserProfileField(group, field, value, options = {}) {
+    if (!group || !field || !this.userProfile[group]) return;
+    this.updateUserProfile({
+      [group]: {
+        ...this.userProfile[group],
+        [field]: value,
+      },
+    }, options);
+  }
+
+  addCustomPersona(label) {
+    const cleanLabel = String(label || "").trim().replace(/\s+/g, " ").slice(0, 42);
+    if (!cleanLabel || !this.isAdmin) return false;
+    const existing = new Set([...(this.userProfile.customPersonas || []), ...Array.from(this.userPreferences), ...DEFAULT_TRAVELER_PERSONAS]);
+    if (existing.has(cleanLabel)) return false;
+    this.userProfile = {
+      ...this.userProfile,
+      customPersonas: [...(this.userProfile.customPersonas || []), cleanLabel],
+      personas: [...(this.userProfile.personas || []), cleanLabel],
+    };
+    this.userPreferences = new Set(this.userProfile.personas || []);
+    writeStoredUserProfile(this.userProfile);
+    this.notify();
+    return true;
+  }
+
+  removeCustomPersona(label) {
+    const cleanLabel = String(label || "").trim();
+    if (!cleanLabel || !this.isAdmin) return false;
+    this.userProfile = {
+      ...this.userProfile,
+      customPersonas: (this.userProfile.customPersonas || []).filter((persona) => persona !== cleanLabel),
+      personas: (this.userProfile.personas || []).filter((persona) => persona !== cleanLabel),
+    };
+    this.userPreferences = new Set(this.userProfile.personas || []);
+    writeStoredUserProfile(this.userProfile);
+    this.notify();
+    return true;
+  }
+
+  resetUserProfile() {
+    this.userProfile = readStoredUserProfile();
+    this.userAvatar = this.userProfile.avatarUrl;
+    this.userPreferences = new Set(this.userProfile.personas || []);
     this.notify();
   }
 

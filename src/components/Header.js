@@ -23,6 +23,7 @@ export function renderHeader() {
   }
 
   const trip = state.activeTrip;
+  const profile = state.userProfile || {};
   const allTrips = state.getAllTrips();
   const liveDayTime = getLiveDayTimeFormatted();
   const dateStatus = getTripDateStatus(trip);
@@ -48,8 +49,8 @@ export function renderHeader() {
             ${renderIcon("bell")}
           </button>
 
-          <div class="avatar-badge" data-action="go-profile" title="View Profile">
-            <img src="${state.userAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=120&q=80'}" alt="Thomas avatar" class="avatar-img" />
+          <div class="avatar-badge" data-action="go-profile" title="View profile">
+            <img src="${state.userAvatar || profile.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=120&q=80'}" alt="${escapeHtml(profile.name || "Traveler")} avatar" class="avatar-img" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'" />
             <div class="header-profile-icon-fallback" aria-label="Profile">
               ${renderIcon("user")}
             </div>

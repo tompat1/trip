@@ -37,7 +37,9 @@ export function createEnrichmentService(options = {}) {
         }),
       });
       if (!response.ok) throw new Error(`worker-admin-login-http-${response.status}`);
-      return response.json();
+      const data = await response.json();
+      storeAdminSessionToken(data.session?.token || data.token || "");
+      return data;
     },
 
     async logoutAdmin() {
@@ -47,6 +49,7 @@ export function createEnrichmentService(options = {}) {
         headers: createApiHeaders(),
       });
       if (!response.ok) throw new Error(`worker-admin-logout-http-${response.status}`);
+      clearStoredAdminSessionToken();
       return response.json();
     },
 
@@ -557,6 +560,20 @@ function getStoredAdminSessionToken() {
   } catch {
     return "";
   }
+}
+
+function storeAdminSessionToken(token = "") {
+  if (typeof window === "undefined" || !window.localStorage || !token) return;
+  try {
+    window.localStorage.setItem(ADMIN_SESSION_STORAGE_KEY, token);
+  } catch {}
+}
+
+function clearStoredAdminSessionToken() {
+  if (typeof window === "undefined" || !window.localStorage) return;
+  try {
+    window.localStorage.removeItem(ADMIN_SESSION_STORAGE_KEY);
+  } catch {}
 }
 
 async function generateWorkerEditorial(place = {}, options = {}) {

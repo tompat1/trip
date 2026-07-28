@@ -246,26 +246,44 @@ function renderLiveHeadsUpDisclosure(item = {}) {
 
 export function renderProfileView() {
   const savedCount = state.savedPlaceIds ? state.savedPlaceIds.size : 156;
-  const tripsCount = Object.keys(state.getAllTrips ? state.getAllTrips() : {}).length || 14;
+  const trips = state.getAllTrips ? state.getAllTrips() : [];
+  const tripsCount = trips.length || 0;
+  const momentsCount = Array.isArray(state.moments) ? state.moments.length : 0;
+  const countriesCount = new Set(trips.map((trip) => trip.flag || trip.destination).filter(Boolean)).size || 1;
+  const profile = state.userProfile || {};
+  const activeSection = state.activeProfileSection || "profile";
+  const defaultPersonas = [
+    "☕ Coffee Lover",
+    "🍕 Foodie",
+    "🎵 Concert Goer",
+    "🎨 Art Enthusiast",
+    "🏛️ History Buff",
+    "🌅 Sunset Chaser",
+    "🛍️ Boutique Shopper",
+    "🏖️ Beach & Island",
+  ];
+  const customPersonas = profile.customPersonas || [];
+  const personas = [...new Set([...defaultPersonas, ...customPersonas])];
+  const isAdmin = Boolean(state.isAdmin);
 
   return `
     <div class="profile-page">
       ${renderHeader()}
 
       <div class="profile-page__content">
-        <!-- Main Profile Header Card -->
         <div class="profile-header-card card-pattern-poly">
-          <div class="profile-avatar-wrap" data-action="change-avatar" title="Click to change profile picture">
-            <img src="${state.userAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=240&q=80'}" alt="Thomas R." />
-            <div class="profile-avatar-edit-badge" data-action="change-avatar" title="Change photo">
+          <button class="profile-avatar-wrap" data-action="change-avatar" type="button" title="Change profile picture" aria-label="Change profile picture">
+            <img src="${escapeHtml(state.userAvatar || profile.avatarUrl || "")}" alt="${escapeHtml(profile.name || "Traveler")} avatar" onerror="this.style.display='none'" />
+            <span class="profile-avatar-fallback" aria-hidden="true">${renderIcon("user")}</span>
+            <span class="profile-avatar-edit-badge" title="Change photo">
               ${renderIcon("pencil")}
-            </div>
-          </div>
+            </span>
+          </button>
           <input type="file" id="avatar-file-input" accept="image/*" style="display:none;" />
 
-          <h2 class="profile-user-name">Thomas R.</h2>
+          <h2 class="profile-user-name">${escapeHtml(profile.name || "Traveler")}</h2>
           <div class="profile-user-badge">
-            <span>💎</span> Premium Traveler
+            <span>💎</span> ${escapeHtml(profile.membership || "Traveler")}
           </div>
 
           <div class="profile-stats-grid">
@@ -278,176 +296,105 @@ export function renderProfileView() {
               <span class="profile-stat-label">Saved</span>
             </div>
             <div class="profile-stat-box">
-              <span class="profile-stat-num">48</span>
+              <span class="profile-stat-num">${momentsCount}</span>
               <span class="profile-stat-label">Moments</span>
             </div>
             <div class="profile-stat-box">
-              <span class="profile-stat-num">12</span>
+              <span class="profile-stat-num">${countriesCount}</span>
               <span class="profile-stat-label">Countries</span>
             </div>
           </div>
         </div>
 
-        <!-- Traveler Personas & Enriched Interests Card -->
         <div class="profile-menu-card mb-sm" style="padding: 16px;">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
             <div>
               <h4 class="profile-menu-item__title" style="margin: 0; font-size: 0.95rem;">Traveler Personas & Interests</h4>
               <p class="profile-menu-item__sub" style="margin-top: 2px;">Enriches recommendations, concerts & live stay events</p>
             </div>
-            <span style="font-size: 0.72rem; background: rgba(217,74,58,0.12); color: var(--red); padding: 3px 10px; border-radius: 12px; font-weight: 700; letter-spacing: 0.5px;">LIVE ENRICHED</span>
+            <span class="profile-personas-count">${state.userPreferences?.size || 0} selected</span>
           </div>
-          <div class="profile-personas-grid" style="display: flex; flex-wrap: wrap; gap: 8px;">
-            ${[
-              "☕ Coffee Lover",
-              "🍕 Foodie",
-              "🎵 Concert Goer",
-              "🎨 Art Enthusiast",
-              "🏛️ History Buff",
-              "🌅 Sunset Chaser",
-              "🛍️ Boutique Shopper",
-              "🏖️ Beach & Island"
-            ].map(persona => {
+          <div class="profile-personas-grid">
+            ${personas.map(persona => {
               const isSelected = state.userPreferences && state.userPreferences.has(persona);
+              const isCustom = customPersonas.includes(persona);
               return `
-                <button class="chip ${isSelected ? "chip--active" : ""}" data-action="toggle-user-persona" data-persona="${escapeHtml(persona)}" style="cursor: pointer; font-size: 0.8rem; padding: 6px 14px; border-radius: 20px; transition: all 0.15s ease;">
-                  ${persona} ${isSelected ? "✓" : "+"}
-                </button>
+                <span class="profile-persona-chip-wrap">
+                  <button class="profile-persona-chip ${isSelected ? "is-active" : ""}" data-action="toggle-user-persona" data-persona="${escapeHtml(persona)}" type="button" aria-pressed="${isSelected ? "true" : "false"}">
+                    <span>${escapeHtml(persona)}</span>
+                    <strong>${isSelected ? "On" : "Off"}</strong>
+                  </button>
+                  ${isAdmin && isCustom ? `
+                    <button class="profile-persona-remove" data-action="remove-custom-persona" data-persona="${escapeHtml(persona)}" type="button" aria-label="Remove ${escapeHtml(persona)}">
+                      ${renderIcon("x")}
+                    </button>
+                  ` : ""}
+                </span>
               `;
             }).join("")}
           </div>
+          ${isAdmin ? `
+            <form class="profile-persona-add-form" id="profile-persona-add-form">
+              <label class="profile-field">
+                <span>Add custom persona</span>
+                <input name="personaLabel" type="text" maxlength="42" placeholder="e.g. Train Window Daydreamer" autocomplete="off" />
+              </label>
+              <button class="btn btn--primary btn--sm" type="submit">${renderIcon("plus")} Add</button>
+            </form>
+          ` : `
+            <p class="profile-persona-admin-note">Sign in as admin to add new personas.</p>
+          `}
         </div>
 
-        <!-- Group 1: User Account Settings Menu -->
-        <div class="profile-menu-card">
-          <button class="profile-menu-item">
-            <div class="profile-menu-item__left">
-              <span class="profile-menu-item__icon">👤</span>
-              <div>
-                <h4 class="profile-menu-item__title">My profile</h4>
-                <p class="profile-menu-item__sub">Edit your personal info</p>
-              </div>
-            </div>
-            <span class="profile-menu-item__arrow">&rsaquo;</span>
-          </button>
-
-          <button class="profile-menu-item">
-            <div class="profile-menu-item__left">
-              <span class="profile-menu-item__icon">⚙️</span>
-              <div>
-                <h4 class="profile-menu-item__title">Travel preferences</h4>
-                <p class="profile-menu-item__sub">Tell us what you love</p>
-              </div>
-            </div>
-            <span class="profile-menu-item__arrow">&rsaquo;</span>
-          </button>
-
-          <button class="profile-menu-item">
-            <div class="profile-menu-item__left">
-              <span class="profile-menu-item__icon">🔔</span>
-              <div>
-                <h4 class="profile-menu-item__title">Notifications</h4>
-                <p class="profile-menu-item__sub">Manage your alerts</p>
-              </div>
-            </div>
-            <span class="profile-menu-item__arrow">&rsaquo;</span>
-          </button>
-
-          <button class="profile-menu-item">
-            <div class="profile-menu-item__left">
-              <span class="profile-menu-item__icon">🔒</span>
-              <div>
-                <h4 class="profile-menu-item__title">Privacy & security</h4>
-                <p class="profile-menu-item__sub">Control your data</p>
-              </div>
-            </div>
-            <span class="profile-menu-item__arrow">&rsaquo;</span>
-          </button>
+        <div class="profile-section-tabs" aria-label="Profile settings sections">
+          ${renderProfileSectionTab("profile", "user", "My profile", activeSection)}
+          ${renderProfileSectionTab("preferences", "slidersHorizontal", "Travel preferences", activeSection)}
+          ${renderProfileSectionTab("notifications", "bell", "Notifications", activeSection)}
+          ${renderProfileSectionTab("privacy", "shieldCheck", "Privacy & security", activeSection)}
         </div>
 
-        <!-- 2x2 Activity Grid -->
+        ${renderProfileSettingsPanel(activeSection, profile)}
+
         <div class="profile-activity-section">
           <div style="display: flex; justify-content: space-between; align-items: center;">
             <h3 class="profile-section-title">Your activity</h3>
-            <button class="btn btn--link btn--xs" data-action="go-search">View all</button>
+            <button class="btn btn--link btn--xs" data-action="go-search">View saved</button>
           </div>
 
           <div class="profile-activity-grid">
-            <div class="profile-activity-card" data-action="go-search">
-              <span class="profile-activity-icon">🕒</span>
-              <div>
-                <h4 class="profile-activity-title">Recently viewed</h4>
-                <p class="profile-activity-sub">24 places</p>
-              </div>
-            </div>
-
-            <div class="profile-activity-card" data-action="go-search">
+            <button class="profile-activity-card" data-action="go-search" type="button">
               <span class="profile-activity-icon">🔖</span>
               <div>
                 <h4 class="profile-activity-title">Saved places</h4>
                 <p class="profile-activity-sub">${savedCount} places</p>
               </div>
-            </div>
+            </button>
 
-            <div class="profile-activity-card" data-action="go-plan" data-subtab="journal">
+            <button class="profile-activity-card" data-action="go-plan" data-subtab="journal" type="button">
               <span class="profile-activity-icon">📥</span>
               <div>
                 <h4 class="profile-activity-title">Your moments</h4>
-                <p class="profile-activity-sub">48 moments</p>
+                <p class="profile-activity-sub">${momentsCount} moments</p>
               </div>
-            </div>
+            </button>
 
-            <div class="profile-activity-card" data-action="go-plan">
+            <button class="profile-activity-card" data-action="go-home" type="button">
               <span class="profile-activity-icon">🗺️</span>
               <div>
                 <h4 class="profile-activity-title">Your trips</h4>
                 <p class="profile-activity-sub">${tripsCount} trips</p>
               </div>
-            </div>
+            </button>
           </div>
         </div>
 
-        <!-- Group 2: Help & Cloudflare D1 Account Menu -->
         <div class="profile-menu-card mb-md">
-          <button class="profile-menu-item">
-            <div class="profile-menu-item__left">
-              <span class="profile-menu-item__icon">👥</span>
-              <div>
-                <h4 class="profile-menu-item__title">Invite friends</h4>
-                <p class="profile-menu-item__sub">Share Trip Planner Deluxe</p>
-              </div>
-            </div>
-            <span class="profile-menu-item__arrow">&rsaquo;</span>
-          </button>
-
-          <button class="profile-menu-item">
-            <div class="profile-menu-item__left">
-              <span class="profile-menu-item__icon">❓</span>
-              <div>
-                <h4 class="profile-menu-item__title">Help & support</h4>
-                <p class="profile-menu-item__sub">FAQs and contact</p>
-              </div>
-            </div>
-            <span class="profile-menu-item__arrow">&rsaquo;</span>
-          </button>
-
-          <button class="profile-menu-item">
-            <div class="profile-menu-item__left">
-              <span class="profile-menu-item__icon">⚙️</span>
-              <div>
-                <h4 class="profile-menu-item__title">App Settings</h4>
-                <p class="profile-menu-item__sub">App preferences</p>
-              </div>
-            </div>
-            <span class="profile-menu-item__arrow">&rsaquo;</span>
-          </button>
-
-          <button class="profile-menu-item" data-action="admin-login-dialog">
+          <button class="profile-menu-item" data-action="${isAdmin ? "admin-logout" : "admin-login-dialog"}" type="button">
             <div class="profile-menu-item__left">
               <span class="profile-menu-item__icon">🔑</span>
               <div>
                 <h4 class="profile-menu-item__title">Cloudflare D1 Storage</h4>
-                <p class="profile-menu-item__sub">Sign in & sync cloud database</p>
+                <p class="profile-menu-item__sub">${isAdmin ? `Admin active${state.userSession?.userId ? ` as ${escapeHtml(state.userSession.userId)}` : ""}` : "Sign in and sync cloud database"}</p>
               </div>
             </div>
             <span class="profile-menu-item__arrow">&rsaquo;</span>
@@ -455,6 +402,160 @@ export function renderProfileView() {
         </div>
       </div>
     </div>
+  `;
+}
+
+function renderProfileSectionTab(id, icon, label, activeSection) {
+  return `
+    <button class="profile-section-tab ${activeSection === id ? "is-active" : ""}" data-action="open-profile-section" data-profile-section="${id}" type="button" aria-pressed="${activeSection === id ? "true" : "false"}">
+      ${renderIcon(icon)}
+      <span>${escapeHtml(label)}</span>
+    </button>
+  `;
+}
+
+function renderProfileSettingsPanel(section, profile) {
+  if (section === "preferences") return renderTravelPreferencesPanel(profile);
+  if (section === "notifications") return renderNotificationsPanel(profile);
+  if (section === "privacy") return renderPrivacyPanel(profile);
+  return renderMyProfilePanel(profile);
+}
+
+function renderMyProfilePanel(profile) {
+  return `
+    <section class="profile-settings-panel" aria-labelledby="profile-panel-title">
+      <div class="profile-panel-header">
+        <div>
+          <h3 id="profile-panel-title">My profile</h3>
+          <p>Personal details autosave on this device.</p>
+        </div>
+        <span class="profile-autosave-pill">${renderIcon("check")} Autosaved</span>
+      </div>
+      <div class="profile-form-grid">
+        ${renderProfileTextField("Display name", "name", profile.name || "", "Thomas R.")}
+        ${renderProfileTextField("Email", "email", profile.email || "", "you@example.com", "email")}
+        ${renderProfileTextField("Home city", "homeCity", profile.homeCity || "", "Gdańsk")}
+        ${renderProfileTextField("Home airport", "homeAirport", profile.homeAirport || "", "GDN", "text", 3)}
+      </div>
+    </section>
+  `;
+}
+
+function renderTravelPreferencesPanel(profile) {
+  return `
+    <section class="profile-settings-panel" aria-labelledby="travel-panel-title">
+      <div class="profile-panel-header">
+        <div>
+          <h3 id="travel-panel-title">Travel preferences</h3>
+          <p>Used to tune trip ideas, concerts, routing and flight suggestions.</p>
+        </div>
+        <span class="profile-autosave-pill">${renderIcon("check")} Autosaved</span>
+      </div>
+      <div class="profile-form-grid">
+        ${renderProfileSelect("Travel style", "travelStyle", profile.travelStyle || "balanced", [
+          ["balanced", "Balanced"],
+          ["culture", "Culture first"],
+          ["food", "Food and coffee"],
+          ["nightlife", "Music and nightlife"],
+          ["outdoors", "Outdoor and slow travel"],
+        ])}
+        ${renderProfileSelect("Budget", "budget", profile.budget || "comfort", [
+          ["lean", "Lean"],
+          ["comfort", "Comfort"],
+          ["premium", "Premium"],
+        ])}
+        ${renderProfileSelect("Seat preference", "seatPreference", profile.seatPreference || "window", [
+          ["window", "Window"],
+          ["aisle", "Aisle"],
+          ["no-preference", "No preference"],
+        ])}
+        ${renderProfileSelect("Trip pace", "pace", profile.pace || "balanced", [
+          ["slow", "Slow"],
+          ["balanced", "Balanced"],
+          ["packed", "Packed"],
+        ])}
+        <label class="profile-field profile-field--wide">
+          <span>Accessibility notes</span>
+          <textarea data-profile-field="accessibilityNotes" rows="3" placeholder="Mobility, dietary, sensory or planning notes">${escapeHtml(profile.accessibilityNotes || "")}</textarea>
+        </label>
+      </div>
+    </section>
+  `;
+}
+
+function renderNotificationsPanel(profile) {
+  const notifications = profile.notifications || {};
+  return `
+    <section class="profile-settings-panel" aria-labelledby="notifications-panel-title">
+      <div class="profile-panel-header">
+        <div>
+          <h3 id="notifications-panel-title">Notifications</h3>
+          <p>Choose which trip alerts should appear in the app.</p>
+        </div>
+        <span class="profile-autosave-pill">${renderIcon("check")} Autosaved</span>
+      </div>
+      <div class="profile-toggle-list">
+        ${renderProfileToggle("Trip reminders", "notifications", "tripReminders", notifications.tripReminders, "Itinerary nudges before scheduled activities.")}
+        ${renderProfileToggle("Flight alerts", "notifications", "flightAlerts", notifications.flightAlerts, "Route and flight-search status updates.")}
+        ${renderProfileToggle("Live recommendations", "notifications", "liveRecommendations", notifications.liveRecommendations, "Nearby suggestions while Live Journey Mode is on.")}
+        ${renderProfileToggle("Weekly digest", "notifications", "weeklyDigest", notifications.weeklyDigest, "A quieter planning summary instead of frequent prompts.")}
+      </div>
+    </section>
+  `;
+}
+
+function renderPrivacyPanel(profile) {
+  const privacy = profile.privacy || {};
+  return `
+    <section class="profile-settings-panel" aria-labelledby="privacy-panel-title">
+      <div class="profile-panel-header">
+        <div>
+          <h3 id="privacy-panel-title">Privacy & security</h3>
+          <p>Control local personalization and live-mode permissions.</p>
+        </div>
+        <span class="profile-autosave-pill">${renderIcon("check")} Autosaved</span>
+      </div>
+      <div class="profile-toggle-list">
+        ${renderProfileToggle("Cloud sync", "privacy", "cloudSync", privacy.cloudSync, "Use Cloudflare D1 for trips, itinerary events and moments.")}
+        ${renderProfileToggle("Location in Live Mode", "privacy", "locationInLiveMode", privacy.locationInLiveMode, "Allow GPS-based nearby suggestions when you use Live Journey Mode.")}
+        ${renderProfileToggle("Personalized recommendations", "privacy", "personalization", privacy.personalization, "Use saved personas and preferences to rank suggestions.")}
+        ${renderProfileToggle("Product analytics", "privacy", "analytics", privacy.analytics, "Optional usage signals. Currently stored locally only.")}
+      </div>
+    </section>
+  `;
+}
+
+function renderProfileTextField(label, field, value, placeholder = "", type = "text", maxLength = "") {
+  return `
+    <label class="profile-field">
+      <span>${escapeHtml(label)}</span>
+      <input data-profile-field="${escapeHtml(field)}" type="${escapeHtml(type)}" value="${escapeHtml(value)}" placeholder="${escapeHtml(placeholder)}" ${maxLength ? `maxlength="${maxLength}"` : ""} />
+    </label>
+  `;
+}
+
+function renderProfileSelect(label, field, value, options = []) {
+  return `
+    <label class="profile-field">
+      <span>${escapeHtml(label)}</span>
+      <select data-profile-field="${escapeHtml(field)}">
+        ${options.map(([optionValue, optionLabel]) => `
+          <option value="${escapeHtml(optionValue)}" ${value === optionValue ? "selected" : ""}>${escapeHtml(optionLabel)}</option>
+        `).join("")}
+      </select>
+    </label>
+  `;
+}
+
+function renderProfileToggle(label, group, field, checked, description) {
+  return `
+    <label class="profile-toggle-row">
+      <span>
+        <strong>${escapeHtml(label)}</strong>
+        <small>${escapeHtml(description)}</small>
+      </span>
+      <input type="checkbox" data-profile-group="${escapeHtml(group)}" data-profile-field="${escapeHtml(field)}" ${checked ? "checked" : ""} />
+    </label>
   `;
 }
 

@@ -330,7 +330,10 @@ document.addEventListener("click", async (e) => {
   const action = target.dataset.action;
   if (action) {
     if (action === "go-app" || action === "go-home") state.setView("home");
-    else if (action === "go-plan") state.setView("plan");
+    else if (action === "go-plan") {
+      if (target.dataset.subtab) state.setPlanSubTab(target.dataset.subtab);
+      state.setView("plan");
+    }
     else if (action === "go-plan-timeline") {
       state.setPlanSubTab("plan");
       state.setPlanViewMode("timeline");
@@ -392,7 +395,8 @@ document.addEventListener("click", async (e) => {
       }
     }
     else if (action === "view-notifications") {
-      alert(`🔔 Notifications:\n\n• Weather update: 23°C in ${state.activeTrip.destination}\n• 2 planning tasks remaining for your trip!`);
+      state.setProfileSection("notifications");
+      state.setView("profile");
     }
     else if (action === "invite-companions") {
       const companionEmail = prompt("Enter email of travel companion to invite:", "partner@example.com");
@@ -432,12 +436,23 @@ document.addEventListener("click", async (e) => {
         }
       }
     }
+    else if (action === "open-profile-section") {
+      state.setProfileSection(target.dataset.profileSection || "profile");
+    }
     else if (action === "toggle-user-persona") {
       const persona = target.dataset.persona;
       if (persona) {
         state.toggleUserPreference(persona);
         const isActive = state.userPreferences && state.userPreferences.has(persona);
         showToast(isActive ? `✨ Profile updated with ${persona}!` : `Removed ${persona} from profile.`);
+      }
+    }
+    else if (action === "remove-custom-persona") {
+      const persona = target.dataset.persona;
+      if (state.removeCustomPersona(persona)) {
+        showToast(`Removed ${persona}.`);
+      } else {
+        showToast("Admin access is required to remove custom personas.");
       }
     }
     else if (action === "apply-quick-intent") {
@@ -676,16 +691,22 @@ document.addEventListener("click", async (e) => {
       if (email) {
         const password = prompt("Enter password:");
         if (password) {
-          import("./enrichment/enrichmentService.js").then(({ enrichmentService }) => {
-            enrichmentService.loginAdmin({ email, password })
-              .then((res) => {
-                alert(`✅ Signed in successfully! Token: ${res.token ? 'Active' : 'Granted'}`);
-                state.notify();
-              })
-              .catch((err) => alert(`Authentication note: ${err.message}`));
-          });
+          enrichmentService.loginAdmin({ email, password })
+            .then(async () => {
+              await state.refreshUserSession();
+              showToast("Admin access active.");
+            })
+            .catch((err) => alert(`Authentication note: ${err.message}`));
         }
       }
+    }
+    else if (action === "admin-logout") {
+      enrichmentService.logoutAdmin()
+        .catch(() => {})
+        .finally(async () => {
+          await state.refreshUserSession();
+          showToast("Admin access ended.");
+        });
     }
     else if (action === "open-lightbox") {
       const momentId = target.dataset.momentId;
@@ -764,6 +785,9 @@ document.addEventListener("input", (e) => {
   if (e.target.matches(".airport-autocomplete-input")) {
     updateAirportAutocomplete(e.target);
     updateTripCreateRoutePreview(e.target.form);
+  }
+  if (e.target.matches("[data-profile-field]") && !e.target.matches("input[type='checkbox'], select")) {
+    state.updateUserProfileField(e.target.dataset.profileField, e.target.value, { notify: false });
   }
 });
 
@@ -872,6 +896,27 @@ function updateTripCreateRoutePreview(form) {
 }
 
 document.addEventListener("submit", async (e) => {
+  if (e.target.id === "profile-persona-add-form") {
+    e.preventDefault();
+    const form = e.target;
+    const input = form.personaLabel;
+    const label = input?.value?.trim() || "";
+    if (!label) {
+      input?.focus();
+      showToast("Add a persona name first.");
+      return;
+    }
+    if (state.addCustomPersona(label)) {
+      showToast(`Added ${label}.`);
+      form.reset();
+    } else if (!state.isAdmin) {
+      showToast("Admin access is required to add new personas.");
+    } else {
+      showToast("That persona already exists.");
+    }
+    return;
+  }
+
   if (e.target.id === "transit-flight-route-form") {
     e.preventDefault();
     const form = e.target;
@@ -1759,15 +1804,50 @@ export function showToast(message) {
 
 // Global File Change Handler for Profile Avatar Uploads
 document.addEventListener("change", (e) => {
+  if (e.target.matches("[data-profile-field]")) {
+    const field = e.target.dataset.profileField;
+    const group = e.target.dataset.profileGroup;
+    const value = e.target.type === "checkbox" ? e.target.checked : e.target.value;
+    if (group) {
+      state.updateNestedUserProfileField(group, field, value);
+    } else {
+      state.updateUserProfileField(field, value);
+    }
+    showToast("Profile setting autosaved.");
+  }
+
   if (e.target && e.target.id === "avatar-file-input" && e.target.files && e.target.files[0]) {
     const file = e.target.files[0];
-    const reader = new FileReader();
-    reader.onload = function(evt) {
-      if (evt.target && evt.target.result) {
-        state.updateUserAvatar(evt.target.result);
-        showToast("📸 Profile photo updated!");
-      }
-    };
-    reader.readAsDataURL(file);
+    saveAvatarFile(file).catch(() => {
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        if (evt.target && evt.target.result) {
+          state.updateUserAvatar(evt.target.result);
+          showToast("Profile photo autosaved.");
+        }
+      };
+      reader.readAsDataURL(file);
+    });
   }
 });
+
+async function saveAvatarFile(file) {
+  const dataUrl = await createCompressedAvatarDataUrl(file);
+  state.updateUserAvatar(dataUrl);
+  showToast("Profile photo autosaved.");
+}
+
+async function createCompressedAvatarDataUrl(file) {
+  const bitmap = await createImageBitmap(file);
+  const size = 512;
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext("2d");
+  const sourceSize = Math.min(bitmap.width, bitmap.height);
+  const sourceX = Math.max(0, (bitmap.width - sourceSize) / 2);
+  const sourceY = Math.max(0, (bitmap.height - sourceSize) / 2);
+  ctx.drawImage(bitmap, sourceX, sourceY, sourceSize, sourceSize, 0, 0, size, size);
+  bitmap.close?.();
+  return canvas.toDataURL("image/jpeg", 0.86);
+}
