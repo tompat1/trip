@@ -20,6 +20,7 @@ const CALENDAR_EVENTS_STORAGE_PREFIX = "trip_calendar_events_";
 const TOURISM_DISCOVERY_STORAGE_PREFIX = "trip_tourism_discovery_";
 const TRIP_COMPANIONS_STORAGE_PREFIX = "trip_companions_";
 const USER_PROFILE_STORAGE_KEY = "trip_user_profile_v1";
+const ONBOARDING_STORAGE_KEY = "trip_onboarding_seen_v1";
 const LEGACY_USER_AVATAR_STORAGE_KEY = "trip_user_avatar";
 const LEGACY_USER_PREFERENCES_STORAGE_KEY = "trip_user_preferences";
 
@@ -280,6 +281,22 @@ function getInviteFromLocation() {
   };
 }
 
+function hasSeenOnboarding() {
+  if (typeof localStorage === "undefined") return true;
+  try {
+    return localStorage.getItem(ONBOARDING_STORAGE_KEY) === "1";
+  } catch {
+    return true;
+  }
+}
+
+function markOnboardingSeen() {
+  if (typeof localStorage === "undefined") return;
+  try {
+    localStorage.setItem(ONBOARDING_STORAGE_KEY, "1");
+  } catch {}
+}
+
 function getTripInviteTitle(trip = {}) {
   return trip.title || trip.name || (trip.destination ? `Roadtrip ${trip.destination}` : "Your trip");
 }
@@ -420,6 +437,8 @@ class AppState {
     this.activeEventDrawer = null; // { mode: 'create'|'edit', event: {} }
     this.activeCompanionQrId = "";
     this.activeInvite = getInviteFromLocation();
+    this.onboardingOpen = !this.activeInvite && !hasSeenOnboarding();
+    this.onboardingSlideIndex = 0;
     this.tripCreateOpen = false;
     this.listeners = new Set();
     this.checkBackendHealth();
@@ -532,6 +551,34 @@ class AppState {
 
   closeTripCreate() {
     this.tripCreateOpen = false;
+    this.notify();
+  }
+
+  nextOnboardingSlide() {
+    this.onboardingSlideIndex = Math.min(3, (this.onboardingSlideIndex || 0) + 1);
+    this.notify();
+  }
+
+  previousOnboardingSlide() {
+    this.onboardingSlideIndex = Math.max(0, (this.onboardingSlideIndex || 0) - 1);
+    this.notify();
+  }
+
+  setOnboardingSlide(index = 0) {
+    this.onboardingSlideIndex = Math.max(0, Math.min(3, Number(index) || 0));
+    this.notify();
+  }
+
+  completeOnboarding(options = {}) {
+    this.onboardingOpen = false;
+    markOnboardingSeen();
+    if (options.view) this.activeView = options.view;
+    this.notify();
+  }
+
+  openOnboarding() {
+    this.onboardingOpen = true;
+    this.onboardingSlideIndex = 0;
     this.notify();
   }
 

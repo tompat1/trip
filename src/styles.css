@@ -4242,6 +4242,197 @@ textarea {
 }
 
 /* ==========================================================================
+   FIRST-RUN WALKTHROUGH
+   ========================================================================== */
+.onboarding-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100050;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(15, 27, 43, 0.56);
+  backdrop-filter: blur(12px);
+  animation: drawerFadeIn 0.22s var(--ease-out);
+}
+
+.onboarding-shell {
+  position: relative;
+  width: min(100%, 480px);
+  min-height: 620px;
+  max-height: min(92vh, 760px);
+  overflow: hidden;
+  display: grid;
+  grid-template-rows: 260px minmax(0, 1fr);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 28px;
+  background: var(--paper-card);
+  box-shadow: var(--shadow-lg);
+}
+
+.onboarding-visual {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    linear-gradient(135deg, rgba(255, 85, 0, 0.17), rgba(56, 92, 115, 0.16)),
+    var(--paper);
+}
+
+.onboarding-brand {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  z-index: 2;
+}
+
+.onboarding-orbit {
+  position: absolute;
+  border: 1px solid rgba(15, 27, 43, 0.14);
+  border-radius: 50%;
+}
+
+.onboarding-orbit--one {
+  width: 260px;
+  height: 260px;
+}
+
+.onboarding-orbit--two {
+  width: 360px;
+  height: 360px;
+  border-style: dashed;
+}
+
+.onboarding-phone {
+  position: relative;
+  z-index: 1;
+  width: 152px;
+  height: 220px;
+  padding: 14px;
+  border: 2px solid rgba(15, 27, 43, 0.16);
+  border-radius: 26px;
+  background: rgba(255, 255, 255, 0.86);
+  box-shadow: var(--shadow-md);
+}
+
+.onboarding-phone__bar {
+  display: block;
+  width: 44px;
+  height: 5px;
+  margin: 0 auto 18px;
+  border-radius: var(--radius-pill);
+  background: rgba(15, 27, 43, 0.18);
+}
+
+.onboarding-phone__hero {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 86px;
+  border-radius: 18px;
+  background: var(--red-gradient);
+  color: white;
+}
+
+.onboarding-phone__hero svg {
+  width: 42px;
+  height: 42px;
+}
+
+.onboarding-phone__rows {
+  display: grid;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.onboarding-phone__rows span {
+  height: 10px;
+  border-radius: var(--radius-pill);
+  background: rgba(15, 27, 43, 0.12);
+}
+
+.onboarding-phone__rows span:nth-child(2) {
+  width: 74%;
+}
+
+.onboarding-phone__rows span:nth-child(3) {
+  width: 52%;
+}
+
+.onboarding-content {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 24px;
+}
+
+.onboarding-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+}
+
+.onboarding-kicker {
+  color: var(--orange);
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.onboarding-content h2 {
+  max-width: 13ch;
+  margin: 8px 0 0;
+  color: var(--ink);
+  font-family: var(--font-serif);
+  font-size: 2rem;
+  line-height: 1.04;
+}
+
+.onboarding-content p {
+  margin: 14px 0 0;
+  color: var(--ink-muted);
+  font-size: 0.92rem;
+  line-height: 1.55;
+}
+
+.onboarding-progress {
+  display: flex;
+  gap: 7px;
+  margin-top: auto;
+  padding-top: 22px;
+}
+
+.onboarding-progress button {
+  width: 26px;
+  height: 6px;
+  border-radius: var(--radius-pill);
+  background: rgba(15, 27, 43, 0.16);
+}
+
+.onboarding-progress button.is-active {
+  width: 40px;
+  background: var(--orange);
+}
+
+.onboarding-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.onboarding-actions > div {
+  display: flex;
+  gap: 8px;
+}
+
+/* ==========================================================================
    TRIP CREATION FLOW
    ========================================================================== */
 .trip-create-overlay {
@@ -4547,6 +4738,56 @@ textarea {
 }
 
 @media (max-width: 540px) {
+  .onboarding-overlay {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .onboarding-shell {
+    min-height: min(92vh, 680px);
+    max-height: 92vh;
+    grid-template-rows: 214px minmax(0, 1fr);
+    border-right: 0;
+    border-bottom: 0;
+    border-left: 0;
+    border-radius: 28px 28px 0 0;
+  }
+
+  .onboarding-phone {
+    width: 134px;
+    height: 188px;
+  }
+
+  .onboarding-phone__hero {
+    height: 70px;
+  }
+
+  .onboarding-content {
+    padding: 22px 20px calc(24px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .onboarding-content h2 {
+    max-width: 15ch;
+    font-size: 1.72rem;
+  }
+
+  .onboarding-content p {
+    font-size: 0.86rem;
+  }
+
+  .onboarding-actions {
+    align-items: stretch;
+  }
+
+  .onboarding-actions,
+  .onboarding-actions > div {
+    flex-direction: column-reverse;
+  }
+
+  .onboarding-actions .btn {
+    width: 100%;
+  }
+
   .trip-create-overlay {
     padding: 0;
   }

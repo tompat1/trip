@@ -11,6 +11,7 @@ import { renderLightbox } from "./components/Lightbox.js";
 import { renderEventDrawer } from "./components/EventDrawer.js";
 import { renderTripCreateModal } from "./components/TripCreateModal.js";
 import { renderQuickCaptureWidget } from "./components/QuickCaptureWidget.js";
+import { renderOnboardingWalkthrough } from "./components/OnboardingWalkthrough.js";
 import { fetchConcertsForTrip } from "./services/concertService.js";
 import { fetchOpenMeteoWeather } from "./services/weatherService.js";
 import { formatAirportLabel, getFlightRouteDisplay, resolveAirportInput, searchAirportsWorldwide } from "./services/airportService.js";
@@ -99,6 +100,7 @@ function render() {
   const drawerHtml = renderEventDrawer();
   const tripCreateHtml = renderTripCreateModal();
   const inviteAcceptanceHtml = renderInviteAcceptance();
+  const onboardingHtml = renderOnboardingWalkthrough();
 
   appEl.innerHTML = `
     <div class="app-view app-view--${view}">
@@ -109,6 +111,7 @@ function render() {
       ${drawerHtml}
       ${tripCreateHtml}
       ${inviteAcceptanceHtml}
+      ${onboardingHtml}
     </div>
   `;
 
@@ -806,6 +809,26 @@ document.addEventListener("click", async (e) => {
     else if (action === "share-trip") {
       openCompanionInviteFlow("link");
       showToast("Choose who to invite, then send or copy the invite link.");
+    }
+    else if (action === "next-onboarding-slide") {
+      state.nextOnboardingSlide();
+    }
+    else if (action === "previous-onboarding-slide") {
+      state.previousOnboardingSlide();
+    }
+    else if (action === "go-onboarding-slide") {
+      state.setOnboardingSlide(target.dataset.slideIndex || 0);
+    }
+    else if (action === "skip-onboarding") {
+      state.completeOnboarding({ view: "home" });
+    }
+    else if (action === "finish-onboarding") {
+      state.completeOnboarding({ view: "home" });
+    }
+    else if (action === "walkthrough-invite-companions") {
+      state.completeOnboarding();
+      openCompanionInviteFlow("link");
+      showToast("Invite companions for the selected trip.");
     }
     else if (action === "admin-login-dialog") {
       const email = prompt("Enter admin/traveler email:", "thomas@rynell.org");
