@@ -381,24 +381,16 @@ async function deliverCompanionInvite(companion = {}) {
   }
 }
 
-function createTripInviteShareUrl(tripId = "") {
-  const url = new URL(window.location.origin);
-  url.searchParams.set("trip", tripId);
-  url.searchParams.set("invite", "1");
-  return url.href;
-}
-
-function getTripShareInviteText(trip = {}, shareUrl = "") {
-  const title = trip.title || trip.name || (trip.destination ? `Roadtrip ${trip.destination}` : "this trip");
-  const travelersCount = Math.max(1, (trip.companions || []).length + 1);
-  return [
-    `${state.userProfile?.name || "Thomas"} invited you to join ${title}.`,
-    `${trip.destination || "Destination"} · ${trip.dates || "Dates TBD"}`,
-    `${travelersCount} travelers`,
-    "",
-    "Plan it. Live it. Remember it.",
-    shareUrl ? `Open invite: ${shareUrl}` : "",
-  ].filter((line, index, lines) => line || (lines[index - 1] && lines[index + 1])).join("\n");
+function openCompanionInviteFlow(defaultMethod = "link") {
+  state.setView("profile");
+  requestAnimationFrame(() => {
+    const form = document.getElementById("profile-companion-form");
+    if (!form) return;
+    form.scrollIntoView({ behavior: "smooth", block: "center" });
+    const methodInput = form.querySelector(`input[name="inviteMethod"][value="${defaultMethod}"]`);
+    if (methodInput) methodInput.checked = true;
+    form.querySelector("input[name='email']")?.focus();
+  });
 }
 
 // Global Event Listeners Delegation
@@ -812,20 +804,8 @@ document.addEventListener("click", async (e) => {
       }
     }
     else if (action === "share-trip") {
-      const trip = state.activeTrip;
-      const shareUrl = createTripInviteShareUrl(state.activeTripId);
-      const shareText = getTripShareInviteText(trip, shareUrl);
-      if (navigator.share) {
-        navigator.share({
-          title: `TRIP - ${trip.destination}`,
-          text: shareText,
-          url: shareUrl
-        }).catch(() => {});
-      } else {
-        navigator.clipboard.writeText(shareUrl).then(() => {
-          alert(`Trip invite link copied to clipboard:\n${shareUrl}`);
-        });
-      }
+      openCompanionInviteFlow("link");
+      showToast("Choose who to invite, then send or copy the invite link.");
     }
     else if (action === "admin-login-dialog") {
       const email = prompt("Enter admin/traveler email:", "thomas@rynell.org");
