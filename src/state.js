@@ -253,12 +253,50 @@ function normalizeCompanionRoleInput(value = "") {
   return ["viewer", "planner", "co-owner"].includes(role) ? role : "viewer";
 }
 
+function normalizeInviteMethodInput(value = "") {
+  const method = String(value || "").trim().toLowerCase();
+  return ["email", "sms", "whatsapp", "qr", "link"].includes(method) ? method : "email";
+}
+
 function createTripInviteUrl(tripId = "") {
   if (typeof window === "undefined") return `?trip=${encodeURIComponent(tripId)}`;
   const url = new URL(window.location.origin);
   url.searchParams.set("trip", tripId);
   url.searchParams.set("invite", "1");
   return url.href;
+}
+
+function getInviteFromLocation() {
+  if (typeof window === "undefined") return null;
+  const params = new URLSearchParams(window.location.search || "");
+  if (!params.has("invite")) return null;
+  const tripId = params.get("trip") || "";
+  if (!tripId) return null;
+  return {
+    tripId,
+    status: "preview",
+    mode: "preview",
+    acceptedAt: "",
+  };
+}
+
+function getTripInviteTitle(trip = {}) {
+  return trip.title || trip.name || (trip.destination ? `Roadtrip ${trip.destination}` : "Your trip");
+}
+
+function getTripInviteCoverImage(trip = {}) {
+  return trip.coverImage || trip.image || trip.upcomingActivity?.image || "";
+}
+
+function buildTripInviteText({ inviterName, tripTitle, destination, dates, travelersCount, personalMessage, inviteUrl }) {
+  return [
+    `${inviterName || "Thomas"} invited you to join ${tripTitle || "this trip"}.`,
+    destination || dates ? `${destination || "Destination"} · ${dates || "Dates TBD"}` : "",
+    travelersCount ? `${travelersCount} travelers` : "",
+    "",
+    personalMessage || "Plan it. Live it. Remember it.",
+    inviteUrl ? `Open invite: ${inviteUrl}` : "",
+  ].filter((line, index, lines) => line || (lines[index - 1] && lines[index + 1])).join("\n");
 }
 
 function getOpenTripMapStatus(results = []) {
@@ -380,6 +418,8 @@ class AppState {
     this.quickCaptureUpload = { status: "idle", progress: 0, fileName: "", type: "" };
     this.activeLightboxMedia = null;
     this.activeEventDrawer = null; // { mode: 'create'|'edit', event: {} }
+    this.activeCompanionQrId = "";
+    this.activeInvite = getInviteFromLocation();
     this.tripCreateOpen = false;
     this.listeners = new Set();
     this.checkBackendHealth();
@@ -391,6 +431,9 @@ class AppState {
     this.refreshEventDiscovery();
     this.refreshTripIntelligence();
     this.loadTripCompanions(this.activeTripId);
+    if (this.activeInvite?.tripId && tripsData[this.activeInvite.tripId]) {
+      this.acceptTripInvite({ mode: "preview", notify: false });
+    }
   }
 
   async loadPersistedMoments() {
@@ -614,6 +657,38 @@ class AppState {
     this.notify();
   }
 
+  acceptTripInvite(options = {}) {
+    const mode = options.mode || "guest";
+    const tripId = options.tripId || this.activeInvite?.tripId || this.activeTripId;
+    if (!tripsData[tripId]) return false;
+    this.activeTripId = tripId;
+    this.activeView = "plan";
+    this.activeInvite = {
+      ...(this.activeInvite || {}),
+      tripId,
+      status: mode === "preview" ? "preview" : "accepted",
+      mode,
+      acceptedAt: mode === "preview" ? "" : new Date().toISOString(),
+    };
+    if (mode === "guest") {
+      this.userSession = { role: "guest", email: "", status: "guest" };
+    }
+    if (!this.quickCaptureOpen) {
+      this.quickCaptureTripId = tripId;
+    }
+    this.loadTripCompanions(tripId);
+    this.refreshTourismDiscovery(tripId);
+    this.refreshEventDiscovery(tripId);
+    this.refreshTripIntelligence(tripId);
+    if (options.notify !== false) this.notify();
+    return true;
+  }
+
+  dismissTripInvite() {
+    this.activeInvite = null;
+    this.notify();
+  }
+
   async refreshUserSession() {
     try {
       const session = await enrichmentService.getSession();
@@ -667,7 +742,25 @@ class AppState {
 
     const name = String(companionInput.name || "").trim();
     const role = normalizeCompanionRoleInput(companionInput.role || "viewer");
+    const inviteMethod = normalizeInviteMethodInput(companionInput.inviteMethod || "email");
+    const personalMessage = String(companionInput.personalMessage || "").trim() || "Plan it. Live it. Remember it.";
     const inviteUrl = companionInput.inviteUrl || createTripInviteUrl(tripId);
+    const current = trip.companions || readStoredTripCompanions(tripId);
+    const tripTitle = getTripInviteTitle(trip);
+    const destination = trip.destination || "Trip";
+    const dates = trip.dates || "Upcoming";
+    const travelersCount = Math.max(2, current.filter((item) => normalizeEmailInput(item.email) !== email).length + 2);
+    const coverImage = getTripInviteCoverImage(trip);
+    const inviterName = this.userProfile?.name || "Thomas";
+    const inviteText = buildTripInviteText({
+      inviterName,
+      tripTitle,
+      destination,
+      dates,
+      travelersCount,
+      personalMessage,
+      inviteUrl,
+    });
     const now = new Date().toISOString();
     const companion = {
       id: companionInput.id || `companion_${tripId}_${email.replace(/[^a-z0-9]+/gi, "_")}`,
@@ -676,12 +769,19 @@ class AppState {
       email,
       role,
       status: "invited",
+      inviteMethod,
+      personalMessage,
+      tripTitle,
+      destination,
+      dates,
+      travelersCount,
+      coverImage,
       inviteUrl,
+      inviteText,
       createdAt: now,
       updatedAt: now,
     };
 
-    const current = trip.companions || readStoredTripCompanions(tripId);
     const withoutDuplicate = current.filter((item) => item.email !== email);
     trip.companions = [companion, ...withoutDuplicate];
     writeStoredTripCompanions(tripId, trip.companions);
@@ -711,6 +811,11 @@ class AppState {
       await enrichmentService.deleteTripCompanion(tripId, companionId);
     } catch {}
     return true;
+  }
+
+  toggleCompanionQr(companionId = "") {
+    this.activeCompanionQrId = this.activeCompanionQrId === companionId ? "" : companionId;
+    this.notify();
   }
 
   updateUserProfile(updates = {}, options = {}) {

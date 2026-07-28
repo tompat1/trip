@@ -555,15 +555,24 @@ function renderAccountAccessPanel(isAdmin) {
 }
 
 function renderTravelCompanionsPanel(trip, companions = []) {
-  const tripName = trip?.destination || "this trip";
+  const snapshot = getInviteSnapshot(trip, companions);
   return `
     <section class="profile-settings-panel profile-companions-panel" aria-labelledby="companions-panel-title">
       <div class="profile-panel-header">
         <div>
           <h3 id="companions-panel-title">Travel companions</h3>
-          <p>Invite people into ${escapeHtml(tripName)} with a role and shareable invite link.</p>
+          <p>Invite people into ${escapeHtml(snapshot.tripTitle)} with a role, message and shareable invite link.</p>
         </div>
         <span class="profile-autosave-pill">${companions.length} invited</span>
+      </div>
+
+      <div class="profile-invite-preview">
+        ${snapshot.coverImage ? `<img src="${escapeHtml(snapshot.coverImage)}" alt="" loading="lazy" />` : ""}
+        <div>
+          <strong>${escapeHtml(snapshot.tripTitle)}</strong>
+          <span>${escapeHtml(snapshot.destination)} · ${escapeHtml(snapshot.dates)} · ${snapshot.travelersCount} travelers</span>
+          <small>${escapeHtml(state.userProfile?.name || "Thomas")} invited you to join ${escapeHtml(snapshot.tripTitle)}.</small>
+        </div>
       </div>
 
       <form class="profile-companion-form" id="profile-companion-form">
@@ -583,23 +592,48 @@ function renderTravelCompanionsPanel(trip, companions = []) {
             <option value="co-owner">Co-owner</option>
           </select>
         </label>
+        <fieldset class="profile-invite-methods">
+          <legend>Invite by</legend>
+          ${renderInviteMethodOption("email", "mail", "Email", true)}
+          ${renderInviteMethodOption("sms", "messageCircle", "SMS")}
+          ${renderInviteMethodOption("whatsapp", "send", "WhatsApp")}
+          ${renderInviteMethodOption("qr", "qrCode", "QR")}
+          ${renderInviteMethodOption("link", "link", "Link")}
+        </fieldset>
+        <label class="profile-field profile-field--wide">
+          <span>Personal message</span>
+          <textarea name="personalMessage" rows="3" maxlength="500">Plan it. Live it. Remember it.</textarea>
+        </label>
         <button class="btn btn--primary btn--sm" type="submit">${renderIcon("userPlus")} Invite</button>
       </form>
 
       <div class="profile-companion-list">
         ${companions.length ? companions.map((companion) => `
-          <div class="profile-companion-row">
-            <div class="profile-companion-avatar" aria-hidden="true">${escapeHtml(getCompanionInitials(companion))}</div>
-            <div class="profile-companion-main">
-              <strong>${escapeHtml(companion.name || companion.email)}</strong>
-              <span>${escapeHtml(companion.email)} · ${escapeHtml(formatCompanionRole(companion.role))} · ${escapeHtml(companion.status || "invited")}</span>
+          <div class="profile-companion-item">
+            <div class="profile-companion-row">
+              <div class="profile-companion-avatar" aria-hidden="true">${escapeHtml(getCompanionInitials(companion))}</div>
+              <div class="profile-companion-main">
+                <strong>${escapeHtml(companion.name || companion.email)}</strong>
+                <span>${escapeHtml(companion.email)} · ${escapeHtml(formatCompanionRole(companion.role))} · ${escapeHtml(formatInviteMethod(companion.inviteMethod))} · ${escapeHtml(companion.status || "invited")}</span>
+                ${companion.personalMessage ? `<small>${escapeHtml(companion.personalMessage)}</small>` : ""}
+              </div>
+              <div class="profile-companion-actions">
+                <a class="btn btn--icon btn--ghost" href="${escapeHtml(createMailtoInvite(companion, trip))}" aria-label="Send email invite">${renderIcon("mail")}</a>
+                <a class="btn btn--icon btn--ghost" href="${escapeHtml(createSmsInvite(companion))}" aria-label="Send SMS invite">${renderIcon("messageCircle")}</a>
+                <a class="btn btn--icon btn--ghost" href="${escapeHtml(createWhatsAppInvite(companion))}" target="_blank" rel="noopener" aria-label="Send WhatsApp invite">${renderIcon("send")}</a>
+                <button class="btn btn--icon btn--ghost" data-action="copy-companion-invite" data-companion-id="${escapeHtml(companion.id)}" type="button" aria-label="Copy invite link">${renderIcon("copy")}</button>
+                <button class="btn btn--icon btn--ghost" data-action="show-companion-qr" data-companion-id="${escapeHtml(companion.id)}" type="button" aria-label="Show QR invite">${renderIcon("qrCode")}</button>
+                <button class="btn btn--icon btn--ghost" data-action="remove-trip-companion" data-companion-id="${escapeHtml(companion.id)}" type="button" aria-label="Remove companion">
+                  ${renderIcon("trash")}
+                </button>
+              </div>
             </div>
-            <div class="profile-companion-actions">
-              <a class="btn btn--outline btn--xs" href="${escapeHtml(createMailtoInvite(companion, trip))}">${renderIcon("mail")} Email</a>
-              <button class="btn btn--icon btn--ghost" data-action="remove-trip-companion" data-companion-id="${escapeHtml(companion.id)}" type="button" aria-label="Remove companion">
-                ${renderIcon("trash")}
-              </button>
-            </div>
+            ${state.activeCompanionQrId === companion.id ? `
+              <div class="profile-companion-qr">
+                <img src="${escapeHtml(createQrInvite(companion))}" alt="QR code invite for ${escapeHtml(companion.name || companion.email)}" loading="lazy" />
+                <span>Scan to open the trip invite.</span>
+              </div>
+            ` : ""}
           </div>
         `).join("") : `
           <div class="profile-companion-empty">
@@ -609,6 +643,15 @@ function renderTravelCompanionsPanel(trip, companions = []) {
         `}
       </div>
     </section>
+  `;
+}
+
+function renderInviteMethodOption(value, icon, label, checked = false) {
+  return `
+    <label>
+      <input type="radio" name="inviteMethod" value="${escapeHtml(value)}" ${checked ? "checked" : ""} />
+      <span>${renderIcon(icon)} ${escapeHtml(label)}</span>
+    </label>
   `;
 }
 
@@ -663,13 +706,57 @@ function formatCompanionRole(role = "") {
     .join(" ");
 }
 
-function createMailtoInvite(companion = {}, trip = {}) {
-  const subject = `Trip invite: ${trip?.destination || "our trip"}`;
-  const body = [
-    `You've been invited to help plan ${trip?.destination || "our trip"} in TRIP.`,
+function formatInviteMethod(method = "") {
+  const labels = {
+    email: "Email",
+    sms: "SMS",
+    whatsapp: "WhatsApp",
+    qr: "QR code",
+    link: "Share link",
+  };
+  return labels[String(method || "").toLowerCase()] || "Email";
+}
+
+function getInviteSnapshot(trip = {}, companions = []) {
+  return {
+    tripTitle: trip.title || trip.name || (trip.destination ? `Roadtrip ${trip.destination}` : "This trip"),
+    destination: trip.destination || "Destination",
+    dates: trip.dates || "Dates TBD",
+    travelersCount: Math.max(1, companions.length + 1),
+    coverImage: trip.coverImage || trip.image || trip.upcomingActivity?.image || "",
+  };
+}
+
+function getCompanionInviteText(companion = {}, trip = {}) {
+  if (companion.inviteText) return companion.inviteText;
+  const snapshot = getInviteSnapshot(trip, []);
+  return [
+    `${state.userProfile?.name || "Thomas"} invited you to join ${companion.tripTitle || snapshot.tripTitle}.`,
+    `${companion.destination || snapshot.destination} · ${companion.dates || snapshot.dates}`,
+    `${companion.travelersCount || snapshot.travelersCount} travelers`,
+    "",
+    companion.personalMessage || "Plan it. Live it. Remember it.",
     companion.inviteUrl ? `Open invite: ${companion.inviteUrl}` : "",
-  ].filter(Boolean).join("\n\n");
+  ].filter((line, index, lines) => line || (lines[index - 1] && lines[index + 1])).join("\n");
+}
+
+function createMailtoInvite(companion = {}, trip = {}) {
+  const subject = `Trip invite: ${companion.tripTitle || trip?.destination || "our trip"}`;
+  const body = getCompanionInviteText(companion, trip);
   return `mailto:${encodeURIComponent(companion.email || "")}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+}
+
+function createSmsInvite(companion = {}) {
+  return `sms:?&body=${encodeURIComponent(getCompanionInviteText(companion, state.activeTrip))}`;
+}
+
+function createWhatsAppInvite(companion = {}) {
+  return `https://wa.me/?text=${encodeURIComponent(getCompanionInviteText(companion, state.activeTrip))}`;
+}
+
+function createQrInvite(companion = {}) {
+  const inviteUrl = companion.inviteUrl || "";
+  return `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(inviteUrl)}`;
 }
 
 function escapeHtml(str) {

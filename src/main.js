@@ -98,6 +98,7 @@ function render() {
   const lightboxHtml = renderLightbox();
   const drawerHtml = renderEventDrawer();
   const tripCreateHtml = renderTripCreateModal();
+  const inviteAcceptanceHtml = renderInviteAcceptance();
 
   appEl.innerHTML = `
     <div class="app-view app-view--${view}">
@@ -107,6 +108,7 @@ function render() {
       ${lightboxHtml}
       ${drawerHtml}
       ${tripCreateHtml}
+      ${inviteAcceptanceHtml}
     </div>
   `;
 
@@ -114,6 +116,33 @@ function render() {
   requestAnimationFrame(() => {
     initMapsForView(view);
   });
+}
+
+function renderInviteAcceptance() {
+  const invite = state.activeInvite;
+  if (!invite || invite.status === "accepted") return "";
+  const trip = state.activeTrip;
+  const title = trip.title || trip.name || (trip.destination ? `Roadtrip ${trip.destination}` : "This trip");
+  const coverImage = trip.coverImage || trip.image || trip.upcomingActivity?.image || "";
+  const travelersCount = Math.max(1, (trip.companions || []).length + 1);
+  const isKnownUser = state.userSession?.role === "admin";
+  return `
+    <section class="trip-invite-acceptance" aria-label="Trip invitation">
+      ${coverImage ? `<img src="${escapeHtml(coverImage)}" alt="" loading="lazy" />` : ""}
+      <div class="trip-invite-acceptance__copy">
+        <span>Trip invitation</span>
+        <strong>${escapeHtml(title)}</strong>
+        <small>${escapeHtml(trip.destination || "Destination")} · ${escapeHtml(trip.dates || "Dates TBD")} · ${travelersCount} travelers</small>
+      </div>
+      <div class="trip-invite-acceptance__actions">
+        <button class="btn btn--primary btn--sm" data-action="accept-trip-invite" data-invite-mode="${isKnownUser ? "user" : "guest"}" type="button">
+          ${isKnownUser ? "Join instantly" : "Continue as Guest"}
+        </button>
+        ${!isKnownUser ? `<button class="btn btn--outline btn--sm" data-action="create-account-from-invite" type="button">Create Account</button>` : ""}
+        <button class="btn btn--icon btn--ghost" data-action="dismiss-trip-invite" type="button" aria-label="Dismiss invitation">×</button>
+      </div>
+    </section>
+  `;
 }
 
 function initMapsForView(view) {
@@ -289,6 +318,58 @@ function escapeHtml(str) {
     .replaceAll("'", "&#039;");
 }
 
+function getActiveCompanionById(companionId = "") {
+  return (state.activeTrip?.companions || []).find((companion) => companion.id === companionId);
+}
+
+function getInviteText(companion = {}) {
+  if (companion.inviteText) return companion.inviteText;
+  const trip = state.activeTrip || {};
+  const tripTitle = companion.tripTitle || trip.title || trip.name || (trip.destination ? `Roadtrip ${trip.destination}` : "this trip");
+  return [
+    `${state.userProfile?.name || "Thomas"} invited you to join ${tripTitle}.`,
+    `${companion.destination || trip.destination || "Destination"} · ${companion.dates || trip.dates || "Dates TBD"}`,
+    `${companion.travelersCount || Math.max(1, (trip.companions || []).length + 1)} travelers`,
+    "",
+    companion.personalMessage || "Plan it. Live it. Remember it.",
+    companion.inviteUrl ? `Open invite: ${companion.inviteUrl}` : "",
+  ].filter((line, index, lines) => line || (lines[index - 1] && lines[index + 1])).join("\n");
+}
+
+async function copyInviteToClipboard(companion = {}) {
+  const text = companion.inviteUrl || getInviteText(companion);
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch {
+    const textarea = document.createElement("textarea");
+    textarea.value = text;
+    textarea.setAttribute("readonly", "");
+    textarea.style.position = "fixed";
+    textarea.style.opacity = "0";
+    document.body.appendChild(textarea);
+    textarea.select();
+    document.execCommand("copy");
+    textarea.remove();
+  }
+}
+
+async function deliverCompanionInvite(companion = {}) {
+  const method = companion.inviteMethod || "email";
+  const text = getInviteText(companion);
+  if (method === "sms") {
+    window.location.href = `sms:?&body=${encodeURIComponent(text)}`;
+  } else if (method === "whatsapp") {
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank", "noopener");
+  } else if (method === "qr") {
+    state.toggleCompanionQr(companion.id);
+  } else if (method === "link") {
+    await copyInviteToClipboard(companion);
+  } else {
+    const subject = `Trip invite: ${companion.tripTitle || state.activeTrip?.destination || "our trip"}`;
+    window.location.href = `mailto:${encodeURIComponent(companion.email || "")}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(text)}`;
+  }
+}
+
 // Global Event Listeners Delegation
 document.addEventListener("click", async (e) => {
   const target = e.target.closest("[data-nav], [data-action], [data-subtab], [data-viewmode], [data-day-select], [data-map-day-filter], [data-trip-length], [data-cat], [data-subfilter]");
@@ -459,6 +540,29 @@ document.addEventListener("click", async (e) => {
         await state.removeTripCompanion(state.activeTripId, companionId);
         showToast("Travel companion removed.");
       }
+    }
+    else if (action === "copy-companion-invite") {
+      const companion = getActiveCompanionById(target.dataset.companionId);
+      if (companion) {
+        await copyInviteToClipboard(companion);
+        showToast("Invite link copied.");
+      }
+    }
+    else if (action === "show-companion-qr") {
+      state.toggleCompanionQr(target.dataset.companionId || "");
+    }
+    else if (action === "accept-trip-invite") {
+      state.acceptTripInvite({ mode: target.dataset.inviteMode || "guest" });
+      showToast("Trip added to your planner.");
+    }
+    else if (action === "create-account-from-invite") {
+      state.acceptTripInvite({ mode: "account" });
+      state.setProfileSection("profile");
+      state.setView("profile");
+      showToast("Trip added. Complete your profile to create your TRIP account.");
+    }
+    else if (action === "dismiss-trip-invite") {
+      state.dismissTripInvite();
     }
     else if (action === "apply-quick-intent") {
       const q = target.dataset.query || "";
@@ -933,6 +1037,8 @@ document.addEventListener("submit", async (e) => {
       name: form.name?.value || "",
       email: form.email?.value || "",
       role: form.role?.value || "viewer",
+      inviteMethod: form.inviteMethod?.value || "email",
+      personalMessage: form.personalMessage?.value || "",
     });
     if (button) button.disabled = false;
     if (!result.ok && result.error === "invalid-email") {
@@ -942,6 +1048,7 @@ document.addEventListener("submit", async (e) => {
     }
     if (result.ok) {
       form.reset();
+      if (result.companion) await deliverCompanionInvite(result.companion);
       showToast(result.source === "worker" ? "Travel companion invited." : "Travel companion saved locally.");
     } else {
       showToast("Could not add companion.");
