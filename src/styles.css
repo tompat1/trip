@@ -7461,6 +7461,33 @@ textarea {
   grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr) minmax(120px, 0.7fr) auto;
 }
 
+.profile-companion-trip-select {
+  margin: 14px 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background:
+    linear-gradient(135deg, rgba(255, 122, 47, 0.1), transparent),
+    var(--paper);
+}
+
+.profile-companion-trip-select select {
+  min-height: 44px;
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--paper-card);
+  color: var(--ink);
+  padding: 10px 12px;
+  font-weight: 850;
+}
+
+:root[data-theme="dark"] .profile-companion-trip-select {
+  background:
+    linear-gradient(135deg, rgba(255, 122, 47, 0.12), transparent),
+    var(--surface-overlay);
+}
+
 .profile-invite-preview {
   display: grid;
   grid-template-columns: 76px minmax(0, 1fr);

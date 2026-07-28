@@ -1,4 +1,4 @@
-import { state, TRAVELER_PERSONA_ARCHETYPES } from "../state.js";
+import { isFutureTrip, state, TRAVELER_PERSONA_ARCHETYPES } from "../state.js";
 import { renderHeader } from "../components/Header.js";
 import { renderIcon } from "../utils/icons.js";
 import { TRIP_STAMP_SVG } from "../components/BrandAssets.js";
@@ -256,7 +256,12 @@ export function renderProfileView() {
   const personaDescriptions = new Map(TRAVELER_PERSONA_ARCHETYPES);
   const personas = [...new Set([...TRAVELER_PERSONA_ARCHETYPES.map(([label]) => label), ...customPersonas])];
   const isAdmin = Boolean(state.isAdmin);
-  const companions = state.activeTrip?.companions || [];
+  const futureTrips = trips.filter((trip) => isFutureTrip(trip));
+  const companionTripId = state.profileCompanionTripId && futureTrips.some((trip) => trip.id === state.profileCompanionTripId)
+    ? state.profileCompanionTripId
+    : futureTrips[0]?.id || "";
+  const companionTrip = futureTrips.find((trip) => trip.id === companionTripId) || null;
+  const companions = companionTrip?.companions || [];
 
   return `
     <div class="profile-page">
@@ -353,7 +358,7 @@ export function renderProfileView() {
 
         ${renderAccountAccessPanel(isAdmin)}
 
-        ${renderTravelCompanionsPanel(state.activeTrip, companions)}
+        ${renderTravelCompanionsPanel(companionTrip, companions, futureTrips, companionTripId)}
 
         <div class="profile-activity-section">
           <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -577,8 +582,9 @@ function renderAccountAccessPanel(isAdmin) {
   `;
 }
 
-function renderTravelCompanionsPanel(trip, companions = []) {
+function renderTravelCompanionsPanel(trip, companions = [], trips = [], selectedTripId = trip?.id || "") {
   const snapshot = getInviteSnapshot(trip, companions);
+  const hasFutureTrip = Boolean(selectedTripId && trip?.id);
   return `
     <section class="profile-settings-panel profile-companions-panel" aria-labelledby="companions-panel-title">
       <div class="profile-panel-header">
@@ -589,6 +595,18 @@ function renderTravelCompanionsPanel(trip, companions = []) {
         <span class="profile-autosave-pill">${companions.length} invited</span>
       </div>
 
+      <label class="profile-field profile-companion-trip-select">
+        <span>Companion trip</span>
+        <select data-action="set-profile-companion-trip" aria-label="Choose trip for companion invites" ${hasFutureTrip ? "" : "disabled"}>
+          ${trips.map((item) => `
+            <option value="${escapeHtml(item.id)}" ${item.id === selectedTripId ? "selected" : ""}>
+              ${escapeHtml(`${item.flag ? `${item.flag} ` : ""}${item.destination || item.title || item.id}`)}
+            </option>
+          `).join("")}
+        </select>
+      </label>
+
+      ${hasFutureTrip ? `
       <div class="profile-invite-preview">
         ${snapshot.coverImage ? `<img src="${escapeHtml(snapshot.coverImage)}" alt="" loading="lazy" />` : ""}
         <div>
@@ -599,6 +617,7 @@ function renderTravelCompanionsPanel(trip, companions = []) {
       </div>
 
       <form class="profile-companion-form" id="profile-companion-form">
+        <input type="hidden" name="tripId" value="${escapeHtml(selectedTripId)}" />
         <label class="profile-field">
           <span>Name</span>
           <input name="name" type="text" placeholder="Optional" autocomplete="name" />
@@ -644,9 +663,9 @@ function renderTravelCompanionsPanel(trip, companions = []) {
                 <a class="btn btn--icon btn--ghost" href="${escapeHtml(createMailtoInvite(companion, trip))}" aria-label="Send email invite">${renderIcon("mail")}</a>
                 <a class="btn btn--icon btn--ghost" href="${escapeHtml(createSmsInvite(companion))}" aria-label="Send SMS invite">${renderIcon("messageCircle")}</a>
                 <a class="btn btn--icon btn--ghost" href="${escapeHtml(createWhatsAppInvite(companion))}" target="_blank" rel="noopener" aria-label="Send WhatsApp invite">${renderIcon("send")}</a>
-                <button class="btn btn--icon btn--ghost" data-action="copy-companion-invite" data-companion-id="${escapeHtml(companion.id)}" type="button" aria-label="Copy invite link">${renderIcon("copy")}</button>
-                <button class="btn btn--icon btn--ghost" data-action="show-companion-qr" data-companion-id="${escapeHtml(companion.id)}" type="button" aria-label="Show QR invite">${renderIcon("qrCode")}</button>
-                <button class="btn btn--icon btn--ghost" data-action="remove-trip-companion" data-companion-id="${escapeHtml(companion.id)}" type="button" aria-label="Remove companion">
+                <button class="btn btn--icon btn--ghost" data-action="copy-companion-invite" data-trip-id="${escapeHtml(selectedTripId)}" data-companion-id="${escapeHtml(companion.id)}" type="button" aria-label="Copy invite link">${renderIcon("copy")}</button>
+                <button class="btn btn--icon btn--ghost" data-action="show-companion-qr" data-trip-id="${escapeHtml(selectedTripId)}" data-companion-id="${escapeHtml(companion.id)}" type="button" aria-label="Show QR invite">${renderIcon("qrCode")}</button>
+                <button class="btn btn--icon btn--ghost" data-action="remove-trip-companion" data-trip-id="${escapeHtml(selectedTripId)}" data-companion-id="${escapeHtml(companion.id)}" type="button" aria-label="Remove companion">
                   ${renderIcon("trash")}
                 </button>
               </div>
@@ -665,6 +684,12 @@ function renderTravelCompanionsPanel(trip, companions = []) {
           </div>
         `}
       </div>
+      ` : `
+        <div class="profile-companion-empty">
+          <strong>Create a new trip to invite fellow travelers.</strong>
+          <span>Travel companions can only be invited to upcoming trips.</span>
+        </div>
+      `}
     </section>
   `;
 }

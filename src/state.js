@@ -329,6 +329,24 @@ function markOnboardingSeen() {
   } catch {}
 }
 
+function getLocalDateStamp(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+export function isFutureTrip(trip = {}, todayStamp = getLocalDateStamp()) {
+  const startDate = String(trip.startDate || trip.start_date || "").slice(0, 10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(startDate) && startDate >= todayStamp;
+}
+
+function resolveFutureTripId(preferredTripId = "", fallbackTripId = "") {
+  if (isFutureTrip(tripsData[preferredTripId])) return preferredTripId;
+  if (isFutureTrip(tripsData[fallbackTripId])) return fallbackTripId;
+  return Object.values(tripsData).find((trip) => isFutureTrip(trip))?.id || "";
+}
+
 function readStoredTheme() {
   if (typeof localStorage === "undefined") return "system";
   try {
@@ -421,6 +439,7 @@ class AppState {
     // User Profile & Preferences
     this.userProfile = readStoredUserProfile();
     this.activeProfileSection = "profile";
+    this.profileCompanionTripId = resolveFutureTripId(this.activeTripId);
     this.userSession = { status: "checking", role: "anonymous", userId: "", authType: "none" };
     this.themeMode = readStoredTheme();
     this.userAvatar = this.userProfile.avatarUrl;
@@ -893,6 +912,7 @@ class AppState {
   async inviteTripCompanion(tripId = this.activeTripId, companionInput = {}) {
     const trip = tripsData[tripId];
     if (!trip) return { ok: false, error: "missing-trip" };
+    if (!isFutureTrip(trip)) return { ok: false, error: "past-trip" };
     const email = normalizeEmailInput(companionInput.email);
     if (!email) return { ok: false, error: "invalid-email" };
 
@@ -1062,6 +1082,9 @@ class AppState {
   setTrip(tripId) {
     if (tripsData[tripId] && this.activeTripId !== tripId) {
       this.activeTripId = tripId;
+      if (!this.profileCompanionTripId || !isFutureTrip(tripsData[this.profileCompanionTripId])) {
+        this.profileCompanionTripId = resolveFutureTripId(tripId, this.profileCompanionTripId);
+      }
       this.loadTripCompanions(tripId);
       if (!this.quickCaptureOpen) {
         this.quickCaptureTripId = tripId;
@@ -1072,6 +1095,14 @@ class AppState {
       this.refreshTripIntelligence(tripId);
       this.notify();
     }
+  }
+
+  setProfileCompanionTrip(tripId) {
+    if (!isFutureTrip(tripsData[tripId])) return;
+    this.profileCompanionTripId = tripId;
+    this.activeCompanionQrId = "";
+    this.loadTripCompanions(tripId);
+    this.notify();
   }
 
   async refreshWeather() {

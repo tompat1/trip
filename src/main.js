@@ -354,13 +354,14 @@ function escapeHtml(str) {
     .replaceAll("'", "&#039;");
 }
 
-function getActiveCompanionById(companionId = "") {
-  return (state.activeTrip?.companions || []).find((companion) => companion.id === companionId);
+function getCompanionById(companionId = "", tripId = state.profileCompanionTripId || state.activeTripId) {
+  const trip = state.getAllTrips().find((item) => item.id === tripId) || state.activeTrip;
+  return (trip?.companions || []).find((companion) => companion.id === companionId);
 }
 
 function getInviteText(companion = {}) {
   if (companion.inviteText) return companion.inviteText;
-  const trip = state.activeTrip || {};
+  const trip = state.getAllTrips().find((item) => item.id === companion.tripId) || state.activeTrip || {};
   const tripTitle = companion.tripTitle || trip.title || trip.name || (trip.destination ? `Roadtrip ${trip.destination}` : "this trip");
   return [
     `${state.userProfile?.name || "Thomas"} invited you to join ${tripTitle}.`,
@@ -401,7 +402,8 @@ async function deliverCompanionInvite(companion = {}) {
   } else if (method === "link") {
     await copyInviteToClipboard(companion);
   } else {
-    const subject = `Trip invite: ${companion.tripTitle || state.activeTrip?.destination || "our trip"}`;
+    const trip = state.getAllTrips().find((item) => item.id === companion.tripId) || state.activeTrip;
+    const subject = `Trip invite: ${companion.tripTitle || trip?.destination || "our trip"}`;
     window.location.href = `mailto:${encodeURIComponent(companion.email || "")}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(text)}`;
   }
 }
@@ -604,13 +606,14 @@ document.addEventListener("click", async (e) => {
     }
     else if (action === "remove-trip-companion") {
       const companionId = target.dataset.companionId;
+      const tripId = target.dataset.tripId || state.profileCompanionTripId || state.activeTripId;
       if (companionId && confirm("Remove this travel companion from the trip?")) {
-        await state.removeTripCompanion(state.activeTripId, companionId);
+        await state.removeTripCompanion(tripId, companionId);
         showToast("Travel companion removed.");
       }
     }
     else if (action === "copy-companion-invite") {
-      const companion = getActiveCompanionById(target.dataset.companionId);
+      const companion = getCompanionById(target.dataset.companionId, target.dataset.tripId);
       if (companion) {
         await copyInviteToClipboard(companion);
         showToast("Invite link copied.");
@@ -1208,17 +1211,23 @@ document.addEventListener("submit", async (e) => {
     const form = e.target;
     const button = form.querySelector("button[type='submit']");
     if (button) button.disabled = true;
-    const result = await state.inviteTripCompanion(state.activeTripId, {
-      name: form.name?.value || "",
-      email: form.email?.value || "",
-      role: form.role?.value || "viewer",
-      inviteMethod: form.inviteMethod?.value || "email",
-      personalMessage: form.personalMessage?.value || "",
+    const formData = new FormData(form);
+    const tripId = formData.get("tripId") || state.profileCompanionTripId || state.activeTripId;
+    const result = await state.inviteTripCompanion(tripId, {
+      name: formData.get("name") || "",
+      email: formData.get("email") || "",
+      role: formData.get("role") || "viewer",
+      inviteMethod: formData.get("inviteMethod") || "email",
+      personalMessage: formData.get("personalMessage") || "",
     });
     if (button) button.disabled = false;
     if (!result.ok && result.error === "invalid-email") {
       showToast("Add a valid companion email.");
       form.email?.focus();
+      return;
+    }
+    if (!result.ok && result.error === "past-trip") {
+      showToast("Choose a future trip before inviting companions.");
       return;
     }
     if (result.ok) {
@@ -1554,6 +1563,9 @@ document.addEventListener("change", async (e) => {
   }
   if (e.target.dataset.action === "select-quick-capture-trip") {
     state.setQuickCaptureTrip(e.target.value);
+  }
+  if (e.target.dataset.action === "set-profile-companion-trip") {
+    state.setProfileCompanionTrip(e.target.value || state.activeTripId);
   }
   if (e.target.id === "quick-capture-file-input" && e.target.files && e.target.files[0]) {
     const files = Array.from(e.target.files).filter((file) => /^(image|video)\//.test(file.type || ""));
