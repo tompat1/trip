@@ -23,6 +23,7 @@ import { enrichmentService } from "./enrichment/enrichmentService.js";
 import "./styles.css";
 
 let activeMaps = new Map();
+let lastRenderedView = "";
 
 const PLAN_EVENT_LOCATION_COORDS = {
   "cdg airport": [49.0097, 2.5479],
@@ -77,6 +78,8 @@ function render() {
   if (!appEl) return;
 
   const view = state.activeView;
+  const isRouteChange = lastRenderedView && lastRenderedView !== view;
+  lastRenderedView = view;
   applyThemeMode();
 
   let viewHtml = "";
@@ -108,7 +111,7 @@ function render() {
   const authExitHtml = renderAuthExitPage();
 
   appEl.innerHTML = `
-    <div class="app-view app-view--${view}">
+    <div class="app-view app-view--${view} ${isRouteChange ? "app-view--route-enter" : ""}">
       ${viewHtml}
       ${bottomNavHtml}
       ${quickCaptureHtml}
@@ -130,8 +133,11 @@ function render() {
 
 function applyThemeMode() {
   const theme = state.themeMode || "system";
-  document.documentElement.dataset.theme = theme;
-  document.documentElement.style.colorScheme = theme === "dark" ? "dark" : theme === "light" ? "light" : "light dark";
+  const systemTheme = window.matchMedia?.("(prefers-color-scheme: dark)")?.matches ? "dark" : "light";
+  const resolvedTheme = theme === "system" ? systemTheme : theme;
+  document.documentElement.dataset.themePreference = theme;
+  document.documentElement.dataset.theme = resolvedTheme;
+  document.documentElement.style.colorScheme = resolvedTheme;
 }
 
 function renderInviteAcceptance() {
@@ -425,6 +431,7 @@ document.addEventListener("click", async (e) => {
     if (!e.target.closest?.(".airport-autocomplete")) closeAirportAutocompleteMenus();
     return;
   }
+  primeMotionFeedback(target);
 
   if (target.dataset.action === "select-airport-suggestion") {
     const wrapper = target.closest(".airport-autocomplete");
@@ -979,6 +986,28 @@ document.addEventListener("click", async (e) => {
     state.setSearchSubFilter(target.dataset.subfilter);
   }
 });
+
+function primeMotionFeedback(target) {
+  const motionTarget = target.closest("button, .dock-nav-item, .profile-menu-item, .trip-heads-up__summary");
+  if (!motionTarget) return;
+  motionTarget.classList.remove("is-pressing");
+  void motionTarget.offsetWidth;
+  motionTarget.classList.add("is-pressing");
+  setTimeout(() => motionTarget.classList.remove("is-pressing"), 220);
+
+  const action = target.dataset.action || "";
+  if (!action.startsWith("refresh-")) return;
+  document.documentElement.dataset.motionRefresh = action;
+  setTimeout(() => {
+    if (document.documentElement.dataset.motionRefresh === action) {
+      delete document.documentElement.dataset.motionRefresh;
+    }
+  }, 900);
+  const refreshButton = target.closest("button");
+  if (!refreshButton) return;
+  refreshButton.classList.add("is-refreshing");
+  setTimeout(() => refreshButton.classList.remove("is-refreshing"), 900);
+}
 
 // Search input field listener
 document.addEventListener("input", (e) => {

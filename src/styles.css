@@ -307,8 +307,13 @@ textarea {
   color: var(--orange);
 }
 
+:root[data-theme="dark"] .dock-nav-item.is-disabled {
+  color: #637187;
+  opacity: 0.78;
+}
+
 :root[data-theme="dark"] .dock-disabled-dot {
-  background: var(--ink-muted);
+  background: #637187;
 }
 
 :root[data-theme="dark"] .profile-companion-row {
@@ -861,6 +866,251 @@ textarea {
   }
 }
 
+/* ==========================================================================
+   COMPACT MOTION LANGUAGE
+   ========================================================================== */
+.app-view--route-enter main,
+.app-view--route-enter .home-view,
+.app-view--route-enter .plan-view,
+.app-view--route-enter .search-view,
+.app-view--route-enter .live-view,
+.app-view--route-enter .profile-view {
+  animation: viewGlideIn 320ms var(--ease-out) both;
+}
+
+.app-view--route-enter .trip-context-card,
+.app-view--route-enter .dashboard-card,
+.app-view--route-enter .trip-intel-card,
+.app-view--route-enter .idea-card,
+.app-view--route-enter .event-list-card,
+.app-view--route-enter .profile-header-card,
+.app-view--route-enter .profile-settings-panel,
+.app-view--route-enter .live-intel-card,
+.app-view--route-enter .search-map-card {
+  animation: cardStackIn 360ms var(--ease-out) both;
+  will-change: transform, opacity;
+}
+
+.app-view--route-enter .dashboard-card:nth-of-type(2),
+.app-view--route-enter .idea-card:nth-of-type(2),
+.app-view--route-enter .event-list-card:nth-of-type(2),
+.app-view--route-enter .profile-settings-panel:nth-of-type(2) {
+  animation-delay: 45ms;
+}
+
+.app-view--route-enter .dashboard-card:nth-of-type(3),
+.app-view--route-enter .idea-card:nth-of-type(3),
+.app-view--route-enter .event-list-card:nth-of-type(3),
+.app-view--route-enter .profile-settings-panel:nth-of-type(3) {
+  animation-delay: 90ms;
+}
+
+.bottom-dock-nav {
+  animation: dockRiseIn 420ms var(--ease-out) both;
+}
+
+.bottom-dock-nav__container {
+  position: relative;
+}
+
+.dock-nav-item {
+  position: relative;
+  isolation: isolate;
+}
+
+.dock-nav-item::before {
+  content: "";
+  position: absolute;
+  inset: 2px;
+  border-radius: 18px;
+  background: rgba(255, 122, 47, 0.12);
+  opacity: 0;
+  transform: translateY(4px) scaleX(0.72);
+  transition: opacity 180ms var(--ease-out), transform 220ms var(--ease-out);
+  z-index: -1;
+}
+
+.dock-nav-item.is-active::before {
+  opacity: 1;
+  transform: translateY(0) scaleX(1);
+}
+
+.dock-nav-item svg,
+.btn svg,
+.trip-heads-up__chevron svg {
+  transition: transform 180ms var(--ease-out), opacity 180ms var(--ease-out);
+}
+
+.dock-nav-item.is-active svg {
+  transform: translateY(-1px);
+}
+
+.dock-nav-item.is-pressing svg,
+.btn.is-pressing svg,
+.profile-menu-item.is-pressing svg {
+  animation: iconPress 220ms var(--ease-out) both;
+}
+
+.btn.is-refreshing svg {
+  animation: refreshOrbit 700ms cubic-bezier(0.64, 0, 0.22, 1) infinite;
+}
+
+:root[data-motion-refresh="refresh-weather"] [data-action="refresh-weather"] svg,
+:root[data-motion-refresh="refresh-trip-ideas"] [data-action="refresh-trip-ideas"] svg,
+:root[data-motion-refresh="refresh-trip-events"] [data-action="refresh-trip-events"] svg,
+:root[data-motion-refresh="refresh-trip-intelligence"] [data-action="refresh-trip-intelligence"] svg {
+  animation: refreshOrbit 700ms cubic-bezier(0.64, 0, 0.22, 1) infinite;
+}
+
+.trip-heads-up {
+  transition: background-color 180ms var(--ease-out), border-color 180ms var(--ease-out), box-shadow 180ms var(--ease-out);
+}
+
+.trip-heads-up[open] {
+  box-shadow: 0 8px 20px rgba(15, 27, 43, 0.08);
+}
+
+.trip-heads-up__full,
+.trip-heads-up__link,
+.live-intel-row__full,
+.live-intel-row__link {
+  animation: disclosureDrop 220ms var(--ease-out) both;
+}
+
+.trip-mode-toggle input:checked+.toggle-slider .toggle-knob {
+  transition-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.quick-capture-btn,
+.fab-circle,
+.btn--primary,
+.btn--outline {
+  transition:
+    background-color 180ms var(--ease-out),
+    border-color 180ms var(--ease-out),
+    color 180ms var(--ease-out),
+    box-shadow 180ms var(--ease-out),
+    transform 180ms var(--ease-out);
+}
+
+.quick-capture-btn:active,
+.fab-circle:active {
+  transform: translateY(1px);
+}
+
+.btn:active {
+  box-shadow: inset 0 2px 8px rgba(15, 27, 43, 0.16);
+}
+
+@keyframes viewGlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes cardStackIn {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes dockRiseIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 18px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+@keyframes iconPress {
+  0% {
+    transform: translateY(0);
+  }
+  45% {
+    transform: translateY(2px);
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
+
+@keyframes refreshOrbit {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes disclosureDrop {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-view--route-enter main,
+  .app-view--route-enter .home-view,
+  .app-view--route-enter .plan-view,
+  .app-view--route-enter .search-view,
+  .app-view--route-enter .live-view,
+  .app-view--route-enter .profile-view,
+  .app-view--route-enter .trip-context-card,
+  .app-view--route-enter .dashboard-card,
+  .app-view--route-enter .trip-intel-card,
+  .app-view--route-enter .idea-card,
+  .app-view--route-enter .event-list-card,
+  .app-view--route-enter .profile-header-card,
+  .app-view--route-enter .profile-settings-panel,
+  .app-view--route-enter .live-intel-card,
+  .app-view--route-enter .search-map-card,
+  .bottom-dock-nav,
+  .dock-nav-item.is-pressing svg,
+  .btn.is-pressing svg,
+  .profile-menu-item.is-pressing svg,
+  .btn.is-refreshing svg,
+  :root[data-motion-refresh="refresh-weather"] [data-action="refresh-weather"] svg,
+  :root[data-motion-refresh="refresh-trip-ideas"] [data-action="refresh-trip-ideas"] svg,
+  :root[data-motion-refresh="refresh-trip-events"] [data-action="refresh-trip-events"] svg,
+  :root[data-motion-refresh="refresh-trip-intelligence"] [data-action="refresh-trip-intelligence"] svg,
+  .trip-heads-up__full,
+  .trip-heads-up__link,
+  .live-intel-row__full,
+  .live-intel-row__link {
+    animation: none !important;
+  }
+
+  .dock-nav-item::before,
+  .dock-nav-item svg,
+  .btn svg,
+  .trip-heads-up__chevron svg,
+  .quick-capture-btn,
+  .fab-circle,
+  .btn--primary,
+  .btn--outline {
+    transition-duration: 0.01ms !important;
+  }
+}
+
 @keyframes statusPulse {
 
   0%,
@@ -1316,15 +1566,20 @@ textarea {
 }
 
 .dock-nav-item.is-disabled {
-  opacity: 0.62;
+  color: #9AA4B2;
+  opacity: 0.72;
   filter: none;
+}
+
+.dock-nav-item.is-disabled::before {
+  opacity: 0;
 }
 
 .dock-disabled-dot {
   width: 4px;
   height: 4px;
   border-radius: 50%;
-  background: #05070A;
+  background: #9AA4B2;
   margin-top: 1px;
 }
 
@@ -2400,6 +2655,58 @@ textarea {
 :root[data-theme="dark"] .trip-heads-up__icon {
   background: rgba(255, 122, 47, 0.16);
   color: var(--orange);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .trip-intel-card {
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.035), transparent),
+      #0E1A2A;
+    border-color: rgba(237, 244, 255, 0.14);
+  }
+
+  :root:not([data-theme="light"]) .trip-intel-card__title,
+  :root:not([data-theme="light"]) .trip-intel-fact__label,
+  :root:not([data-theme="light"]) .trip-heads-up__body strong,
+  :root:not([data-theme="light"]) .trip-heads-up__full {
+    color: #F4F7FB;
+  }
+
+  :root:not([data-theme="light"]) .trip-intel-card__subtitle,
+  :root:not([data-theme="light"]) .trip-intel-fact__value,
+  :root:not([data-theme="light"]) .trip-heads-up__body span,
+  :root:not([data-theme="light"]) .trip-heads-up__source {
+    color: #AEBBD0;
+  }
+
+  :root:not([data-theme="light"]) .trip-intel-fact,
+  :root:not([data-theme="light"]) .trip-heads-up {
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.035), transparent),
+      rgba(18, 31, 48, 0.92);
+    border-color: rgba(237, 244, 255, 0.12);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
+  }
+
+  :root:not([data-theme="light"]) .trip-heads-up--caution {
+    background:
+      linear-gradient(90deg, rgba(255, 122, 47, 0.16), transparent 42%),
+      rgba(32, 28, 38, 0.94);
+    border-color: rgba(255, 122, 47, 0.42);
+  }
+
+  :root:not([data-theme="light"]) .trip-heads-up--positive {
+    background:
+      linear-gradient(90deg, rgba(113, 157, 108, 0.18), transparent 42%),
+      rgba(18, 31, 48, 0.92);
+    border-color: rgba(113, 157, 108, 0.34);
+  }
+
+  :root:not([data-theme="light"]) .trip-intel-fact__icon,
+  :root:not([data-theme="light"]) .trip-heads-up__icon {
+    background: rgba(255, 122, 47, 0.16);
+    color: var(--orange);
+  }
 }
 
 .live-intel-grid {
