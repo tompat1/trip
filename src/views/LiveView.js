@@ -265,6 +265,7 @@ export function renderProfileView() {
   const customPersonas = profile.customPersonas || [];
   const personas = [...new Set([...defaultPersonas, ...customPersonas])];
   const isAdmin = Boolean(state.isAdmin);
+  const companions = state.activeTrip?.companions || [];
 
   return `
     <div class="profile-page">
@@ -355,6 +356,10 @@ export function renderProfileView() {
 
         ${renderProfileSettingsPanel(activeSection, profile)}
 
+        ${renderAccountAccessPanel(isAdmin)}
+
+        ${renderTravelCompanionsPanel(state.activeTrip, companions)}
+
         <div class="profile-activity-section">
           <div style="display: flex; justify-content: space-between; align-items: center;">
             <h3 class="profile-section-title">Your activity</h3>
@@ -388,18 +393,6 @@ export function renderProfileView() {
           </div>
         </div>
 
-        <div class="profile-menu-card mb-md">
-          <button class="profile-menu-item" data-action="${isAdmin ? "admin-logout" : "admin-login-dialog"}" type="button">
-            <div class="profile-menu-item__left">
-              <span class="profile-menu-item__icon">🔑</span>
-              <div>
-                <h4 class="profile-menu-item__title">Cloudflare D1 Storage</h4>
-                <p class="profile-menu-item__sub">${isAdmin ? `Admin active${state.userSession?.userId ? ` as ${escapeHtml(state.userSession.userId)}` : ""}` : "Sign in and sync cloud database"}</p>
-              </div>
-            </div>
-            <span class="profile-menu-item__arrow">&rsaquo;</span>
-          </button>
-        </div>
       </div>
     </div>
   `;
@@ -525,6 +518,100 @@ function renderPrivacyPanel(profile) {
   `;
 }
 
+function renderAccountAccessPanel(isAdmin) {
+  return `
+    <section class="profile-settings-panel profile-account-panel" aria-labelledby="account-panel-title">
+      <div class="profile-panel-header">
+        <div>
+          <h3 id="account-panel-title">Account access</h3>
+          <p>${isAdmin ? "Admin session is active for cloud-backed actions." : "Sign in to unlock admin-only profile tools."}</p>
+        </div>
+        <span class="profile-session-pill profile-session-pill--${isAdmin ? "admin" : "guest"}">
+          ${renderIcon(isAdmin ? "shieldCheck" : "user")}
+          ${isAdmin ? "Admin" : "Guest"}
+        </span>
+      </div>
+      ${isAdmin ? `
+        <div class="profile-session-summary">
+          <strong>${escapeHtml(state.userSession?.userId || "Admin")}</strong>
+          <span>${escapeHtml(state.userSession?.authType || "admin-session")}</span>
+          <button class="btn btn--outline btn--sm" data-action="admin-logout" type="button">${renderIcon("logOut")} Log out</button>
+        </div>
+      ` : `
+        <form class="profile-login-form" id="profile-login-form">
+          <label class="profile-field">
+            <span>Email</span>
+            <input name="email" type="email" value="${escapeHtml(state.userProfile?.email || "")}" autocomplete="username" required />
+          </label>
+          <label class="profile-field">
+            <span>Password</span>
+            <input name="password" type="password" autocomplete="current-password" required />
+          </label>
+          <button class="btn btn--primary btn--sm" type="submit">${renderIcon("logIn")} Log in</button>
+        </form>
+      `}
+    </section>
+  `;
+}
+
+function renderTravelCompanionsPanel(trip, companions = []) {
+  const tripName = trip?.destination || "this trip";
+  return `
+    <section class="profile-settings-panel profile-companions-panel" aria-labelledby="companions-panel-title">
+      <div class="profile-panel-header">
+        <div>
+          <h3 id="companions-panel-title">Travel companions</h3>
+          <p>Invite people into ${escapeHtml(tripName)} with a role and shareable invite link.</p>
+        </div>
+        <span class="profile-autosave-pill">${companions.length} invited</span>
+      </div>
+
+      <form class="profile-companion-form" id="profile-companion-form">
+        <label class="profile-field">
+          <span>Name</span>
+          <input name="name" type="text" placeholder="Optional" autocomplete="name" />
+        </label>
+        <label class="profile-field">
+          <span>Email</span>
+          <input name="email" type="email" placeholder="friend@example.com" autocomplete="email" required />
+        </label>
+        <label class="profile-field">
+          <span>Role</span>
+          <select name="role">
+            <option value="viewer">Viewer</option>
+            <option value="planner">Planner</option>
+            <option value="co-owner">Co-owner</option>
+          </select>
+        </label>
+        <button class="btn btn--primary btn--sm" type="submit">${renderIcon("userPlus")} Invite</button>
+      </form>
+
+      <div class="profile-companion-list">
+        ${companions.length ? companions.map((companion) => `
+          <div class="profile-companion-row">
+            <div class="profile-companion-avatar" aria-hidden="true">${escapeHtml(getCompanionInitials(companion))}</div>
+            <div class="profile-companion-main">
+              <strong>${escapeHtml(companion.name || companion.email)}</strong>
+              <span>${escapeHtml(companion.email)} · ${escapeHtml(formatCompanionRole(companion.role))} · ${escapeHtml(companion.status || "invited")}</span>
+            </div>
+            <div class="profile-companion-actions">
+              <a class="btn btn--outline btn--xs" href="${escapeHtml(createMailtoInvite(companion, trip))}">${renderIcon("mail")} Email</a>
+              <button class="btn btn--icon btn--ghost" data-action="remove-trip-companion" data-companion-id="${escapeHtml(companion.id)}" type="button" aria-label="Remove companion">
+                ${renderIcon("trash")}
+              </button>
+            </div>
+          </div>
+        `).join("") : `
+          <div class="profile-companion-empty">
+            <strong>No companions invited yet.</strong>
+            <span>Add someone above to keep trip planning shared.</span>
+          </div>
+        `}
+      </div>
+    </section>
+  `;
+}
+
 function renderProfileTextField(label, field, value, placeholder = "", type = "text", maxLength = "") {
   return `
     <label class="profile-field">
@@ -557,6 +644,32 @@ function renderProfileToggle(label, group, field, checked, description) {
       <input type="checkbox" data-profile-group="${escapeHtml(group)}" data-profile-field="${escapeHtml(field)}" ${checked ? "checked" : ""} />
     </label>
   `;
+}
+
+function getCompanionInitials(companion = {}) {
+  const source = companion.name || companion.email || "?";
+  return source
+    .split(/\s+|@/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("") || "?";
+}
+
+function formatCompanionRole(role = "") {
+  return String(role || "viewer")
+    .split("-")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+function createMailtoInvite(companion = {}, trip = {}) {
+  const subject = `Trip invite: ${trip?.destination || "our trip"}`;
+  const body = [
+    `You've been invited to help plan ${trip?.destination || "our trip"} in TRIP.`,
+    companion.inviteUrl ? `Open invite: ${companion.inviteUrl}` : "",
+  ].filter(Boolean).join("\n\n");
+  return `mailto:${encodeURIComponent(companion.email || "")}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 }
 
 function escapeHtml(str) {

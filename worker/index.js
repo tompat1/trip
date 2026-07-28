@@ -84,6 +84,9 @@ function matchRoute(method, pathname) {
     ["POST", /^\/api\/trips\/([^/]+)\/events$/, tripEventsCreateHandler],
     ["PATCH", /^\/api\/trips\/([^/]+)\/events\/([^/]+)$/, tripEventsUpdateHandler],
     ["DELETE", /^\/api\/trips\/([^/]+)\/events\/([^/]+)$/, tripEventsDeleteHandler],
+    ["GET", /^\/api\/trips\/([^/]+)\/companions$/, tripCompanionsListHandler],
+    ["POST", /^\/api\/trips\/([^/]+)\/companions$/, tripCompanionsCreateHandler],
+    ["DELETE", /^\/api\/trips\/([^/]+)\/companions\/([^/]+)$/, tripCompanionsDeleteHandler],
     ["GET", /^\/api\/user\/saved-places$/, userSavedPlacesListHandler],
     ["POST", /^\/api\/user\/saved-places\/toggle$/, userSavedPlacesToggleHandler],
     ["GET", /^\/api\/user\/moments$/, userMomentsListHandler],
@@ -4219,6 +4222,147 @@ async function tripEventsDeleteHandler({ params, env }) {
   } catch (e) {
     return jsonError("db_error", e.message, 500);
   }
+}
+
+async function tripCompanionsListHandler({ params, env }) {
+  const tripId = params[0];
+  if (!env.TRIP_DB) return json({ ok: true, companions: [] });
+
+  try {
+    const { results } = await env.TRIP_DB.prepare(
+      "SELECT * FROM trip_companions WHERE trip_id = ? ORDER BY created_at DESC"
+    ).bind(tripId).all();
+    return json({ ok: true, companions: (results || []).map(normalizeTripCompanionRow) });
+  } catch (e) {
+    return json({ ok: true, companions: [] });
+  }
+}
+
+async function tripCompanionsCreateHandler({ params, request, env, principal }) {
+  const tripId = params[0];
+  if (!env.TRIP_DB) return jsonError("no_db", "Database not bound", 500);
+  const body = await request.json().catch(() => ({}));
+  const email = normalizeEmail(body.email || "");
+  const name = truncateText(String(body.name || "").trim(), 120);
+  const role = normalizeCompanionRole(body.role || "viewer");
+  const status = normalizeCompanionStatus(body.status || "invited");
+  const inviteMethod = normalizeInviteMethod(body.inviteMethod || body.invite_method || "email");
+  const personalMessage = truncateText(String(body.personalMessage || body.personal_message || "").trim(), 500);
+  const tripTitle = truncateText(String(body.tripTitle || body.trip_title || "").trim(), 180);
+  const destination = truncateText(String(body.destination || "").trim(), 180);
+  const dates = truncateText(String(body.dates || "").trim(), 120);
+  const travelersCount = clampNumber(body.travelersCount || body.travelers_count, 1, 99, 1);
+  const coverImage = truncateText(String(body.coverImage || body.cover_image || "").trim(), 500);
+  const inviteUrl = truncateText(String(body.inviteUrl || body.invite_url || "").trim(), 500);
+  const inviteText = truncateText(String(body.inviteText || body.invite_text || "").trim(), 1200);
+  if (!email) return jsonError("bad_request", "A valid companion email is required.", 400);
+
+  const now = new Date().toISOString();
+  const id = body.id || stableId("trip-companion", [tripId, email]);
+  const invitedBy = principal.userId || "default_user";
+
+  try {
+    await env.TRIP_DB.prepare(`
+      INSERT INTO trip_companions (
+        id, trip_id, name, email, role, status, invite_method, personal_message,
+        trip_title, destination, dates, travelers_count, cover_image, invited_by,
+        invite_url, invite_text, created_at, updated_at
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(trip_id, email) DO UPDATE SET
+        name = excluded.name,
+        role = excluded.role,
+        status = excluded.status,
+        invite_method = excluded.invite_method,
+        personal_message = excluded.personal_message,
+        trip_title = excluded.trip_title,
+        destination = excluded.destination,
+        dates = excluded.dates,
+        travelers_count = excluded.travelers_count,
+        cover_image = excluded.cover_image,
+        invite_url = excluded.invite_url,
+        invite_text = excluded.invite_text,
+        updated_at = excluded.updated_at
+    `).bind(
+      id, tripId, name, email, role, status, inviteMethod, personalMessage,
+      tripTitle, destination, dates, travelersCount, coverImage, invitedBy,
+      inviteUrl, inviteText, now, now
+    ).run();
+    return json({ ok: true, companion: {
+      id, tripId, trip_id: tripId, name, email, role, status,
+      inviteMethod, invite_method: inviteMethod,
+      personalMessage, personal_message: personalMessage,
+      tripTitle, trip_title: tripTitle,
+      destination, dates, travelersCount, travelers_count: travelersCount,
+      coverImage, cover_image: coverImage,
+      invitedBy, invited_by: invitedBy,
+      inviteUrl, invite_url: inviteUrl,
+      inviteText, invite_text: inviteText,
+      createdAt: now, updatedAt: now,
+    } });
+  } catch (e) {
+    return jsonError("db_error", e.message, 500);
+  }
+}
+
+async function tripCompanionsDeleteHandler({ params, env }) {
+  const tripId = params[0];
+  const companionId = params[1];
+  if (!env.TRIP_DB) return jsonError("no_db", "Database not bound", 500);
+
+  try {
+    await env.TRIP_DB.prepare("DELETE FROM trip_companions WHERE trip_id = ? AND id = ?").bind(tripId, companionId).run();
+    return json({ ok: true, tripId, companionId });
+  } catch (e) {
+    return jsonError("db_error", e.message, 500);
+  }
+}
+
+function normalizeTripCompanionRow(row = {}) {
+  return {
+    id: row.id || "",
+    tripId: row.trip_id || row.tripId || "",
+    trip_id: row.trip_id || row.tripId || "",
+    name: row.name || "",
+    email: row.email || "",
+    role: normalizeCompanionRole(row.role || "viewer"),
+    status: normalizeCompanionStatus(row.status || "invited"),
+    inviteMethod: normalizeInviteMethod(row.invite_method || row.inviteMethod || "email"),
+    invite_method: normalizeInviteMethod(row.invite_method || row.inviteMethod || "email"),
+    personalMessage: row.personal_message || row.personalMessage || "",
+    personal_message: row.personal_message || row.personalMessage || "",
+    tripTitle: row.trip_title || row.tripTitle || "",
+    trip_title: row.trip_title || row.tripTitle || "",
+    destination: row.destination || "",
+    dates: row.dates || "",
+    travelersCount: Number(row.travelers_count || row.travelersCount || 1),
+    travelers_count: Number(row.travelers_count || row.travelersCount || 1),
+    coverImage: row.cover_image || row.coverImage || "",
+    cover_image: row.cover_image || row.coverImage || "",
+    invitedBy: row.invited_by || row.invitedBy || "",
+    invited_by: row.invited_by || row.invitedBy || "",
+    inviteUrl: row.invite_url || row.inviteUrl || "",
+    invite_url: row.invite_url || row.inviteUrl || "",
+    inviteText: row.invite_text || row.inviteText || "",
+    invite_text: row.invite_text || row.inviteText || "",
+    createdAt: row.created_at || row.createdAt || "",
+    updatedAt: row.updated_at || row.updatedAt || "",
+  };
+}
+
+function normalizeInviteMethod(value = "") {
+  const method = String(value || "").trim().toLowerCase();
+  return ["email", "sms", "whatsapp", "qr", "link"].includes(method) ? method : "email";
+}
+
+function normalizeCompanionRole(value = "") {
+  const role = String(value || "").trim().toLowerCase();
+  return ["viewer", "planner", "co-owner"].includes(role) ? role : "viewer";
+}
+
+function normalizeCompanionStatus(value = "") {
+  const status = String(value || "").trim().toLowerCase();
+  return ["invited", "accepted", "declined"].includes(status) ? status : "invited";
 }
 
 async function userSavedPlacesListHandler({ env }) {

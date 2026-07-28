@@ -44,13 +44,16 @@ export function createEnrichmentService(options = {}) {
 
     async logoutAdmin() {
       const url = buildApiUrl(apiBase, "/api/admin/session");
-      const response = await fetchImpl(url.href, {
-        method: "DELETE",
-        headers: createApiHeaders(),
-      });
-      if (!response.ok) throw new Error(`worker-admin-logout-http-${response.status}`);
-      clearStoredAdminSessionToken();
-      return response.json();
+      try {
+        const response = await fetchImpl(url.href, {
+          method: "DELETE",
+          headers: createApiHeaders(),
+        });
+        if (!response.ok) throw new Error(`worker-admin-logout-http-${response.status}`);
+        return response.json();
+      } finally {
+        clearStoredAdminSessionToken();
+      }
     },
 
     async resolveLocation(input = {}) {
@@ -296,6 +299,36 @@ export function createEnrichmentService(options = {}) {
       return res.json();
     },
 
+    async fetchTripCompanions(tripId) {
+      const url = buildApiUrl(apiBase, `/api/trips/${encodeURIComponent(tripId)}/companions`);
+      const res = await fetchImpl(url.href, { headers: { Accept: "application/json" } });
+      if (!res.ok) throw new Error(`worker-companions-http-${res.status}`);
+      const data = await res.json();
+      return (data.companions || []).map(normalizeTripCompanion);
+    },
+
+    async inviteTripCompanion(tripId, companionData) {
+      const url = buildApiUrl(apiBase, `/api/trips/${encodeURIComponent(tripId)}/companions`);
+      const res = await fetchImpl(url.href, {
+        method: "POST",
+        headers: createApiHeaders({ "Content-Type": "application/json" }),
+        body: JSON.stringify(companionData),
+      });
+      if (!res.ok) throw new Error(`worker-invite-companion-http-${res.status}`);
+      const data = await res.json();
+      return { ...data, companion: normalizeTripCompanion(data.companion) };
+    },
+
+    async deleteTripCompanion(tripId, companionId) {
+      const url = buildApiUrl(apiBase, `/api/trips/${encodeURIComponent(tripId)}/companions/${encodeURIComponent(companionId)}`);
+      const res = await fetchImpl(url.href, {
+        method: "DELETE",
+        headers: createApiHeaders(),
+      });
+      if (!res.ok) throw new Error(`worker-delete-companion-http-${res.status}`);
+      return res.json();
+    },
+
     async fetchSavedPlaces() {
       const url = buildApiUrl(apiBase, "/api/user/saved-places");
       const res = await fetchImpl(url.href, { headers: { Accept: "application/json" } });
@@ -502,6 +535,20 @@ function normalizeTripEvent(event = {}) {
     startTime: event.startTime ?? event.start_time ?? "10:00",
     endTime: event.endTime ?? event.end_time ?? "12:00",
     colorScheme: event.colorScheme ?? event.color_scheme ?? "peach",
+  };
+}
+
+function normalizeTripCompanion(companion = {}) {
+  return {
+    ...companion,
+    tripId: companion.tripId || companion.trip_id || "",
+    name: companion.name || "",
+    email: companion.email || "",
+    role: companion.role || "viewer",
+    status: companion.status || "invited",
+    inviteUrl: companion.inviteUrl || companion.invite_url || "",
+    createdAt: companion.createdAt || companion.created_at || "",
+    updatedAt: companion.updatedAt || companion.updated_at || "",
   };
 }
 

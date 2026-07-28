@@ -399,10 +399,8 @@ document.addEventListener("click", async (e) => {
       state.setView("profile");
     }
     else if (action === "invite-companions") {
-      const companionEmail = prompt("Enter email of travel companion to invite:", "partner@example.com");
-      if (companionEmail) {
-        alert(`✈️ Shared trip invitation to ${companionEmail} for ${state.activeTrip.destination}!`);
-      }
+      state.setView("profile");
+      setTimeout(() => document.getElementById("profile-companion-form")?.querySelector("input[name='email']")?.focus(), 0);
     }
     else if (action === "toggle-filters") {
       const subFilter = state.searchSubFilter === "top-rated" ? "all" : "top-rated";
@@ -453,6 +451,13 @@ document.addEventListener("click", async (e) => {
         showToast(`Removed ${persona}.`);
       } else {
         showToast("Admin access is required to remove custom personas.");
+      }
+    }
+    else if (action === "remove-trip-companion") {
+      const companionId = target.dataset.companionId;
+      if (companionId && confirm("Remove this travel companion from the trip?")) {
+        await state.removeTripCompanion(state.activeTripId, companionId);
+        showToast("Travel companion removed.");
       }
     }
     else if (action === "apply-quick-intent") {
@@ -896,6 +901,54 @@ function updateTripCreateRoutePreview(form) {
 }
 
 document.addEventListener("submit", async (e) => {
+  if (e.target.id === "profile-login-form") {
+    e.preventDefault();
+    const form = e.target;
+    const email = form.email?.value?.trim() || "";
+    const password = form.password?.value || "";
+    if (!email || !password) {
+      showToast("Enter email and password.");
+      return;
+    }
+    const button = form.querySelector("button[type='submit']");
+    if (button) button.disabled = true;
+    try {
+      await enrichmentService.loginAdmin({ email, password });
+      await state.refreshUserSession();
+      showToast("Admin access active.");
+    } catch (error) {
+      showToast("Login failed. Check your admin credentials.");
+    } finally {
+      if (button) button.disabled = false;
+    }
+    return;
+  }
+
+  if (e.target.id === "profile-companion-form") {
+    e.preventDefault();
+    const form = e.target;
+    const button = form.querySelector("button[type='submit']");
+    if (button) button.disabled = true;
+    const result = await state.inviteTripCompanion(state.activeTripId, {
+      name: form.name?.value || "",
+      email: form.email?.value || "",
+      role: form.role?.value || "viewer",
+    });
+    if (button) button.disabled = false;
+    if (!result.ok && result.error === "invalid-email") {
+      showToast("Add a valid companion email.");
+      form.email?.focus();
+      return;
+    }
+    if (result.ok) {
+      form.reset();
+      showToast(result.source === "worker" ? "Travel companion invited." : "Travel companion saved locally.");
+    } else {
+      showToast("Could not add companion.");
+    }
+    return;
+  }
+
   if (e.target.id === "profile-persona-add-form") {
     e.preventDefault();
     const form = e.target;

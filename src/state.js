@@ -18,6 +18,7 @@ function getDefaultPlanViewMode() {
 
 const CALENDAR_EVENTS_STORAGE_PREFIX = "trip_calendar_events_";
 const TOURISM_DISCOVERY_STORAGE_PREFIX = "trip_tourism_discovery_";
+const TRIP_COMPANIONS_STORAGE_PREFIX = "trip_companions_";
 const USER_PROFILE_STORAGE_KEY = "trip_user_profile_v1";
 const LEGACY_USER_AVATAR_STORAGE_KEY = "trip_user_avatar";
 const LEGACY_USER_PREFERENCES_STORAGE_KEY = "trip_user_preferences";
@@ -151,6 +152,25 @@ function writeStoredTourismDiscovery(tripId, discovery) {
   } catch {}
 }
 
+function readStoredTripCompanions(tripId) {
+  if (typeof localStorage === "undefined") return [];
+  try {
+    const stored = localStorage.getItem(`${TRIP_COMPANIONS_STORAGE_PREFIX}${tripId}`);
+    if (!stored) return [];
+    const companions = JSON.parse(stored);
+    return Array.isArray(companions) ? companions : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeStoredTripCompanions(tripId, companions = []) {
+  if (typeof localStorage === "undefined") return;
+  try {
+    localStorage.setItem(`${TRIP_COMPANIONS_STORAGE_PREFIX}${tripId}`, JSON.stringify(companions || []));
+  } catch {}
+}
+
 function mergeCalendarEvents(baseEvents = [], savedEvents = []) {
   const merged = [...baseEvents];
   savedEvents.forEach((savedEvent) => {
@@ -220,6 +240,25 @@ function normalizeMomentRecord(moment = {}) {
     placeCategory: moment.placeCategory || moment.place_category || "",
     geoLabel: moment.geoLabel || moment.geo_label || "",
   };
+}
+
+function normalizeEmailInput(value = "") {
+  const email = String(value || "").trim().toLowerCase();
+  if (!email || email.length > 180) return "";
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? email : "";
+}
+
+function normalizeCompanionRoleInput(value = "") {
+  const role = String(value || "").trim().toLowerCase();
+  return ["viewer", "planner", "co-owner"].includes(role) ? role : "viewer";
+}
+
+function createTripInviteUrl(tripId = "") {
+  if (typeof window === "undefined") return `?trip=${encodeURIComponent(tripId)}`;
+  const url = new URL(window.location.origin);
+  url.searchParams.set("trip", tripId);
+  url.searchParams.set("invite", "1");
+  return url.href;
 }
 
 function getOpenTripMapStatus(results = []) {
@@ -318,6 +357,7 @@ class AppState {
         tripsData[tripId].tourismPois = storedDiscovery.tourismPois;
         tripsData[tripId].hiddenGems = storedDiscovery.hiddenGems;
         tripsData[tripId].osmPlaces = storedDiscovery.osmPlaces;
+        tripsData[tripId].companions = readStoredTripCompanions(tripId);
         this.tourismDiscoveryStatus[tripId] = {
           status: "cached",
           error: "",
@@ -327,6 +367,7 @@ class AppState {
         tripsData[tripId].tourismPois = tripsData[tripId].tourismPois || [];
         tripsData[tripId].hiddenGems = tripsData[tripId].hiddenGems || [];
         tripsData[tripId].osmPlaces = tripsData[tripId].osmPlaces || [];
+        tripsData[tripId].companions = readStoredTripCompanions(tripId);
         this.tourismDiscoveryStatus[tripId] = { status: "idle", error: "", updatedAt: "" };
       }
     });
@@ -349,6 +390,7 @@ class AppState {
     this.refreshTourismDiscovery();
     this.refreshEventDiscovery();
     this.refreshTripIntelligence();
+    this.loadTripCompanions(this.activeTripId);
   }
 
   async loadPersistedMoments() {
@@ -478,6 +520,7 @@ class AppState {
               calendarEvents: [],
               ideas: [],
               events: [],
+              companions: readStoredTripCompanions(t.id),
               tourismPois: [],
               hiddenGems: [],
               osmPlaces: []
@@ -598,6 +641,78 @@ class AppState {
     return this.userSession?.role === "admin";
   }
 
+  async loadTripCompanions(tripId = this.activeTripId) {
+    const trip = tripsData[tripId];
+    if (!trip) return [];
+    const localCompanions = readStoredTripCompanions(tripId);
+    if (localCompanions.length) trip.companions = localCompanions;
+
+    try {
+      const remoteCompanions = await enrichmentService.fetchTripCompanions(tripId);
+      if (remoteCompanions.length) {
+        trip.companions = remoteCompanions;
+        writeStoredTripCompanions(tripId, remoteCompanions);
+      }
+    } catch {}
+
+    this.notify();
+    return trip.companions || [];
+  }
+
+  async inviteTripCompanion(tripId = this.activeTripId, companionInput = {}) {
+    const trip = tripsData[tripId];
+    if (!trip) return { ok: false, error: "missing-trip" };
+    const email = normalizeEmailInput(companionInput.email);
+    if (!email) return { ok: false, error: "invalid-email" };
+
+    const name = String(companionInput.name || "").trim();
+    const role = normalizeCompanionRoleInput(companionInput.role || "viewer");
+    const inviteUrl = companionInput.inviteUrl || createTripInviteUrl(tripId);
+    const now = new Date().toISOString();
+    const companion = {
+      id: companionInput.id || `companion_${tripId}_${email.replace(/[^a-z0-9]+/gi, "_")}`,
+      tripId,
+      name,
+      email,
+      role,
+      status: "invited",
+      inviteUrl,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    const current = trip.companions || readStoredTripCompanions(tripId);
+    const withoutDuplicate = current.filter((item) => item.email !== email);
+    trip.companions = [companion, ...withoutDuplicate];
+    writeStoredTripCompanions(tripId, trip.companions);
+    this.notify();
+
+    try {
+      const result = await enrichmentService.inviteTripCompanion(tripId, companion);
+      if (result.companion) {
+        trip.companions = [result.companion, ...withoutDuplicate];
+        writeStoredTripCompanions(tripId, trip.companions);
+        this.notify();
+      }
+      return { ok: true, companion: result.companion || companion, source: "worker" };
+    } catch (error) {
+      return { ok: true, companion, source: "local", error: error?.message || "worker-companion-fallback" };
+    }
+  }
+
+  async removeTripCompanion(tripId = this.activeTripId, companionId) {
+    const trip = tripsData[tripId];
+    if (!trip || !companionId) return false;
+    trip.companions = (trip.companions || []).filter((companion) => companion.id !== companionId);
+    writeStoredTripCompanions(tripId, trip.companions);
+    this.notify();
+
+    try {
+      await enrichmentService.deleteTripCompanion(tripId, companionId);
+    } catch {}
+    return true;
+  }
+
   updateUserProfile(updates = {}, options = {}) {
     this.userProfile = {
       ...this.userProfile,
@@ -686,6 +801,7 @@ class AppState {
   setTrip(tripId) {
     if (tripsData[tripId] && this.activeTripId !== tripId) {
       this.activeTripId = tripId;
+      this.loadTripCompanions(tripId);
       if (!this.quickCaptureOpen) {
         this.quickCaptureTripId = tripId;
       }
