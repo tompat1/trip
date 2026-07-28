@@ -3623,7 +3623,7 @@ textarea {
    SEARCH & PLACE DISCOVERY VIEW
    ========================================================================== */
 .search-page__content {
-  padding: 0 16px;
+  padding: 0 16px 132px;
 }
 
 .search-input-card {
@@ -3855,6 +3855,127 @@ textarea {
 .floating-map-btn {
   box-shadow: var(--shadow-lg);
   padding: 10px 18px;
+}
+
+:root[data-theme="dark"] .search-hero-card,
+:root[data-theme="dark"] .search-place-card {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), transparent),
+    var(--surface-raised) !important;
+  border-color: var(--line) !important;
+  box-shadow: var(--shadow-md) !important;
+}
+
+:root[data-theme="dark"] .search-input-card,
+:root[data-theme="dark"] .search-input-wrapper,
+:root[data-theme="dark"] .search-filter-btn,
+:root[data-theme="dark"] .search-area-btn,
+:root[data-theme="dark"] .search-location-btn,
+:root[data-theme="dark"] .sub-filter-pill,
+:root[data-theme="dark"] .quick-intents-scroll .chip {
+  background: rgba(18, 31, 48, 0.94) !important;
+  border-color: rgba(237, 244, 255, 0.14) !important;
+  color: var(--ink) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), var(--shadow-sm) !important;
+}
+
+:root[data-theme="dark"] .search-input-field::placeholder {
+  color: #AEBBD0;
+  opacity: 0.78;
+}
+
+:root[data-theme="dark"] .search-input-icon,
+:root[data-theme="dark"] .search-clear-btn,
+:root[data-theme="dark"] .results-count,
+:root[data-theme="dark"] .sort-label,
+:root[data-theme="dark"] .rating-count,
+:root[data-theme="dark"] .search-place-card__location,
+:root[data-theme="dark"] .search-place-card__desc {
+  color: #AEBBD0 !important;
+}
+
+:root[data-theme="dark"] .primary-tabs-scroll {
+  border-bottom-color: rgba(237, 244, 255, 0.14);
+}
+
+:root[data-theme="dark"] .primary-tab-btn {
+  color: #AEBBD0;
+}
+
+:root[data-theme="dark"] .primary-tab-btn.is-active {
+  color: #F4F7FB;
+  border-bottom-color: var(--orange);
+}
+
+:root[data-theme="dark"] .sub-filter-pill.is-active {
+  background: rgba(255, 122, 47, 0.16) !important;
+  border-color: rgba(255, 122, 47, 0.46) !important;
+  color: #F4F7FB !important;
+}
+
+:root[data-theme="dark"] .search-map-card {
+  background: #0E1A2A;
+  border-color: rgba(237, 244, 255, 0.14);
+  box-shadow: var(--shadow-md);
+}
+
+:root[data-theme="dark"] .search-map-card .leaflet-tile-pane {
+  filter: saturate(0.68) brightness(0.72) contrast(1.08);
+}
+
+:root[data-theme="dark"] .search-map-card .leaflet-control-attribution {
+  background: rgba(18, 31, 48, 0.86);
+  color: #AEBBD0;
+}
+
+:root[data-theme="dark"] .results-sort,
+:root[data-theme="dark"] .sort-select {
+  color: #F4F7FB;
+}
+
+@media (max-width: 760px) {
+  .search-page__content {
+    padding-inline: 14px;
+    padding-bottom: calc(156px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .search-hero-card {
+    padding: 16px !important;
+  }
+
+  .search-map-card {
+    height: 178px;
+    border-radius: var(--radius-lg);
+    margin-bottom: 22px;
+  }
+
+  .search-area-btn {
+    max-width: calc(100% - 92px);
+    padding-inline: 12px;
+  }
+
+  .sticky-map-fab-wrap {
+    display: none;
+  }
+
+  .search-place-card {
+    gap: 10px;
+    padding: 10px;
+  }
+
+  .search-place-card__thumb {
+    width: 112px;
+    height: 112px;
+  }
+
+  .search-place-card__header {
+    gap: 8px;
+  }
+
+  .search-place-card__title {
+    font-size: 1rem;
+    line-height: 1.15;
+  }
 }
 
 /* ==========================================================================
