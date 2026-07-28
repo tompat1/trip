@@ -1801,7 +1801,7 @@ textarea {
   border-radius: var(--radius-lg);
   background:
     linear-gradient(135deg, rgba(255, 122, 47, 0.12), transparent 45%),
-    var(--paper-card);
+    #FFFFFF;
   box-shadow: var(--shadow-sm);
   overflow: hidden;
 }
@@ -1819,7 +1819,7 @@ textarea {
 :root[data-theme="dark"] .landing-illustration-placeholder {
   background:
     linear-gradient(135deg, rgba(255, 122, 47, 0.14), transparent 45%),
-    var(--surface-overlay);
+    #FFFFFF;
 }
 
 .feature-card__icon {
