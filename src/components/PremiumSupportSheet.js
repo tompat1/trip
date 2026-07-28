@@ -1,11 +1,12 @@
 import { state } from "../state.js";
 import { renderIcon } from "../utils/icons.js";
 import { TRIP_LOGO_SVG } from "./BrandAssets.js";
+import premiumJourneyUrl from "../assets/trip_premium_journey.webp";
 
 const PREMIUM_FEATURES = [
-  ["compass", "Deeper live signals"],
-  ["users", "Companion planning"],
-  ["sparkles", "Early TRIP features"],
+  ["badgeX", "No ads"],
+  ["infinity", "No limits"],
+  ["star", "New features"],
 ];
 
 export function renderPremiumSupportSheet() {
@@ -19,18 +20,20 @@ export function renderPremiumSupportSheet() {
         </button>
 
         <div class="trip-premium-hero">
-          <div class="trip-premium-brand">
-            ${TRIP_LOGO_SVG("", 42)}
-            <span class="voice-mono">Premium</span>
+          <div class="trip-premium-logo-lockup">
+            ${TRIP_LOGO_SVG("", 116)}
+            <span>Travel Planner Deluxe</span>
           </div>
-          <h2 id="trip-premium-title">Support TRIP and travel with fewer limits.</h2>
-          <div class="trip-premium-route" aria-hidden="true">
-            <span></span><span></span><span></span><span></span>
-          </div>
+          <span class="trip-premium-pill">Premium</span>
+          <h2 id="trip-premium-title">Support the app and go on a journey with us</h2>
+          <p>Recharge TRIP batteries, so we can grow for your benefit!</p>
+        </div>
+
+        <div class="trip-premium-journey">
+          <img src="${premiumJourneyUrl}" alt="Illustrated TRIP journey with mountains, winding road and orange camper van" loading="lazy" />
         </div>
 
         <div class="trip-premium-copy">
-          <p>Recharge the app so we can keep improving live trip planning, companion invites and local discovery.</p>
           <div class="trip-premium-benefits">
             ${PREMIUM_FEATURES.map(([icon, label]) => `
               <div>
@@ -43,11 +46,12 @@ export function renderPremiumSupportSheet() {
 
         <div class="trip-premium-plans" aria-label="Premium plans">
           <button class="trip-premium-plan" data-action="choose-premium-plan" data-plan="monthly" type="button">
-            <span>Monthly</span>
+            <span>For a month</span>
             <strong>29 SEK</strong>
             <small>Support month to month</small>
           </button>
           <button class="trip-premium-plan trip-premium-plan--featured" data-action="choose-premium-plan" data-plan="annual" type="button">
+            <em>Best value</em>
             <span>Annual</span>
             <strong>249 SEK</strong>
             <small>Best for regular trips</small>

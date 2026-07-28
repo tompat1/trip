@@ -1881,6 +1881,76 @@ textarea {
   margin-top: 4px;
 }
 
+.local-glossary {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.local-glossary__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.local-glossary__header span {
+  color: var(--orange);
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.local-glossary__header strong {
+  color: var(--ink);
+  font-size: 0.84rem;
+  font-weight: 900;
+}
+
+.local-glossary__chips {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 1px 2px 4px;
+  scrollbar-width: none;
+}
+
+.local-glossary__chips::-webkit-scrollbar {
+  display: none;
+}
+
+.local-glossary__chip {
+  flex: 0 0 auto;
+  min-width: 92px;
+  display: grid;
+  gap: 3px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: rgba(255, 253, 248, 0.72);
+  box-shadow: 0 8px 18px rgba(15, 27, 43, 0.06);
+}
+
+.local-glossary__chip small {
+  color: var(--ink-muted);
+  font-size: 0.64rem;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.local-glossary__chip strong {
+  color: var(--ink);
+  font-size: 0.78rem;
+  line-height: 1.15;
+}
+
+:root[data-theme="dark"] .local-glossary__chip {
+  background: rgba(20, 36, 56, 0.82);
+  border-color: rgba(244, 247, 251, 0.1);
+  box-shadow: none;
+}
+
 .live-pulse-dot {
   display: inline-block;
   width: 9px;
@@ -5586,163 +5656,232 @@ textarea {
 
 .trip-premium-sheet {
   position: relative;
-  width: min(100%, 460px);
+  width: min(100%, 520px);
+  max-height: min(92vh, 880px);
   overflow: hidden;
-  border: 1px solid rgba(237, 244, 255, 0.14);
-  border-radius: 30px;
-  background: var(--paper-card);
-  box-shadow: var(--shadow-lg);
+  overflow-y: auto;
+  border: 1px solid rgba(15, 27, 43, 0.1);
+  border-radius: 34px;
+  background:
+    radial-gradient(circle at 18% 10%, rgba(248, 96, 8, 0.08), transparent 24%),
+    linear-gradient(180deg, #FFFDF8 0%, #FFF8EF 100%);
+  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.26);
+  color: #0F1B2B;
 }
 
 .trip-premium-close {
   position: absolute;
-  top: 16px;
-  right: 16px;
+  top: 20px;
+  right: 20px;
   z-index: 3;
-  background: rgba(255, 253, 248, 0.94);
+  width: 44px;
+  height: 44px;
+  background: rgba(255, 255, 255, 0.82);
   color: #0F1B2B;
-  border: 1px solid rgba(15, 27, 43, 0.08);
+  border: 1px solid rgba(15, 27, 43, 0.12);
+  box-shadow: 0 10px 24px rgba(15, 27, 43, 0.08);
 }
 
 .trip-premium-hero {
   position: relative;
-  min-height: 300px;
-  padding: 28px 24px;
-  background:
-    radial-gradient(circle at 18% 62%, rgba(255, 255, 255, 0.22) 0 14%, transparent 15%),
-    linear-gradient(180deg, #FFD34D 0%, #FFB23F 100%);
-  color: #0F1B2B;
-}
-
-.trip-premium-brand {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  font-weight: 900;
-}
-
-.trip-premium-brand .trip-logo-mark {
-  background: rgba(255, 253, 248, 0.92);
-  border-radius: 14px;
-  padding: 4px 6px;
-}
-
-:root[data-theme="dark"] .trip-premium-brand .trip-logo-mark {
+  display: grid;
+  justify-items: center;
+  padding: 62px 32px 18px;
   background: transparent;
-  padding: 0;
-}
-
-.trip-premium-hero h2 {
-  max-width: 10ch;
-  margin-top: 40px;
-  font-size: 2.35rem;
-  line-height: 1.02;
-  letter-spacing: 0;
-}
-
-.trip-premium-route {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 94px;
-  background:
-    linear-gradient(90deg, transparent 0 8%, rgba(15, 27, 43, 0.16) 8% 86%, transparent 86%),
-    repeating-linear-gradient(90deg, transparent 0 34px, rgba(255, 255, 255, 0.82) 34px 54px, transparent 54px 78px);
-  border-top: 18px solid rgba(255, 255, 255, 0.72);
-}
-
-.trip-premium-route span {
-  position: absolute;
-  bottom: 28px;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: var(--orange);
-  box-shadow: 0 0 0 9px rgba(255, 122, 47, 0.14);
-}
-
-.trip-premium-route span:nth-child(1) { left: 18%; }
-.trip-premium-route span:nth-child(2) { left: 42%; }
-.trip-premium-route span:nth-child(3) { left: 63%; }
-.trip-premium-route span:nth-child(4) { left: 82%; }
-
-.trip-premium-copy {
-  padding: 24px 24px 0;
+  color: #0F1B2B;
   text-align: center;
 }
 
-.trip-premium-copy p {
-  margin: 0 auto;
-  max-width: 25ch;
-  color: var(--ink);
-  font-size: 1.1rem;
-  font-weight: 750;
+.trip-premium-logo-lockup {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+}
+
+.trip-premium-logo-lockup .trip-logo-mark {
+  width: 156px !important;
+  height: 116px !important;
+}
+
+.trip-premium-logo-lockup span {
+  position: relative;
+  color: rgba(15, 27, 43, 0.82);
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.42em;
+  text-transform: uppercase;
+}
+
+.trip-premium-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 26px;
+  padding: 7px 18px;
+  border: 1px solid rgba(248, 96, 8, 0.18);
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.76);
+  color: var(--orange);
+  box-shadow: 0 10px 24px rgba(15, 27, 43, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.88);
+  font-size: 0.82rem;
+  font-weight: 900;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+}
+
+.trip-premium-hero h2 {
+  max-width: 12ch;
+  margin: 24px auto 0;
+  color: #143047;
+  font-family: var(--font-serif);
+  font-size: clamp(2.15rem, 8.5vw, 3.3rem);
+  font-weight: 800;
+  line-height: 0.98;
+  letter-spacing: 0;
+}
+
+.trip-premium-hero p {
+  max-width: 28ch;
+  margin: 24px auto 0;
+  color: rgba(15, 27, 43, 0.56);
+  font-size: 0.92rem;
+  font-weight: 900;
   line-height: 1.35;
+  text-transform: uppercase;
+}
+
+.trip-premium-journey {
+  position: relative;
+  margin: -4px 0 0;
+  overflow: hidden;
+  max-height: 360px;
+}
+
+.trip-premium-journey img {
+  display: block;
+  width: 118%;
+  max-width: none;
+  margin-left: -9%;
+  aspect-ratio: 1536 / 1024;
+  object-fit: cover;
+  object-position: center;
+  mix-blend-mode: multiply;
+}
+
+.trip-premium-copy {
+  padding: 8px 34px 0;
+  text-align: center;
 }
 
 .trip-premium-benefits {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-  margin-top: 18px;
+  gap: 0;
+  border-top: 1px solid rgba(15, 27, 43, 0.08);
+  border-bottom: 1px solid rgba(15, 27, 43, 0.08);
 }
 
 .trip-premium-benefits div {
   display: grid;
-  gap: 8px;
+  gap: 10px;
   justify-items: center;
-  color: var(--ink-muted);
-  font-size: 0.78rem;
-  font-weight: 800;
+  padding: 18px 10px;
+  color: #143047;
+  font-size: 0.88rem;
+  font-weight: 850;
+  line-height: 1.15;
+}
+
+.trip-premium-benefits div + div {
+  border-left: 1px solid rgba(15, 27, 43, 0.1);
 }
 
 .trip-premium-benefits svg {
   color: var(--orange);
+  width: 32px;
+  height: 32px;
+  stroke-width: 1.7;
 }
 
 .trip-premium-plans {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-  padding: 22px 24px 0;
+  gap: 16px;
+  padding: 28px 28px 0;
 }
 
 .trip-premium-plan {
+  position: relative;
   display: grid;
-  gap: 8px;
-  min-height: 132px;
-  padding: 18px;
-  border: 1px solid var(--line);
-  border-radius: 18px;
-  background: var(--paper);
-  color: var(--ink);
+  gap: 16px;
+  min-height: 178px;
+  padding: 28px 20px 20px;
+  border: 1px solid rgba(15, 27, 43, 0.11);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.72);
+  color: #0F1B2B;
   text-align: center;
-  box-shadow: var(--shadow-sm);
+  box-shadow: 0 18px 38px rgba(15, 27, 43, 0.1);
+}
+
+.trip-premium-plan span {
+  color: #143047;
+  font-family: var(--font-serif);
+  font-size: 1.35rem;
+  font-weight: 800;
+}
+
+.trip-premium-plan span::after {
+  content: "";
+  display: block;
+  width: 24px;
+  height: 3px;
+  margin: 14px auto 0;
+  border-radius: var(--radius-pill);
+  background: var(--orange);
 }
 
 .trip-premium-plan strong {
   align-self: end;
-  padding: 10px 12px;
-  border: 2px solid #FFD34D;
+  display: block;
+  padding: 14px 12px;
+  border: 1.5px solid var(--orange);
   border-radius: 14px;
+  color: #0F1B2B;
   font-size: 1.15rem;
 }
 
 .trip-premium-plan--featured strong {
-  background: #FFD34D;
+  border-color: transparent;
+  background: linear-gradient(135deg, #F86008, #E95B1B);
   color: #0F1B2B;
+  box-shadow: 0 12px 22px rgba(248, 96, 8, 0.22);
+}
+
+.trip-premium-plan em {
+  position: absolute;
+  top: -1px;
+  right: 18px;
+  padding: 6px 12px;
+  border-radius: 0 0 12px 12px;
+  background: #0F1B2B;
+  color: white;
+  font-size: 0.62rem;
+  font-style: normal;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
 .trip-premium-plan small,
 .trip-premium-note {
-  color: var(--ink-muted);
+  color: rgba(15, 27, 43, 0.58);
   font-size: 0.76rem;
   line-height: 1.35;
 }
 
 .trip-premium-note {
-  margin: 18px 24px 24px;
+  margin: 20px 42px 30px;
   text-align: center;
 }
 
@@ -6182,27 +6321,90 @@ textarea {
 
   .trip-premium-sheet {
     width: 100%;
-    max-height: 94vh;
+    max-height: 96vh;
     overflow-y: auto;
     border-right: 0;
     border-bottom: 0;
     border-left: 0;
-    border-radius: 30px 30px 0 0;
+    border-radius: 34px 34px 0 0;
   }
 
   .trip-premium-hero {
-    min-height: 322px;
-    padding: 28px 22px;
+    padding: 52px 22px 8px;
+  }
+
+  .trip-premium-logo-lockup .trip-logo-mark {
+    width: 120px !important;
+    height: 89px !important;
+  }
+
+  .trip-premium-logo-lockup span {
+    font-size: 0.58rem;
+    letter-spacing: 0.34em;
+  }
+
+  .trip-premium-pill {
+    margin-top: 18px;
+    padding: 6px 16px;
+    font-size: 0.72rem;
   }
 
   .trip-premium-hero h2 {
-    max-width: 12ch;
-    margin-top: 34px;
-    font-size: 1.86rem;
+    max-width: 13ch;
+    margin-top: 16px;
+    font-size: 1.92rem;
+  }
+
+  .trip-premium-hero p {
+    margin-top: 16px;
+    font-size: 0.78rem;
+  }
+
+  .trip-premium-journey {
+    max-height: 290px;
+  }
+
+  .trip-premium-journey img {
+    width: 128%;
+    margin-left: -14%;
+  }
+
+  .trip-premium-copy {
+    padding: 4px 22px 0;
+  }
+
+  .trip-premium-benefits div {
+    padding: 14px 8px;
+    font-size: 0.76rem;
+  }
+
+  .trip-premium-benefits svg {
+    width: 28px;
+    height: 28px;
   }
 
   .trip-premium-plans {
+    gap: 12px;
     padding-inline: 18px;
+  }
+
+  .trip-premium-plan {
+    min-height: 160px;
+    padding: 24px 14px 16px;
+  }
+
+  .trip-premium-plan span {
+    font-size: 1.12rem;
+  }
+
+  .trip-premium-plan strong {
+    padding: 12px 8px;
+    font-size: 1rem;
+  }
+
+  .trip-premium-plan em {
+    right: 12px;
+    padding-inline: 10px;
   }
 
   .trip-premium-note {

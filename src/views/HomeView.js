@@ -11,21 +11,37 @@ export function renderHomeView() {
   const liveTimeStr = formatLiveTimeString();
   const statusText = getDynamicTripCountdown(trip);
   const tripIdeas = getHomeTripIdeas(trip);
+  const greeting = getTimeAwareGreeting();
+  const firstName = getFirstName(state.userProfile?.name || "Thomas");
+  const glossary = getLocalGlossaryForTrip(trip);
 
   return `
     <div class="home-page">
       ${renderHeader()}
 
       <div class="home-page__content">
-        <!-- Morning Greeting Card with Map Pattern Background -->
         <section class="greeting-row card-pattern-map">
           <div class="greeting-text">
-            <h2 class="greeting-title voice-serif" style="font-size: 1.45rem; font-weight: 700; color: var(--ink);">Good morning, Thomas 👋</h2>
+            <h2 class="greeting-title voice-serif" style="font-size: 1.45rem; font-weight: 700; color: var(--ink);">${escapeHtml(greeting)}, ${escapeHtml(firstName)} 👋</h2>
             <p class="greeting-status">
               ${isLiveMode 
                 ? `<span class="live-pulse-dot"></span> <strong>You are in ${escapeHtml(trip.destination)}</strong> <span class="status-meta">${trip.weather?.condition || 'Fair'} • ${trip.weather?.temp || '20°C'} • ${liveTimeStr}</span>` 
                 : `<span class="upcoming-badge">${statusText}</span>`}
             </p>
+            <div class="local-glossary" aria-label="Useful local phrases for ${escapeHtml(trip.destination)}">
+              <div class="local-glossary__header">
+                <span class="voice-mono">${escapeHtml(glossary.language)} basics</span>
+                <strong>${escapeHtml(glossary.sample)}</strong>
+              </div>
+              <div class="local-glossary__chips">
+                ${glossary.phrases.map((item) => `
+                  <span class="local-glossary__chip" title="${escapeHtml(item.note || item.en)}">
+                    <small>${escapeHtml(item.en)}</small>
+                    <strong>${escapeHtml(item.local)}</strong>
+                  </span>
+                `).join("")}
+              </div>
+            </div>
           </div>
         </section>
 
@@ -263,6 +279,7 @@ function renderPlanningModules(trip, checklist) {
       ${(() => {
         const currentDateStr = new Intl.DateTimeFormat("en-US", { weekday: "short", day: "numeric", month: "short" }).format(new Date());
         const upcomingForecast = (trip.weather?.forecast || []).filter(f => f.day !== "Today");
+        const sunTimes = getWeatherSunTimes(trip.weather || {});
 
         return `
           <div class="dashboard-card weather-widget card-pattern-poly">
@@ -283,6 +300,26 @@ function renderPlanningModules(trip, checklist) {
                   <span class="weather-condition">${trip.weather?.condition || 'Fair'}</span>
                   ${trip.weather?.feelsLike ? `<span class="weather-feels">Feels like ${trip.weather.feelsLike}</span>` : ''}
                 </div>
+              </div>
+              <div class="weather-sun-times" aria-label="Current day sunrise and sunset">
+                ${sunTimes.hasTimes ? `
+                  <span>
+                    ${renderIcon("sunrise")}
+                    <small>Sun up</small>
+                    <strong>${escapeHtml(sunTimes.sunrise)}</strong>
+                  </span>
+                  <span>
+                    ${renderIcon("sunset")}
+                    <small>Sun down</small>
+                    <strong>${escapeHtml(sunTimes.sunset)}</strong>
+                  </span>
+                ` : `
+                  <span class="weather-sun-times__pending">
+                    ${renderIcon("sun")}
+                    <small>Sun times</small>
+                    <strong>Refresh for today</strong>
+                  </span>
+                `}
               </div>
               <div class="weather-forecast-pills">
                 ${upcomingForecast.map(f => `
@@ -370,6 +407,123 @@ function formatLiveTimeString() {
     hour: "2-digit",
     minute: "2-digit"
   }).format(new Date());
+}
+
+function getWeatherSunTimes(weather = {}) {
+  const sunrise = weather.sunrise || formatWeatherPanelTime(weather.sunriseIso);
+  const sunset = weather.sunset || formatWeatherPanelTime(weather.sunsetIso);
+  return {
+    sunrise,
+    sunset,
+    hasTimes: Boolean(sunrise && sunset),
+  };
+}
+
+function formatWeatherPanelTime(value = "") {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return new Intl.DateTimeFormat([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+}
+
+const LOCAL_GLOSSARIES = {
+  france: {
+    language: "French",
+    sample: "Bonjour",
+    phrases: [
+      ["Good morning", "Bonjour"],
+      ["Good day", "Bonne journée"],
+      ["Good evening", "Bonsoir"],
+      ["Good night", "Bonne nuit"],
+      ["Hello", "Salut"],
+      ["Bye", "Au revoir"],
+      ["Thanks", "Merci"],
+      ["Yes", "Oui"],
+      ["No", "Non"],
+      ["Please", "S'il vous plaît"],
+    ],
+  },
+  greece: {
+    language: "Greek",
+    sample: "Kaliméra",
+    phrases: [
+      ["Good morning", "Kaliméra"],
+      ["Good day", "Kalí iméra"],
+      ["Good evening", "Kalispéra"],
+      ["Good night", "Kalinýchta"],
+      ["Hello", "Yássas"],
+      ["Bye", "Antío"],
+      ["Thanks", "Efcharistó"],
+      ["Yes", "Ne"],
+      ["No", "Óchi"],
+      ["Please", "Parakaló"],
+    ],
+  },
+  spain: {
+    language: "Spanish",
+    sample: "Hola",
+    phrases: [
+      ["Good morning", "Buenos días"],
+      ["Good day", "Buen día"],
+      ["Good evening", "Buenas tardes"],
+      ["Good night", "Buenas noches"],
+      ["Hello", "Hola"],
+      ["Bye", "Adiós"],
+      ["Thanks", "Gracias"],
+      ["Yes", "Sí"],
+      ["No", "No"],
+      ["Please", "Por favor"],
+    ],
+  },
+  default: {
+    language: "Local",
+    sample: "Hello",
+    phrases: [
+      ["Good morning", "Hello"],
+      ["Good day", "Good day"],
+      ["Good evening", "Good evening"],
+      ["Good night", "Good night"],
+      ["Hello", "Hello"],
+      ["Bye", "Bye"],
+      ["Thanks", "Thanks"],
+      ["Yes", "Yes"],
+      ["No", "No"],
+      ["Please", "Please"],
+    ],
+  },
+};
+
+function getTimeAwareGreeting(date = new Date()) {
+  const hour = date.getHours();
+  if (hour < 5) return "Good night";
+  if (hour < 12) return "Good morning";
+  if (hour < 17) return "Good afternoon";
+  if (hour < 22) return "Good evening";
+  return "Good night";
+}
+
+function getFirstName(name = "Thomas") {
+  return String(name || "Thomas").trim().split(/\s+/)[0] || "Thomas";
+}
+
+function getLocalGlossaryForTrip(trip = {}) {
+  const key = getGlossaryKeyForTrip(trip);
+  const glossary = LOCAL_GLOSSARIES[key] || LOCAL_GLOSSARIES.default;
+  return {
+    ...glossary,
+    phrases: glossary.phrases.map(([en, local]) => ({ en, local })),
+  };
+}
+
+function getGlossaryKeyForTrip(trip = {}) {
+  const haystack = `${trip.destination || ""} ${trip.flag || ""}`.toLowerCase();
+  if (haystack.includes("france") || haystack.includes("paris") || haystack.includes("🇫🇷")) return "france";
+  if (haystack.includes("greece") || haystack.includes("crete") || haystack.includes("heraklion") || haystack.includes("🇬🇷")) return "greece";
+  if (haystack.includes("spain") || haystack.includes("espa") || haystack.includes("🇪🇸")) return "spain";
+  return "default";
 }
 
 function escapeHtml(str) {

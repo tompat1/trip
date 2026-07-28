@@ -4,7 +4,7 @@ export async function fetchOpenMeteoWeather(lat = 48.8566, lng = 2.3522) {
     url.searchParams.set("latitude", lat);
     url.searchParams.set("longitude", lng);
     url.searchParams.set("current", "temperature_2m,relative_humidity_2m,apparent_temperature,is_day,precipitation,rain,weather_code,wind_speed_10m");
-    url.searchParams.set("daily", "weather_code,temperature_2m_max,temperature_2m_min");
+    url.searchParams.set("daily", "weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset");
     url.searchParams.set("forecast_days", "6");
     url.searchParams.set("timezone", "auto");
 
@@ -42,6 +42,10 @@ export async function fetchOpenMeteoWeather(lat = 48.8566, lng = 2.3522) {
       condition: weatherMeta.label,
       icon: weatherMeta.icon,
       isDay: Boolean(current.is_day),
+      sunrise: formatWeatherTime((daily.sunrise || [])[0]),
+      sunset: formatWeatherTime((daily.sunset || [])[0]),
+      sunriseIso: (daily.sunrise || [])[0] || "",
+      sunsetIso: (daily.sunset || [])[0] || "",
       forecast,
       updatedAt: new Date().toISOString()
     };
@@ -49,6 +53,16 @@ export async function fetchOpenMeteoWeather(lat = 48.8566, lng = 2.3522) {
     console.warn("Open-Meteo polling fallback:", err);
     return null;
   }
+}
+
+function formatWeatherTime(value = "") {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return new Intl.DateTimeFormat([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
 }
 
 export function getWeatherCodeMeta(code) {
