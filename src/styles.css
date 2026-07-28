@@ -1794,6 +1794,34 @@ textarea {
   transform: translateX(3px);
 }
 
+.landing-illustration-placeholder {
+  margin: 0 16px 20px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background:
+    linear-gradient(135deg, rgba(255, 122, 47, 0.12), transparent 45%),
+    var(--paper-card);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+.landing-illustration-placeholder img {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: min(70vh, 720px);
+  object-fit: contain;
+  object-position: center;
+  border-radius: calc(var(--radius-lg) - 6px);
+}
+
+:root[data-theme="dark"] .landing-illustration-placeholder {
+  background:
+    linear-gradient(135deg, rgba(255, 122, 47, 0.14), transparent 45%),
+    var(--surface-overlay);
+}
+
 .feature-card__icon {
   width: 48px;
   height: 48px;
