@@ -552,6 +552,11 @@ function renderAccountAccessPanel(isAdmin) {
           <button class="btn btn--primary btn--sm" type="submit">${renderIcon("logIn")} Sign in</button>
         </form>
       `}
+      <div class="profile-theme-switcher" aria-label="Theme mode">
+        <button class="${state.themeMode === "system" ? "is-active" : ""}" data-action="set-theme-mode" data-theme-mode="system" type="button">${renderIcon("monitor")} System</button>
+        <button class="${state.themeMode === "light" ? "is-active" : ""}" data-action="set-theme-mode" data-theme-mode="light" type="button">${renderIcon("sun")} Light</button>
+        <button class="${state.themeMode === "dark" ? "is-active" : ""}" data-action="set-theme-mode" data-theme-mode="dark" type="button">${renderIcon("moon")} Dark</button>
+      </div>
     </section>
   `;
 }

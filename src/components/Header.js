@@ -13,7 +13,7 @@ export function renderHeader() {
     return `
       <header class="top-nav top-nav--landing">
         <div class="top-nav__brand" data-action="go-home" role="button" tabindex="0" aria-label="Go to home">
-          ${TRIP_LOGO_SVG("", 26)}
+          ${TRIP_LOGO_SVG("", 40)}
         </div>
         <div class="top-nav__actions">
           <button class="btn btn--primary btn--sm" data-action="create-trip">Get started</button>
@@ -36,14 +36,16 @@ export function renderHeader() {
     <header class="app-header">
       <div class="app-header__top">
         <div class="brand-monogram" data-action="go-home">
-          ${TRIP_LOGO_SVG("", 26)}
+          ${TRIP_LOGO_SVG("", 40)}
         </div>
         <div class="app-header__user">
           <div class="header-live-time-pill" title="Live Open-Meteo weather in ${escapeHtml(trip.destination.split(',')[0])} & time">
             <span class="header-weather-badge">${trip.weather?.icon || '☀️'} ${trip.weather?.temp || '20°C'}</span>
             <span class="header-time-divider">•</span>
             <span class="live-time-text">${liveDayTime}</span>
-            <span class="trip-mini-spinner" aria-hidden="true"></span>
+            <span class="trip-flap-spinner" aria-label="TRIP syncing">
+              ${["T", "R", "I", "P"].map((letter, index) => `<span style="--flap-index: ${index}">${letter}</span>`).join("")}
+            </span>
             <span class="status-light-dot" title="Status: Online"></span>
           </div>
 
@@ -56,7 +58,7 @@ export function renderHeader() {
           </button>
 
           ${isSignedIn ? `
-            <button class="btn btn--icon btn--ghost mobile-logout-btn" data-action="instant-logout" aria-label="Log out" title="Log out">
+            <button class="btn btn--icon btn--ghost header-logout-btn" data-action="instant-logout" aria-label="Log out" title="Log out">
               ${renderIcon("logOut")}
             </button>
           ` : ""}

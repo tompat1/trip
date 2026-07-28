@@ -476,6 +476,10 @@ document.addEventListener("click", async (e) => {
     }
     else if (action === "go-profile") state.setView("profile");
     else if (action === "switch-to-landing") state.setView("landing");
+    else if (action === "set-theme-mode") {
+      state.setThemeMode(target.dataset.themeMode || "system");
+      showToast(`Theme set to ${state.themeMode}.`);
+    }
     else if (action === "refresh-weather") {
       state.refreshWeather();
     }

@@ -23,7 +23,7 @@ export function renderLandingView() {
             <button class="btn btn--primary btn--lg" data-action="create-trip">
               ${renderIcon("compass")} Create your trip
             </button>
-            <button class="btn btn--outline btn--lg" data-action="go-search" style="background: rgba(255,255,255,0.92); border: none; color: var(--ink);">
+            <button class="btn btn--outline btn--lg landing-secondary-btn" data-action="go-search">
               ${renderIcon("search")} Explore ideas
             </button>
           </div>
