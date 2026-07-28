@@ -5758,6 +5758,22 @@ textarea {
   height: 116px !important;
 }
 
+.trip-premium-logo-lockup .trip-main-logo--default {
+  display: block;
+}
+
+.trip-premium-logo-lockup .trip-main-logo--dark {
+  display: none;
+}
+
+:root[data-theme="dark"] .trip-premium-logo-lockup .trip-main-logo--default {
+  display: block;
+}
+
+:root[data-theme="dark"] .trip-premium-logo-lockup .trip-main-logo--dark {
+  display: none;
+}
+
 .trip-premium-logo-lockup span {
   position: relative;
   color: rgba(15, 27, 43, 0.82);
@@ -5879,6 +5895,13 @@ textarea {
   box-shadow: 0 18px 38px rgba(15, 27, 43, 0.1);
 }
 
+:root[data-theme="dark"] .trip-premium-plan {
+  background: rgba(255, 255, 255, 0.76);
+  border-color: rgba(15, 27, 43, 0.11);
+  color: #0F1B2B;
+  box-shadow: 0 18px 38px rgba(15, 27, 43, 0.12);
+}
+
 .trip-premium-plan span {
   color: #143047;
   font-family: var(--font-serif);
@@ -5933,6 +5956,16 @@ textarea {
   color: rgba(15, 27, 43, 0.58);
   font-size: 0.76rem;
   line-height: 1.35;
+}
+
+:root[data-theme="dark"] .trip-premium-plan span,
+:root[data-theme="dark"] .trip-premium-plan strong {
+  color: #0F1B2B;
+}
+
+:root[data-theme="dark"] .trip-premium-plan small,
+:root[data-theme="dark"] .trip-premium-note {
+  color: rgba(15, 27, 43, 0.58);
 }
 
 .trip-premium-note {
@@ -7656,8 +7689,7 @@ textarea {
 
 :root[data-theme="dark"] .profile-social-login-btn,
 :root[data-theme="dark"] .profile-premium-mini-card,
-:root[data-theme="dark"] .auth-provider-btn:not(.auth-provider-btn--apple),
-:root[data-theme="dark"] .trip-premium-plan {
+:root[data-theme="dark"] .auth-provider-btn:not(.auth-provider-btn--apple) {
   background: var(--surface-overlay);
   border-color: var(--line);
   color: var(--ink);
