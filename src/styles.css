@@ -4433,6 +4433,210 @@ textarea {
 }
 
 /* ==========================================================================
+   HELP CENTER
+   ========================================================================== */
+.help-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100060;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(15, 27, 43, 0.5);
+  backdrop-filter: blur(10px);
+  animation: drawerFadeIn 0.2s var(--ease-out);
+}
+
+.help-shell {
+  width: min(100%, 480px);
+  max-height: min(88vh, 760px);
+  overflow-y: auto;
+  padding: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.56);
+  border-radius: 28px;
+  background: var(--paper-card);
+  box-shadow: var(--shadow-lg);
+}
+
+.help-header {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+}
+
+.help-brand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 16px;
+  background: rgba(255, 85, 0, 0.1);
+}
+
+.help-kicker {
+  color: var(--orange);
+  font-size: 0.7rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.help-header h2 {
+  margin: 2px 0 0;
+  color: var(--ink);
+  font-size: 1.08rem;
+}
+
+.help-search {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 46px;
+  margin-top: 16px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--paper);
+}
+
+.help-search svg {
+  width: 18px;
+  height: 18px;
+  color: var(--orange);
+  flex: 0 0 auto;
+}
+
+.help-search input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--ink);
+  font-size: 0.88rem;
+}
+
+.help-actions {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 14px 0 12px;
+  scrollbar-width: none;
+}
+
+.help-actions::-webkit-scrollbar {
+  display: none;
+}
+
+.help-action-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  flex: 0 0 auto;
+  min-height: 36px;
+  padding: 8px 11px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pill);
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.help-action-chip svg {
+  width: 15px;
+  height: 15px;
+  color: var(--orange);
+}
+
+.help-results {
+  display: grid;
+  gap: 10px;
+}
+
+.help-faq-item {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--paper);
+  overflow: hidden;
+}
+
+.help-faq-item summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 48px;
+  padding: 12px;
+  cursor: pointer;
+  list-style: none;
+  color: var(--ink);
+  font-size: 0.84rem;
+  font-weight: 900;
+}
+
+.help-faq-item summary::-webkit-details-marker {
+  display: none;
+}
+
+.help-faq-item summary svg {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+  color: var(--ink-muted);
+  transition: transform 0.18s var(--ease-out);
+}
+
+.help-faq-item[open] summary svg {
+  transform: rotate(180deg);
+}
+
+.help-faq-item p {
+  padding: 0 12px 12px;
+  color: var(--ink-muted);
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+.help-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 0 12px 12px;
+}
+
+.help-tags span {
+  padding: 4px 7px;
+  border-radius: var(--radius-pill);
+  background: rgba(56, 92, 115, 0.1);
+  color: var(--blue);
+  font-size: 0.68rem;
+  font-weight: 800;
+}
+
+.help-empty {
+  display: grid;
+  gap: 4px;
+  padding: 16px;
+  border: 1px dashed var(--line);
+  border-radius: var(--radius-md);
+  background: var(--paper);
+}
+
+.help-empty strong {
+  color: var(--ink);
+  font-size: 0.86rem;
+}
+
+.help-empty span {
+  color: var(--ink-muted);
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+/* ==========================================================================
    TRIP CREATION FLOW
    ========================================================================== */
 .trip-create-overlay {
@@ -4788,6 +4992,23 @@ textarea {
     width: 100%;
   }
 
+  .help-overlay {
+    padding: 0;
+  }
+
+  .help-shell {
+    max-height: 90vh;
+    border-right: 0;
+    border-bottom: 0;
+    border-left: 0;
+    border-radius: 28px 28px 0 0;
+    padding: 18px 16px calc(22px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .help-header h2 {
+    font-size: 1rem;
+  }
+
   .trip-create-overlay {
     padding: 0;
   }
@@ -5086,6 +5307,33 @@ textarea {
 
   .trip-actions-row::-webkit-scrollbar {
     display: none;
+  }
+
+  .app-header__top {
+    gap: 10px !important;
+  }
+
+  .app-header__user {
+    min-width: 0 !important;
+    gap: 6px !important;
+  }
+
+  .header-live-time-pill {
+    min-width: 0 !important;
+    max-width: 96px !important;
+    padding-inline: 7px !important;
+    overflow: hidden !important;
+  }
+
+  .live-time-text,
+  .header-time-divider {
+    display: none !important;
+  }
+
+  .header-weather-badge {
+    min-width: 0 !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
   }
 
   .trip-mode-toggle {

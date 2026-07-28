@@ -439,6 +439,8 @@ class AppState {
     this.activeInvite = getInviteFromLocation();
     this.onboardingOpen = !this.activeInvite && !hasSeenOnboarding();
     this.onboardingSlideIndex = 0;
+    this.helpOpen = false;
+    this.helpQuery = "";
     this.tripCreateOpen = false;
     this.listeners = new Set();
     this.checkBackendHealth();
@@ -579,6 +581,22 @@ class AppState {
   openOnboarding() {
     this.onboardingOpen = true;
     this.onboardingSlideIndex = 0;
+    this.notify();
+  }
+
+  openHelp(query = "") {
+    this.helpOpen = true;
+    if (query !== undefined) this.helpQuery = String(query || "");
+    this.notify();
+  }
+
+  closeHelp() {
+    this.helpOpen = false;
+    this.notify();
+  }
+
+  setHelpQuery(query = "") {
+    this.helpQuery = String(query || "");
     this.notify();
   }
 

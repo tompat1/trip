@@ -12,6 +12,7 @@ import { renderEventDrawer } from "./components/EventDrawer.js";
 import { renderTripCreateModal } from "./components/TripCreateModal.js";
 import { renderQuickCaptureWidget } from "./components/QuickCaptureWidget.js";
 import { renderOnboardingWalkthrough } from "./components/OnboardingWalkthrough.js";
+import { renderHelpCenter } from "./components/HelpCenter.js";
 import { fetchConcertsForTrip } from "./services/concertService.js";
 import { fetchOpenMeteoWeather } from "./services/weatherService.js";
 import { formatAirportLabel, getFlightRouteDisplay, resolveAirportInput, searchAirportsWorldwide } from "./services/airportService.js";
@@ -101,6 +102,7 @@ function render() {
   const tripCreateHtml = renderTripCreateModal();
   const inviteAcceptanceHtml = renderInviteAcceptance();
   const onboardingHtml = renderOnboardingWalkthrough();
+  const helpHtml = renderHelpCenter();
 
   appEl.innerHTML = `
     <div class="app-view app-view--${view}">
@@ -112,6 +114,7 @@ function render() {
       ${tripCreateHtml}
       ${inviteAcceptanceHtml}
       ${onboardingHtml}
+      ${helpHtml}
     </div>
   `;
 
@@ -505,6 +508,12 @@ document.addEventListener("click", async (e) => {
       state.setProfileSection("notifications");
       state.setView("profile");
     }
+    else if (action === "open-help") {
+      state.openHelp();
+    }
+    else if (action === "close-help") {
+      state.closeHelp();
+    }
     else if (action === "invite-companions") {
       state.setView("profile");
       setTimeout(() => document.getElementById("profile-companion-form")?.querySelector("input[name='email']")?.focus(), 0);
@@ -830,6 +839,28 @@ document.addEventListener("click", async (e) => {
       openCompanionInviteFlow("link");
       showToast("Invite companions for the selected trip.");
     }
+    else if (action === "help-invite-companions") {
+      state.closeHelp();
+      openCompanionInviteFlow("link");
+      showToast("Invite companions for the selected trip.");
+    }
+    else if (action === "help-open-plan") {
+      state.closeHelp();
+      state.setPlanSubTab("plan");
+      state.setView("plan");
+    }
+    else if (action === "help-open-search") {
+      state.closeHelp();
+      state.setView("search");
+    }
+    else if (action === "help-open-live") {
+      state.closeHelp();
+      state.setView("live");
+    }
+    else if (action === "help-open-walkthrough") {
+      state.closeHelp();
+      state.openOnboarding();
+    }
     else if (action === "admin-login-dialog") {
       const email = prompt("Enter admin/traveler email:", "thomas@rynell.org");
       if (email) {
@@ -931,6 +962,9 @@ document.addEventListener("input", (e) => {
     updateAirportAutocomplete(e.target);
     updateTripCreateRoutePreview(e.target.form);
   }
+  if (e.target.matches("[data-help-search]")) {
+    state.setHelpQuery(e.target.value);
+  }
   if (e.target.matches("[data-profile-field]") && !e.target.matches("input[type='checkbox'], select")) {
     state.updateUserProfileField(e.target.dataset.profileField, e.target.value, { notify: false });
   }
@@ -945,6 +979,10 @@ document.addEventListener("keydown", (e) => {
 });
 
 document.addEventListener("click", (e) => {
+  if (e.target.classList?.contains("help-overlay")) {
+    state.closeHelp();
+  }
+
   if (e.target.classList?.contains("trip-create-overlay")) {
     state.closeTripCreate();
   }
