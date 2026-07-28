@@ -30,6 +30,7 @@ export function renderHeader() {
   const isDoneTrip = dateStatus.state === "done";
   const tripStage = getTripStage(dateStatus);
   const ribbon = getTripRibbon(tripStage);
+  const isSignedIn = ["admin", "traveler"].includes(state.userSession?.role);
 
   return `
     <header class="app-header">
@@ -42,6 +43,7 @@ export function renderHeader() {
             <span class="header-weather-badge">${trip.weather?.icon || '☀️'} ${trip.weather?.temp || '20°C'}</span>
             <span class="header-time-divider">•</span>
             <span class="live-time-text">${liveDayTime}</span>
+            <span class="trip-mini-spinner" aria-hidden="true"></span>
             <span class="status-light-dot" title="Status: Online"></span>
           </div>
 
@@ -52,6 +54,12 @@ export function renderHeader() {
           <button class="btn btn--icon btn--ghost" data-action="open-help" aria-label="Help" title="Help">
             ${renderIcon("circleHelp")}
           </button>
+
+          ${isSignedIn ? `
+            <button class="btn btn--icon btn--ghost mobile-logout-btn" data-action="instant-logout" aria-label="Log out" title="Log out">
+              ${renderIcon("logOut")}
+            </button>
+          ` : ""}
 
           <div class="avatar-badge" data-action="go-profile" title="View profile">
             <img src="${state.userAvatar || profile.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=120&q=80'}" alt="${escapeHtml(profile.name || "Traveler")} avatar" class="avatar-img" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'" />

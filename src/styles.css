@@ -31,7 +31,13 @@
 
   --ink-muted: #6B7A8F;
   --ink-light: #9C6E55;
+  --ink-soft: #8A7C70;
   --white: #FFFFFF;
+  --surface-raised: var(--paper-card);
+  --surface-overlay: var(--paper-card);
+  --transit-line: rgba(255, 85, 0, 0.38);
+  --transit-glow: rgba(255, 85, 0, 0.18);
+  --spinner-track: rgba(15, 27, 43, 0.12);
 
   /* 04. Three Distinct Typographic Voices (Brand Guidelines v1.0) */
   --font-sans: "Sora", "Plus Jakarta Sans", system-ui, sans-serif;
@@ -53,6 +59,68 @@
   --radius-pill: 9999px;
 
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ink: #F4F7FB;
+    --paper: #09111C;
+    --paper-card: #101B2A;
+    --paper-subtle: #162435;
+    --surface-raised: #132033;
+    --surface-overlay: #1A2A3F;
+    --orange: #FF7A2F;
+    --red: #FF7A2F;
+    --red-gradient: linear-gradient(135deg, #FF7A2F 0%, #D85B48 100%);
+    --blue: #75A7C8;
+    --green: #A9B79A;
+    --sun: #F2D27A;
+    --clay: #D2A17F;
+    --slate: #93A4B8;
+    --line: rgba(237, 244, 255, 0.12);
+    --line-light: rgba(237, 244, 255, 0.08);
+    --ink-muted: #A7B3C2;
+    --ink-light: #C6B0A0;
+    --ink-soft: #92A0B2;
+    --white: #FFFFFF;
+    --shadow-sm: 0 1px 0 rgba(255, 255, 255, 0.04);
+    --shadow-md: 0 10px 24px rgba(0, 0, 0, 0.28);
+    --shadow-lg: 0 18px 44px rgba(0, 0, 0, 0.42);
+    --shadow-fab: 0 8px 28px rgba(255, 122, 47, 0.34);
+    --transit-line: rgba(255, 122, 47, 0.56);
+    --transit-glow: rgba(255, 122, 47, 0.2);
+    --spinner-track: rgba(244, 247, 251, 0.16);
+  }
+}
+
+:root[data-theme="dark"] {
+  --ink: #F4F7FB;
+  --paper: #09111C;
+  --paper-card: #101B2A;
+  --paper-subtle: #162435;
+  --surface-raised: #132033;
+  --surface-overlay: #1A2A3F;
+  --orange: #FF7A2F;
+  --red: #FF7A2F;
+  --red-gradient: linear-gradient(135deg, #FF7A2F 0%, #D85B48 100%);
+  --blue: #75A7C8;
+  --green: #A9B79A;
+  --sun: #F2D27A;
+  --clay: #D2A17F;
+  --slate: #93A4B8;
+  --line: rgba(237, 244, 255, 0.12);
+  --line-light: rgba(237, 244, 255, 0.08);
+  --ink-muted: #A7B3C2;
+  --ink-light: #C6B0A0;
+  --ink-soft: #92A0B2;
+  --white: #FFFFFF;
+  --shadow-sm: 0 1px 0 rgba(255, 255, 255, 0.04);
+  --shadow-md: 0 10px 24px rgba(0, 0, 0, 0.28);
+  --shadow-lg: 0 18px 44px rgba(0, 0, 0, 0.42);
+  --shadow-fab: 0 8px 28px rgba(255, 122, 47, 0.34);
+  --transit-line: rgba(255, 122, 47, 0.56);
+  --transit-glow: rgba(255, 122, 47, 0.2);
+  --spinner-track: rgba(244, 247, 251, 0.16);
 }
 
 /* Three Typographic Voice Utility Classes */
@@ -556,6 +624,10 @@ textarea {
   align-items: center;
   gap: 8px;
   flex-wrap: nowrap;
+}
+
+.mobile-logout-btn {
+  display: none;
 }
 
 .header-live-time-pill {
@@ -4637,6 +4709,96 @@ textarea {
 }
 
 /* ==========================================================================
+   AUTH EXIT
+   ========================================================================== */
+.auth-exit-page {
+  position: fixed;
+  inset: 0;
+  z-index: 100070;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  background:
+    linear-gradient(180deg, rgba(15, 27, 43, 0.62), rgba(15, 27, 43, 0.78)),
+    var(--paper);
+  backdrop-filter: blur(12px);
+}
+
+.auth-exit-card {
+  width: min(100%, 420px);
+  padding: 26px;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 28px;
+  background:
+    linear-gradient(180deg, rgba(255, 85, 0, 0.1), transparent 34%),
+    var(--paper-card);
+  box-shadow: var(--shadow-lg);
+  text-align: left;
+}
+
+.auth-exit-brand {
+  display: inline-flex;
+  margin-bottom: 18px;
+}
+
+.auth-exit-kicker {
+  display: block;
+  color: var(--orange);
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.auth-exit-card h2 {
+  max-width: 12ch;
+  margin: 7px 0 0;
+  color: var(--ink);
+  font-family: var(--font-serif);
+  font-size: 2rem;
+  line-height: 1.04;
+}
+
+.auth-exit-card p {
+  margin: 12px 0 0;
+  color: var(--ink-muted);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.auth-exit-login-form {
+  display: grid;
+  gap: 10px;
+  margin-top: 22px;
+}
+
+.auth-exit-login-form label {
+  display: grid;
+  gap: 6px;
+  color: var(--ink-muted);
+  font-size: 0.74rem;
+  font-weight: 800;
+}
+
+.auth-exit-login-form input {
+  min-height: 44px;
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--paper);
+  color: var(--ink);
+  padding: 10px 12px;
+  font-size: 0.9rem;
+}
+
+.auth-exit-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+/* ==========================================================================
    TRIP CREATION FLOW
    ========================================================================== */
 .trip-create-overlay {
@@ -5009,6 +5171,24 @@ textarea {
     font-size: 1rem;
   }
 
+  .auth-exit-page {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .auth-exit-card {
+    width: 100%;
+    border-right: 0;
+    border-bottom: 0;
+    border-left: 0;
+    border-radius: 28px 28px 0 0;
+    padding: 24px 20px calc(26px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .auth-exit-actions {
+    grid-template-columns: 1fr;
+  }
+
   .trip-create-overlay {
     padding: 0;
   }
@@ -5316,6 +5496,10 @@ textarea {
   .app-header__user {
     min-width: 0 !important;
     gap: 6px !important;
+  }
+
+  .mobile-logout-btn {
+    display: inline-flex !important;
   }
 
   .header-live-time-pill {

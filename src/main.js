@@ -13,6 +13,7 @@ import { renderTripCreateModal } from "./components/TripCreateModal.js";
 import { renderQuickCaptureWidget } from "./components/QuickCaptureWidget.js";
 import { renderOnboardingWalkthrough } from "./components/OnboardingWalkthrough.js";
 import { renderHelpCenter } from "./components/HelpCenter.js";
+import { renderAuthExitPage } from "./components/AuthExitPage.js";
 import { fetchConcertsForTrip } from "./services/concertService.js";
 import { fetchOpenMeteoWeather } from "./services/weatherService.js";
 import { formatAirportLabel, getFlightRouteDisplay, resolveAirportInput, searchAirportsWorldwide } from "./services/airportService.js";
@@ -76,6 +77,7 @@ function render() {
   if (!appEl) return;
 
   const view = state.activeView;
+  applyThemeMode();
 
   let viewHtml = "";
   if (view === "landing") {
@@ -103,6 +105,7 @@ function render() {
   const inviteAcceptanceHtml = renderInviteAcceptance();
   const onboardingHtml = renderOnboardingWalkthrough();
   const helpHtml = renderHelpCenter();
+  const authExitHtml = renderAuthExitPage();
 
   appEl.innerHTML = `
     <div class="app-view app-view--${view}">
@@ -115,6 +118,7 @@ function render() {
       ${inviteAcceptanceHtml}
       ${onboardingHtml}
       ${helpHtml}
+      ${authExitHtml}
     </div>
   `;
 
@@ -122,6 +126,12 @@ function render() {
   requestAnimationFrame(() => {
     initMapsForView(view);
   });
+}
+
+function applyThemeMode() {
+  const theme = state.themeMode || "system";
+  document.documentElement.dataset.theme = theme;
+  document.documentElement.style.colorScheme = theme === "dark" ? "dark" : theme === "light" ? "light" : "light dark";
 }
 
 function renderInviteAcceptance() {
@@ -397,6 +407,15 @@ function openCompanionInviteFlow(defaultMethod = "link") {
     if (methodInput) methodInput.checked = true;
     form.querySelector("input[name='email']")?.focus();
   });
+}
+
+async function logOutAndShowExit() {
+  try {
+    await enrichmentService.logoutAdmin();
+  } catch {}
+  await state.refreshUserSession();
+  state.showAuthExit();
+  showToast("Signed out.");
 }
 
 // Global Event Listeners Delegation
@@ -877,12 +896,17 @@ document.addEventListener("click", async (e) => {
       }
     }
     else if (action === "admin-logout") {
-      enrichmentService.logoutAdmin()
-        .catch(() => {})
-        .finally(async () => {
-          await state.refreshUserSession();
-          showToast("Admin access ended.");
-        });
+      await logOutAndShowExit();
+    }
+    else if (action === "instant-logout") {
+      await logOutAndShowExit();
+    }
+    else if (action === "continue-as-guest") {
+      state.closeAuthExit({ view: "home" });
+      showToast("Continuing as guest.");
+    }
+    else if (action === "go-home-from-exit") {
+      state.closeAuthExit({ view: "home" });
     }
     else if (action === "open-lightbox") {
       const momentId = target.dataset.momentId;
@@ -1079,6 +1103,30 @@ function updateTripCreateRoutePreview(form) {
 }
 
 document.addEventListener("submit", async (e) => {
+  if (e.target.id === "auth-exit-login-form") {
+    e.preventDefault();
+    const form = e.target;
+    const email = form.email?.value?.trim() || "";
+    const password = form.password?.value || "";
+    if (!email || !password) {
+      showToast("Enter email and password.");
+      return;
+    }
+    const button = form.querySelector("button[type='submit']");
+    if (button) button.disabled = true;
+    try {
+      await enrichmentService.loginAccount({ email, password });
+      await state.refreshUserSession();
+      state.closeAuthExit({ view: "home" });
+      showToast("Signed back in.");
+    } catch (error) {
+      showToast("Login failed. Check your credentials.");
+    } finally {
+      if (button) button.disabled = false;
+    }
+    return;
+  }
+
   if (e.target.id === "profile-login-form") {
     e.preventDefault();
     const form = e.target;

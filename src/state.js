@@ -21,6 +21,7 @@ const TOURISM_DISCOVERY_STORAGE_PREFIX = "trip_tourism_discovery_";
 const TRIP_COMPANIONS_STORAGE_PREFIX = "trip_companions_";
 const USER_PROFILE_STORAGE_KEY = "trip_user_profile_v1";
 const ONBOARDING_STORAGE_KEY = "trip_onboarding_seen_v1";
+const THEME_STORAGE_KEY = "trip_theme_mode_v1";
 const LEGACY_USER_AVATAR_STORAGE_KEY = "trip_user_avatar";
 const LEGACY_USER_PREFERENCES_STORAGE_KEY = "trip_user_preferences";
 
@@ -297,6 +298,23 @@ function markOnboardingSeen() {
   } catch {}
 }
 
+function readStoredTheme() {
+  if (typeof localStorage === "undefined") return "system";
+  try {
+    const theme = localStorage.getItem(THEME_STORAGE_KEY) || "system";
+    return ["system", "light", "dark"].includes(theme) ? theme : "system";
+  } catch {
+    return "system";
+  }
+}
+
+function writeStoredTheme(theme = "system") {
+  if (typeof localStorage === "undefined") return;
+  try {
+    localStorage.setItem(THEME_STORAGE_KEY, theme);
+  } catch {}
+}
+
 function getTripInviteTitle(trip = {}) {
   return trip.title || trip.name || (trip.destination ? `Roadtrip ${trip.destination}` : "Your trip");
 }
@@ -373,6 +391,7 @@ class AppState {
     this.userProfile = readStoredUserProfile();
     this.activeProfileSection = "profile";
     this.userSession = { status: "checking", role: "anonymous", userId: "", authType: "none" };
+    this.themeMode = readStoredTheme();
     this.userAvatar = this.userProfile.avatarUrl;
     this.userPreferences = new Set(this.userProfile.personas || []);
 
@@ -441,6 +460,7 @@ class AppState {
     this.onboardingSlideIndex = 0;
     this.helpOpen = false;
     this.helpQuery = "";
+    this.authExitOpen = false;
     this.tripCreateOpen = false;
     this.listeners = new Set();
     this.checkBackendHealth();
@@ -597,6 +617,27 @@ class AppState {
 
   setHelpQuery(query = "") {
     this.helpQuery = String(query || "");
+    this.notify();
+  }
+
+  setThemeMode(theme = "system") {
+    this.themeMode = ["system", "light", "dark"].includes(theme) ? theme : "system";
+    writeStoredTheme(this.themeMode);
+    this.notify();
+  }
+
+  showAuthExit() {
+    this.authExitOpen = true;
+    this.helpOpen = false;
+    this.onboardingOpen = false;
+    this.activeInvite = null;
+    this.userSession = { status: "ready", role: "anonymous", userId: "", authType: "none" };
+    this.notify();
+  }
+
+  closeAuthExit(options = {}) {
+    this.authExitOpen = false;
+    if (options.view) this.activeView = options.view;
     this.notify();
   }
 
