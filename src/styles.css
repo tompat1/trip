@@ -273,21 +273,21 @@ textarea {
 
 :root[data-theme="dark"] .brand-monogram,
 :root[data-theme="dark"] .top-nav__brand {
-  background: rgba(255, 253, 248, 0.94);
-  border: 1px solid rgba(255, 255, 255, 0.44);
-  border-radius: 14px;
-  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.26);
-  padding: 6px 8px;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 0;
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) .brand-monogram,
   :root:not([data-theme="light"]) .top-nav__brand {
-    background: rgba(255, 253, 248, 0.94);
-    border: 1px solid rgba(255, 255, 255, 0.44);
-    border-radius: 14px;
-    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.26);
-    padding: 6px 8px;
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    padding: 0;
   }
 }
 
@@ -716,14 +716,33 @@ textarea {
   cursor: pointer;
 }
 
+.trip-logo-mark {
+  position: relative;
+  align-items: center;
+  justify-items: center;
+}
+
 .trip-main-logo {
-  height: auto;
-  width: auto;
+  grid-area: 1 / 1;
+  height: 100%;
+  width: 100%;
   aspect-ratio: 2078 / 1558;
   display: block;
   flex-shrink: 0;
   object-fit: contain;
   object-position: center;
+}
+
+.trip-main-logo--dark {
+  display: none;
+}
+
+:root[data-theme="dark"] .trip-main-logo--default {
+  display: none;
+}
+
+:root[data-theme="dark"] .trip-main-logo--dark {
+  display: block;
 }
 
 .brand-monogram__logo {
@@ -5602,10 +5621,15 @@ textarea {
   font-weight: 900;
 }
 
-.trip-premium-brand .trip-main-logo {
+.trip-premium-brand .trip-logo-mark {
   background: rgba(255, 253, 248, 0.92);
   border-radius: 14px;
   padding: 4px 6px;
+}
+
+:root[data-theme="dark"] .trip-premium-brand .trip-logo-mark {
+  background: transparent;
+  padding: 0;
 }
 
 .trip-premium-hero h2 {
@@ -6111,8 +6135,44 @@ textarea {
     padding: 24px 20px calc(26px + env(safe-area-inset-bottom, 0px));
   }
 
+  .auth-exit-brand {
+    margin-bottom: 12px;
+  }
+
+  .auth-exit-card h2 {
+    font-size: 1.72rem;
+  }
+
+  .auth-exit-card p {
+    margin-top: 9px;
+    line-height: 1.4;
+  }
+
+  .auth-provider-stack {
+    gap: 8px;
+    margin-top: 16px;
+  }
+
+  .auth-provider-btn {
+    min-height: 46px;
+  }
+
+  .auth-divider {
+    margin-top: 14px;
+  }
+
+  .auth-exit-login-form {
+    gap: 8px;
+    margin-top: 16px;
+  }
+
   .auth-exit-actions {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .auth-exit-actions .btn:nth-child(2) {
+    grid-column: 1 / -1;
+    order: -1;
   }
 
   .trip-premium-overlay {
@@ -6131,11 +6191,14 @@ textarea {
   }
 
   .trip-premium-hero {
-    min-height: 286px;
+    min-height: 322px;
+    padding: 28px 22px;
   }
 
   .trip-premium-hero h2 {
-    font-size: 2rem;
+    max-width: 12ch;
+    margin-top: 34px;
+    font-size: 1.86rem;
   }
 
   .trip-premium-plans {
@@ -6991,33 +7054,55 @@ textarea {
 }
 
 .profile-personas-grid {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(186px, 1fr));
   gap: 8px;
 }
 
 .profile-persona-chip-wrap {
   position: relative;
-  display: inline-flex;
+  display: flex;
+  min-width: 0;
 }
 
 .profile-persona-chip {
-  min-height: 36px;
-  display: inline-flex;
-  align-items: center;
+  width: 100%;
+  min-height: 78px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
   gap: 8px;
-  padding: 7px 12px;
+  padding: 10px 12px;
   border: 1px solid var(--line);
-  border-radius: var(--radius-pill);
+  border-radius: var(--radius-md);
   background: var(--paper);
   color: var(--ink-muted);
   font-size: 0.8rem;
   font-weight: 800;
+  text-align: left;
   cursor: pointer;
   transition: border-color 0.15s ease-out, background 0.15s ease-out, color 0.15s ease-out;
 }
 
-.profile-persona-chip strong {
+.profile-persona-chip span {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.profile-persona-chip__label {
+  color: var(--ink);
+  font-size: 0.86rem;
+  line-height: 1.15;
+}
+
+.profile-persona-chip small {
+  color: var(--ink-muted);
+  font-size: 0.68rem;
+  line-height: 1.25;
+}
+
+.profile-persona-chip__status {
   padding: 2px 6px;
   border-radius: var(--radius-pill);
   background: var(--paper-subtle);
@@ -7032,7 +7117,7 @@ textarea {
   color: var(--ink);
 }
 
-.profile-persona-chip.is-active strong {
+.profile-persona-chip.is-active .profile-persona-chip__status {
   background: var(--orange);
   color: var(--white);
 }
@@ -7633,6 +7718,10 @@ textarea {
 
   .profile-form-grid,
   .profile-activity-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .profile-personas-grid {
     grid-template-columns: 1fr;
   }
 

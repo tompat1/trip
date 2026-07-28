@@ -1,11 +1,15 @@
 // Official Brand Vector Assets (TRIP Brand Guidelines v1.0)
 
 import tripLogoUrl from "../assets/trip_logo.svg";
+import tripLogoWhiteUrl from "../assets/trip_logo_white.svg";
 
 export const TRIP_LOGO_SVG = (customClass = "", height = 26) => {
   const width = Math.round(height * 1.34);
   return `
-<img class="trip-main-logo ${customClass}" src="${tripLogoUrl}" width="${width}" height="${height}" alt="TRIP" style="height: ${height}px; width: ${width}px; display: block; flex-shrink: 0;" />
+<span class="trip-logo-mark ${customClass}" style="height: ${height}px; width: ${width}px; display: inline-grid; flex-shrink: 0;">
+  <img class="trip-main-logo trip-main-logo--default" src="${tripLogoUrl}" width="${width}" height="${height}" alt="TRIP" />
+  <img class="trip-main-logo trip-main-logo--dark" src="${tripLogoWhiteUrl}" width="${width}" height="${height}" alt="TRIP" />
+</span>
 `;
 };
 

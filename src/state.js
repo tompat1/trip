@@ -25,6 +25,38 @@ const THEME_STORAGE_KEY = "trip_theme_mode_v1";
 const LEGACY_USER_AVATAR_STORAGE_KEY = "trip_user_avatar";
 const LEGACY_USER_PREFERENCES_STORAGE_KEY = "trip_user_preferences";
 
+export const TRAVELER_PERSONA_ARCHETYPES = [
+  ["🏛️ Architect", "Builds the trip from scratch."],
+  ["🗺️ Route Master", "Finds the best roads, scenic routes and navigation."],
+  ["☕ Coffee Hunter", "Discovers cafés and specialty coffee."],
+  ["🍽️ Food Explorer", "Finds restaurants, taverns and local cuisine."],
+  ["📸 Memory Maker", "Captures photos and videos."],
+  ["🌍 Local Explorer", "Finds hidden gems away from the tourist trail."],
+  ["🏛️ History Buff", "Adds historical places and cultural context."],
+  ["🎨 Culture Seeker", "Museums, galleries, architecture and events."],
+  ["🌄 Nature Lover", "Hiking, beaches, forests and viewpoints."],
+  ["🌅 Sunrise Chaser", "Golden hour and scenic moments."],
+  ["🌙 Night Owl", "Bars, nightlife, evening photography and late adventures."],
+  ["🚗 Driver", "Handles transportation and navigation."],
+  ["💰 Budget Keeper", "Tracks expenses and keeps the group on budget."],
+  ["🛍️ Shopper", "Markets, boutiques and souvenirs."],
+  ["📅 Organizer", "Keeps everyone synchronized with reminders, reservations and schedules."],
+  ["🎟️ Event Scout", "Finds concerts, festivals and local happenings."],
+  ["🤝 Social Connector", "Invites companions, coordinates the group and keeps everyone informed."],
+];
+
+const DEFAULT_TRAVELER_PERSONAS = TRAVELER_PERSONA_ARCHETYPES.map(([label]) => label);
+
+const LEGACY_PERSONA_ALIASES = new Map([
+  ["☕ Coffee Lover", "☕ Coffee Hunter"],
+  ["🍕 Foodie", "🍽️ Food Explorer"],
+  ["🎵 Concert Goer", "🎟️ Event Scout"],
+  ["🎨 Art Enthusiast", "🎨 Culture Seeker"],
+  ["🌅 Sunset Chaser", "🌅 Sunrise Chaser"],
+  ["🛍️ Boutique Shopper", "🛍️ Shopper"],
+  ["🏖️ Beach & Island", "🌄 Nature Lover"],
+]);
+
 const DEFAULT_USER_PROFILE = {
   name: "Thomas R.",
   email: "thomas@rynell.org",
@@ -37,7 +69,7 @@ const DEFAULT_USER_PROFILE = {
   seatPreference: "window",
   pace: "balanced",
   accessibilityNotes: "",
-  personas: ["☕ Coffee Lover", "🍕 Foodie", "🎵 Concert Goer", "🎨 Art Enthusiast"],
+  personas: ["☕ Coffee Hunter", "🍽️ Food Explorer", "🎟️ Event Scout", "🎨 Culture Seeker"],
   customPersonas: [],
   notifications: {
     tripReminders: true,
@@ -52,17 +84,6 @@ const DEFAULT_USER_PROFILE = {
     analytics: false,
   },
 };
-
-const DEFAULT_TRAVELER_PERSONAS = [
-  "☕ Coffee Lover",
-  "🍕 Foodie",
-  "🎵 Concert Goer",
-  "🎨 Art Enthusiast",
-  "🏛️ History Buff",
-  "🌅 Sunset Chaser",
-  "🛍️ Boutique Shopper",
-  "🏖️ Beach & Island",
-];
 
 function readStoredUserProfile() {
   const profile = { ...DEFAULT_USER_PROFILE };
@@ -89,7 +110,17 @@ function readStoredUserProfile() {
     }
   } catch {}
 
+  profile.personas = normalizePersonaLabels(profile.personas);
+  profile.customPersonas = normalizePersonaLabels(profile.customPersonas).filter((persona) => !DEFAULT_TRAVELER_PERSONAS.includes(persona));
+
   return profile;
+}
+
+function normalizePersonaLabels(personas = []) {
+  if (!Array.isArray(personas)) return [];
+  return [...new Set(personas
+    .map((persona) => LEGACY_PERSONA_ALIASES.get(persona) || persona)
+    .filter(Boolean))];
 }
 
 function writeStoredUserProfile(profile) {

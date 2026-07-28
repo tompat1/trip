@@ -1,4 +1,4 @@
-import { state } from "../state.js";
+import { state, TRAVELER_PERSONA_ARCHETYPES } from "../state.js";
 import { renderHeader } from "../components/Header.js";
 import { renderIcon } from "../utils/icons.js";
 import { TRIP_STAMP_SVG } from "../components/BrandAssets.js";
@@ -252,18 +252,9 @@ export function renderProfileView() {
   const countriesCount = new Set(trips.map((trip) => trip.flag || trip.destination).filter(Boolean)).size || 1;
   const profile = state.userProfile || {};
   const activeSection = state.activeProfileSection || "profile";
-  const defaultPersonas = [
-    "☕ Coffee Lover",
-    "🍕 Foodie",
-    "🎵 Concert Goer",
-    "🎨 Art Enthusiast",
-    "🏛️ History Buff",
-    "🌅 Sunset Chaser",
-    "🛍️ Boutique Shopper",
-    "🏖️ Beach & Island",
-  ];
   const customPersonas = profile.customPersonas || [];
-  const personas = [...new Set([...defaultPersonas, ...customPersonas])];
+  const personaDescriptions = new Map(TRAVELER_PERSONA_ARCHETYPES);
+  const personas = [...new Set([...TRAVELER_PERSONA_ARCHETYPES.map(([label]) => label), ...customPersonas])];
   const isAdmin = Boolean(state.isAdmin);
   const companions = state.activeTrip?.companions || [];
 
@@ -319,11 +310,15 @@ export function renderProfileView() {
             ${personas.map(persona => {
               const isSelected = state.userPreferences && state.userPreferences.has(persona);
               const isCustom = customPersonas.includes(persona);
+              const description = personaDescriptions.get(persona) || "Custom travel style.";
               return `
                 <span class="profile-persona-chip-wrap">
                   <button class="profile-persona-chip ${isSelected ? "is-active" : ""}" data-action="toggle-user-persona" data-persona="${escapeHtml(persona)}" type="button" aria-pressed="${isSelected ? "true" : "false"}">
-                    <span>${escapeHtml(persona)}</span>
-                    <strong>${isSelected ? "On" : "Off"}</strong>
+                    <span>
+                      <strong class="profile-persona-chip__label">${escapeHtml(persona)}</strong>
+                      <small>${escapeHtml(description)}</small>
+                    </span>
+                    <strong class="profile-persona-chip__status">${isSelected ? "On" : "Off"}</strong>
                   </button>
                   ${isAdmin && isCustom ? `
                     <button class="profile-persona-remove" data-action="remove-custom-persona" data-persona="${escapeHtml(persona)}" type="button" aria-label="Remove ${escapeHtml(persona)}">
