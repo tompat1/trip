@@ -15,6 +15,14 @@ export function renderAuthExitPage() {
         <h2 id="auth-exit-title">Your trip board is still here.</h2>
         <p>Sign back in to sync account features, or continue as guest and keep planning locally.</p>
 
+        <div class="auth-provider-stack" aria-label="Social sign in options">
+          ${renderProviderButton("apple", "Apple")}
+          ${renderProviderButton("google", "Google")}
+          ${renderProviderButton("facebook", "Facebook")}
+        </div>
+
+        <div class="auth-divider"><span></span><strong>or</strong><span></span></div>
+
         <form class="auth-exit-login-form" id="auth-exit-login-form">
           <label>
             <span>Email</span>
@@ -28,6 +36,9 @@ export function renderAuthExitPage() {
         </form>
 
         <div class="auth-exit-actions">
+          <button class="btn btn--outline btn--sm" data-action="open-premium" type="button">
+            ${renderIcon("sparkles")} Premium
+          </button>
           <button class="btn btn--outline btn--sm" data-action="continue-as-guest" type="button">
             ${renderIcon("user")} Continue as guest
           </button>
@@ -38,6 +49,21 @@ export function renderAuthExitPage() {
       </section>
     </div>
   `;
+}
+
+function renderProviderButton(id, label) {
+  return `
+    <button class="auth-provider-btn auth-provider-btn--${id}" data-action="social-auth" data-provider="${label}" type="button">
+      <span class="auth-provider-mark">${getProviderMark(id)}</span>
+      <strong>Sign in with ${label}</strong>
+    </button>
+  `;
+}
+
+function getProviderMark(id) {
+  if (id === "apple") return "";
+  if (id === "facebook") return "f";
+  return "G";
 }
 
 function escapeHtml(str) {

@@ -533,6 +533,27 @@ function renderAccountAccessPanel(isAdmin) {
           ${roleLabel}
         </span>
       </div>
+      <div class="profile-account-quick-actions">
+        <button class="profile-social-login-btn" data-action="social-auth" data-provider="Apple" type="button">
+          <span></span>
+          <strong>Apple</strong>
+        </button>
+        <button class="profile-social-login-btn" data-action="social-auth" data-provider="Google" type="button">
+          <span>G</span>
+          <strong>Google</strong>
+        </button>
+        <button class="profile-social-login-btn profile-social-login-btn--facebook" data-action="social-auth" data-provider="Facebook" type="button">
+          <span>f</span>
+          <strong>Facebook</strong>
+        </button>
+        <button class="profile-premium-mini-card" data-action="open-premium" type="button">
+          ${renderIcon("sparkles")}
+          <span>
+            <strong>TRIP Premium</strong>
+            <small>Support the app, unlock fewer limits.</small>
+          </span>
+        </button>
+      </div>
       ${isSignedIn ? `
         <div class="profile-session-summary">
           <strong>${escapeHtml(state.userSession?.userId || roleLabel)}</strong>

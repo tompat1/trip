@@ -461,6 +461,7 @@ class AppState {
     this.helpOpen = false;
     this.helpQuery = "";
     this.authExitOpen = false;
+    this.premiumOpen = false;
     this.tripCreateOpen = false;
     this.listeners = new Set();
     this.checkBackendHealth();
@@ -638,6 +639,18 @@ class AppState {
   closeAuthExit(options = {}) {
     this.authExitOpen = false;
     if (options.view) this.activeView = options.view;
+    this.notify();
+  }
+
+  openPremium() {
+    this.premiumOpen = true;
+    this.authExitOpen = false;
+    this.helpOpen = false;
+    this.notify();
+  }
+
+  closePremium() {
+    this.premiumOpen = false;
     this.notify();
   }
 

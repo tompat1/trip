@@ -14,6 +14,7 @@ import { renderQuickCaptureWidget } from "./components/QuickCaptureWidget.js";
 import { renderOnboardingWalkthrough } from "./components/OnboardingWalkthrough.js";
 import { renderHelpCenter } from "./components/HelpCenter.js";
 import { renderAuthExitPage } from "./components/AuthExitPage.js";
+import { renderPremiumSupportSheet } from "./components/PremiumSupportSheet.js";
 import { fetchConcertsForTrip } from "./services/concertService.js";
 import { fetchOpenMeteoWeather } from "./services/weatherService.js";
 import { formatAirportLabel, getFlightRouteDisplay, resolveAirportInput, searchAirportsWorldwide } from "./services/airportService.js";
@@ -109,6 +110,7 @@ function render() {
   const onboardingHtml = renderOnboardingWalkthrough();
   const helpHtml = renderHelpCenter();
   const authExitHtml = renderAuthExitPage();
+  const premiumHtml = renderPremiumSupportSheet();
 
   appEl.innerHTML = `
     <div class="app-view app-view--${view} ${isRouteChange ? "app-view--route-enter" : ""}">
@@ -122,6 +124,7 @@ function render() {
       ${onboardingHtml}
       ${helpHtml}
       ${authExitHtml}
+      ${premiumHtml}
     </div>
   `;
 
@@ -918,6 +921,22 @@ document.addEventListener("click", async (e) => {
     }
     else if (action === "go-home-from-exit") {
       state.closeAuthExit({ view: "home" });
+    }
+    else if (action === "open-premium") {
+      state.openPremium();
+    }
+    else if (action === "close-premium") {
+      state.closePremium();
+    }
+    else if (action === "choose-premium-plan") {
+      const plan = target.dataset.plan || "premium";
+      localStorage.setItem("trip_premium_interest_v1", plan);
+      state.closePremium();
+      showToast(`Premium ${plan} interest saved. Payment wiring comes next.`);
+    }
+    else if (action === "social-auth") {
+      const provider = target.dataset.provider || "provider";
+      showToast(`${provider} sign-in is designed here. OAuth keys and callbacks are needed to turn it live.`);
     }
     else if (action === "open-lightbox") {
       const momentId = target.dataset.momentId;

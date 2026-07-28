@@ -5454,6 +5454,76 @@ textarea {
   margin-top: 22px;
 }
 
+.auth-provider-stack {
+  display: grid;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.auth-provider-btn {
+  min-height: 48px;
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--paper);
+  color: var(--ink);
+  text-align: left;
+  box-shadow: var(--shadow-sm);
+}
+
+.auth-provider-btn--apple {
+  background: #05070A;
+  border-color: #05070A;
+  color: white;
+}
+
+.auth-provider-mark {
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: 1.2rem;
+  font-weight: 900;
+}
+
+.auth-provider-btn--google .auth-provider-mark {
+  color: #4285F4;
+  background: rgba(66, 133, 244, 0.1);
+}
+
+.auth-provider-btn--facebook {
+  background: linear-gradient(135deg, #1F73E8, #1559C8);
+  border-color: rgba(31, 115, 232, 0.86);
+  color: white;
+}
+
+.auth-provider-btn--facebook .auth-provider-mark {
+  background: rgba(255, 255, 255, 0.16);
+  color: white;
+  font-family: Arial, sans-serif;
+}
+
+.auth-divider {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 10px;
+  margin-top: 18px;
+  color: var(--ink-muted);
+  font-size: 0.78rem;
+}
+
+.auth-divider span {
+  height: 1px;
+  background: var(--line);
+}
+
 .auth-exit-login-form label {
   display: grid;
   gap: 6px;
@@ -5475,9 +5545,181 @@ textarea {
 
 .auth-exit-actions {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
   margin-top: 12px;
+}
+
+/* ==========================================================================
+   PREMIUM SUPPORT SHEET
+   ========================================================================== */
+.trip-premium-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100080;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  background: rgba(9, 17, 28, 0.82);
+  backdrop-filter: blur(14px);
+}
+
+.trip-premium-sheet {
+  position: relative;
+  width: min(100%, 460px);
+  overflow: hidden;
+  border: 1px solid rgba(237, 244, 255, 0.14);
+  border-radius: 30px;
+  background: var(--paper-card);
+  box-shadow: var(--shadow-lg);
+}
+
+.trip-premium-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 3;
+  background: rgba(255, 253, 248, 0.94);
+  color: #0F1B2B;
+  border: 1px solid rgba(15, 27, 43, 0.08);
+}
+
+.trip-premium-hero {
+  position: relative;
+  min-height: 300px;
+  padding: 28px 24px;
+  background:
+    radial-gradient(circle at 18% 62%, rgba(255, 255, 255, 0.22) 0 14%, transparent 15%),
+    linear-gradient(180deg, #FFD34D 0%, #FFB23F 100%);
+  color: #0F1B2B;
+}
+
+.trip-premium-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 900;
+}
+
+.trip-premium-brand .trip-main-logo {
+  background: rgba(255, 253, 248, 0.92);
+  border-radius: 14px;
+  padding: 4px 6px;
+}
+
+.trip-premium-hero h2 {
+  max-width: 10ch;
+  margin-top: 40px;
+  font-size: 2.35rem;
+  line-height: 1.02;
+  letter-spacing: 0;
+}
+
+.trip-premium-route {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 94px;
+  background:
+    linear-gradient(90deg, transparent 0 8%, rgba(15, 27, 43, 0.16) 8% 86%, transparent 86%),
+    repeating-linear-gradient(90deg, transparent 0 34px, rgba(255, 255, 255, 0.82) 34px 54px, transparent 54px 78px);
+  border-top: 18px solid rgba(255, 255, 255, 0.72);
+}
+
+.trip-premium-route span {
+  position: absolute;
+  bottom: 28px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--orange);
+  box-shadow: 0 0 0 9px rgba(255, 122, 47, 0.14);
+}
+
+.trip-premium-route span:nth-child(1) { left: 18%; }
+.trip-premium-route span:nth-child(2) { left: 42%; }
+.trip-premium-route span:nth-child(3) { left: 63%; }
+.trip-premium-route span:nth-child(4) { left: 82%; }
+
+.trip-premium-copy {
+  padding: 24px 24px 0;
+  text-align: center;
+}
+
+.trip-premium-copy p {
+  margin: 0 auto;
+  max-width: 25ch;
+  color: var(--ink);
+  font-size: 1.1rem;
+  font-weight: 750;
+  line-height: 1.35;
+}
+
+.trip-premium-benefits {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.trip-premium-benefits div {
+  display: grid;
+  gap: 8px;
+  justify-items: center;
+  color: var(--ink-muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.trip-premium-benefits svg {
+  color: var(--orange);
+}
+
+.trip-premium-plans {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  padding: 22px 24px 0;
+}
+
+.trip-premium-plan {
+  display: grid;
+  gap: 8px;
+  min-height: 132px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--paper);
+  color: var(--ink);
+  text-align: center;
+  box-shadow: var(--shadow-sm);
+}
+
+.trip-premium-plan strong {
+  align-self: end;
+  padding: 10px 12px;
+  border: 2px solid #FFD34D;
+  border-radius: 14px;
+  font-size: 1.15rem;
+}
+
+.trip-premium-plan--featured strong {
+  background: #FFD34D;
+  color: #0F1B2B;
+}
+
+.trip-premium-plan small,
+.trip-premium-note {
+  color: var(--ink-muted);
+  font-size: 0.76rem;
+  line-height: 1.35;
+}
+
+.trip-premium-note {
+  margin: 18px 24px 24px;
+  text-align: center;
 }
 
 /* ==========================================================================
@@ -5860,6 +6102,8 @@ textarea {
 
   .auth-exit-card {
     width: 100%;
+    max-height: 92vh;
+    overflow-y: auto;
     border-right: 0;
     border-bottom: 0;
     border-left: 0;
@@ -5869,6 +6113,38 @@ textarea {
 
   .auth-exit-actions {
     grid-template-columns: 1fr;
+  }
+
+  .trip-premium-overlay {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .trip-premium-sheet {
+    width: 100%;
+    max-height: 94vh;
+    overflow-y: auto;
+    border-right: 0;
+    border-bottom: 0;
+    border-left: 0;
+    border-radius: 30px 30px 0 0;
+  }
+
+  .trip-premium-hero {
+    min-height: 286px;
+  }
+
+  .trip-premium-hero h2 {
+    font-size: 2rem;
+  }
+
+  .trip-premium-plans {
+    padding-inline: 18px;
+  }
+
+  .trip-premium-note {
+    margin-inline: 18px;
+    margin-bottom: calc(24px + env(safe-area-inset-bottom, 0px));
   }
 
   .trip-create-overlay {
@@ -6969,6 +7245,80 @@ textarea {
 .profile-session-summary span {
   color: var(--ink-muted);
   font-size: 0.76rem;
+}
+
+.profile-account-quick-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 14px 0 12px;
+}
+
+.profile-social-login-btn,
+.profile-premium-mini-card {
+  min-width: 0;
+  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 9px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--paper);
+  color: var(--ink);
+  font-weight: 900;
+  box-shadow: var(--shadow-sm);
+}
+
+.profile-social-login-btn span {
+  color: var(--orange);
+  font-size: 1.1rem;
+}
+
+.profile-social-login-btn strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.profile-social-login-btn--facebook span {
+  color: #1F73E8;
+  font-family: Arial, sans-serif;
+}
+
+.profile-premium-mini-card {
+  grid-column: 1 / -1;
+  justify-content: flex-start;
+  text-align: left;
+  background:
+    linear-gradient(135deg, rgba(255, 122, 47, 0.16), transparent),
+    var(--paper);
+}
+
+.profile-premium-mini-card svg {
+  color: var(--orange);
+}
+
+.profile-premium-mini-card span {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.profile-premium-mini-card small {
+  color: var(--ink-muted);
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+:root[data-theme="dark"] .profile-social-login-btn,
+:root[data-theme="dark"] .profile-premium-mini-card,
+:root[data-theme="dark"] .auth-provider-btn:not(.auth-provider-btn--apple),
+:root[data-theme="dark"] .trip-premium-plan {
+  background: var(--surface-overlay);
+  border-color: var(--line);
+  color: var(--ink);
 }
 
 .profile-theme-switcher {
