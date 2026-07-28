@@ -689,6 +689,12 @@ class AppState {
     this.notify();
   }
 
+  setInviteMode(mode = "preview") {
+    if (!this.activeInvite) return;
+    this.activeInvite = { ...this.activeInvite, mode };
+    this.notify();
+  }
+
   async refreshUserSession() {
     try {
       const session = await enrichmentService.getSession();

@@ -519,21 +519,23 @@ function renderPrivacyPanel(profile) {
 }
 
 function renderAccountAccessPanel(isAdmin) {
+  const isSignedIn = ["admin", "traveler"].includes(state.userSession?.role);
+  const roleLabel = isAdmin ? "Admin" : isSignedIn ? "Traveler" : "Guest";
   return `
     <section class="profile-settings-panel profile-account-panel" aria-labelledby="account-panel-title">
       <div class="profile-panel-header">
         <div>
           <h3 id="account-panel-title">Account access</h3>
-          <p>${isAdmin ? "Admin session is active for cloud-backed actions." : "Sign in to unlock admin-only profile tools."}</p>
+          <p>${isSignedIn ? "Your account session is active for invite and cloud-backed trip actions." : "Sign in or create an account from an invite to sync travel-party access."}</p>
         </div>
         <span class="profile-session-pill profile-session-pill--${isAdmin ? "admin" : "guest"}">
           ${renderIcon(isAdmin ? "shieldCheck" : "user")}
-          ${isAdmin ? "Admin" : "Guest"}
+          ${roleLabel}
         </span>
       </div>
-      ${isAdmin ? `
+      ${isSignedIn ? `
         <div class="profile-session-summary">
-          <strong>${escapeHtml(state.userSession?.userId || "Admin")}</strong>
+          <strong>${escapeHtml(state.userSession?.userId || roleLabel)}</strong>
           <span>${escapeHtml(state.userSession?.authType || "admin-session")}</span>
           <button class="btn btn--outline btn--sm" data-action="admin-logout" type="button">${renderIcon("logOut")} Log out</button>
         </div>
@@ -547,7 +549,7 @@ function renderAccountAccessPanel(isAdmin) {
             <span>Password</span>
             <input name="password" type="password" autocomplete="current-password" required />
           </label>
-          <button class="btn btn--primary btn--sm" type="submit">${renderIcon("logIn")} Log in</button>
+          <button class="btn btn--primary btn--sm" type="submit">${renderIcon("logIn")} Sign in</button>
         </form>
       `}
     </section>

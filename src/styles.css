@@ -5787,6 +5787,26 @@ textarea {
   gap: 8px;
 }
 
+.trip-invite-account-form {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) auto auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.trip-invite-account-form input {
+  min-width: 0;
+  height: 38px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--paper-card);
+  color: var(--ink);
+  padding: 8px 10px;
+  font: inherit;
+  font-size: 0.82rem;
+}
+
 /* 2x2 Activity Grid */
 .profile-activity-section {
   display: flex;
@@ -5937,5 +5957,13 @@ textarea {
 
   .trip-invite-acceptance__actions .btn:not(.btn--icon) {
     flex: 1 1 150px;
+  }
+
+  .trip-invite-account-form {
+    grid-template-columns: 1fr;
+  }
+
+  .trip-invite-account-form .btn {
+    width: 100%;
   }
 }

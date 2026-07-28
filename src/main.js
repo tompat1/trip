@@ -125,7 +125,8 @@ function renderInviteAcceptance() {
   const title = trip.title || trip.name || (trip.destination ? `Roadtrip ${trip.destination}` : "This trip");
   const coverImage = trip.coverImage || trip.image || trip.upcomingActivity?.image || "";
   const travelersCount = Math.max(1, (trip.companions || []).length + 1);
-  const isKnownUser = state.userSession?.role === "admin";
+  const isKnownUser = ["admin", "traveler"].includes(state.userSession?.role);
+  const isAccountMode = invite.mode === "account";
   return `
     <section class="trip-invite-acceptance" aria-label="Trip invitation">
       ${coverImage ? `<img src="${escapeHtml(coverImage)}" alt="" loading="lazy" />` : ""}
@@ -134,13 +135,23 @@ function renderInviteAcceptance() {
         <strong>${escapeHtml(title)}</strong>
         <small>${escapeHtml(trip.destination || "Destination")} · ${escapeHtml(trip.dates || "Dates TBD")} · ${travelersCount} travelers</small>
       </div>
-      <div class="trip-invite-acceptance__actions">
-        <button class="btn btn--primary btn--sm" data-action="accept-trip-invite" data-invite-mode="${isKnownUser ? "user" : "guest"}" type="button">
-          ${isKnownUser ? "Join instantly" : "Continue as Guest"}
-        </button>
-        ${!isKnownUser ? `<button class="btn btn--outline btn--sm" data-action="create-account-from-invite" type="button">Create Account</button>` : ""}
-        <button class="btn btn--icon btn--ghost" data-action="dismiss-trip-invite" type="button" aria-label="Dismiss invitation">×</button>
-      </div>
+      ${isAccountMode ? `
+        <form class="trip-invite-account-form" id="trip-invite-account-form">
+          <input name="name" type="text" value="${escapeHtml(state.userProfile?.name || "")}" autocomplete="name" placeholder="Your name" required />
+          <input name="email" type="email" value="${escapeHtml(state.userProfile?.email || "")}" autocomplete="email" placeholder="you@example.com" required />
+          <input name="password" type="password" autocomplete="new-password" placeholder="Create password" minlength="8" required />
+          <button class="btn btn--primary btn--sm" type="submit">Create Account</button>
+          <button class="btn btn--ghost btn--sm" data-action="show-invite-options" type="button">Back</button>
+        </form>
+      ` : `
+        <div class="trip-invite-acceptance__actions">
+          <button class="btn btn--primary btn--sm" data-action="accept-trip-invite" data-invite-mode="${isKnownUser ? "user" : "guest"}" type="button">
+            ${isKnownUser ? "Join instantly" : "Continue as Guest"}
+          </button>
+          ${!isKnownUser ? `<button class="btn btn--outline btn--sm" data-action="create-account-from-invite" type="button">Create Account</button>` : ""}
+          <button class="btn btn--icon btn--ghost" data-action="dismiss-trip-invite" type="button" aria-label="Dismiss invitation">×</button>
+        </div>
+      `}
     </section>
   `;
 }
@@ -370,6 +381,26 @@ async function deliverCompanionInvite(companion = {}) {
   }
 }
 
+function createTripInviteShareUrl(tripId = "") {
+  const url = new URL(window.location.origin);
+  url.searchParams.set("trip", tripId);
+  url.searchParams.set("invite", "1");
+  return url.href;
+}
+
+function getTripShareInviteText(trip = {}, shareUrl = "") {
+  const title = trip.title || trip.name || (trip.destination ? `Roadtrip ${trip.destination}` : "this trip");
+  const travelersCount = Math.max(1, (trip.companions || []).length + 1);
+  return [
+    `${state.userProfile?.name || "Thomas"} invited you to join ${title}.`,
+    `${trip.destination || "Destination"} · ${trip.dates || "Dates TBD"}`,
+    `${travelersCount} travelers`,
+    "",
+    "Plan it. Live it. Remember it.",
+    shareUrl ? `Open invite: ${shareUrl}` : "",
+  ].filter((line, index, lines) => line || (lines[index - 1] && lines[index + 1])).join("\n");
+}
+
 // Global Event Listeners Delegation
 document.addEventListener("click", async (e) => {
   const target = e.target.closest("[data-nav], [data-action], [data-subtab], [data-viewmode], [data-day-select], [data-map-day-filter], [data-trip-length], [data-cat], [data-subfilter]");
@@ -556,10 +587,10 @@ document.addEventListener("click", async (e) => {
       showToast("Trip added to your planner.");
     }
     else if (action === "create-account-from-invite") {
-      state.acceptTripInvite({ mode: "account" });
-      state.setProfileSection("profile");
-      state.setView("profile");
-      showToast("Trip added. Complete your profile to create your TRIP account.");
+      state.setInviteMode("account");
+    }
+    else if (action === "show-invite-options") {
+      state.setInviteMode("preview");
     }
     else if (action === "dismiss-trip-invite") {
       state.dismissTripInvite();
@@ -782,16 +813,17 @@ document.addEventListener("click", async (e) => {
     }
     else if (action === "share-trip") {
       const trip = state.activeTrip;
-      const shareUrl = `${window.location.origin}?trip=${encodeURIComponent(state.activeTripId)}`;
+      const shareUrl = createTripInviteShareUrl(state.activeTripId);
+      const shareText = getTripShareInviteText(trip, shareUrl);
       if (navigator.share) {
         navigator.share({
           title: `TRIP - ${trip.destination}`,
-          text: `Check out my travel plan & memories for ${trip.destination}!`,
+          text: shareText,
           url: shareUrl
         }).catch(() => {});
       } else {
         navigator.clipboard.writeText(shareUrl).then(() => {
-          alert(`🔗 Trip share link copied to clipboard:\n${shareUrl}`);
+          alert(`Trip invite link copied to clipboard:\n${shareUrl}`);
         });
       }
     }
@@ -800,10 +832,11 @@ document.addEventListener("click", async (e) => {
       if (email) {
         const password = prompt("Enter password:");
         if (password) {
-          enrichmentService.loginAdmin({ email, password })
+          enrichmentService.loginAccount({ email, password, inviteTripId: state.activeInvite?.tripId || "" })
             .then(async () => {
               await state.refreshUserSession();
-              showToast("Admin access active.");
+              if (state.activeInvite?.tripId) state.acceptTripInvite({ mode: "user" });
+              showToast("Signed in.");
             })
             .catch((err) => alert(`Authentication note: ${err.message}`));
         }
@@ -1017,9 +1050,10 @@ document.addEventListener("submit", async (e) => {
     const button = form.querySelector("button[type='submit']");
     if (button) button.disabled = true;
     try {
-      await enrichmentService.loginAdmin({ email, password });
+      await enrichmentService.loginAccount({ email, password, inviteTripId: state.activeInvite?.tripId || "" });
       await state.refreshUserSession();
-      showToast("Admin access active.");
+      if (state.activeInvite?.tripId) state.acceptTripInvite({ mode: "user" });
+      showToast("Signed in.");
     } catch (error) {
       showToast("Login failed. Check your admin credentials.");
     } finally {
@@ -1052,6 +1086,37 @@ document.addEventListener("submit", async (e) => {
       showToast(result.source === "worker" ? "Travel companion invited." : "Travel companion saved locally.");
     } else {
       showToast("Could not add companion.");
+    }
+    return;
+  }
+
+  if (e.target.id === "trip-invite-account-form") {
+    e.preventDefault();
+    const form = e.target;
+    const name = form.name?.value?.trim() || "";
+    const email = form.email?.value?.trim() || "";
+    const password = form.password?.value || "";
+    if (!name || !email || password.length < 8) {
+      showToast("Add your name, email, and an 8+ character password.");
+      return;
+    }
+    const button = form.querySelector("button[type='submit']");
+    if (button) button.disabled = true;
+    try {
+      await enrichmentService.registerAccount({
+        name,
+        email,
+        password,
+        inviteTripId: state.activeInvite?.tripId || state.activeTripId,
+      });
+      state.updateUserProfile({ name, email }, { notify: false });
+      await state.refreshUserSession();
+      state.acceptTripInvite({ mode: "account" });
+      showToast("Account created. Trip added to your planner.");
+    } catch (error) {
+      showToast(error?.status === 409 ? "An account already exists. Sign in instead." : "Could not create account right now.");
+    } finally {
+      if (button) button.disabled = false;
     }
     return;
   }

@@ -42,8 +42,47 @@ export function createEnrichmentService(options = {}) {
       return data;
     },
 
+    async loginAccount(input = {}) {
+      const url = buildApiUrl(apiBase, "/api/auth/session");
+      const response = await fetchImpl(url.href, {
+        method: "POST",
+        headers: createApiHeaders({ "Content-Type": "application/json" }),
+        body: JSON.stringify({
+          email: input.email,
+          password: input.password,
+          inviteTripId: input.inviteTripId || "",
+        }),
+      });
+      if (!response.ok) throw new Error(`worker-account-login-http-${response.status}`);
+      const data = await response.json();
+      storeAdminSessionToken(data.session?.token || data.token || "");
+      return data;
+    },
+
+    async registerAccount(input = {}) {
+      const url = buildApiUrl(apiBase, "/api/auth/register");
+      const response = await fetchImpl(url.href, {
+        method: "POST",
+        headers: createApiHeaders({ "Content-Type": "application/json" }),
+        body: JSON.stringify({
+          name: input.name,
+          email: input.email,
+          password: input.password,
+          inviteTripId: input.inviteTripId || "",
+        }),
+      });
+      if (!response.ok) {
+        const error = new Error(`worker-account-register-http-${response.status}`);
+        error.status = response.status;
+        throw error;
+      }
+      const data = await response.json();
+      storeAdminSessionToken(data.session?.token || data.token || "");
+      return data;
+    },
+
     async logoutAdmin() {
-      const url = buildApiUrl(apiBase, "/api/admin/session");
+      const url = buildApiUrl(apiBase, "/api/auth/session");
       try {
         const response = await fetchImpl(url.href, {
           method: "DELETE",

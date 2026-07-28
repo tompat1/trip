@@ -59,6 +59,9 @@ function matchRoute(method, pathname) {
   const routes = [
     ["GET", /^\/api\/health$/, healthHandler],
     ["GET", /^\/api\/session$/, sessionHandler],
+    ["POST", /^\/api\/auth\/register$/, authRegisterHandler],
+    ["POST", /^\/api\/auth\/session$/, authSessionCreateHandler],
+    ["DELETE", /^\/api\/auth\/session$/, authSessionDeleteHandler],
     ["POST", /^\/api\/admin\/session$/, adminSessionCreateHandler],
     ["DELETE", /^\/api\/admin\/session$/, adminSessionDeleteHandler],
     ["POST", /^\/api\/location\/resolve$/, locationResolveHandler],
@@ -143,6 +146,102 @@ function sessionHandler(context) {
   }, context));
 }
 
+async function authRegisterHandler(context) {
+  if (!context.hasDb) return jsonError("missing_d1", "TRIP_DB is required for accounts.", 503);
+  const body = await readJson(context.request);
+  const email = normalizeEmail(body.email);
+  const password = String(body.password || "");
+  const name = truncateText(String(body.name || "").trim(), 120);
+  const inviteTripId = truncateText(String(body.inviteTripId || body.tripId || "").trim(), 120);
+  if (!email || !password) return jsonError("invalid_account", "Email and password are required.", 400);
+  if (password.length < 8) return jsonError("weak_password", "Password must be at least 8 characters.", 400);
+
+  const existing = await findUserByEmail(context, email);
+  if (existing) return jsonError("account_exists", "An account already exists for this email.", 409);
+
+  const now = new Date().toISOString();
+  const user = {
+    id: stableId("traveler-user", [email]),
+    email,
+    role: ROLE.traveler,
+    passwordHash: await hashPassword(password),
+    active: true,
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  await context.env.TRIP_DB.prepare(`
+    INSERT INTO admin_users (id, email, password_hash, role, active, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `).bind(user.id, user.email, user.passwordHash, user.role, 1, now, now).run();
+
+  if (inviteTripId) await acceptTripInvitationForEmail(context.env.TRIP_DB, inviteTripId, email);
+
+  const session = await createUserSession(context, user);
+  return json(partialResponse("auth.register", {
+    principal: {
+      role: ROLE.traveler,
+      userId: user.email,
+      authType: "traveler-session",
+    },
+    account: {
+      email: user.email,
+      name,
+      role: ROLE.traveler,
+    },
+    invite: {
+      tripId: inviteTripId,
+      accepted: Boolean(inviteTripId),
+    },
+    session: {
+      token: session.token,
+      expiresAt: session.expiresAt,
+    },
+  }, context));
+}
+
+async function authSessionCreateHandler(context) {
+  if (!context.hasDb) return jsonError("missing_d1", "TRIP_DB is required for accounts.", 503);
+  const body = await readJson(context.request);
+  const email = normalizeEmail(body.email);
+  const password = String(body.password || "");
+  const inviteTripId = truncateText(String(body.inviteTripId || body.tripId || "").trim(), 120);
+  if (!email || !password) return jsonError("invalid_credentials", "Email and password are required.", 400);
+
+  const user = await findUserByEmail(context, email) || await maybeBootstrapAdminUser(context, email, password);
+  if (!user || !user.active) return jsonError("invalid_credentials", "Credentials were not accepted.", 401);
+
+  const ok = await verifyPassword(password, user.passwordHash);
+  if (!ok) return jsonError("invalid_credentials", "Credentials were not accepted.", 401);
+  if (inviteTripId) await acceptTripInvitationForEmail(context.env.TRIP_DB, inviteTripId, email);
+
+  const session = await createUserSession(context, user);
+  return json(partialResponse("auth.sessionCreate", {
+    principal: {
+      role: user.role === ROLE.admin ? ROLE.admin : ROLE.traveler,
+      userId: user.email,
+      authType: user.role === ROLE.admin ? "admin-session" : "traveler-session",
+    },
+    invite: {
+      tripId: inviteTripId,
+      accepted: Boolean(inviteTripId),
+    },
+    session: {
+      token: session.token,
+      expiresAt: session.expiresAt,
+    },
+  }, context));
+}
+
+async function authSessionDeleteHandler(context) {
+  if (!context.hasDb) return jsonError("missing_d1", "TRIP_DB is required for accounts.", 503);
+  const bearer = getBearerToken(context.request);
+  if (bearer) await revokeUserSession(context, bearer);
+  return json(partialResponse("auth.sessionDelete", {
+    revoked: Boolean(bearer),
+  }, context));
+}
+
 async function adminSessionCreateHandler(context) {
   if (!context.hasDb) return jsonError("missing_d1", "TRIP_DB is required for admin sessions.", 503);
   const body = await readJson(context.request);
@@ -150,7 +249,7 @@ async function adminSessionCreateHandler(context) {
   const password = String(body.password || "");
   if (!email || !password) return jsonError("invalid_credentials", "Email and password are required.", 400);
 
-  const user = await findAdminUserByEmail(context, email) || await maybeBootstrapAdminUser(context, email, password);
+  const user = await findUserByEmail(context, email) || await maybeBootstrapAdminUser(context, email, password);
   if (!user || user.role !== ROLE.admin || !user.active) {
     return jsonError("invalid_credentials", "Admin credentials were not accepted.", 401);
   }
@@ -158,7 +257,7 @@ async function adminSessionCreateHandler(context) {
   const ok = await verifyPassword(password, user.passwordHash);
   if (!ok) return jsonError("invalid_credentials", "Admin credentials were not accepted.", 401);
 
-  const session = await createAdminSession(context, user);
+  const session = await createUserSession(context, user);
   return json(partialResponse("admin.sessionCreate", {
     principal: {
       role: ROLE.admin,
@@ -175,7 +274,7 @@ async function adminSessionCreateHandler(context) {
 async function adminSessionDeleteHandler(context) {
   if (!context.hasDb) return jsonError("missing_d1", "TRIP_DB is required for admin sessions.", 503);
   const bearer = getBearerToken(context.request);
-  if (bearer) await revokeAdminSession(context, bearer);
+  if (bearer) await revokeUserSession(context, bearer);
   return json(partialResponse("admin.sessionDelete", {
     revoked: Boolean(bearer),
   }, context));
@@ -930,7 +1029,7 @@ async function createRequestPrincipalWithSession(request, env = {}) {
   const bearer = getBearerToken(request);
   if (!bearer) return principal;
 
-  const sessionPrincipal = await findAdminSessionPrincipal(env.TRIP_DB, bearer).catch(() => null);
+  const sessionPrincipal = await findUserSessionPrincipal(env.TRIP_DB, bearer).catch(() => null);
   return sessionPrincipal || principal;
 }
 
@@ -995,11 +1094,11 @@ function normalizeEmail(value = "") {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? email : "";
 }
 
-async function findAdminUserByEmail(context, email) {
+async function findUserByEmail(context, email) {
   const row = await context.env.TRIP_DB.prepare(`
     SELECT * FROM admin_users WHERE email = ? LIMIT 1
   `).bind(email).first();
-  return row ? normalizeAdminUser(row) : null;
+  return row ? normalizeUser(row) : null;
 }
 
 async function maybeBootstrapAdminUser(context, email, password) {
@@ -1030,7 +1129,7 @@ async function maybeBootstrapAdminUser(context, email, password) {
   return user;
 }
 
-function normalizeAdminUser(row = {}) {
+function normalizeUser(row = {}) {
   return {
     id: row.id || "",
     email: row.email || "",
@@ -1043,26 +1142,26 @@ function normalizeAdminUser(row = {}) {
   };
 }
 
-async function createAdminSession(context, user) {
+async function createUserSession(context, user) {
   const token = createOpaqueToken();
   const tokenHash = await sha256Base64Url(token);
   const now = new Date();
-  const expiresAt = new Date(now.getTime() + 1000 * 60 * 60 * 12).toISOString();
+  const expiresAt = new Date(now.getTime() + 1000 * 60 * 60 * 24 * 30).toISOString();
   await context.env.TRIP_DB.prepare(`
     INSERT INTO admin_sessions (id, user_id, token_hash, expires_at, created_at, last_seen_at, revoked_at)
     VALUES (?, ?, ?, ?, ?, ?, '')
-  `).bind(stableId("admin-session", [tokenHash]), user.id, tokenHash, expiresAt, now.toISOString(), now.toISOString()).run();
+  `).bind(stableId("user-session", [tokenHash]), user.id, tokenHash, expiresAt, now.toISOString(), now.toISOString()).run();
   return { token, expiresAt };
 }
 
-async function revokeAdminSession(context, token) {
+async function revokeUserSession(context, token) {
   const tokenHash = await sha256Base64Url(token);
   await context.env.TRIP_DB.prepare(`
     UPDATE admin_sessions SET revoked_at = ? WHERE token_hash = ? AND revoked_at = ''
   `).bind(new Date().toISOString(), tokenHash).run();
 }
 
-async function findAdminSessionPrincipal(db, token) {
+async function findUserSessionPrincipal(db, token) {
   const tokenHash = await sha256Base64Url(token);
   const now = new Date().toISOString();
   const row = await db.prepare(`
@@ -1075,15 +1174,26 @@ async function findAdminSessionPrincipal(db, token) {
       AND u.active = 1
     LIMIT 1
   `).bind(tokenHash, now).first();
-  if (!row || row.role !== ROLE.admin) return null;
+  if (!row || ![ROLE.admin, ROLE.traveler].includes(row.role)) return null;
   await db.prepare(`
     UPDATE admin_sessions SET last_seen_at = ? WHERE token_hash = ?
   `).bind(now, tokenHash).run();
   return {
-    role: ROLE.admin,
-    userId: row.email || "admin",
-    authType: "admin-session",
+    role: row.role,
+    userId: row.email || "",
+    authType: row.role === ROLE.admin ? "admin-session" : "traveler-session",
   };
+}
+
+async function acceptTripInvitationForEmail(db, tripId = "", email = "") {
+  if (!tripId || !email) return false;
+  const now = new Date().toISOString();
+  const result = await db.prepare(`
+    UPDATE trip_companions
+    SET status = 'accepted', updated_at = ?
+    WHERE trip_id = ? AND email = ?
+  `).bind(now, tripId, email).run();
+  return Boolean(result?.meta?.changes);
 }
 
 async function hashPassword(password) {

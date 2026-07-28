@@ -77,6 +77,29 @@ test("Worker request principal distinguishes anonymous, traveler, and admin", ()
   assert.equal(admin.authType, "admin-token");
 });
 
+test("Worker auth registration creates traveler session", async () => {
+  const db = createAuthDb();
+  const registerResponse = await worker.fetch(new Request("https://trip.test/api/auth/register", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name: "Alex Planner", email: "alex@example.com", password: "journey-pass-2027" }),
+  }), { TRIP_DB: db }, {});
+
+  assert.equal(registerResponse.status, 200);
+  const registerPayload = await registerResponse.json();
+  assert.equal(registerPayload.principal.role, "traveler");
+  assert.equal(registerPayload.principal.authType, "traveler-session");
+  assert.ok(registerPayload.session.token);
+
+  const sessionResponse = await worker.fetch(new Request("https://trip.test/api/session", {
+    headers: { Authorization: `Bearer ${registerPayload.session.token}` },
+  }), { TRIP_DB: db }, {});
+  assert.equal(sessionResponse.status, 200);
+  const sessionPayload = await sessionResponse.json();
+  assert.equal(sessionPayload.principal.role, "traveler");
+  assert.equal(sessionPayload.principal.userId, "alex@example.com");
+});
+
 test("Worker force media refresh requires admin", async () => {
   const response = await worker.fetch(new Request("https://trip.test/api/places/lions-square/media/refresh?refresh=1", {
     method: "POST",
@@ -526,6 +549,56 @@ function createMediaReviewDb(initialImage) {
                 return { success: true, meta: { changes: 1 } };
               }
               throw new Error(`Unexpected SQL: ${sql}`);
+            },
+          };
+        },
+      };
+    },
+  };
+  return state;
+}
+
+function createAuthDb() {
+  const state = {
+    users: [],
+    sessions: [],
+    prepare(sql) {
+      return {
+        bind(...args) {
+          return {
+            async first() {
+              if (/SELECT \* FROM admin_users WHERE email = \? LIMIT 1/.test(sql)) {
+                return state.users.find((user) => user.email === args[0]) || null;
+              }
+              if (/FROM admin_sessions s\s+JOIN admin_users u/.test(sql)) {
+                const [tokenHash, now] = args;
+                const session = state.sessions.find((item) => item.token_hash === tokenHash && item.revoked_at === "" && item.expires_at > now);
+                if (!session) return null;
+                const user = state.users.find((item) => item.id === session.user_id && item.active === 1);
+                return user ? { email: user.email, role: user.role } : null;
+              }
+              throw new Error(`Unexpected first SQL: ${sql}`);
+            },
+            async run() {
+              if (/INSERT INTO admin_users/.test(sql)) {
+                const [id, email, passwordHash, role, active, createdAt, updatedAt] = args;
+                state.users.push({ id, email, password_hash: passwordHash, role, active, created_at: createdAt, updated_at: updatedAt });
+                return { success: true, meta: { changes: 1 } };
+              }
+              if (/INSERT INTO admin_sessions/.test(sql)) {
+                const [id, userId, tokenHash, expiresAt, createdAt, lastSeenAt] = args;
+                state.sessions.push({ id, user_id: userId, token_hash: tokenHash, expires_at: expiresAt, created_at: createdAt, last_seen_at: lastSeenAt, revoked_at: "" });
+                return { success: true, meta: { changes: 1 } };
+              }
+              if (/UPDATE admin_sessions SET last_seen_at/.test(sql)) {
+                return { success: true, meta: { changes: 1 } };
+              }
+              if (/UPDATE admin_sessions SET revoked_at/.test(sql)) {
+                const [, tokenHash] = args;
+                state.sessions = state.sessions.map((session) => session.token_hash === tokenHash ? { ...session, revoked_at: args[0] } : session);
+                return { success: true, meta: { changes: 1 } };
+              }
+              throw new Error(`Unexpected run SQL: ${sql}`);
             },
           };
         },
