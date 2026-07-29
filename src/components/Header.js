@@ -81,15 +81,11 @@ export function renderHeader() {
         <div class="trip-context-card__header">
           <div class="card-eyebrow-row">
             <div class="trip-selector-wrap">
-              <select class="trip-select-dropdown" data-action="select-trip-dropdown">
+              <select class="trip-select-dropdown" data-action="select-trip-dropdown" aria-label="Select trip. Current trip: ${escapeHtml(trip.destination)}" title="${escapeHtml(`${trip.flag || ""} ${trip.destination || "Trip"}`.trim())}">
                 ${allTrips.map(t => {
-                  const status = getTripDateStatus(t);
-                  const suffix = status.state === "done" ? " - Done" : status.state === "active" ? " - Live" : "";
-                  return `<option value="${t.id}" ${t.id === trip.id ? 'selected' : ''}>${t.flag} ${escapeHtml(t.destination)}${suffix}</option>`;
+                  return `<option value="${t.id}" ${t.id === trip.id ? 'selected' : ''} label="${escapeHtml(t.flag || "•")}">${escapeHtml(t.flag || "•")}</option>`;
                 }).join('')}
               </select>
-              <button class="btn btn--ghost btn--xs cycle-trips-btn" data-action="cycle-next-trip" title="Cycle through all trips">
-              </button>
             </div>
           </div>
 

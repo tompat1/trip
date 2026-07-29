@@ -187,6 +187,7 @@ function render() {
 function renderTripLoadingPage() {
   prepareStartupIllustrations();
   const illustrationSrc = startupIllustrationUrls[startupIllustrationIndex] || "";
+  const preloadItem = getCurrentStartupPreloadItem();
   return `
     <div class="trip-loading-page" role="status" aria-label="Loading TRIP">
       <div class="trip-page-loader__panel">
@@ -201,17 +202,22 @@ function renderTripLoadingPage() {
         ${renderTripFlapSpinner("trip-flap-spinner--loader")}
         <span class="trip-loading-page__text">Preparing your journey</span>
         <ul class="trip-loading-page__preloads" aria-label="Preload status">
-          ${startupPreloadStatus.filter((item) => item.visible).map((item) => `
-            <li class="trip-loading-page__preload is-${escapeHtml(item.status)}" data-preload-id="${escapeHtml(item.id)}">
+          ${preloadItem ? `
+            <li class="trip-loading-page__preload is-${escapeHtml(preloadItem.status)}" data-preload-id="${escapeHtml(preloadItem.id)}">
               <span aria-hidden="true"></span>
-              <strong>${escapeHtml(item.label)}</strong>
-              <small>${escapeHtml(formatPreloadStatus(item.status))}</small>
+              <strong>${escapeHtml(preloadItem.label)}</strong>
+              <small>${escapeHtml(formatPreloadStatus(preloadItem.status))}</small>
             </li>
-          `).join("")}
+          ` : ""}
         </ul>
       </div>
     </div>
   `;
+}
+
+function getCurrentStartupPreloadItem() {
+  const visibleItems = startupPreloadStatus.filter((item) => item.visible);
+  return visibleItems[visibleItems.length - 1] || null;
 }
 
 function renderTripFlapSpinner(modifier = "") {
@@ -411,23 +417,27 @@ function updateStartupPreloadList() {
     render();
     return;
   }
-  startupPreloadStatus.filter((item) => item.visible).forEach((item) => {
-    let row = list.querySelector(`[data-preload-id="${item.id}"]`);
-    if (!row) {
-      row = document.createElement("li");
-      row.className = "trip-loading-page__preload";
-      row.dataset.preloadId = item.id;
-      row.innerHTML = `
-        <span aria-hidden="true"></span>
-        <strong></strong>
-        <small></small>
-      `;
-      list.appendChild(row);
-    }
-    row.className = `trip-loading-page__preload is-${item.status}`;
-    row.querySelector("strong").textContent = item.label;
-    row.querySelector("small").textContent = formatPreloadStatus(item.status);
-  });
+  const item = getCurrentStartupPreloadItem();
+  if (!item) {
+    list.innerHTML = "";
+    return;
+  }
+  let row = list.querySelector(".trip-loading-page__preload");
+  if (!row || row.dataset.preloadId !== item.id) {
+    list.innerHTML = "";
+    row = document.createElement("li");
+    row.className = "trip-loading-page__preload";
+    row.innerHTML = `
+      <span aria-hidden="true"></span>
+      <strong></strong>
+      <small></small>
+    `;
+    list.appendChild(row);
+  }
+  row.dataset.preloadId = item.id;
+  row.className = `trip-loading-page__preload is-${item.status}`;
+  row.querySelector("strong").textContent = item.label;
+  row.querySelector("small").textContent = formatPreloadStatus(item.status);
 }
 
 function warmRemainingImages() {
