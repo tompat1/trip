@@ -1249,6 +1249,7 @@ textarea {
   .trip-page-busy,
   .trip-page-busy__bg,
   .live-time-marquee .live-time-text,
+  .local-glossary__track,
   .trip-route-line,
   .route-line-dashed-banner::after,
   .route-line-dashed-banner__map::before,
@@ -2416,15 +2417,32 @@ textarea {
 }
 
 .local-glossary__chips {
-  display: flex;
-  gap: 8px;
-  overflow-x: auto;
-  padding: 1px 2px 4px;
+  overflow: hidden;
+  padding: 1px 0 4px;
   scrollbar-width: none;
+  mask-image: linear-gradient(90deg, transparent 0, #000 8%, #000 92%, transparent 100%);
 }
 
 .local-glossary__chips::-webkit-scrollbar {
   display: none;
+}
+
+.local-glossary__track {
+  display: flex;
+  width: max-content;
+  gap: 8px;
+  animation: localGlossaryTicker 34s linear infinite;
+  will-change: transform;
+}
+
+.local-glossary__loop {
+  display: inline-flex;
+  gap: 8px;
+}
+
+.local-glossary:hover .local-glossary__track,
+.local-glossary:focus-within .local-glossary__track {
+  animation-play-state: paused;
 }
 
 .local-glossary__chip {
@@ -2456,6 +2474,16 @@ textarea {
   background: rgba(20, 36, 56, 0.82);
   border-color: rgba(244, 247, 251, 0.1);
   box-shadow: none;
+}
+
+@keyframes localGlossaryTicker {
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(calc(-50% - 4px));
+  }
 }
 
 .live-pulse-dot {

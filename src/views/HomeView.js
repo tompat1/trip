@@ -33,13 +33,13 @@ export function renderHomeView() {
                 <span class="voice-mono">${escapeHtml(glossary.language)} basics</span>
                 <strong>${escapeHtml(glossary.sample)}</strong>
               </div>
-              <div class="local-glossary__chips">
-                ${glossary.phrases.map((item) => `
-                  <span class="local-glossary__chip" title="${escapeHtml(item.note || item.en)}">
-                    <small>${escapeHtml(item.en)}</small>
-                    <strong>${escapeHtml(item.local)}</strong>
+              <div class="local-glossary__chips" aria-label="${escapeHtml(glossary.language)} phrase ticker">
+                <div class="local-glossary__track">
+                  ${renderGlossaryPhraseChips(glossary.phrases)}
+                  <span class="local-glossary__loop" aria-hidden="true">
+                    ${renderGlossaryPhraseChips(glossary.phrases)}
                   </span>
-                `).join("")}
+                </div>
               </div>
             </div>
           </div>
@@ -142,6 +142,15 @@ export function renderHomeView() {
 function getHomeTripIdeas(trip) {
   const liveIdeas = [...(trip.tourismPois || []), ...(trip.hiddenGems || []), ...(trip.osmPlaces || [])].slice(0, 3);
   return [...liveIdeas, ...(trip.ideas || [])].slice(0, 6);
+}
+
+function renderGlossaryPhraseChips(phrases = []) {
+  return phrases.map((item) => `
+    <span class="local-glossary__chip" title="${escapeHtml(item.note || item.en)}">
+      <small>${escapeHtml(item.en)}</small>
+      <strong>${escapeHtml(item.local)}</strong>
+    </span>
+  `).join("");
 }
 
 function renderTripIntelligenceCard(trip) {
