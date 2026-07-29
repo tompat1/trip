@@ -21,12 +21,53 @@ import { formatAirportLabel, getFlightRouteDisplay, resolveAirportInput, searchA
 import { normalizeFlightType } from "./services/flightService.js";
 import { formatTripDateRangeFromParts } from "./utils/tripDates.js";
 import { enrichmentService } from "./enrichment/enrichmentService.js";
+import tripLogoUrl from "./assets/trip_logo.svg";
+import tripLogoWhiteUrl from "./assets/trip_logo_white.svg";
+import tripMapPatternUrl from "./assets/trip_MapPattern.svg";
+import ribbonLiveUrl from "./assets/trip_badge_ribbon_live.webp";
+import ribbonPlanUrl from "./assets/trip_badge_ribbon_plan.webp";
+import ribbonRememberUrl from "./assets/trip_badge_ribbon_rmbr.webp";
 import "./styles.css";
 
 let activeMaps = new Map();
 let lastRenderedView = "";
-let showInitialTripLoader = true;
-let initialTripLoaderTimer = null;
+let isAppBooted = false;
+let startupIllustrationUrls = [];
+let startupIllustrationIndex = 0;
+let startupIllustrationTimer = null;
+let startupIllustrationPhase = "in";
+let pageLoaderCount = 0;
+let pageLoaderShowTimer = null;
+let pageLoaderHideTimer = null;
+let pageLoaderVisibleAt = 0;
+let startupPreloadStatus = [
+  { id: "brand", label: "Brand marks", status: "queued", visible: false },
+  { id: "illustrations", label: "TRIP illustrations", status: "queued", visible: false },
+  { id: "hero", label: "Landing hero", status: "queued", visible: false },
+  { id: "fonts", label: "Travel typography", status: "queued", visible: false },
+  { id: "routes", label: "Route visuals", status: "queued", visible: false },
+];
+
+const landingIllustrationPreloads = Object.values(import.meta.glob("./assets/illisar/*.{webp,png,jpg,jpeg,avif}", {
+  eager: true,
+  import: "default",
+}));
+
+const LANDING_HERO_URL = "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1200&q=85";
+const STARTUP_PRELOAD_TIMEOUT_MS = 2400;
+const STARTUP_MINIMUM_MS = 4200;
+const STARTUP_ILLUSTRATION_INTERVAL_MS = 1300;
+const STARTUP_ILLUSTRATION_FADE_MS = 260;
+const STARTUP_PRELOAD_REVEAL_STEP_MS = 430;
+const PAGE_LOADER_DELAY_MS = 160;
+const PAGE_LOADER_MINIMUM_MS = 520;
+
+function getRandomStartupIllustrations(count = 3) {
+  if (!landingIllustrationPreloads.length) return "";
+  return [...landingIllustrationPreloads]
+    .sort(() => Math.random() - 0.5)
+    .slice(0, Math.min(count, landingIllustrationPreloads.length));
+}
 
 const PLAN_EVENT_LOCATION_COORDS = {
   "cdg airport": [49.0097, 2.5479],
@@ -79,11 +120,18 @@ const TRIP_DESTINATION_COORDS = {
 function render() {
   const appEl = document.getElementById("app");
   if (!appEl) return;
+  applyThemeMode();
+
+  if (!isAppBooted) {
+    if (!appEl.querySelector(".trip-loading-page")) {
+      appEl.innerHTML = renderTripLoadingPage();
+    }
+    return;
+  }
 
   const view = state.activeView;
   const isRouteChange = lastRenderedView && lastRenderedView !== view;
   lastRenderedView = view;
-  applyThemeMode();
 
   let viewHtml = "";
   if (view === "landing") {
@@ -113,11 +161,9 @@ function render() {
   const helpHtml = renderHelpCenter();
   const authExitHtml = renderAuthExitPage();
   const premiumHtml = renderPremiumSupportSheet();
-  const loaderHtml = showInitialTripLoader ? renderTripPageLoader() : "";
 
   appEl.innerHTML = `
     <div class="app-view app-view--${view} ${isRouteChange ? "app-view--route-enter" : ""}">
-      ${loaderHtml}
       ${viewHtml}
       ${bottomNavHtml}
       ${quickCaptureHtml}
@@ -132,30 +178,124 @@ function render() {
     </div>
   `;
 
-  if (showInitialTripLoader && !initialTripLoaderTimer) {
-    initialTripLoaderTimer = window.setTimeout(() => {
-      showInitialTripLoader = false;
-      initialTripLoaderTimer = null;
-      render();
-    }, 1850);
-  }
-
   // Initialize maps after DOM update
   requestAnimationFrame(() => {
     initMapsForView(view);
   });
 }
 
-function renderTripPageLoader() {
+function renderTripLoadingPage() {
+  prepareStartupIllustrations();
+  const illustrationSrc = startupIllustrationUrls[startupIllustrationIndex] || "";
   return `
-    <div class="trip-page-loader" role="status" aria-label="Loading TRIP">
+    <div class="trip-loading-page" role="status" aria-label="Loading TRIP">
       <div class="trip-page-loader__panel">
-        <span class="trip-flap-spinner trip-flap-spinner--loader" aria-hidden="true">
-          ${["T", "R", "I", "P"].map((letter, index) => `<span style="--flap-index: ${index}">${letter}</span>`).join("")}
-        </span>
+        ${illustrationSrc ? `
+          <div class="trip-loading-page__illustration is-${escapeHtml(startupIllustrationPhase)}" aria-hidden="true">
+            <img src="${illustrationSrc}" alt="" />
+            ${startupIllustrationUrls.length > 1 ? `
+              <span class="trip-loading-page__illustration-count">${startupIllustrationIndex + 1}/${startupIllustrationUrls.length}</span>
+            ` : ""}
+          </div>
+        ` : ""}
+        ${renderTripFlapSpinner("trip-flap-spinner--loader")}
+        <span class="trip-loading-page__text">Preparing your journey</span>
+        <ul class="trip-loading-page__preloads" aria-label="Preload status">
+          ${startupPreloadStatus.filter((item) => item.visible).map((item) => `
+            <li class="trip-loading-page__preload is-${escapeHtml(item.status)}" data-preload-id="${escapeHtml(item.id)}">
+              <span aria-hidden="true"></span>
+              <strong>${escapeHtml(item.label)}</strong>
+              <small>${escapeHtml(formatPreloadStatus(item.status))}</small>
+            </li>
+          `).join("")}
+        </ul>
       </div>
     </div>
   `;
+}
+
+function renderTripFlapSpinner(modifier = "") {
+  return `
+    <span class="trip-flap-spinner ${modifier}" aria-hidden="true">
+      ${["T", "R", "I", "P"].map((letter, index) => `<span style="--flap-index: ${index}">${letter}</span>`).join("")}
+    </span>
+  `;
+}
+
+function ensurePageLoader() {
+  let loader = document.querySelector(".trip-page-busy");
+  if (loader) return loader;
+  loader = document.createElement("div");
+  loader.className = "trip-page-busy";
+  loader.setAttribute("role", "status");
+  loader.setAttribute("aria-live", "polite");
+  loader.innerHTML = `
+    <div class="trip-page-busy__bg">
+      ${renderTripFlapSpinner("trip-flap-spinner--busy")}
+      <span>Loading</span>
+    </div>
+  `;
+  document.body.appendChild(loader);
+  return loader;
+}
+
+function setPageLoaderLabel(label = "Loading") {
+  const loader = ensurePageLoader();
+  const labelEl = loader.querySelector(".trip-page-busy__bg > span");
+  if (labelEl) labelEl.textContent = label;
+}
+
+function showPageLoader(label = "Loading", options = {}) {
+  if (!isAppBooted) return;
+  pageLoaderCount += 1;
+  setPageLoaderLabel(label);
+  window.clearTimeout(pageLoaderHideTimer);
+  window.clearTimeout(pageLoaderShowTimer);
+
+  const delay = Number.isFinite(options.delay) ? Math.max(0, options.delay) : PAGE_LOADER_DELAY_MS;
+  pageLoaderShowTimer = window.setTimeout(() => {
+    const loader = ensurePageLoader();
+    pageLoaderVisibleAt = Date.now();
+    loader.classList.add("is-visible");
+  }, delay);
+}
+
+function hidePageLoader() {
+  pageLoaderCount = Math.max(0, pageLoaderCount - 1);
+  if (pageLoaderCount > 0) return;
+
+  window.clearTimeout(pageLoaderShowTimer);
+  const loader = document.querySelector(".trip-page-busy");
+  if (!loader?.classList.contains("is-visible")) return;
+
+  const visibleFor = Date.now() - pageLoaderVisibleAt;
+  const holdFor = Math.max(0, PAGE_LOADER_MINIMUM_MS - visibleFor);
+  window.clearTimeout(pageLoaderHideTimer);
+  pageLoaderHideTimer = window.setTimeout(() => {
+    if (pageLoaderCount > 0) return;
+    loader.classList.remove("is-visible");
+  }, holdFor);
+}
+
+async function withPageLoader(label, task, options = {}) {
+  showPageLoader(label, options);
+  try {
+    return await task();
+  } finally {
+    hidePageLoader();
+  }
+}
+
+function flashPageLoader(label = "Loading") {
+  showPageLoader(label, { delay: 0 });
+  window.setTimeout(hidePageLoader, PAGE_LOADER_MINIMUM_MS);
+}
+
+function formatPreloadStatus(status = "queued") {
+  if (status === "ready") return "Ready";
+  if (status === "loading") return "Loading";
+  if (status === "timeout") return "Continuing";
+  return "Queued";
 }
 
 function applyThemeMode() {
@@ -165,6 +305,162 @@ function applyThemeMode() {
   document.documentElement.dataset.themePreference = theme;
   document.documentElement.dataset.theme = resolvedTheme;
   document.documentElement.style.colorScheme = resolvedTheme;
+}
+
+async function bootApp() {
+  prepareStartupIllustrations();
+  startStartupIllustrationRotation();
+  render();
+  await Promise.all([
+    wait(STARTUP_MINIMUM_MS),
+    withTimeout(preloadStartupResources(), STARTUP_PRELOAD_TIMEOUT_MS),
+  ]);
+  isAppBooted = true;
+  stopStartupIllustrationRotation();
+  render();
+  warmRemainingImages();
+}
+
+async function preloadStartupResources() {
+  const illustrationBatch = [
+    ...startupIllustrationUrls,
+    ...landingIllustrationPreloads.slice(0, 7),
+  ].filter(Boolean);
+
+  const groups = [
+    { id: "brand", tasks: [tripLogoUrl, tripLogoWhiteUrl, ribbonLiveUrl, ribbonPlanUrl, ribbonRememberUrl].filter(Boolean).map(preloadImage) },
+    { id: "illustrations", tasks: illustrationBatch.map(preloadImage) },
+    { id: "hero", tasks: [preloadImage(LANDING_HERO_URL)] },
+    { id: "fonts", tasks: [document.fonts?.ready?.catch?.(() => undefined) || Promise.resolve()] },
+    { id: "routes", tasks: [preloadImage(tripMapPatternUrl)] },
+  ];
+
+  await Promise.all(groups.map((group, index) => preloadGroup(group.id, group.tasks, index)));
+}
+
+function prepareStartupIllustrations() {
+  if (!startupIllustrationUrls.length) {
+    startupIllustrationUrls = getRandomStartupIllustrations(3);
+  }
+}
+
+function startStartupIllustrationRotation() {
+  if (startupIllustrationTimer || startupIllustrationUrls.length <= 1) return;
+  startupIllustrationTimer = window.setInterval(() => {
+    startupIllustrationPhase = "out";
+    if (!isAppBooted) updateStartupIllustration();
+    window.setTimeout(() => {
+      if (isAppBooted) return;
+      startupIllustrationIndex = (startupIllustrationIndex + 1) % startupIllustrationUrls.length;
+      startupIllustrationPhase = "in";
+      updateStartupIllustration();
+    }, STARTUP_ILLUSTRATION_FADE_MS);
+  }, STARTUP_ILLUSTRATION_INTERVAL_MS);
+}
+
+function stopStartupIllustrationRotation() {
+  if (!startupIllustrationTimer) return;
+  window.clearInterval(startupIllustrationTimer);
+  startupIllustrationTimer = null;
+}
+
+async function preloadGroup(id, tasks = [], index = 0) {
+  await wait(index * STARTUP_PRELOAD_REVEAL_STEP_MS);
+  setPreloadVisible(id);
+  setPreloadStatus(id, "loading");
+  try {
+    await Promise.all(tasks);
+    setPreloadStatus(id, "ready");
+  } catch {
+    setPreloadStatus(id, "timeout");
+  }
+}
+
+function setPreloadVisible(id) {
+  startupPreloadStatus = startupPreloadStatus.map((item) => item.id === id ? { ...item, visible: true } : item);
+  if (!isAppBooted) updateStartupPreloadList();
+}
+
+function setPreloadStatus(id, status) {
+  startupPreloadStatus = startupPreloadStatus.map((item) => item.id === id ? { ...item, status } : item);
+  if (!isAppBooted) updateStartupPreloadList();
+}
+
+function updateStartupIllustration() {
+  const frame = document.querySelector(".trip-loading-page__illustration");
+  if (!frame) {
+    render();
+    return;
+  }
+  const image = frame.querySelector("img");
+  const count = frame.querySelector(".trip-loading-page__illustration-count");
+  frame.classList.toggle("is-out", startupIllustrationPhase === "out");
+  frame.classList.toggle("is-in", startupIllustrationPhase !== "out");
+  if (startupIllustrationPhase === "in" && image) {
+    const nextSrc = startupIllustrationUrls[startupIllustrationIndex] || "";
+    if (nextSrc && image.getAttribute("src") !== nextSrc) {
+      image.setAttribute("src", nextSrc);
+    }
+    if (count) count.textContent = `${startupIllustrationIndex + 1}/${startupIllustrationUrls.length}`;
+  }
+}
+
+function updateStartupPreloadList() {
+  const list = document.querySelector(".trip-loading-page__preloads");
+  if (!list) {
+    render();
+    return;
+  }
+  startupPreloadStatus.filter((item) => item.visible).forEach((item) => {
+    let row = list.querySelector(`[data-preload-id="${item.id}"]`);
+    if (!row) {
+      row = document.createElement("li");
+      row.className = "trip-loading-page__preload";
+      row.dataset.preloadId = item.id;
+      row.innerHTML = `
+        <span aria-hidden="true"></span>
+        <strong></strong>
+        <small></small>
+      `;
+      list.appendChild(row);
+    }
+    row.className = `trip-loading-page__preload is-${item.status}`;
+    row.querySelector("strong").textContent = item.label;
+    row.querySelector("small").textContent = formatPreloadStatus(item.status);
+  });
+}
+
+function warmRemainingImages() {
+  const remaining = landingIllustrationPreloads.slice(8);
+  const preload = () => {
+    remaining.forEach((url, index) => {
+      window.setTimeout(() => preloadImage(url), index * 80);
+    });
+  };
+  if ("requestIdleCallback" in window) {
+    window.requestIdleCallback(preload, { timeout: 3000 });
+  } else {
+    window.setTimeout(preload, 800);
+  }
+}
+
+function preloadImage(url = "") {
+  if (!url) return Promise.resolve();
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.decoding = "async";
+    img.onload = resolve;
+    img.onerror = resolve;
+    img.src = url;
+  });
+}
+
+function withTimeout(promise, timeoutMs) {
+  return Promise.race([promise, wait(timeoutMs)]);
+}
+
+function wait(ms) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
 }
 
 function renderInviteAcceptance() {
@@ -487,6 +783,7 @@ document.addEventListener("click", async (e) => {
       return;
     }
     if (nav === "plan") state.setPlanSubTab("overview");
+    flashPageLoader(`Opening ${nav}`);
     state.setView(nav);
     return;
   }
@@ -494,24 +791,42 @@ document.addEventListener("click", async (e) => {
   // Data action handlers
   const action = target.dataset.action;
   if (action) {
-    if (action === "go-app" || action === "go-home") state.setView("home");
+    if (action === "go-app" || action === "go-home") {
+      flashPageLoader("Opening home");
+      state.setView("home");
+    }
     else if (action === "go-plan") {
       if (target.dataset.subtab) state.setPlanSubTab(target.dataset.subtab);
+      flashPageLoader("Opening trips");
       state.setView("plan");
     }
     else if (action === "go-plan-timeline") {
       state.setPlanSubTab("plan");
       state.setPlanViewMode("timeline");
+      flashPageLoader("Opening timeline");
       state.setView("plan");
     }
-    else if (action === "go-search") state.setView("search");
-    else if (action === "go-live") state.setView("live");
+    else if (action === "go-search") {
+      flashPageLoader("Opening search");
+      state.setView("search");
+    }
+    else if (action === "go-live") {
+      flashPageLoader("Opening live");
+      state.setView("live");
+    }
     else if (action === "go-moments") {
+      flashPageLoader("Opening journal");
       state.setView("plan");
       state.setPlanSubTab("journal");
     }
-    else if (action === "go-profile") state.setView("profile");
-    else if (action === "switch-to-landing") state.setView("landing");
+    else if (action === "go-profile") {
+      flashPageLoader("Opening profile");
+      state.setView("profile");
+    }
+    else if (action === "switch-to-landing") {
+      flashPageLoader("Opening TRIP");
+      state.setView("landing");
+    }
     else if (action === "set-theme-mode") {
       state.setThemeMode(target.dataset.themeMode || "system");
       showToast(`Theme set to ${state.themeMode}.`);
@@ -521,7 +836,7 @@ document.addEventListener("click", async (e) => {
     }
     else if (action === "refresh-trip-ideas") {
       showToast("Refreshing trip ideas...");
-      const result = await state.refreshTourismDiscovery(state.activeTripId, { force: true });
+      const result = await withPageLoader("Refreshing ideas", () => state.refreshTourismDiscovery(state.activeTripId, { force: true }));
       if (result?.status === "error") {
         showToast("Could not refresh trip ideas. Showing saved ideas.");
       } else if (result?.status === "not-configured") {
@@ -532,7 +847,7 @@ document.addEventListener("click", async (e) => {
     }
     else if (action === "refresh-trip-events") {
       showToast("Refreshing events...");
-      const result = await state.refreshEventDiscovery(state.activeTripId, { force: true });
+      const result = await withPageLoader("Refreshing events", () => state.refreshEventDiscovery(state.activeTripId, { force: true }));
       if (result?.status === "error") {
         showToast("Could not refresh live events. Showing saved events.");
       } else if (result?.status === "fallback") {
@@ -543,7 +858,7 @@ document.addEventListener("click", async (e) => {
     }
     else if (action === "refresh-trip-intelligence") {
       showToast("Refreshing trip intelligence...");
-      const result = await state.refreshTripIntelligence(state.activeTripId, { force: true });
+      const result = await withPageLoader("Refreshing live", () => state.refreshTripIntelligence(state.activeTripId, { force: true }));
       if (result?.status === "error") {
         showToast("Could not refresh travel signals right now.");
       } else {
@@ -553,7 +868,7 @@ document.addEventListener("click", async (e) => {
     }
     else if (action === "search-trip-flights") {
       showToast("Searching flights for this route...");
-      await state.searchFlightsForActiveTrip();
+      await withPageLoader("Searching flights", () => state.searchFlightsForActiveTrip());
       const search = state.activeTrip.flightSearch || {};
       if (search.status === "ready" && search.source === "amadeus") {
         showToast(`Found ${search.offers.length} live flight options.`);
@@ -574,6 +889,7 @@ document.addEventListener("click", async (e) => {
       state.closeHelp();
     }
     else if (action === "invite-companions") {
+      flashPageLoader("Opening invites");
       state.setView("profile");
       setTimeout(() => document.getElementById("profile-companion-form")?.querySelector("input[name='email']")?.focus(), 0);
     }
@@ -776,6 +1092,7 @@ document.addEventListener("click", async (e) => {
       state.setSearchQuery("");
     }
     else if (action === "locate-user" || action === "toggle-map-view" || action === "toggle-full-map") {
+      flashPageLoader("Opening live");
       state.setView("live");
     }
     else if (action === "edit-trip-title") {
@@ -791,14 +1108,14 @@ document.addEventListener("click", async (e) => {
 
       const daysCount = Math.max(1, Number(daysCountInput) || trip.daysCount || 7);
       const destinationAirport = resolveAirportInput(destinationAirportInput) || resolveAirportInput(destination);
-      await state.updateTripDetails(state.activeTripId, {
+      await withPageLoader("Updating trip", () => state.updateTripDetails(state.activeTripId, {
         destination: destination.trim(),
         startDate: startDate.trim(),
         daysCount,
         dates: formatTripDateRangeFromParts(startDate.trim(), daysCount),
         center: destinationAirport ? [destinationAirport.lat, destinationAirport.lng] : resolveTripCenter(destination.trim()),
         destinationAirport,
-      });
+      }));
       showToast("Trip details updated. Refreshing local ideas and events.");
     }
     else if (action === "create-trip") {
@@ -876,6 +1193,7 @@ document.addEventListener("click", async (e) => {
       }
     }
     else if (action === "share-trip") {
+      flashPageLoader("Opening invite");
       openCompanionInviteFlow("link");
       showToast("Choose who to invite, then send or copy the invite link.");
     }
@@ -901,20 +1219,24 @@ document.addEventListener("click", async (e) => {
     }
     else if (action === "help-invite-companions") {
       state.closeHelp();
+      flashPageLoader("Opening invite");
       openCompanionInviteFlow("link");
       showToast("Invite companions for the selected trip.");
     }
     else if (action === "help-open-plan") {
       state.closeHelp();
       state.setPlanSubTab("plan");
+      flashPageLoader("Opening trips");
       state.setView("plan");
     }
     else if (action === "help-open-search") {
       state.closeHelp();
+      flashPageLoader("Opening search");
       state.setView("search");
     }
     else if (action === "help-open-live") {
       state.closeHelp();
+      flashPageLoader("Opening live");
       state.setView("live");
     }
     else if (action === "help-open-walkthrough") {
@@ -928,7 +1250,7 @@ document.addEventListener("click", async (e) => {
         if (password) {
           enrichmentService.loginAccount({ email, password, inviteTripId: state.activeInvite?.tripId || "" })
             .then(async () => {
-              await state.refreshUserSession();
+              await withPageLoader("Signing in", () => state.refreshUserSession());
               if (state.activeInvite?.tripId) state.acceptTripInvite({ mode: "user" });
               showToast("Signed in.");
             })
@@ -937,10 +1259,10 @@ document.addEventListener("click", async (e) => {
       }
     }
     else if (action === "admin-logout") {
-      await logOutAndShowExit();
+      await withPageLoader("Signing out", () => logOutAndShowExit(), { delay: 0 });
     }
     else if (action === "instant-logout") {
-      await logOutAndShowExit();
+      await withPageLoader("Signing out", () => logOutAndShowExit(), { delay: 0 });
     }
     else if (action === "continue-as-guest") {
       state.closeAuthExit({ view: "home" });
@@ -1194,8 +1516,10 @@ document.addEventListener("submit", async (e) => {
     const button = form.querySelector("button[type='submit']");
     if (button) button.disabled = true;
     try {
-      await enrichmentService.loginAccount({ email, password });
-      await state.refreshUserSession();
+      await withPageLoader("Signing in", async () => {
+        await enrichmentService.loginAccount({ email, password });
+        await state.refreshUserSession();
+      }, { delay: 0 });
       state.closeAuthExit({ view: "home" });
       showToast("Signed back in.");
     } catch (error) {
@@ -1218,8 +1542,10 @@ document.addEventListener("submit", async (e) => {
     const button = form.querySelector("button[type='submit']");
     if (button) button.disabled = true;
     try {
-      await enrichmentService.loginAccount({ email, password, inviteTripId: state.activeInvite?.tripId || "" });
-      await state.refreshUserSession();
+      await withPageLoader("Signing in", async () => {
+        await enrichmentService.loginAccount({ email, password, inviteTripId: state.activeInvite?.tripId || "" });
+        await state.refreshUserSession();
+      }, { delay: 0 });
       if (state.activeInvite?.tripId) state.acceptTripInvite({ mode: "user" });
       showToast("Signed in.");
     } catch (error) {
@@ -1237,13 +1563,13 @@ document.addEventListener("submit", async (e) => {
     if (button) button.disabled = true;
     const formData = new FormData(form);
     const tripId = formData.get("tripId") || state.profileCompanionTripId || state.activeTripId;
-    const result = await state.inviteTripCompanion(tripId, {
+    const result = await withPageLoader("Sending invite", () => state.inviteTripCompanion(tripId, {
       name: formData.get("name") || "",
       email: formData.get("email") || "",
       role: formData.get("role") || "viewer",
       inviteMethod: formData.get("inviteMethod") || "email",
       personalMessage: formData.get("personalMessage") || "",
-    });
+    }));
     if (button) button.disabled = false;
     if (!result.ok && result.error === "invalid-email") {
       showToast("Add a valid companion email.");
@@ -1277,14 +1603,16 @@ document.addEventListener("submit", async (e) => {
     const button = form.querySelector("button[type='submit']");
     if (button) button.disabled = true;
     try {
-      await enrichmentService.registerAccount({
-        name,
-        email,
-        password,
-        inviteTripId: state.activeInvite?.tripId || state.activeTripId,
-      });
-      state.updateUserProfile({ name, email }, { notify: false });
-      await state.refreshUserSession();
+      await withPageLoader("Creating account", async () => {
+        await enrichmentService.registerAccount({
+          name,
+          email,
+          password,
+          inviteTripId: state.activeInvite?.tripId || state.activeTripId,
+        });
+        state.updateUserProfile({ name, email }, { notify: false });
+        await state.refreshUserSession();
+      }, { delay: 0 });
       state.acceptTripInvite({ mode: "account" });
       showToast("Account created. Trip added to your planner.");
     } catch (error) {
@@ -1330,11 +1658,11 @@ document.addEventListener("submit", async (e) => {
       return;
     }
 
-    await state.updateTripFlightRoute(state.activeTripId, {
+    await withPageLoader("Saving route", () => state.updateTripFlightRoute(state.activeTripId, {
       originAirport,
       destinationAirport,
       flightType,
-    });
+    }));
     showToast(`Flight route saved: ${originAirport.iata} to ${destinationAirport.iata}.`);
     return;
   }
@@ -1374,7 +1702,7 @@ document.addEventListener("submit", async (e) => {
   const starterTasks = [...form.querySelectorAll('input[name="starterTasks"]:checked')]
     .map((input) => input.value);
 
-  await state.createCustomTrip({
+  await withPageLoader("Creating trip", () => state.createCustomTrip({
     destination,
     dates: formatTripDateRange(startDate, daysCount),
     startDate,
@@ -1384,7 +1712,7 @@ document.addEventListener("submit", async (e) => {
     originAirport,
     destinationAirport,
     flightType,
-  });
+  }), { delay: 0 });
 });
 
 function formatTripDateRange(startDate, daysCount) {
@@ -2128,7 +2456,7 @@ document.addEventListener("blur", (e) => {
 
 // Initialize reactive state listener & initial render
 state.subscribe(render);
-render();
+bootApp();
 
 // Silent Behind-the-Curtains Background Scan for Live Data & Concert Enrichment
 let scanTriggered = false;

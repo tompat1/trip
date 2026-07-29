@@ -2,19 +2,7 @@ import { renderHeader } from "../components/Header.js";
 import { renderIcon } from "../utils/icons.js";
 import { TRIP_STAMP_SVG } from "../components/BrandAssets.js";
 
-const landingIllustrations = Object.values(import.meta.glob("../assets/illisar/*.{webp,png,jpg,jpeg,avif}", {
-  eager: true,
-  import: "default",
-}));
-
-function getRandomLandingIllustration() {
-  if (!landingIllustrations.length) return "";
-  return landingIllustrations[Math.floor(Math.random() * landingIllustrations.length)];
-}
-
 export function renderLandingView() {
-  const illustrationSrc = getRandomLandingIllustration();
-
   return `
     <div class="landing-page">
       ${renderHeader()}
@@ -82,12 +70,6 @@ export function renderLandingView() {
           <span class="landing-feature-cta">${renderIcon("arrowRight")}</span>
         </div>
       </section>
-
-      ${illustrationSrc ? `
-        <section class="landing-illustration-placeholder" aria-label="TRIP illustration">
-          <img src="${illustrationSrc}" alt="TRIP travel illustration" loading="lazy" />
-        </section>
-      ` : ""}
 
       <footer class="landing-footer" style="padding: 20px; text-align: center; background: var(--paper-card); border: 1px solid var(--line); border-radius: var(--radius-lg);">
         <div class="landing-footer__content" style="display: flex; flex-direction: column; align-items: center; gap: 6px;">
