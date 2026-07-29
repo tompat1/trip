@@ -920,6 +920,12 @@ document.addEventListener("click", async (e) => {
       state.toggleQuickCapture(false);
     }
     else if (action === "change-avatar") {
+      const isSignedIn = ["admin", "traveler"].includes(state.userSession?.role);
+      if (!isSignedIn) {
+        state.setProfileSection("profile");
+        showToast("Sign in to update your profile photo.");
+        return;
+      }
       const fileInput = document.getElementById("avatar-file-input");
       if (fileInput) {
         fileInput.click();

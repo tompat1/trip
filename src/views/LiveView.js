@@ -274,6 +274,9 @@ export function renderProfileView() {
     : futureTrips[0]?.id || "";
   const companionTrip = futureTrips.find((trip) => trip.id === companionTripId) || null;
   const companions = companionTrip?.companions || [];
+  const isSignedIn = ["admin", "traveler"].includes(state.userSession?.role);
+  const displayName = isSignedIn ? (profile.name || "Traveler") : "Guest traveler";
+  const membershipLabel = isSignedIn ? (profile.membership || "Traveler") : "Signed out";
 
   return `
     <div class="profile-page">
@@ -281,18 +284,20 @@ export function renderProfileView() {
 
       <div class="profile-page__content">
         <div class="profile-header-card card-pattern-poly">
-          <button class="profile-avatar-wrap" data-action="change-avatar" type="button" title="Change profile picture" aria-label="Change profile picture">
-            <img src="${escapeHtml(state.userAvatar || profile.avatarUrl || "")}" alt="${escapeHtml(profile.name || "Traveler")} avatar" onerror="this.style.display='none'" />
+          <button class="profile-avatar-wrap ${isSignedIn ? "" : "profile-avatar-wrap--signed-out"}" ${isSignedIn ? `data-action="change-avatar"` : `data-action="open-profile-section" data-profile-section="profile"`} type="button" title="${isSignedIn ? "Change profile picture" : "Sign in to use a profile picture"}" aria-label="${isSignedIn ? "Change profile picture" : "Sign in to use a profile picture"}">
+            ${isSignedIn ? `<img src="${escapeHtml(state.userAvatar || profile.avatarUrl || "")}" alt="${escapeHtml(displayName)} avatar" onerror="this.style.display='none'" />` : ""}
             <span class="profile-avatar-fallback" aria-hidden="true">${renderIcon("user")}</span>
-            <span class="profile-avatar-edit-badge" title="Change photo">
-              ${renderIcon("pencil")}
-            </span>
+            ${isSignedIn ? `
+              <span class="profile-avatar-edit-badge" title="Change photo">
+                ${renderIcon("pencil")}
+              </span>
+            ` : ""}
           </button>
-          <input type="file" id="avatar-file-input" accept="image/*" style="display:none;" />
+          ${isSignedIn ? `<input type="file" id="avatar-file-input" accept="image/*" style="display:none;" />` : ""}
 
-          <h2 class="profile-user-name">${escapeHtml(profile.name || "Traveler")}</h2>
+          <h2 class="profile-user-name">${escapeHtml(displayName)}</h2>
           <div class="profile-user-badge">
-            <span>💎</span> ${escapeHtml(profile.membership || "Traveler")}
+            <span>${isSignedIn ? "💎" : renderIcon("logIn")}</span> ${escapeHtml(membershipLabel)}
           </div>
 
           <div class="profile-stats-grid">

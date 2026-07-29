@@ -1603,6 +1603,10 @@ textarea {
   justify-content: center;
 }
 
+.avatar-badge--signed-out .header-profile-icon-fallback {
+  display: flex;
+}
+
 .avatar-online-dot {
   position: absolute;
   top: 0;
@@ -7706,6 +7710,16 @@ textarea {
 .profile-avatar-fallback svg {
   width: 36px;
   height: 36px;
+}
+
+.profile-avatar-wrap--signed-out {
+  border: 1px solid var(--line);
+  background: var(--paper-card);
+  box-shadow: var(--shadow-sm);
+}
+
+.profile-avatar-wrap--signed-out .profile-avatar-fallback {
+  color: var(--ink);
 }
 
 .profile-avatar-edit-badge {

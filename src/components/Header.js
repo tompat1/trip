@@ -66,12 +66,14 @@ export function renderHeader() {
             </button>
           ` : ""}
 
-          <div class="avatar-badge" data-action="go-profile" title="View profile">
-            <img src="${state.userAvatar || profile.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=120&q=80'}" alt="${escapeHtml(profile.name || "Traveler")} avatar" class="avatar-img" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'" />
-            <div class="header-profile-icon-fallback" aria-label="Profile">
+          <div class="avatar-badge ${isSignedIn ? "" : "avatar-badge--signed-out"}" data-action="go-profile" title="${isSignedIn ? "View profile" : "Sign in"}">
+            ${isSignedIn ? `
+              <img src="${state.userAvatar || profile.avatarUrl || ""}" alt="${escapeHtml(profile.name || "Traveler")} avatar" class="avatar-img" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'" />
+            ` : ""}
+            <div class="header-profile-icon-fallback" aria-label="${isSignedIn ? "Profile" : "Sign in"}">
               ${renderIcon("user")}
             </div>
-            <span class="avatar-online-dot"></span>
+            ${isSignedIn ? `<span class="avatar-online-dot"></span>` : ""}
           </div>
         </div>
       </div>
