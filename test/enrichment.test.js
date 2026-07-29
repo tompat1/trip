@@ -250,6 +250,39 @@ test("Worker nearby route queries OpenStreetMap open-first categories through Ov
   }
 });
 
+test("Worker nearby route uses persona intent Overpass categories", async () => {
+  const originalFetch = globalThis.fetch;
+  let overpassQuery = "";
+  globalThis.fetch = async (_url, options = {}) => {
+    overpassQuery = options.body?.get ? options.body.get("data") : String(options.body || "");
+    return {
+      ok: true,
+      async json() {
+        return {
+          elements: [
+            {
+              type: "node",
+              id: 201,
+              lat: 48.8568,
+              lon: 2.3524,
+              tags: { name: "Small Gallery", tourism: "gallery" },
+            },
+          ],
+        };
+      },
+    };
+  };
+
+  try {
+    const response = await worker.fetch(new Request("https://trip.test/api/places/nearby?lat=48.8566&lng=2.3522&radius=1500&intent=culture"), {}, {});
+    assert.equal(response.status, 200);
+    assert.match(overpassQuery, /\["tourism"~"museum\|gallery\|attraction\|artwork"/);
+    assert.match(overpassQuery, /\["amenity"~"theatre\|arts_centre\|cinema\|events_venue"/);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("Worker event discovery combines Ticketmaster and Bandsintown providers", async () => {
   const originalFetch = globalThis.fetch;
   const requestedUrls = [];
@@ -936,6 +969,37 @@ test("enrichment service discovers nearby places through the Worker contract", a
   assert.equal(result.places[0].title, "Lions Square");
   assert.equal(result.places[0].identity.canonicalName, "Lions Square");
   assert.equal(result.providerStatus[0].provider, "d1-nearby-cache");
+});
+
+test("enrichment service forwards persona context to nearby discovery", async () => {
+  let requestedUrl = "";
+  const service = createEnrichmentService({
+    apiBase: "https://trip.test",
+    fetchImpl: async (url) => {
+      requestedUrl = url;
+      return {
+        ok: true,
+        async json() {
+          return {
+            generatedAt: "2026-07-24T12:00:00.000Z",
+            coverage: "partial",
+            places: [],
+            providerStatus: [],
+          };
+        },
+      };
+    },
+  });
+
+  await service.discoverNearby({
+    coordinates: [48.8566, 2.3522],
+    radiusMeters: 1200,
+    personas: ["☕ Coffee Hunter", "🍷 Wine Seeker"],
+  });
+
+  const url = new URL(requestedUrl);
+  assert.equal(url.searchParams.get("intent"), "coffee");
+  assert.equal(url.searchParams.get("personas"), "☕ Coffee Hunter|🍷 Wine Seeker");
 });
 
 test("enrichment service resolves location through the Worker contract", async () => {

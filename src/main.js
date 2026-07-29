@@ -1765,7 +1765,11 @@ async function enrichCapturedMediaFile(file, trip) {
 
   const [location, nearby] = await Promise.all([
     enrichmentService.resolveLocation({ coordinates }).catch(() => null),
-    enrichmentService.discoverNearby({ coordinates, radiusMeters: 180, intent: "traveler" }).catch(() => null),
+    enrichmentService.discoverNearby({
+      coordinates,
+      radiusMeters: 180,
+      personas: Array.from(state.userPreferences || []),
+    }).catch(() => null),
   ]);
   const place = (nearby?.places || [])[0] || null;
   const geoLabel = location?.locality || location?.area?.city || location?.area?.town || location?.displayName || "";
@@ -2492,7 +2496,7 @@ async function runBackgroundEnrichmentScan() {
     const res = await enrichmentService.discoverNearby({
       coordinates: coords,
       radiusMeters: 2500,
-      intent: "traveler"
+      personas: Array.from(state.userPreferences || [])
     }).catch(() => null);
 
     if (res && res.places && res.places.length > 0) {

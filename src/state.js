@@ -7,6 +7,7 @@ import { findPrimaryAirportForDestination, formatAirportLabel, getAirportByIata 
 import { normalizeFlightType, searchFlightsForTrip } from "./services/flightService.js";
 import { fetchTripIntelligence } from "./services/tripDataGateway.js";
 import { readStoredMoments, saveStoredMoment, saveStoredMoments } from "./services/momentStore.js";
+import { getPersonaDiscoveryContext, rankItemsByPersonas } from "./utils/personaSignals.js";
 
 function getDefaultPlanViewMode() {
   if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
@@ -173,6 +174,7 @@ function readStoredTourismDiscovery(tripId) {
       hiddenGems: Array.isArray(discovery.hiddenGems) ? discovery.hiddenGems : [],
       osmPlaces: Array.isArray(discovery.osmPlaces) ? discovery.osmPlaces : [],
       updatedAt: discovery.updatedAt || "",
+      personaKey: discovery.personaKey || "",
     };
   } catch {
     return null;
@@ -487,6 +489,7 @@ class AppState {
           status: "cached",
           error: "",
           updatedAt: storedDiscovery.updatedAt,
+          personaKey: storedDiscovery.personaKey,
         };
       } else {
         tripsData[tripId].tourismPois = tripsData[tripId].tourismPois || [];
@@ -1127,14 +1130,20 @@ class AppState {
     const trip = tripsData[tripId];
     if (!trip || !Array.isArray(trip.center)) return { status: "error", error: "invalid-trip-center" };
 
+    const personas = Array.from(this.userPreferences || []);
+    const personaContext = getPersonaDiscoveryContext(personas);
+    const personaKey = personaContext.personas.join("|");
     const existing = [...(trip.tourismPois || []), ...(trip.hiddenGems || []), ...(trip.osmPlaces || [])];
-    if (this.tourismDiscoveryStatus[tripId]?.status === "loading" && !options.force) return this.tourismDiscoveryStatus[tripId];
-    if (existing.length && !options.force) return this.tourismDiscoveryStatus[tripId] || { status: "ready", error: "" };
+    const currentStatus = this.tourismDiscoveryStatus[tripId];
+    const isPersonaMatched = (currentStatus?.personaKey || "") === personaKey;
+    if (currentStatus?.status === "loading" && !options.force && isPersonaMatched) return currentStatus;
+    if (existing.length && !options.force && isPersonaMatched) return currentStatus || { status: "ready", error: "", personaKey };
 
     this.tourismDiscoveryStatus[tripId] = {
       status: "loading",
       error: "",
       updatedAt: new Date().toISOString(),
+      personaKey,
     };
     if (options.notify !== false) this.notify();
 
@@ -1144,22 +1153,24 @@ class AppState {
           coordinates: trip.center,
           radiusMeters: options.radiusMeters || 4500,
           limit: options.topLimit || 14,
+          personas,
         }),
         enrichmentService.discoverHiddenGems({
           coordinates: trip.center,
           radiusMeters: options.hiddenRadiusMeters || 6500,
           limit: options.hiddenLimit || 10,
+          personas,
         }),
         enrichmentService.discoverNearby({
           coordinates: trip.center,
           radiusMeters: options.osmRadiusMeters || 2200,
-          intent: "traveler",
+          personas,
         }),
       ]);
 
-      const tourismPois = (topResult?.places || []).map((place) => normalizeTourismIdea(place, "poi"));
-      const hiddenGems = (hiddenResult?.places || []).map((place) => normalizeTourismIdea(place, "hidden"));
-      const osmPlaces = (osmResult?.places || []).map((place) => normalizeTourismIdea(place, "osm"));
+      const tourismPois = rankItemsByPersonas((topResult?.places || []).map((place) => normalizeTourismIdea(place, "poi")), personas);
+      const hiddenGems = rankItemsByPersonas((hiddenResult?.places || []).map((place) => normalizeTourismIdea(place, "hidden")), personas);
+      const osmPlaces = rankItemsByPersonas((osmResult?.places || []).map((place) => normalizeTourismIdea(place, "osm")), personas);
       await this.enrichDiscoveryMedia([...tourismPois, ...hiddenGems, ...osmPlaces].slice(0, 8));
       const status = getOpenTripMapStatus([topResult, hiddenResult]);
       const updatedAt = new Date().toISOString();
@@ -1171,16 +1182,18 @@ class AppState {
         status: tourismPois.length || hiddenGems.length || osmPlaces.length ? "ready" : status,
         error: status === "not-configured" ? "missing-opentripmap-api-key" : (topResult?.error || hiddenResult?.error || ""),
         updatedAt,
+        personaKey,
       };
 
       if (tourismPois.length || hiddenGems.length || osmPlaces.length) {
-        writeStoredTourismDiscovery(tripId, { tourismPois, hiddenGems, osmPlaces, updatedAt });
+        writeStoredTourismDiscovery(tripId, { tourismPois, hiddenGems, osmPlaces, updatedAt, personaKey });
       }
     } catch (error) {
       this.tourismDiscoveryStatus[tripId] = {
         status: "error",
         error: error?.message || "opentripmap-discovery-failed",
         updatedAt: new Date().toISOString(),
+        personaKey,
       };
     }
 
@@ -1754,7 +1767,11 @@ class AppState {
 
         // Discover live nearby traveler POIs via Worker / Overpass
         try {
-          const scan = await enrichmentService.discoverNearby({ coordinates: coords, radiusMeters: 2000 });
+          const scan = await enrichmentService.discoverNearby({
+            coordinates: coords,
+            radiusMeters: 2000,
+            personas: Array.from(this.userPreferences || []),
+          });
           if (scan && scan.places && scan.places.length) {
             this.liveNearbyPlaces = scan.places;
           }
@@ -1773,7 +1790,11 @@ class AppState {
 
   async scanNearbyForArea(coords, radius = 2000) {
     try {
-      const scan = await enrichmentService.discoverNearby({ coordinates: coords, radiusMeters: radius });
+      const scan = await enrichmentService.discoverNearby({
+        coordinates: coords,
+        radiusMeters: radius,
+        personas: Array.from(this.userPreferences || []),
+      });
       if (scan && scan.places && scan.places.length) {
         return scan.places;
       }

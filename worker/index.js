@@ -3203,6 +3203,34 @@ function buildOverpassQueries(coordinates, radiusMeters, request) {
       { name: "fallback", query: buildFallbackOverpassQuery(coordinates) },
     ];
   }
+  if (["food", "nightlife", "social"].includes(intent)) {
+    return [
+      { name: intent, query: buildFoodNightlifeOverpassQuery(coordinates, radiusMeters) },
+      { name: "traveler", query: buildNearbyOverpassQuery(coordinates, radiusMeters) },
+      { name: "fallback", query: buildFallbackOverpassQuery(coordinates) },
+    ];
+  }
+  if (["culture", "events"].includes(intent)) {
+    return [
+      { name: intent, query: buildCultureOverpassQuery(coordinates, radiusMeters) },
+      { name: "traveler", query: buildNearbyOverpassQuery(coordinates, radiusMeters) },
+      { name: "fallback", query: buildFallbackOverpassQuery(coordinates) },
+    ];
+  }
+  if (["views", "nature", "routes", "driver"].includes(intent)) {
+    return [
+      { name: intent, query: buildViewsNatureOverpassQuery(coordinates, radiusMeters) },
+      { name: "traveler", query: buildNearbyOverpassQuery(coordinates, radiusMeters) },
+      { name: "fallback", query: buildFallbackOverpassQuery(coordinates) },
+    ];
+  }
+  if (["shopping", "local", "budget"].includes(intent)) {
+    return [
+      { name: intent, query: buildLocalShoppingOverpassQuery(coordinates, radiusMeters) },
+      { name: "traveler", query: buildNearbyOverpassQuery(coordinates, radiusMeters) },
+      { name: "fallback", query: buildFallbackOverpassQuery(coordinates) },
+    ];
+  }
   return [
     { name: "traveler", query: buildNearbyOverpassQuery(coordinates, radiusMeters) },
     { name: "fallback", query: buildFallbackOverpassQuery(coordinates) },
@@ -3222,6 +3250,68 @@ function buildCoffeeOverpassQuery([lat, lng], radius) {
       way(around:${primaryRadius},${lat},${lng})["craft"="roastery"];
     );
     out center tags 24;
+  `;
+}
+
+function buildFoodNightlifeOverpassQuery([lat, lng], radius) {
+  const primaryRadius = Math.min(radius, 1200);
+  return `
+    [out:json][timeout:8];
+    (
+      node(around:${primaryRadius},${lat},${lng})["amenity"~"restaurant|bar|pub|cafe|food_court|ice_cream"];
+      way(around:${primaryRadius},${lat},${lng})["amenity"~"restaurant|bar|pub|cafe|food_court|ice_cream"];
+      node(around:${primaryRadius},${lat},${lng})["shop"~"bakery|coffee|wine|deli|confectionery"];
+      way(around:${primaryRadius},${lat},${lng})["shop"~"bakery|coffee|wine|deli|confectionery"];
+    );
+    out center tags 30;
+  `;
+}
+
+function buildCultureOverpassQuery([lat, lng], radius) {
+  const primaryRadius = Math.min(radius, 1800);
+  return `
+    [out:json][timeout:8];
+    (
+      node(around:${primaryRadius},${lat},${lng})["tourism"~"museum|gallery|attraction|artwork"];
+      way(around:${primaryRadius},${lat},${lng})["tourism"~"museum|gallery|attraction|artwork"];
+      node(around:${primaryRadius},${lat},${lng})["historic"];
+      way(around:${primaryRadius},${lat},${lng})["historic"];
+      node(around:${primaryRadius},${lat},${lng})["amenity"~"theatre|arts_centre|cinema|events_venue"];
+      way(around:${primaryRadius},${lat},${lng})["amenity"~"theatre|arts_centre|cinema|events_venue"];
+    );
+    out center tags 30;
+  `;
+}
+
+function buildViewsNatureOverpassQuery([lat, lng], radius) {
+  const primaryRadius = Math.min(radius, 2200);
+  return `
+    [out:json][timeout:8];
+    (
+      node(around:${primaryRadius},${lat},${lng})["tourism"~"viewpoint|attraction"];
+      way(around:${primaryRadius},${lat},${lng})["tourism"~"viewpoint|attraction"];
+      node(around:${primaryRadius},${lat},${lng})["leisure"~"park|garden"];
+      way(around:${primaryRadius},${lat},${lng})["leisure"~"park|garden"];
+      node(around:${primaryRadius},${lat},${lng})["natural"];
+      way(around:${primaryRadius},${lat},${lng})["natural"];
+    );
+    out center tags 30;
+  `;
+}
+
+function buildLocalShoppingOverpassQuery([lat, lng], radius) {
+  const primaryRadius = Math.min(radius, 1400);
+  return `
+    [out:json][timeout:8];
+    (
+      node(around:${primaryRadius},${lat},${lng})["shop"];
+      way(around:${primaryRadius},${lat},${lng})["shop"];
+      node(around:${primaryRadius},${lat},${lng})["amenity"~"marketplace|cafe|restaurant"];
+      way(around:${primaryRadius},${lat},${lng})["amenity"~"marketplace|cafe|restaurant"];
+      node(around:${primaryRadius},${lat},${lng})["tourism"~"attraction|artwork"];
+      way(around:${primaryRadius},${lat},${lng})["tourism"~"attraction|artwork"];
+    );
+    out center tags 30;
   `;
 }
 
@@ -3785,8 +3875,19 @@ function scoreNearbyPlace(tags, meters, intent = "traveler") {
   const coffeeNerdBoost = tags.craft === "roastery" || tags.roastery === "yes" || tags.coffee === "specialty" ? 0.42 : 1;
   const utilityBoost = ["toilets", "drinking_water"].includes(tags.amenity) ? 0.82 : 1;
   const namedBoost = tags.wikidata || tags.website ? 0.9 : 1;
-  const intentBoost = intent === "coffee" && (tags.amenity === "cafe" || tags.shop === "coffee" || tags.craft === "roastery") ? 0.55 : 1;
+  const intentBoost = getNearbyIntentBoost(tags, intent);
   return meters * categoryBoost * foodBoost * coffeeNerdBoost * utilityBoost * namedBoost * intentBoost;
+}
+
+function getNearbyIntentBoost(tags = {}, intent = "traveler") {
+  if (intent === "coffee" && (tags.amenity === "cafe" || tags.shop === "coffee" || tags.craft === "roastery")) return 0.55;
+  if (["food", "social"].includes(intent) && ["restaurant", "food_court", "cafe"].includes(tags.amenity)) return 0.62;
+  if (intent === "nightlife" && ["bar", "pub", "cafe"].includes(tags.amenity)) return 0.58;
+  if (["culture", "events"].includes(intent) && (["museum", "gallery", "attraction", "artwork"].includes(tags.tourism) || tags.historic || ["theatre", "arts_centre", "cinema", "events_venue"].includes(tags.amenity))) return 0.62;
+  if (["views", "nature", "routes", "driver"].includes(intent) && (tags.tourism === "viewpoint" || ["park", "garden"].includes(tags.leisure) || tags.natural)) return 0.64;
+  if (["shopping", "local"].includes(intent) && (tags.shop || tags.amenity === "marketplace")) return 0.66;
+  if (intent === "budget" && (["park", "garden"].includes(tags.leisure) || tags.tourism === "viewpoint" || tags.amenity === "drinking_water")) return 0.68;
+  return 1;
 }
 
 function storedPlaceTags(place = {}) {

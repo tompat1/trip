@@ -7,6 +7,7 @@ import { calculateFlightDistance, getAirportByIata, searchAirports } from "../se
 import { fetchRouteDirections } from "../services/routeService.js";
 import { fetchConcertsForTrip, searchConcerts } from "../services/concertService.js";
 import { fetchOpenTripMapPlaceDetails, fetchOpenTripMapPlaces, OPENTRIPMAP_HIDDEN_GEMS_KINDS, OPENTRIPMAP_TOURISM_KINDS } from "../services/openTripMapService.js";
+import { getPersonaDiscoveryContext, rankItemsByPersonas } from "../utils/personaSignals.js";
 
 export { calculateFlightDistance, getAirportByIata, searchAirports, fetchRouteDirections, fetchConcertsForTrip, searchConcerts, fetchOpenTripMapPlaceDetails, fetchOpenTripMapPlaces };
 
@@ -107,6 +108,7 @@ export function createEnrichmentService(options = {}) {
 
     async discoverNearby(input = {}) {
       const coordinates = normalizeCoordinates(input.coordinates);
+      const personaContext = getPersonaDiscoveryContext(input.personas || []);
       if (!coordinates) {
         return {
           status: "error",
@@ -122,15 +124,16 @@ export function createEnrichmentService(options = {}) {
         url.searchParams.set("lat", String(coordinates[0]));
         url.searchParams.set("lng", String(coordinates[1]));
         url.searchParams.set("radius", String(input.radiusMeters || 1500));
-        url.searchParams.set("intent", input.intent || "traveler");
+        url.searchParams.set("intent", input.intent || personaContext.osmIntent || "traveler");
+        if (personaContext.personas.length) url.searchParams.set("personas", personaContext.personas.join("|"));
         if (input.force) url.searchParams.set("refresh", "1");
 
         const response = await fetchImpl(url.href, { headers: { Accept: "application/json" } });
         if (!response.ok) throw new Error(`worker-nearby-http-${response.status}`);
         const payload = await response.json();
-        const places = (payload.places || [])
+        const places = rankItemsByPersonas((payload.places || [])
           .map((place) => normalizeWorkerNearbyPlace(place, coordinates))
-          .filter(Boolean);
+          .filter(Boolean), personaContext.personas);
 
         return {
           status: "ready",
@@ -140,6 +143,7 @@ export function createEnrichmentService(options = {}) {
           places,
           providerStatus: payload.providerStatus || [],
           coverage: payload.coverage || "partial",
+          personaContext,
           source: "trip-worker",
         };
       } catch (error) {
@@ -155,32 +159,44 @@ export function createEnrichmentService(options = {}) {
     },
 
     async discoverTopPois(input = {}) {
+      const personaContext = getPersonaDiscoveryContext(input.personas || []);
+      const kinds = mergeOpenTripMapKinds(input.kinds || OPENTRIPMAP_TOURISM_KINDS, personaContext.openTripMapKinds);
       return discoverOpenTripMapViaWorker({
         ...input,
-        kinds: input.kinds || OPENTRIPMAP_TOURISM_KINDS,
+        kinds,
         rate: input.rate || "2",
         limit: input.limit || 24,
       }, { apiBase, fetchImpl }).catch(() => fetchOpenTripMapPlaces({
         ...input,
-        kinds: input.kinds || OPENTRIPMAP_TOURISM_KINDS,
+        kinds,
         rate: input.rate || "2",
         limit: input.limit || 24,
         fetchImpl,
+      })).then((result) => ({
+        ...result,
+        places: rankItemsByPersonas(result?.places || [], personaContext.personas),
+        personaContext,
       }));
     },
 
     async discoverHiddenGems(input = {}) {
+      const personaContext = getPersonaDiscoveryContext(input.personas || []);
+      const kinds = mergeOpenTripMapKinds(input.kinds || OPENTRIPMAP_HIDDEN_GEMS_KINDS, personaContext.openTripMapKinds);
       return discoverOpenTripMapViaWorker({
         ...input,
-        kinds: input.kinds || OPENTRIPMAP_HIDDEN_GEMS_KINDS,
+        kinds,
         rate: input.rate || "1",
         limit: input.limit || 18,
       }, { apiBase, fetchImpl }).catch(() => fetchOpenTripMapPlaces({
         ...input,
-        kinds: input.kinds || OPENTRIPMAP_HIDDEN_GEMS_KINDS,
+        kinds,
         rate: input.rate || "1",
         limit: input.limit || 18,
         fetchImpl,
+      })).then((result) => ({
+        ...result,
+        places: rankItemsByPersonas(result?.places || [], personaContext.personas),
+        personaContext,
       }));
     },
 
@@ -433,6 +449,7 @@ async function discoverOpenTripMapViaWorker(input = {}, options = {}) {
   url.searchParams.set("kinds", input.kinds || OPENTRIPMAP_TOURISM_KINDS);
   if (input.rate) url.searchParams.set("rate", String(input.rate));
   if (input.lang) url.searchParams.set("lang", input.lang);
+  if (Array.isArray(input.personas) && input.personas.length) url.searchParams.set("personas", input.personas.join("|"));
   const res = await options.fetchImpl(url.href, { headers: { Accept: "application/json" } });
   if (!res.ok) throw new Error(`worker-opentripmap-http-${res.status}`);
   const data = await res.json();
@@ -442,6 +459,15 @@ async function discoverOpenTripMapViaWorker(input = {}, options = {}) {
     providerStatus: data.providerStatus || [],
     error: "",
   };
+}
+
+function mergeOpenTripMapKinds(baseKinds = "", personaKinds = "") {
+  return [...new Set(
+    [baseKinds, personaKinds]
+      .flatMap((value) => String(value || "").split(","))
+      .map((value) => value.trim())
+      .filter(Boolean)
+  )].join(",");
 }
 
 async function fetchOpenTripMapDetailsViaWorker(xid, options = {}) {
