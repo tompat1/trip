@@ -42,15 +42,11 @@ export function renderSearchView() {
             <div>
               <span class="voice-mono" style="font-size: 0.72rem; color: var(--orange); font-weight: 700; letter-spacing: 1px; text-transform: uppercase;">Intelligent Search</span>
               <h2 class="voice-serif" style="font-size: 1.4rem; font-weight: 800; color: var(--ink); margin-top: 2px;">Discover ${escapeHtml(currentTrip.destination)} ${currentTrip.flag || ''}</h2>
-              ${activePersonaSignals.length ? `
-                <p class="search-persona-context">
-                  Tuned for ${escapeHtml(personaSummary)}
-                </p>
-              ` : ""}
+              <div class="search-hero-meta">
+                <span>⚡ Live Enriched</span>
+                ${activePersonaSignals.length ? `<span>✦ Tuned for ${escapeHtml(personaSummary)}</span>` : ""}
+              </div>
             </div>
-            <span style="font-size: 0.7rem; background: rgba(56,92,115,0.12); color: var(--blue); padding: 4px 10px; border-radius: 12px; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;">
-              ⚡ Live Enriched
-            </span>
           </div>
 
           <!-- Main Search Input -->

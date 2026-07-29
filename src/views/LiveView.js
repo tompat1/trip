@@ -7,9 +7,12 @@ export function renderLiveView() {
   const trip = state.activeTrip;
   const events = trip.calendarEvents || [];
   const activeDayEvents = events.filter(e => Number(e.dayIndex) === (state.activeDayIndex || 0));
+  const destinationContext = getTripDestinationContext(trip);
+  const personaSummary = getLivePersonaSummary();
 
   // Nearby POIs data
-  const nearbyPlaces = state.liveNearbyPlaces && state.liveNearbyPlaces.length ? state.liveNearbyPlaces : [
+  const liveNearbyPlaces = state.liveNearbyPlacesTripId === trip.id ? state.liveNearbyPlaces : [];
+  const nearbyPlaces = liveNearbyPlaces && liveNearbyPlaces.length ? liveNearbyPlaces : [
     { id: "np1", name: "Le Marais Artisan Bakery", category: "Bakery", distance: "280m", rating: "4.9", address: "14 Rue Bretagne" },
     { id: "np2", name: "Louvre Courtyard & Pyramid", category: "Sight", distance: "450m", rating: "4.8", address: "Place du Carrousel" },
     { id: "np3", name: "Telescope Specialty Coffee", category: "Café", distance: "600m", rating: "4.7", address: "5 Rue Villedo" },
@@ -22,13 +25,17 @@ export function renderLiveView() {
 
       <div class="live-page__content" style="padding: 16px 16px 32px 16px; display: flex; flex-direction: column; gap: 20px;">
         <!-- Live Status Banner -->
-        <section class="live-status-hero" style="background: linear-gradient(135deg, var(--paper-card) 0%, var(--paper-subtle) 100%); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 18px; box-shadow: var(--shadow-sm);">
+        <section class="live-status-hero card-pattern-map" style="background: linear-gradient(135deg, var(--paper-card) 0%, var(--paper-subtle) 100%); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 18px; box-shadow: var(--shadow-sm);">
           <div class="live-status-hero__badge mb-xs" style="display: flex; align-items: center; gap: 6px;">
             <span class="live-pulse-dot" style="width: 8px; height: 8px; border-radius: 50%; background: var(--green); box-shadow: 0 0 6px rgba(101,112,91,0.6);"></span>
             <span class="voice-mono" style="font-size: 0.72rem; font-weight: 700; color: var(--green); letter-spacing: 0.5px;">LIVE JOURNEY MODE</span>
           </div>
           <h2 class="voice-serif" style="font-size: 1.5rem; font-weight: 700; color: var(--ink); margin: 4px 0;">Exploring ${escapeHtml(trip.destination)} ${trip.flag}</h2>
-          <p style="font-size: 0.85rem; color: var(--ink-muted); margin: 0;">Real-time Open-Meteo weather (${trip.weather?.temp || '20°C'}), nearby POIs & live GPS location</p>
+          <div class="live-context-meta">
+            <span>⚡ Live Enriched</span>
+            ${personaSummary ? `<span>✦ Tuned for ${escapeHtml(personaSummary)}</span>` : ""}
+          </div>
+          <p style="font-size: 0.85rem; color: var(--ink-muted); margin: 0;">Real-time Open-Meteo weather (${trip.weather?.temp || '20°C'}), trip-center POIs & live signals</p>
         </section>
 
         <!-- Interactive Map Container -->
@@ -36,9 +43,9 @@ export function renderLiveView() {
           <div id="live-map-container" class="live-map" style="width: 100%; height: 100%; z-index: 1;"></div>
           <div class="live-map-overlay" style="position: absolute; bottom: 12px; left: 12px; right: 12px; z-index: 2; display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.92); backdrop-filter: blur(6px); padding: 10px 14px; border-radius: var(--radius-md); border: 1px solid var(--line-light);">
             <span class="location-ping voice-mono" style="font-size: 0.78rem; font-weight: 600; color: var(--ink); display: flex; align-items: center; gap: 6px;">
-              ${renderIcon("mapPin")} Near Lions Square, Heraklion
+              ${renderIcon("mapPin")} Near ${escapeHtml(destinationContext)}
             </span>
-            <button class="btn btn--primary btn--xs" data-action="locate-user" style="padding: 4px 10px;">Recenter GPS</button>
+            <button class="btn btn--primary btn--xs" data-action="locate-user" style="padding: 4px 10px;">Recenter trip</button>
           </div>
         </div>
 
@@ -49,9 +56,9 @@ export function renderLiveView() {
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
             <div>
               <h3 class="dashboard-card__title" style="margin: 0; font-size: 1.1rem;">Nearby Spots & POIs</h3>
-              <p style="font-size: 0.8rem; color: var(--ink-muted); margin: 2px 0 0 0;">Live places within 1km of your current location</p>
+              <p style="font-size: 0.8rem; color: var(--ink-muted); margin: 2px 0 0 0;">Live places around the trip center</p>
             </div>
-            <span class="badge badge--info voice-mono" style="font-weight: 700;">Live GPS</span>
+            <span class="badge badge--info voice-mono" style="font-weight: 700;">Trip center</span>
           </div>
 
           <div class="nearby-places-feed" style="display: flex; flex-direction: column; gap: 12px;">
@@ -1023,6 +1030,22 @@ function createWhatsAppInvite(companion = {}) {
 function createQrInvite(companion = {}) {
   const inviteUrl = companion.inviteUrl || "";
   return `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(inviteUrl)}`;
+}
+
+function getTripDestinationContext(trip = {}) {
+  const destination = String(trip.destination || "").trim();
+  if (destination) return destination;
+  const city = state.locationResolved?.city || state.locationResolved?.town || state.locationResolved?.area || "";
+  const country = state.locationResolved?.country || "";
+  return [city, country].filter(Boolean).join(", ") || "trip area";
+}
+
+function getLivePersonaSummary() {
+  const labels = Array.from(state.userPreferences || [])
+    .map((persona) => String(persona || "").replace(/^[^\p{L}\p{N}]+/u, "").trim())
+    .filter(Boolean);
+  if (labels.length <= 3) return labels.join(", ");
+  return `${labels.slice(0, 3).join(", ")} +${labels.length - 3}`;
 }
 
 function escapeHtml(str) {

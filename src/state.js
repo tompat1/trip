@@ -452,6 +452,7 @@ class AppState {
     this.userLocation = null; // [lat, lng]
     this.locationResolved = null; // { area, town, city, country }
     this.liveNearbyPlaces = [];
+    this.liveNearbyPlacesTripId = "";
     this.backendHealth = { status: "checking", bindings: {}, secrets: {}, services: {}, generatedAt: "" };
     this.tourismDiscoveryStatus = {};
     this.eventDiscoveryStatus = {};
@@ -1086,6 +1087,9 @@ class AppState {
   setTrip(tripId) {
     if (tripsData[tripId] && this.activeTripId !== tripId) {
       this.activeTripId = tripId;
+      this.locationResolved = null;
+      this.liveNearbyPlaces = [];
+      this.liveNearbyPlacesTripId = "";
       if (!this.profileCompanionTripId || !isFutureTrip(tripsData[this.profileCompanionTripId])) {
         this.profileCompanionTripId = resolveFutureTripId(tripId, this.profileCompanionTripId);
       }
@@ -1780,6 +1784,7 @@ class AppState {
           });
           if (scan && scan.places && scan.places.length) {
             this.liveNearbyPlaces = scan.places;
+            this.liveNearbyPlacesTripId = this.activeTripId;
           }
         } catch (e) {
           console.warn("Nearby scan warning:", e);

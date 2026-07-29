@@ -537,26 +537,16 @@ function initMapsForView(view) {
   } else if (view === "search") {
     const container = document.getElementById("search-map-container");
     if (container) {
-      // Copenhagen center
-      const map = L.map(container, { zoomControl: false, attributionControl: false }).setView([55.6761, 12.5683], 13);
+      const map = L.map(container, { zoomControl: false, attributionControl: false }).setView(trip.center, trip.zoom || 13);
       L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19 }).addTo(map);
 
-      // Add numbered markers 1-5
-      const pins = [
-        { lat: 55.69, lng: 12.57, num: 1 },
-        { lat: 55.688, lng: 12.558, num: 2 },
-        { lat: 55.683, lng: 12.56, num: 3 },
-        { lat: 55.669, lng: 12.562, num: 4 },
-        { lat: 55.695, lng: 12.575, num: 5 }
-      ];
-
-      pins.forEach((p) => {
+      (trip.mapPins || []).slice(0, 5).forEach((pin, index) => {
         const icon = L.divIcon({
           className: "custom-map-num-pin",
-          html: `<div style="background:#171817; color:#fff; font-weight:800; width:24px; height:24px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:12px; border:2px solid #fff;">${p.num}</div>`,
+          html: `<div style="background:#171817; color:#fff; font-weight:800; width:24px; height:24px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:12px; border:2px solid #fff;">${index + 1}</div>`,
           iconSize: [24, 24]
         });
-        L.marker([p.lat, p.lng], { icon }).addTo(map);
+        L.marker([pin.lat, pin.lng], { icon }).addTo(map);
       });
 
       activeMaps.set("search", map);
@@ -2507,6 +2497,7 @@ async function runBackgroundEnrichmentScan() {
 
     if (res && res.places && res.places.length > 0) {
       state.liveNearbyPlaces = res.places;
+      state.liveNearbyPlacesTripId = trip.id;
     }
 
     // 3. Enrich trip events with Live Concerts & Music performances

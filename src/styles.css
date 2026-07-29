@@ -4315,20 +4315,43 @@ textarea {
   border: 1px solid var(--line);
 }
 
-.search-persona-context {
+.search-hero-meta,
+.live-context-meta {
   display: flex;
   align-items: center;
   gap: 6px;
-  max-width: 30ch;
-  margin-top: 5px;
-  color: var(--ink-muted);
-  font-size: 0.76rem;
-  font-weight: 700;
-  line-height: 1.25;
+  max-width: 100%;
+  margin-top: 6px;
+  margin-bottom: 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
 }
 
-.search-persona-context::before {
-  content: "✦";
+.search-hero-meta::-webkit-scrollbar,
+.live-context-meta::-webkit-scrollbar {
+  display: none;
+}
+
+.search-hero-meta span,
+.live-context-meta span {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  min-height: 26px;
+  padding: 4px 9px;
+  border: 1px solid rgba(255, 85, 0, 0.18);
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--paper-card) 78%, rgba(255, 85, 0, 0.12));
+  color: var(--ink-muted);
+  font-size: 0.7rem;
+  font-weight: 850;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.search-hero-meta span:first-child,
+.live-context-meta span:first-child {
   color: var(--orange);
 }
 
@@ -4598,7 +4621,10 @@ textarea {
   border-bottom-color: var(--orange);
 }
 
-:root[data-theme="dark"] .search-persona-context {
+:root[data-theme="dark"] .search-hero-meta span,
+:root[data-theme="dark"] .live-context-meta span {
+  background: rgba(18, 31, 48, 0.86);
+  border-color: rgba(237, 244, 255, 0.14);
   color: #C7D2E3;
 }
 
