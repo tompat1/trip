@@ -751,7 +751,7 @@ async function logOutAndShowExit() {
 
 // Global Event Listeners Delegation
 document.addEventListener("click", async (e) => {
-  const target = e.target.closest("[data-nav], [data-action], [data-subtab], [data-journal-section], [data-viewmode], [data-day-select], [data-map-day-filter], [data-trip-length], [data-cat], [data-subfilter]");
+  const target = e.target.closest("[data-nav], [data-action], [data-subtab], [data-journal-section], [data-template-filter], [data-viewmode], [data-day-select], [data-map-day-filter], [data-trip-length], [data-cat], [data-subfilter]");
   if (!target) {
     if (!e.target.closest?.(".airport-autocomplete")) closeAirportAutocompleteMenus();
     return;
@@ -925,6 +925,17 @@ document.addEventListener("click", async (e) => {
       state.setQuickCaptureTrip(state.activeTripId);
       state.toggleQuickCapture(true);
       showToast(`Quick Capture opened for ${state.activeTrip.destination}.`);
+    }
+    else if (action === "search-journal-media") {
+      const nextQuery = prompt("Search moments by place, tag, or title:", state.journalMediaQuery || "");
+      if (nextQuery !== null) {
+        state.setJournalMediaQuery(nextQuery);
+        showToast(nextQuery.trim() ? `Filtering moments for "${nextQuery.trim()}".` : "Moment search cleared.");
+      }
+    }
+    else if (action === "cycle-journal-media-filter") {
+      const nextFilter = state.cycleJournalMediaFilter();
+      showToast(`Moment filter: ${nextFilter}.`);
     }
     else if (action === "close-quick-capture") {
       if (target.classList.contains("quick-capture-overlay") && e.target !== target) return;
@@ -1372,6 +1383,9 @@ document.addEventListener("click", async (e) => {
 
   if (target.dataset.journalSection) {
     state.setJournalSection(target.dataset.journalSection);
+  }
+  if (target.dataset.templateFilter) {
+    state.setJournalTemplateFilter(target.dataset.templateFilter);
   }
 
   // View mode switcher
@@ -1935,6 +1949,10 @@ function buildJournalTemplateStory(templateId, trip) {
     "photo-essay": buildPhotoEssayStory,
     "day-recap": buildDayRecapStory,
     "share-card": buildShareCardStory,
+    "city-guide": buildCityGuideStory,
+    "food-journal": buildFoodJournalStory,
+    "travel-film": buildTravelFilmStory,
+    "route-story": buildRouteStoryStory,
     "travel-log": buildTravelLogStory,
   };
   const build = templateBuilders[templateId] || buildTravelLogStory;
@@ -2058,6 +2076,108 @@ function buildTravelLogStory({ destination, noteMoments, activities, highlights 
     title: `${destination} Travel Log`,
     lead: `A written archive for ${destination}, shaped around notes, observations, and the route as it unfolds.`,
     sections,
+  };
+}
+
+function buildCityGuideStory({ trip, destination, activities, highlights }) {
+  const city = destination.split(",")[0];
+  const guideStops = highlights.length ? highlights.slice(0, 5) : activities.map((event) => event.title).filter(Boolean).slice(0, 5);
+  return {
+    templateId: "city-guide",
+    templateLabel: "City guide",
+    kicker: "RECOMMENDATION GUIDE TEMPLATE",
+    title: `${city} Guide`,
+    lead: `A compact guide to ${destination}, built from saved places, itinerary anchors, and TRIP recommendations.`,
+    sections: [
+      {
+        title: "Start Here",
+        body: guideStops.length ? `Lead with ${formatInlineList(guideStops.slice(0, 3))}.` : `Add saved spots to shape the first ${city} guide.`,
+      },
+      {
+        title: "Recommended Rhythm",
+        body: `Keep this guide useful: one morning anchor, one food stop, one local walk, and one flexible evening option.`,
+      },
+      {
+        title: "For Fellow Travelers",
+        body: `Use this as the companion-friendly version: short descriptions, clear why-go notes, and quick itinerary actions.`,
+      },
+    ],
+  };
+}
+
+function buildFoodJournalStory({ destination, noteMoments, highlights }) {
+  const foodNotes = noteMoments.filter((moment) => /coffee|cafe|food|wine|dinner|lunch|restaurant/i.test(`${moment.title || ""} ${moment.text || ""}`));
+  return {
+    templateId: "food-journal",
+    templateLabel: "Food journal",
+    kicker: "TASTE MEMORY TEMPLATE",
+    title: `${destination} Food Journal`,
+    lead: `A taste-led memory page for cafés, restaurants, wine, and the small rituals that made the trip feel local.`,
+    sections: [
+      {
+        title: "Best Bite",
+        body: foodNotes[0]?.text || `Choose one meal, café, market, or wine stop from ${destination} as the headline memory.`,
+      },
+      {
+        title: "Places To Revisit",
+        body: highlights.length ? formatInlineList(highlights.slice(0, 4)) : "Save restaurants and cafés from Search to build this list.",
+      },
+      {
+        title: "Notes For Next Time",
+        body: "Capture what to order again, what time to go, and who in the group loved it most.",
+      },
+    ],
+  };
+}
+
+function buildTravelFilmStory({ destination, mediaMoments }) {
+  return {
+    templateId: "travel-film",
+    templateLabel: "Travel film",
+    kicker: "VIDEO MOMENTS TEMPLATE",
+    title: `${destination} Travel Film`,
+    lead: mediaMoments.length
+      ? `${mediaMoments.length} visual moments can become a short cinematic cut.`
+      : `A film outline for ${destination}, ready for video captures and motion moments.`,
+    sections: [
+      {
+        title: "Opening Shot",
+        body: mediaMoments[0]?.placeTitle || `Begin with movement: arrival, street rhythm, transit, or the first view of ${destination}.`,
+      },
+      {
+        title: "Middle Sequence",
+        body: "Mix wide location shots with food, faces, details, and route movement.",
+      },
+      {
+        title: "Final Beat",
+        body: "End with a quiet image, sunset, night walk, or a companion moment worth remembering.",
+      },
+    ],
+  };
+}
+
+function buildRouteStoryStory({ trip, destination, activities }) {
+  const routeStops = activities.map((event) => event.location || event.title).filter(Boolean).slice(0, 6);
+  return {
+    templateId: "route-story",
+    templateLabel: "Route story",
+    kicker: "MAP MEMORY TEMPLATE",
+    title: `${destination} Route Story`,
+    lead: `A map-led story of how the trip moved through ${destination}.`,
+    sections: [
+      {
+        title: "Route Spine",
+        body: routeStops.length ? formatInlineList(routeStops) : `Add itinerary stops to draw the main route through ${destination}.`,
+      },
+      {
+        title: "Why This Route",
+        body: `Frame the route around fewer jumps, better nearby discoveries, and moments that are easy to share with companions.`,
+      },
+      {
+        title: "Map Notes",
+        body: `Use Gallery captures and place tags to pin memories directly onto the route.`,
+      },
+    ],
   };
 }
 

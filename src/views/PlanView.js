@@ -22,6 +22,15 @@ const JOURNAL_SECTIONS = [
   { id: "templates", label: "Templates", icon: renderIcon("save") }
 ];
 
+const TEMPLATE_FILTERS = [
+  { id: "all", label: "All" },
+  { id: "moments", label: "Moments" },
+  { id: "stories", label: "Stories" },
+  { id: "guides", label: "Guides" },
+  { id: "videos", label: "Videos" },
+  { id: "prints", label: "Prints" },
+];
+
 const VIEW_MODES = [
   { id: "day", label: "Day", icon: renderIcon("calendar") },
   { id: "week", label: "Week", icon: renderIcon("calendar") },
@@ -105,7 +114,8 @@ function renderSubtabContent(trip) {
 
 function renderJournalSubTab() {
   const moments = getMomentsForTrip(state.activeTrip.id);
-  const mediaMoments = moments.filter(hasUsableMediaMoment);
+  const allMediaMoments = moments.filter(hasUsableMediaMoment);
+  const mediaMoments = filterJournalMediaMoments(allMediaMoments);
   const noteMoments = moments.filter(isWrittenNoteMoment);
   const mediaGroups = groupMediaMoments(mediaMoments);
   const section = state.journalSection || "gallery";
@@ -119,27 +129,53 @@ function renderJournalSubTab() {
 
       ${section === "notes" ? renderJournalNotesSection(noteMoments) : ""}
       ${section === "story" ? renderStorySubTab(state.activeTrip) : ""}
-      ${section === "templates" ? renderJournalTemplatesSection(state.activeTrip, { mediaCount: mediaMoments.length, noteCount: noteMoments.length }) : ""}
+      ${section === "templates" ? renderJournalTemplatesSection(state.activeTrip, { mediaCount: allMediaMoments.length, noteCount: noteMoments.length }) : ""}
       ${section === "gallery" ? renderJournalGallerySection(mediaGroups, mediaMoments.length) : ""}
     </div>
   `;
 }
 
 function renderJournalGallerySection(mediaGroups, mediaCount) {
+  const filterLabel = state.journalMediaFilter === "photos" ? "Photos" : state.journalMediaFilter === "videos" ? "Videos" : "Filter";
+  const queryLabel = state.journalMediaQuery ? `Search: ${state.journalMediaQuery}` : "Search moments";
   return `
     <section class="journal-section-panel" aria-labelledby="journal-gallery-title">
       <div class="journal-section-header">
         <div>
-          <span class="voice-mono">Media archive</span>
+          <span class="voice-mono">Your moments</span>
           <h3 id="journal-gallery-title">Gallery</h3>
+          <p class="journal-section-subcopy">${mediaCount} ${mediaCount === 1 ? "moment" : "moments"} from this trip</p>
         </div>
-        <button class="btn btn--primary btn--sm" data-action="open-quick-capture" type="button">${renderIcon("camera")} Capture</button>
+        <div class="journal-section-actions">
+          <button class="journal-icon-action" data-action="search-journal-media" type="button" aria-label="${escapeHtml(queryLabel)}" title="${escapeHtml(queryLabel)}">${renderIcon("search")}</button>
+          <button class="btn btn--outline btn--sm" data-action="cycle-journal-media-filter" type="button">${renderIcon("filter")} ${escapeHtml(filterLabel)}</button>
+          <button class="btn btn--primary btn--sm" data-action="open-quick-capture" type="button">${renderIcon("plus")} New moment</button>
+        </div>
       </div>
       <div class="journal-media-grid mb-lg" style="margin-bottom: 24px;">
         ${mediaCount === 0 ? renderEmptyJournalMediaCard() : mediaGroups.map(renderJournalMediaGroup).join("")}
       </div>
     </section>
   `;
+}
+
+function filterJournalMediaMoments(mediaMoments = []) {
+  const filter = state.journalMediaFilter || "all";
+  const query = String(state.journalMediaQuery || "").trim().toLowerCase();
+  return mediaMoments.filter((moment) => {
+    const type = String(moment.type || "photo").toLowerCase();
+    const matchesType = filter === "all" || (filter === "photos" && type !== "video") || (filter === "videos" && type === "video");
+    if (!matchesType) return false;
+    if (!query) return true;
+    const haystack = [
+      moment.title,
+      moment.placeTitle,
+      moment.placeCategory,
+      moment.geoLabel,
+      ...(moment.tags || []),
+    ].filter(Boolean).join(" ").toLowerCase();
+    return haystack.includes(query);
+  });
 }
 
 function renderEmptyJournalMediaCard() {
@@ -192,31 +228,67 @@ function renderJournalNoteCard(m) {
 }
 
 function renderJournalTemplatesSection(trip, counts = {}) {
+  const previewImages = getTemplatePreviewImages(trip);
   const templates = [
-    { id: "photo-essay", title: "Photo essay", detail: `${counts.mediaCount || 0} media items ready`, icon: "image" },
-    { id: "day-recap", title: "Day-by-day recap", detail: "Use itinerary, notes and captures", icon: "calendar" },
-    { id: "share-card", title: "Share card", detail: `One-page memory from ${trip.destination}`, icon: "share" },
-    { id: "travel-log", title: "Travel log", detail: `${counts.noteCount || 0} notes available`, icon: "bookOpen" },
+    { id: "share-card", filter: "moments", title: "Postcard", detail: "Share a quick moment", icon: "share", image: previewImages[0] },
+    { id: "day-recap", filter: "stories", title: "Day Story", detail: "Your day in a beautiful summary", icon: "calendar", image: previewImages[1] },
+    { id: "photo-essay", filter: "stories", title: "Photo Essay", detail: `${counts.mediaCount || 0} media items ready`, icon: "image", image: previewImages[2] },
+    { id: "city-guide", filter: "guides", title: "City Guide", detail: `Create your ${trip.destination.split(",")[0]} guide`, icon: "map", image: previewImages[3] },
+    { id: "food-journal", filter: "moments", title: "Food Journal", detail: "Document cafés, meals and wine", icon: "utensils", image: previewImages[4] },
+    { id: "travel-film", filter: "videos", title: "Travel Film", detail: "Cinematic edits from moments", icon: "video", image: previewImages[5] },
+    { id: "route-story", filter: "guides", title: "Route Story", detail: "Map the journey with context", icon: "route", image: previewImages[6] },
+    { id: "travel-log", filter: "prints", title: "Trip Book", detail: `${counts.noteCount || 0} notes available`, icon: "bookOpen", image: previewImages[7] },
   ];
+  const activeFilter = state.journalTemplateFilter || "all";
+  const visibleTemplates = activeFilter === "all" ? templates : templates.filter((template) => template.filter === activeFilter);
+
   return `
     <section class="journal-section-panel" aria-labelledby="journal-templates-title">
       <div class="journal-section-header">
         <div>
-          <span class="voice-mono">Output formats</span>
+          <span class="voice-mono">Choose a template</span>
           <h3 id="journal-templates-title">Templates</h3>
+          <p class="journal-section-subcopy">Start from a beautiful layout and make it your own.</p>
         </div>
       </div>
-      <div class="journal-template-grid">
-        ${templates.map((template) => `
-          <button class="journal-template-card" data-action="generate-ai-story" data-template="${escapeHtml(template.id)}" type="button">
-            <span>${renderIcon(template.icon)}</span>
-            <strong>${escapeHtml(template.title)}</strong>
-            <small>${escapeHtml(template.detail)}</small>
+      <div class="journal-template-filters" role="tablist" aria-label="Template categories">
+        ${TEMPLATE_FILTERS.map((filter) => `
+          <button class="journal-template-filter ${activeFilter === filter.id ? "is-active" : ""}" data-template-filter="${filter.id}" type="button" role="tab" aria-selected="${activeFilter === filter.id}">
+            ${escapeHtml(filter.label)}
           </button>
         `).join("")}
       </div>
+      <div class="journal-template-grid">
+        ${visibleTemplates.map((template) => `
+          <button class="journal-template-card" data-action="generate-ai-story" data-template="${escapeHtml(template.id)}" type="button">
+            <span class="journal-template-card__media" style="background-image: url('${escapeHtml(template.image)}');">
+              <span>${renderIcon(template.icon)}</span>
+            </span>
+            <span class="journal-template-card__body">
+              <strong>${escapeHtml(template.title)}</strong>
+              <small>${escapeHtml(template.detail)}</small>
+            </span>
+          </button>
+        `).join("") || `<p class="journal-empty-inline">No templates in this category yet.</p>`}
+      </div>
     </section>
   `;
+}
+
+function getTemplatePreviewImages(trip) {
+  const ideaImages = (trip.ideas || []).map((idea) => idea.image).filter(Boolean);
+  const mediaImages = getMomentsForTrip(trip.id).filter(hasUsableMediaMoment).map(getMomentMediaUrl).filter(Boolean);
+  const fallbackImages = [
+    trip.upcomingActivity?.image,
+    ...ideaImages,
+    ...mediaImages,
+    "https://images.unsplash.com/photo-1511739001486-6bfe10ce785f?auto=format&fit=crop&w=900&q=82",
+    "https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=900&q=82",
+    "https://images.unsplash.com/photo-1499856871958-5b9627545d1a?auto=format&fit=crop&w=900&q=82",
+    "https://images.unsplash.com/photo-1527631746610-bca00a040d60?auto=format&fit=crop&w=900&q=82",
+  ].filter(Boolean);
+
+  return Array.from({ length: 8 }, (_, index) => fallbackImages[index % fallbackImages.length]);
 }
 
 function groupMediaMoments(mediaMoments = []) {
@@ -268,9 +340,11 @@ function renderJournalMediaGroup(group) {
 function renderJournalMediaCard(m) {
   const mediaUrl = getMomentMediaUrl(m);
   const isVideo = m.type === "video" || mediaUrl.includes("data:video");
+  const likes = 20 + Math.abs(String(m.id || "").length % 9);
+  const notes = Math.max(1, (m.tags || []).length);
   return `
-    <div class="journal-media-card" data-action="open-lightbox" data-moment-id="${m.id}" style="background: var(--paper-card); border: 1px solid var(--line); border-radius: var(--radius-md); overflow: hidden; cursor: pointer; box-shadow: var(--shadow-sm);">
-      <div class="journal-media-thumb ${mediaUrl ? "" : "journal-media-thumb--missing"}" style="height: 110px; ${mediaUrl ? `background-image: url('${escapeHtml(mediaUrl)}');` : ""} background-size: cover; background-position: center; position: relative;">
+    <div class="journal-media-card" data-action="open-lightbox" data-moment-id="${m.id}">
+      <div class="journal-media-thumb ${mediaUrl ? "" : "journal-media-thumb--missing"}" style="${mediaUrl ? `background-image: url('${escapeHtml(mediaUrl)}');` : ""}">
         ${mediaUrl ? "" : `
           <div class="journal-media-missing">
             ${renderIcon(m.type === "video" ? "video" : "camera")}
@@ -280,6 +354,7 @@ function renderJournalMediaCard(m) {
         <span class="media-type-badge voice-mono" style="position: absolute; bottom: 6px; right: 6px; background: rgba(23,24,23,0.8); color: #fff; padding: 2px 8px; border-radius: var(--radius-pill); font-size: 0.68rem; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">
           ${isVideo ? renderIcon("video") : renderIcon("camera")} ${escapeHtml(m.type || "photo")}
         </span>
+        ${isVideo ? `<span class="journal-media-play">${renderIcon("play")}</span>` : ""}
         ${m.groupFileCount > 1 ? `
           <span class="journal-media-batch-badge voice-mono">${escapeHtml(String(m.groupFileCount))} batch</span>
         ` : ""}
@@ -289,6 +364,10 @@ function renderJournalMediaCard(m) {
         <h4 class="journal-media-title" style="font-size: 0.85rem; font-weight: 700; margin: 0 0 2px 0; color: var(--ink);">${escapeHtml(m.title || 'Trip Moment')}</h4>
         <p class="journal-media-date voice-mono" style="font-size: 0.72rem; color: var(--ink-muted); margin: 0;">${escapeHtml(m.date || 'Oct 2026')}</p>
         ${renderMomentTags(m)}
+      </div>
+      <div class="journal-media-stats" aria-hidden="true">
+        <span>${renderIcon("heart")} ${likes}</span>
+        <span>${renderIcon("messageCircle")} ${notes}</span>
       </div>
     </div>
   `;

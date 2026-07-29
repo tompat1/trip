@@ -501,6 +501,9 @@ class AppState {
     // Plan view settings
     this.planSubTab = "plan"; // "overview" | "plan" | "explore" | "journal"
     this.journalSection = "gallery"; // "gallery" | "notes" | "story" | "templates"
+    this.journalTemplateFilter = "all"; // "all" | "moments" | "stories" | "guides" | "videos" | "prints"
+    this.journalMediaQuery = "";
+    this.journalMediaFilter = "all"; // "all" | "photos" | "videos"
     this.planViewMode = getDefaultPlanViewMode(); // "day" | "week" | "timeline" | "map"
     this.activeDayIndex = 0;
     this.mapDayFilter = null;
@@ -1185,6 +1188,30 @@ class AppState {
       this.journalSection = next;
       this.notify();
     }
+  }
+
+  setJournalTemplateFilter(filter = "all") {
+    const next = ["all", "moments", "stories", "guides", "videos", "prints"].includes(filter) ? filter : "all";
+    if (this.journalTemplateFilter !== next) {
+      this.journalTemplateFilter = next;
+      this.notify();
+    }
+  }
+
+  setJournalMediaQuery(query = "") {
+    const next = String(query || "").trim();
+    if (this.journalMediaQuery !== next) {
+      this.journalMediaQuery = next;
+      this.notify();
+    }
+  }
+
+  cycleJournalMediaFilter() {
+    const order = ["all", "photos", "videos"];
+    const currentIndex = order.indexOf(this.journalMediaFilter);
+    this.journalMediaFilter = order[(currentIndex + 1) % order.length];
+    this.notify();
+    return this.journalMediaFilter;
   }
 
   setTrip(tripId) {
