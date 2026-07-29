@@ -87,6 +87,84 @@ const DEFAULT_USER_PROFILE = {
   },
 };
 
+const ADMIN_DEMO_MOMENTS = [
+  {
+    id: "admin_demo_paris_cafe",
+    tripId: "paris",
+    title: "Golden coffee stop",
+    type: "photo",
+    date: "2026-10-03",
+    createdAt: "2026-10-03T08:30:00.000Z",
+    mediaUrl: "https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&w=900&q=82",
+    media_url: "https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&w=900&q=82",
+    placeTitle: "Saint-Germain cafe",
+    placeCategory: "Coffee",
+    geoLabel: "Saint-Germain, Paris",
+    tags: ["Coffee Hunter", "Food Explorer"],
+    adminDemo: true,
+  },
+  {
+    id: "admin_demo_paris_evening",
+    tripId: "paris",
+    title: "Evening streets",
+    type: "photo",
+    date: "2026-10-04",
+    createdAt: "2026-10-04T19:20:00.000Z",
+    mediaUrl: "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=900&q=82",
+    media_url: "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=900&q=82",
+    placeTitle: "Paris evening walk",
+    placeCategory: "Sight",
+    geoLabel: "Paris, France",
+    tags: ["Memory Maker", "Culture Seeker"],
+    adminDemo: true,
+  },
+  {
+    id: "admin_demo_paris_gallery",
+    tripId: "paris",
+    title: "Museum quiet hour",
+    type: "photo",
+    date: "2026-10-05",
+    createdAt: "2026-10-05T14:10:00.000Z",
+    mediaUrl: "https://images.unsplash.com/photo-1565099824688-e93eb20fe622?auto=format&fit=crop&w=900&q=82",
+    media_url: "https://images.unsplash.com/photo-1565099824688-e93eb20fe622?auto=format&fit=crop&w=900&q=82",
+    placeTitle: "Gallery afternoon",
+    placeCategory: "Culture",
+    geoLabel: "Paris, France",
+    tags: ["History Buff", "Culture Seeker"],
+    adminDemo: true,
+  },
+  {
+    id: "admin_demo_crete_harbor",
+    tripId: "crete",
+    title: "Heraklion harbor light",
+    type: "photo",
+    date: "2026-07-26",
+    createdAt: "2026-07-26T18:45:00.000Z",
+    mediaUrl: "https://images.unsplash.com/photo-1601581875309-fafbf2d3ed3a?auto=format&fit=crop&w=900&q=82",
+    media_url: "https://images.unsplash.com/photo-1601581875309-fafbf2d3ed3a?auto=format&fit=crop&w=900&q=82",
+    placeTitle: "Heraklion harbor",
+    placeCategory: "Sight",
+    geoLabel: "Heraklion, Crete",
+    tags: ["Memory Maker", "Sunrise Chaser"],
+    adminDemo: true,
+  },
+  {
+    id: "admin_demo_crete_food",
+    tripId: "crete",
+    title: "Cretan table",
+    type: "photo",
+    date: "2026-07-27",
+    createdAt: "2026-07-27T20:15:00.000Z",
+    mediaUrl: "https://images.unsplash.com/photo-1543353071-10c8ba85a904?auto=format&fit=crop&w=900&q=82",
+    media_url: "https://images.unsplash.com/photo-1543353071-10c8ba85a904?auto=format&fit=crop&w=900&q=82",
+    placeTitle: "Old town dinner",
+    placeCategory: "Food",
+    geoLabel: "Heraklion, Crete",
+    tags: ["Food Explorer", "Wine"],
+    adminDemo: true,
+  },
+];
+
 function readStoredUserProfile() {
   const profile = { ...DEFAULT_USER_PROFILE };
   if (typeof localStorage === "undefined") return profile;
@@ -889,12 +967,28 @@ class AppState {
         error: error?.message || "session-check-failed",
       };
     }
+    this.syncAdminDemoMoments();
     this.notify();
     return this.userSession;
   }
 
   get isAdmin() {
     return this.userSession?.role === "admin";
+  }
+
+  syncAdminDemoMoments() {
+    const withoutDemo = (this.moments || []).filter((moment) => !moment.adminDemo);
+    if (!this.isAdmin) {
+      this.moments = withoutDemo;
+      return;
+    }
+
+    const demoById = new Map(ADMIN_DEMO_MOMENTS.map((moment) => [moment.id, moment]));
+    this.moments = [...withoutDemo, ...demoById.values()].sort((a, b) => {
+      const aTime = new Date(a.createdAt || a.created_at || a.date || 0).getTime();
+      const bTime = new Date(b.createdAt || b.created_at || b.date || 0).getTime();
+      return bTime - aTime;
+    });
   }
 
   async loadTripCompanions(tripId = this.activeTripId) {

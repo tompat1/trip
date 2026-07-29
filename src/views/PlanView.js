@@ -105,8 +105,8 @@ function renderSubtabContent(trip) {
 
 function renderJournalSubTab() {
   const moments = getMomentsForTrip(state.activeTrip.id);
-  const mediaMoments = moments.filter(isMediaMoment);
-  const noteMoments = moments.filter(m => !isMediaMoment(m));
+  const mediaMoments = moments.filter(hasUsableMediaMoment);
+  const noteMoments = moments.filter(isWrittenNoteMoment);
   const mediaGroups = groupMediaMoments(mediaMoments);
   const section = state.journalSection || "gallery";
 
@@ -283,7 +283,7 @@ function renderJournalMediaCard(m) {
         ${m.groupFileCount > 1 ? `
           <span class="journal-media-batch-badge voice-mono">${escapeHtml(String(m.groupFileCount))} batch</span>
         ` : ""}
-        <button class="journal-media-edit-btn" data-action="edit-journal-media" data-moment-id="${m.id}" title="Edit place tags" aria-label="Edit place tags">${renderIcon("pencil")}</button>
+        ${m.adminDemo ? "" : `<button class="journal-media-edit-btn" data-action="edit-journal-media" data-moment-id="${m.id}" title="Edit place tags" aria-label="Edit place tags">${renderIcon("pencil")}</button>`}
       </div>
       <div class="journal-media-body" style="padding: 10px;">
         <h4 class="journal-media-title" style="font-size: 0.85rem; font-weight: 700; margin: 0 0 2px 0; color: var(--ink);">${escapeHtml(m.title || 'Trip Moment')}</h4>
@@ -304,8 +304,8 @@ function formatJournalGroupDate(value) {
 function renderStorySubTab(trip) {
   const generated = state.generatedStories ? state.generatedStories[trip.id] : null;
   const moments = getMomentsForTrip(trip.id);
-  const mediaMoments = moments.filter(isMediaMoment);
-  const noteMoments = moments.filter(m => !isMediaMoment(m));
+  const mediaMoments = moments.filter(hasUsableMediaMoment);
+  const noteMoments = moments.filter(isWrittenNoteMoment);
   const authorName = getStoryAuthorName();
 
   return `
@@ -855,6 +855,15 @@ function inferTripIdFromMomentDate(moment = {}) {
 
 function isMediaMoment(moment = {}) {
   return Boolean(getMomentMediaUrl(moment)) || ["photo", "video", "image"].includes(String(moment.type || "").toLowerCase());
+}
+
+function hasUsableMediaMoment(moment = {}) {
+  return Boolean(getMomentMediaUrl(moment)) && ["photo", "video", "image", ""].includes(String(moment.type || "").toLowerCase());
+}
+
+function isWrittenNoteMoment(moment = {}) {
+  const type = String(moment.type || "note").toLowerCase();
+  return !["photo", "video", "image"].includes(type) && !getMomentMediaUrl(moment);
 }
 
 function getMomentMediaUrl(moment = {}) {

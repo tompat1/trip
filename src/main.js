@@ -1927,8 +1927,8 @@ function inferMomentCategory(categories = []) {
 function buildJournalTemplateStory(templateId, trip) {
   const destination = trip.destination || "this trip";
   const moments = (state.moments || []).filter((moment) => moment.tripId === trip.id);
-  const mediaMoments = moments.filter(isMediaStoryMoment);
-  const noteMoments = moments.filter((moment) => !isMediaStoryMoment(moment));
+  const mediaMoments = moments.filter(hasUsableStoryMedia);
+  const noteMoments = moments.filter(isWrittenStoryNote);
   const activities = trip.calendarEvents || [];
   const highlights = getTripHighlightTitles(trip);
   const templateBuilders = {
@@ -2064,6 +2064,17 @@ function buildTravelLogStory({ destination, noteMoments, activities, highlights 
 function isMediaStoryMoment(moment = {}) {
   const mediaUrl = moment.media_url || moment.mediaUrl || "";
   return moment.type === "photo" || moment.type === "video" || Boolean(mediaUrl);
+}
+
+function hasUsableStoryMedia(moment = {}) {
+  const mediaUrl = moment.media_url || moment.mediaUrl || "";
+  const type = String(moment.type || "").toLowerCase();
+  return Boolean(mediaUrl) && ["photo", "video", "image", ""].includes(type);
+}
+
+function isWrittenStoryNote(moment = {}) {
+  const type = String(moment.type || "note").toLowerCase();
+  return !["photo", "video", "image"].includes(type) && !(moment.media_url || moment.mediaUrl);
 }
 
 function getTripHighlightTitles(trip) {
