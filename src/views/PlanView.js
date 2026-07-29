@@ -13,8 +13,7 @@ const SUB_TABS = [
   { id: "transit", label: "Transit", icon: renderIcon("navigation") },
   { id: "explore", label: "Explore", icon: renderIcon("sparkles") },
   { id: "plan", label: "Plan", icon: renderIcon("calendar") },
-  { id: "journal", label: "Journal", icon: renderIcon("bookOpen") },
-  { id: "story", label: "Story", icon: renderIcon("award") }
+  { id: "journal", label: "Journal", icon: renderIcon("bookOpen") }
 ];
 
 const VIEW_MODES = [
@@ -28,6 +27,7 @@ const DAYS_HEADER = ["Sat 3 Oct", "Sun 4 Oct", "Mon 5 Oct", "Tue 6 Oct", "Wed 7 
 
 export function renderPlanView() {
   const trip = state.activeTrip;
+  const activeSubTab = state.planSubTab === "story" ? "journal" : state.planSubTab;
 
   return `
     <div class="plan-page">
@@ -39,7 +39,7 @@ export function renderPlanView() {
         <nav class="sub-tab-nav">
           ${SUB_TABS.map(
             (tab) => `
-              <button class="sub-tab-item ${state.planSubTab === tab.id ? 'is-active' : ''}" data-subtab="${tab.id}">
+              <button class="sub-tab-item ${activeSubTab === tab.id ? 'is-active' : ''}" data-subtab="${tab.id}">
                 <span class="sub-tab-icon">${tab.icon}</span>
                 <span class="sub-tab-label">${tab.label}</span>
               </button>
@@ -57,7 +57,7 @@ export function renderPlanView() {
 }
 
 function renderSubtabContent(trip) {
-  const tab = state.planSubTab;
+  const tab = state.planSubTab === "story" ? "journal" : state.planSubTab;
 
   if (tab === "overview") {
     return renderOverviewSubTab(trip);
@@ -71,10 +71,6 @@ function renderSubtabContent(trip) {
   if (tab === "journal") {
     return renderJournalSubTab();
   }
-  if (tab === "story") {
-    return renderStorySubTab(trip);
-  }
-
   // Default "plan" / "explore" layout with View Mode controls
   return `
     <!-- View Mode Switcher Pills -->
@@ -119,7 +115,10 @@ function renderJournalSubTab() {
               ${renderIcon("camera")}
             </div>
             <h4 style="font-size: 0.98rem; font-weight: 700; color: var(--ink); margin: 0;">No photos or videos captured yet</h4>
-            <p style="font-size: 0.82rem; color: var(--ink-muted); margin: 0; max-width: 320px; line-height: 1.4;">Use Quick Capture on the Home dashboard to record photos, videos, and journey notes!</p>
+            <p style="font-size: 0.82rem; color: var(--ink-muted); margin: 0; max-width: 320px; line-height: 1.4;">Use Quick Capture to record photos, videos, and journey notes for this trip.</p>
+            <button class="btn btn--primary btn--sm" data-action="open-quick-capture" type="button" style="margin-top: 8px;">
+              ${renderIcon("camera")} Open Quick Capture
+            </button>
           </div>
         ` : `
           ${mediaGroups.map(renderJournalMediaGroup).join("")}
@@ -146,6 +145,8 @@ function renderJournalSubTab() {
           `).join('')}
         </div>
       </div>
+
+      ${renderStorySubTab(state.activeTrip)}
     </div>
   `;
 }
@@ -234,6 +235,10 @@ function formatJournalGroupDate(value) {
 
 function renderStorySubTab(trip) {
   const generated = state.generatedStories ? state.generatedStories[trip.id] : null;
+  const moments = getMomentsForTrip(trip.id);
+  const mediaMoments = moments.filter(isMediaMoment);
+  const noteMoments = moments.filter(m => !isMediaMoment(m));
+  const authorName = getStoryAuthorName();
 
   return `
     <div class="story-subtab-view">
@@ -257,7 +262,7 @@ function renderStorySubTab(trip) {
               <span contenteditable="true" data-story-field="title" style="outline: none;" title="Click to edit title">${escapeHtml(generated?.title || `${trip.destination} ${trip.flag}`)}</span>
               <span style="opacity: 0.5; font-size: 0.8rem; display: inline-flex; align-items: center;" title="Click text to edit">${renderIcon("pencil")}</span>
             </h1>
-            <p class="story-byline">By Thomas Rynell • ${escapeHtml(trip.dates)} ${generated ? '• Powered by Worker AI Engine' : ''}</p>
+            <p class="story-byline">By ${escapeHtml(authorName)} • ${escapeHtml(trip.dates)} ${generated ? '• Powered by Worker AI Engine' : ''}</p>
           </div>
         </div>
 
@@ -288,22 +293,67 @@ function renderStorySubTab(trip) {
             `).join('')}
           </ul>
 
-          <h3 class="story-h3" style="margin-top: 24px;">Captured Memories & Notes</h3>
+          <h3 class="story-h3" style="margin-top: 24px;">Captured Media</h3>
+          ${mediaMoments.length ? `
+            <div class="story-media-strip">
+              ${mediaMoments.slice(0, 6).map(renderStoryMediaMemory).join("")}
+            </div>
+          ` : `
+            <div class="story-empty-memory">
+              <span>${renderIcon("camera")}</span>
+              <p>No photos or videos captured for this trip yet.</p>
+              <button class="btn btn--outline btn--sm" data-action="open-quick-capture" type="button">${renderIcon("camera")} Capture now</button>
+            </div>
+          `}
+
+          <h3 class="story-h3" style="margin-top: 24px;">Personal Notes</h3>
           <div class="story-moments-list">
-            ${getMomentsForTrip(trip.id).map(m => `
-              <blockquote class="story-quote" style="position: relative;">
-                <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 8px;">
-                  <p contenteditable="true" data-story-moment-id="${m.id}" style="outline: none; margin: 0; flex: 1;" title="Click to edit note">"${escapeHtml(m.text || m.title)}"</p>
-                  <span style="opacity: 0.45; font-size: 0.75rem; display: inline-flex; align-items: center; pointer-events: none; margin-top: 2px;">${renderIcon("pencil")}</span>
-                </div>
-                <cite>— Recorded on ${m.date}</cite>
-              </blockquote>
-            `).join('')}
+            ${noteMoments.length ? noteMoments.map(m => renderStoryNoteMemory(m)).join("") : `
+              <div class="story-empty-memory">
+                <span>${renderIcon("fileText")}</span>
+                <p>No written notes for this trip yet.</p>
+                <button class="btn btn--outline btn--sm" data-action="open-quick-capture" type="button">${renderIcon("plus")} Add note</button>
+              </div>
+            `}
           </div>
         </div>
       </article>
     </div>
   `;
+}
+
+function renderStoryMediaMemory(moment) {
+  const mediaUrl = getMomentMediaUrl(moment);
+  return `
+    <button class="story-media-memory ${mediaUrl ? "" : "is-missing"}" data-action="open-lightbox" data-moment-id="${escapeHtml(moment.id)}" type="button">
+      ${mediaUrl ? `
+        <span class="story-media-memory__image" style="background-image: url('${escapeHtml(mediaUrl)}');"></span>
+      ` : `
+        <span class="story-media-memory__missing">${renderIcon(moment.type === "video" ? "video" : "camera")}</span>
+      `}
+      <span class="story-media-memory__copy">
+        <strong>${escapeHtml(moment.title || "Captured media")}</strong>
+        <small>${escapeHtml(moment.placeTitle || moment.geoLabel || moment.date || "")}</small>
+      </span>
+    </button>
+  `;
+}
+
+function renderStoryNoteMemory(moment) {
+  return `
+    <blockquote class="story-quote" style="position: relative;">
+      <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 8px;">
+        <p contenteditable="true" data-story-moment-id="${moment.id}" style="outline: none; margin: 0; flex: 1;" title="Click to edit note">"${escapeHtml(moment.text || moment.title)}"</p>
+        <span style="opacity: 0.45; font-size: 0.75rem; display: inline-flex; align-items: center; pointer-events: none; margin-top: 2px;">${renderIcon("pencil")}</span>
+      </div>
+      <cite>— Recorded on ${escapeHtml(moment.date || "")}</cite>
+    </blockquote>
+  `;
+}
+
+function getStoryAuthorName() {
+  const isSignedIn = ["admin", "traveler"].includes(state.userSession?.role);
+  return isSignedIn ? (state.userProfile?.name || "Traveler") : "TRIP";
 }
 
 function renderAlternativePlanView() {

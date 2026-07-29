@@ -915,6 +915,11 @@ document.addEventListener("click", async (e) => {
     else if (action === "toggle-quick-capture") {
       state.toggleQuickCapture();
     }
+    else if (action === "open-quick-capture") {
+      state.setQuickCaptureTrip(state.activeTripId);
+      state.toggleQuickCapture(true);
+      showToast(`Quick Capture opened for ${state.activeTrip.destination}.`);
+    }
     else if (action === "close-quick-capture") {
       if (target.classList.contains("quick-capture-overlay") && e.target !== target) return;
       state.toggleQuickCapture(false);
@@ -1016,7 +1021,7 @@ document.addEventListener("click", async (e) => {
       });
       const receiverTrip = state.getAllTrips().find((trip) => trip.id === (state.quickCaptureTripId || state.activeTripId)) || state.activeTrip;
       state.toggleQuickCapture(false);
-      showToast(`Saved "${title}" to ${receiverTrip.destination} Journal & Story!`);
+      showToast(`Saved "${title}" to ${receiverTrip.destination} Journal!`);
     }
     else if (action === "toggle-bookmark") {
       const placeId = target.dataset.placeId;
@@ -1053,7 +1058,7 @@ document.addEventListener("click", async (e) => {
             { title: "Scheduled Activities", value: String((trip.calendarEvents || []).length) },
             { title: "Bookmarked Spots", value: String(state.savedPlaceIds.size) }
           ],
-          travellerProfile: { name: "Thomas Rynell" }
+          travellerProfile: { name: state.userProfile?.name || "Traveler" }
         });
         if (editorial) {
           state.setGeneratedStory(trip.id, editorial);
