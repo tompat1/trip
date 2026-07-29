@@ -922,6 +922,7 @@ document.addEventListener("click", async (e) => {
       state.toggleQuickCapture();
     }
     else if (action === "open-quick-capture") {
+      if (state.activeTemplatePicker) state.closeTemplatePicker();
       state.setQuickCaptureTrip(state.activeTripId);
       state.toggleQuickCapture(true);
       showToast(`Quick Capture opened for ${state.activeTrip.destination}.`);
@@ -1063,11 +1064,45 @@ document.addEventListener("click", async (e) => {
         reminder: "30m"
       });
     }
+    else if (action === "open-template-picker") {
+      const templateId = target.dataset.template || "photo-essay";
+      state.openTemplatePicker(templateId, getRecommendedTemplateMomentIds(templateId, state.activeTrip));
+    }
+    else if (action === "close-template-picker") {
+      state.closeTemplatePicker();
+    }
+    else if (action === "toggle-template-picker-moment") {
+      state.toggleTemplatePickerMoment(target.dataset.momentId || "");
+    }
+    else if (action === "template-picker-select-recommended") {
+      const templateId = state.activeTemplatePicker?.templateId || "photo-essay";
+      state.setTemplatePickerMoments(getRecommendedTemplateMomentIds(templateId, state.activeTrip));
+      showToast("Recommended moments selected.");
+    }
+    else if (action === "template-picker-clear") {
+      state.setTemplatePickerMoments([]);
+    }
+    else if (action === "confirm-template-picker") {
+      const picker = state.activeTemplatePicker;
+      if (!picker) return;
+      const selectedMomentIds = picker.selectedMomentIds || [];
+      if (!selectedMomentIds.length) {
+        showToast("Choose at least one gallery moment first.");
+        return;
+      }
+      const trip = state.activeTrip;
+      const story = buildJournalTemplateStory(picker.templateId, trip, selectedMomentIds);
+      state.setGeneratedStory(trip.id, story);
+      state.closeTemplatePicker();
+      state.setPlanSubTab("journal");
+      state.setJournalSection("story");
+      showToast(`${story.templateLabel} created from ${selectedMomentIds.length} ${selectedMomentIds.length === 1 ? "moment" : "moments"}.`);
+    }
     else if (action === "generate-ai-story") {
       const trip = state.activeTrip;
       const templateId = target.dataset.template || "ai-story";
       if (templateId !== "ai-story") {
-        const story = buildJournalTemplateStory(templateId, trip);
+        const story = buildJournalTemplateStory(templateId, trip, getRecommendedTemplateMomentIds(templateId, trip));
         state.setGeneratedStory(trip.id, story);
         state.setPlanSubTab("journal");
         state.setJournalSection("story");
@@ -1938,10 +1973,12 @@ function inferMomentCategory(categories = []) {
   return "";
 }
 
-function buildJournalTemplateStory(templateId, trip) {
+function buildJournalTemplateStory(templateId, trip, selectedMomentIds = []) {
   const destination = trip.destination || "this trip";
   const moments = (state.moments || []).filter((moment) => moment.tripId === trip.id);
-  const mediaMoments = moments.filter(hasUsableStoryMedia);
+  const selectedSet = new Set(selectedMomentIds || []);
+  const allMediaMoments = moments.filter(hasUsableStoryMedia);
+  const mediaMoments = selectedSet.size ? allMediaMoments.filter((moment) => selectedSet.has(moment.id)) : allMediaMoments;
   const noteMoments = moments.filter(isWrittenStoryNote);
   const activities = trip.calendarEvents || [];
   const highlights = getTripHighlightTitles(trip);
@@ -1956,7 +1993,55 @@ function buildJournalTemplateStory(templateId, trip) {
     "travel-log": buildTravelLogStory,
   };
   const build = templateBuilders[templateId] || buildTravelLogStory;
-  return build({ trip, destination, moments, mediaMoments, noteMoments, activities, highlights });
+  return {
+    ...build({ trip, destination, moments, mediaMoments, noteMoments, activities, highlights }),
+    selectedMomentIds: mediaMoments.map((moment) => moment.id),
+  };
+}
+
+function getRecommendedTemplateMomentIds(templateId, trip) {
+  const mediaMoments = (state.moments || [])
+    .filter((moment) => moment.tripId === trip.id && hasUsableStoryMedia(moment))
+    .sort((a, b) => {
+      const aTime = new Date(a.createdAt || a.created_at || a.date || 0).getTime();
+      const bTime = new Date(b.createdAt || b.created_at || b.date || 0).getTime();
+      return bTime - aTime;
+    });
+
+  const maxByTemplate = {
+    "share-card": 1,
+    "day-recap": 6,
+    "photo-essay": 8,
+    "city-guide": 6,
+    "food-journal": 6,
+    "travel-film": 10,
+    "route-story": 8,
+    "travel-log": 12,
+  };
+
+  let ranked = mediaMoments;
+  if (templateId === "food-journal") {
+    const foodFirst = mediaMoments.filter((moment) => /food|coffee|cafe|wine|restaurant|dinner|lunch/i.test(getMomentSearchText(moment)));
+    ranked = [...foodFirst, ...mediaMoments.filter((moment) => !foodFirst.includes(moment))];
+  } else if (templateId === "travel-film") {
+    const videosFirst = mediaMoments.filter((moment) => String(moment.type || "").toLowerCase() === "video");
+    ranked = [...videosFirst, ...mediaMoments.filter((moment) => !videosFirst.includes(moment))];
+  } else if (templateId === "route-story" || templateId === "city-guide") {
+    const placeFirst = mediaMoments.filter((moment) => moment.placeTitle || moment.geoLabel);
+    ranked = [...placeFirst, ...mediaMoments.filter((moment) => !placeFirst.includes(moment))];
+  }
+
+  return ranked.slice(0, maxByTemplate[templateId] || 6).map((moment) => moment.id);
+}
+
+function getMomentSearchText(moment = {}) {
+  return [
+    moment.title,
+    moment.placeTitle,
+    moment.placeCategory,
+    moment.geoLabel,
+    ...(moment.tags || []),
+  ].filter(Boolean).join(" ");
 }
 
 function buildPhotoEssayStory({ destination, mediaMoments, noteMoments }) {

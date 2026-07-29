@@ -131,6 +131,7 @@ function renderJournalSubTab() {
       ${section === "story" ? renderStorySubTab(state.activeTrip) : ""}
       ${section === "templates" ? renderJournalTemplatesSection(state.activeTrip, { mediaCount: allMediaMoments.length, noteCount: noteMoments.length }) : ""}
       ${section === "gallery" ? renderJournalGallerySection(mediaGroups, mediaMoments.length) : ""}
+      ${renderTemplateMomentPicker(state.activeTrip)}
     </div>
   `;
 }
@@ -228,17 +229,7 @@ function renderJournalNoteCard(m) {
 }
 
 function renderJournalTemplatesSection(trip, counts = {}) {
-  const previewImages = getTemplatePreviewImages(trip);
-  const templates = [
-    { id: "share-card", filter: "moments", title: "Postcard", detail: "Share a quick moment", icon: "share", image: previewImages[0] },
-    { id: "day-recap", filter: "stories", title: "Day Story", detail: "Your day in a beautiful summary", icon: "calendar", image: previewImages[1] },
-    { id: "photo-essay", filter: "stories", title: "Photo Essay", detail: `${counts.mediaCount || 0} media items ready`, icon: "image", image: previewImages[2] },
-    { id: "city-guide", filter: "guides", title: "City Guide", detail: `Create your ${trip.destination.split(",")[0]} guide`, icon: "map", image: previewImages[3] },
-    { id: "food-journal", filter: "moments", title: "Food Journal", detail: "Document cafés, meals and wine", icon: "utensils", image: previewImages[4] },
-    { id: "travel-film", filter: "videos", title: "Travel Film", detail: "Cinematic edits from moments", icon: "video", image: previewImages[5] },
-    { id: "route-story", filter: "guides", title: "Route Story", detail: "Map the journey with context", icon: "route", image: previewImages[6] },
-    { id: "travel-log", filter: "prints", title: "Trip Book", detail: `${counts.noteCount || 0} notes available`, icon: "bookOpen", image: previewImages[7] },
-  ];
+  const templates = getJournalTemplates(trip, counts);
   const activeFilter = state.journalTemplateFilter || "all";
   const visibleTemplates = activeFilter === "all" ? templates : templates.filter((template) => template.filter === activeFilter);
 
@@ -260,7 +251,7 @@ function renderJournalTemplatesSection(trip, counts = {}) {
       </div>
       <div class="journal-template-grid">
         ${visibleTemplates.map((template) => `
-          <button class="journal-template-card" data-action="generate-ai-story" data-template="${escapeHtml(template.id)}" type="button">
+          <button class="journal-template-card" data-action="open-template-picker" data-template="${escapeHtml(template.id)}" type="button">
             <span class="journal-template-card__media" style="background-image: url('${escapeHtml(template.image)}');">
               <span>${renderIcon(template.icon)}</span>
             </span>
@@ -273,6 +264,20 @@ function renderJournalTemplatesSection(trip, counts = {}) {
       </div>
     </section>
   `;
+}
+
+function getJournalTemplates(trip, counts = {}) {
+  const previewImages = getTemplatePreviewImages(trip);
+  return [
+    { id: "share-card", filter: "moments", title: "Postcard", detail: "Share a quick moment", pickerHint: "Pick one strong cover moment.", min: 1, max: 1, icon: "share", image: previewImages[0] },
+    { id: "day-recap", filter: "stories", title: "Day Story", detail: "Your day in a beautiful summary", pickerHint: "Choose moments from the day you want to recap.", min: 1, max: 6, icon: "calendar", image: previewImages[1] },
+    { id: "photo-essay", filter: "stories", title: "Photo Essay", detail: `${counts.mediaCount || 0} media items ready`, pickerHint: "Pick 4-8 moments for the visual sequence.", min: 3, max: 8, icon: "image", image: previewImages[2] },
+    { id: "city-guide", filter: "guides", title: "City Guide", detail: `Create your ${trip.destination.split(",")[0]} guide`, pickerHint: "Choose place-defining moments for the guide.", min: 1, max: 6, icon: "map", image: previewImages[3] },
+    { id: "food-journal", filter: "moments", title: "Food Journal", detail: "Document cafés, meals and wine", pickerHint: "Pick food, coffee and wine moments.", min: 1, max: 6, icon: "utensils", image: previewImages[4] },
+    { id: "travel-film", filter: "videos", title: "Travel Film", detail: "Cinematic edits from moments", pickerHint: "Choose video clips or motion-friendly images.", min: 1, max: 10, icon: "video", image: previewImages[5] },
+    { id: "route-story", filter: "guides", title: "Route Story", detail: "Map the journey with context", pickerHint: "Choose moments that mark route stops.", min: 1, max: 8, icon: "route", image: previewImages[6] },
+    { id: "travel-log", filter: "prints", title: "Trip Book", detail: `${counts.noteCount || 0} notes available`, pickerHint: "Choose the moments that belong in the book.", min: 1, max: 12, icon: "bookOpen", image: previewImages[7] },
+  ];
 }
 
 function getTemplatePreviewImages(trip) {
@@ -289,6 +294,77 @@ function getTemplatePreviewImages(trip) {
   ].filter(Boolean);
 
   return Array.from({ length: 8 }, (_, index) => fallbackImages[index % fallbackImages.length]);
+}
+
+function renderTemplateMomentPicker(trip) {
+  const picker = state.activeTemplatePicker;
+  if (!picker) return "";
+
+  const allMediaMoments = getMomentsForTrip(trip.id).filter(hasUsableMediaMoment);
+  const templates = getJournalTemplates(trip, { mediaCount: allMediaMoments.length, noteCount: getMomentsForTrip(trip.id).filter(isWrittenNoteMoment).length });
+  const template = templates.find((item) => item.id === picker.templateId) || templates[0];
+  const selected = new Set(picker.selectedMomentIds || []);
+  const selectedCount = selected.size;
+  const hasMoments = allMediaMoments.length > 0;
+  const canCreate = hasMoments && selectedCount > 0;
+
+  return `
+    <div class="template-picker-overlay" data-action="close-template-picker" role="presentation">
+      <section class="template-picker-sheet" role="dialog" aria-modal="true" aria-labelledby="template-picker-title" data-action="template-picker-sheet">
+        <div class="template-picker-header">
+          <div>
+            <span class="voice-mono">Choose moments</span>
+            <h3 id="template-picker-title">${escapeHtml(template.title)}</h3>
+            <p>${escapeHtml(template.pickerHint || "Pick the moments you want this template to use.")}</p>
+          </div>
+          <button class="journal-icon-action" data-action="close-template-picker" type="button" aria-label="Close picker">${renderIcon("x")}</button>
+        </div>
+
+        <div class="template-picker-summary">
+          <span>${renderIcon(template.icon)} ${escapeHtml(template.title)}</span>
+          <strong>${selectedCount} selected</strong>
+          <small>${template.max ? `Up to ${template.max}` : "Choose any"}</small>
+        </div>
+
+        ${hasMoments ? `
+          <div class="template-picker-grid">
+            ${allMediaMoments.map((moment) => renderTemplatePickerMoment(moment, selected.has(moment.id), template)).join("")}
+          </div>
+        ` : `
+          <div class="template-picker-empty">
+            <span>${renderIcon("camera")}</span>
+            <h4>No gallery moments yet</h4>
+            <p>Capture or upload photos first, then come back to make this template yours.</p>
+            <button class="btn btn--primary btn--sm" data-action="open-quick-capture" type="button">${renderIcon("camera")} Open Quick Capture</button>
+          </div>
+        `}
+
+        <div class="template-picker-actions">
+          <button class="btn btn--outline btn--sm" data-action="template-picker-select-recommended" type="button" ${hasMoments ? "" : "disabled"}>${renderIcon("sparkles")} Recommended</button>
+          <button class="btn btn--outline btn--sm" data-action="template-picker-clear" type="button" ${selectedCount ? "" : "disabled"}>${renderIcon("x")} Clear</button>
+          <button class="btn btn--primary btn--sm" data-action="confirm-template-picker" type="button" ${canCreate ? "" : "disabled"}>${renderIcon("sparkles")} Create</button>
+        </div>
+      </section>
+    </div>
+  `;
+}
+
+function renderTemplatePickerMoment(moment, isSelected, template) {
+  const mediaUrl = getMomentMediaUrl(moment);
+  const isVideo = String(moment.type || "").toLowerCase() === "video" || mediaUrl.includes("data:video");
+  const disabled = !isSelected && template.max && (state.activeTemplatePicker?.selectedMomentIds || []).length >= template.max;
+  return `
+    <button class="template-picker-moment ${isSelected ? "is-selected" : ""}" data-action="toggle-template-picker-moment" data-moment-id="${escapeHtml(moment.id)}" type="button" ${disabled ? "disabled" : ""}>
+      <span class="template-picker-moment__image" style="background-image: url('${escapeHtml(mediaUrl)}');">
+        ${isVideo ? `<span class="template-picker-moment__play">${renderIcon("play")}</span>` : ""}
+        <span class="template-picker-moment__check">${isSelected ? renderIcon("check") : renderIcon("plus")}</span>
+      </span>
+      <span class="template-picker-moment__body">
+        <strong>${escapeHtml(moment.title || "Trip Moment")}</strong>
+        <small>${escapeHtml(moment.placeTitle || moment.geoLabel || moment.date || "")}</small>
+      </span>
+    </button>
+  `;
 }
 
 function groupMediaMoments(mediaMoments = []) {
@@ -384,6 +460,8 @@ function renderStorySubTab(trip) {
   const generated = state.generatedStories ? state.generatedStories[trip.id] : null;
   const moments = getMomentsForTrip(trip.id);
   const mediaMoments = moments.filter(hasUsableMediaMoment);
+  const selectedStoryMediaIds = new Set(generated?.selectedMomentIds || []);
+  const storyMediaMoments = selectedStoryMediaIds.size ? mediaMoments.filter((moment) => selectedStoryMediaIds.has(moment.id)) : mediaMoments;
   const noteMoments = moments.filter(isWrittenNoteMoment);
   const authorName = getStoryAuthorName();
 
@@ -441,9 +519,9 @@ function renderStorySubTab(trip) {
           </ul>
 
           <h3 class="story-h3" style="margin-top: 24px;">Captured Media</h3>
-          ${mediaMoments.length ? `
+          ${storyMediaMoments.length ? `
             <div class="story-media-strip">
-              ${mediaMoments.slice(0, 6).map(renderStoryMediaMemory).join("")}
+              ${storyMediaMoments.slice(0, 8).map(renderStoryMediaMemory).join("")}
             </div>
           ` : `
             <div class="story-empty-memory">

@@ -590,6 +590,7 @@ class AppState {
     this.quickCaptureTripId = this.activeTripId;
     this.quickCaptureUpload = { status: "idle", progress: 0, fileName: "", type: "" };
     this.activeLightboxMedia = null;
+    this.activeTemplatePicker = null; // { templateId, selectedMomentIds: [] }
     this.activeEventDrawer = null; // { mode: 'create'|'edit', event: {} }
     this.activeCompanionQrId = "";
     this.activeInvite = getInviteFromLocation();
@@ -691,6 +692,43 @@ class AppState {
 
   setGeneratedStory(tripId, story) {
     this.generatedStories[tripId] = story;
+    this.notify();
+  }
+
+  openTemplatePicker(templateId, selectedMomentIds = []) {
+    this.activeTemplatePicker = {
+      templateId,
+      selectedMomentIds: Array.from(new Set(selectedMomentIds.filter(Boolean))),
+    };
+    this.notify();
+  }
+
+  closeTemplatePicker() {
+    this.activeTemplatePicker = null;
+    this.notify();
+  }
+
+  toggleTemplatePickerMoment(momentId) {
+    if (!this.activeTemplatePicker || !momentId) return;
+    const selected = new Set(this.activeTemplatePicker.selectedMomentIds || []);
+    if (selected.has(momentId)) {
+      selected.delete(momentId);
+    } else {
+      selected.add(momentId);
+    }
+    this.activeTemplatePicker = {
+      ...this.activeTemplatePicker,
+      selectedMomentIds: Array.from(selected),
+    };
+    this.notify();
+  }
+
+  setTemplatePickerMoments(momentIds = []) {
+    if (!this.activeTemplatePicker) return;
+    this.activeTemplatePicker = {
+      ...this.activeTemplatePicker,
+      selectedMomentIds: Array.from(new Set(momentIds.filter(Boolean))),
+    };
     this.notify();
   }
 
