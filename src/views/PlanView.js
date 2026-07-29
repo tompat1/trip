@@ -193,10 +193,10 @@ function renderJournalNoteCard(m) {
 
 function renderJournalTemplatesSection(trip, counts = {}) {
   const templates = [
-    { title: "Photo essay", detail: `${counts.mediaCount || 0} media items ready`, icon: "image" },
-    { title: "Day-by-day recap", detail: "Use itinerary, notes and captures", icon: "calendar" },
-    { title: "Share card", detail: `One-page memory from ${trip.destination}`, icon: "share" },
-    { title: "Travel log", detail: `${counts.noteCount || 0} notes available`, icon: "bookOpen" },
+    { id: "photo-essay", title: "Photo essay", detail: `${counts.mediaCount || 0} media items ready`, icon: "image" },
+    { id: "day-recap", title: "Day-by-day recap", detail: "Use itinerary, notes and captures", icon: "calendar" },
+    { id: "share-card", title: "Share card", detail: `One-page memory from ${trip.destination}`, icon: "share" },
+    { id: "travel-log", title: "Travel log", detail: `${counts.noteCount || 0} notes available`, icon: "bookOpen" },
   ];
   return `
     <section class="journal-section-panel" aria-labelledby="journal-templates-title">
@@ -208,7 +208,7 @@ function renderJournalTemplatesSection(trip, counts = {}) {
       </div>
       <div class="journal-template-grid">
         ${templates.map((template) => `
-          <button class="journal-template-card" data-action="generate-ai-story" type="button">
+          <button class="journal-template-card" data-action="generate-ai-story" data-template="${escapeHtml(template.id)}" type="button">
             <span>${renderIcon(template.icon)}</span>
             <strong>${escapeHtml(template.title)}</strong>
             <small>${escapeHtml(template.detail)}</small>
@@ -314,9 +314,9 @@ function renderStorySubTab(trip) {
       <div class="story-ai-header mb-md" style="background: var(--paper-card); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 16px; display: flex; justify-content: space-between; align-items: center; box-shadow: var(--shadow-sm);">
         <div>
           <span style="font-size: 0.72rem; font-weight: 700; text-transform: uppercase; color: var(--red); letter-spacing: 0.5px;">AI NARRATIVE JOURNAL</span>
-          <h3 style="font-size: 1.05rem; font-weight: 700; margin: 2px 0 0 0; color: var(--ink);">"Every place becomes a story"</h3>
+          <h3 style="font-size: 1.05rem; font-weight: 700; margin: 2px 0 0 0; color: var(--ink);">${escapeHtml(generated?.templateLabel || '"Every place becomes a story"')}</h3>
         </div>
-        <button class="btn btn--primary btn--sm" data-action="generate-ai-story">
+        <button class="btn btn--primary btn--sm" data-action="generate-ai-story" data-template="ai-story">
           ${renderIcon("sparkles")} ${generated ? 'Regenerate AI Story' : 'Generate AI Story'}
         </button>
       </div>
@@ -325,7 +325,7 @@ function renderStorySubTab(trip) {
         <div class="story-cover" style="background-image: url('${trip.upcomingActivity.image}')">
           <div class="story-cover-overlay"></div>
           <div class="story-cover-content">
-            <span class="story-kicker">EDITORIAL TRAVEL ARCHIVE</span>
+            <span class="story-kicker">${escapeHtml(generated?.kicker || "EDITORIAL TRAVEL ARCHIVE")}</span>
             <h1 class="story-main-title" style="display: flex; align-items: center; gap: 8px;">
               <span contenteditable="true" data-story-field="title" style="outline: none;" title="Click to edit title">${escapeHtml(generated?.title || `${trip.destination} ${trip.flag}`)}</span>
               <span style="opacity: 0.5; font-size: 0.8rem; display: inline-flex; align-items: center;" title="Click text to edit">${renderIcon("pencil")}</span>

@@ -1054,6 +1054,15 @@ document.addEventListener("click", async (e) => {
     }
     else if (action === "generate-ai-story") {
       const trip = state.activeTrip;
+      const templateId = target.dataset.template || "ai-story";
+      if (templateId !== "ai-story") {
+        const story = buildJournalTemplateStory(templateId, trip);
+        state.setGeneratedStory(trip.id, story);
+        state.setPlanSubTab("journal");
+        state.setJournalSection("story");
+        showToast(`${story.templateLabel} created.`);
+        return;
+      }
       showToast("✨ Synthesizing AI Travel Journal Story...");
       try {
         const place = { id: trip.id, canonicalName: trip.destination, category: "trip" };
@@ -1067,12 +1076,22 @@ document.addEventListener("click", async (e) => {
           travellerProfile: { name: state.userProfile?.name || "Traveler" }
         });
         if (editorial) {
-          state.setGeneratedStory(trip.id, editorial);
+          state.setGeneratedStory(trip.id, {
+            ...editorial,
+            templateId: "ai-story",
+            templateLabel: "AI narrative journal",
+            kicker: "EDITORIAL TRAVEL ARCHIVE"
+          });
+          state.setPlanSubTab("journal");
+          state.setJournalSection("story");
           showToast("📖 AI Travel Narrative Generated!");
         }
       } catch (e) {
         console.warn("Worker editorial generate fallback:", e);
         state.setGeneratedStory(trip.id, {
+          templateId: "ai-story",
+          templateLabel: "AI narrative journal",
+          kicker: "EDITORIAL TRAVEL ARCHIVE",
           title: `Tales of ${trip.destination}`,
           lead: `Every place becomes a story. Journeying through ${trip.destination} brought together iconic architecture, historic quarter strolls, and vibrant local gastronomy.`,
           sections: [
@@ -1080,6 +1099,8 @@ document.addEventListener("click", async (e) => {
             { title: "Curated Wanders & Evening Light", body: `As twilight settled, exploring saved spots and historical quarters framed an unforgettable travel experience.` }
           ]
         });
+        state.setPlanSubTab("journal");
+        state.setJournalSection("story");
         showToast("📖 Travel Story Generated!");
       }
     }
@@ -1901,6 +1922,172 @@ function inferMomentCategory(categories = []) {
   if (/museum|gallery|culture/.test(text)) return "Museum";
   if (/park|garden|viewpoint|nature/.test(text)) return "Outdoor";
   return "";
+}
+
+function buildJournalTemplateStory(templateId, trip) {
+  const destination = trip.destination || "this trip";
+  const moments = (state.moments || []).filter((moment) => moment.tripId === trip.id);
+  const mediaMoments = moments.filter(isMediaStoryMoment);
+  const noteMoments = moments.filter((moment) => !isMediaStoryMoment(moment));
+  const activities = trip.calendarEvents || [];
+  const highlights = getTripHighlightTitles(trip);
+  const templateBuilders = {
+    "photo-essay": buildPhotoEssayStory,
+    "day-recap": buildDayRecapStory,
+    "share-card": buildShareCardStory,
+    "travel-log": buildTravelLogStory,
+  };
+  const build = templateBuilders[templateId] || buildTravelLogStory;
+  return build({ trip, destination, moments, mediaMoments, noteMoments, activities, highlights });
+}
+
+function buildPhotoEssayStory({ destination, mediaMoments, noteMoments }) {
+  const mediaCount = mediaMoments.length;
+  const firstMedia = mediaMoments[0];
+  const captionSeeds = mediaMoments
+    .slice(0, 4)
+    .map((moment) => moment.placeTitle || moment.geoLabel || moment.title)
+    .filter(Boolean);
+
+  return {
+    templateId: "photo-essay",
+    templateLabel: "Photo essay",
+    kicker: "VISUAL MEMORY TEMPLATE",
+    title: `${destination} in Frames`,
+    lead: mediaCount
+      ? `${mediaCount} captured ${mediaCount === 1 ? "moment" : "moments"} from ${destination}, ready to shape into a visual story.`
+      : `A photo essay for ${destination}, ready for the first captures from Quick Capture.`,
+    sections: [
+      {
+        title: "Opening Frame",
+        body: firstMedia
+          ? `${firstMedia.title || "The first saved frame"} sets the tone, anchored near ${firstMedia.placeTitle || firstMedia.geoLabel || destination}.`
+          : `Start with one strong cover image from ${destination}: arrival, first light, a street detail, or the first shared meal.`,
+      },
+      {
+        title: "Sequence",
+        body: captionSeeds.length
+          ? `Build the flow around ${formatInlineList(captionSeeds)}. Keep the captions short, place-led, and sensory.`
+          : "Once media is added, arrange the gallery by place, light, and movement rather than upload order.",
+      },
+      {
+        title: "Caption Notes",
+        body: noteMoments.length
+          ? `Use ${noteMoments.length} saved ${noteMoments.length === 1 ? "note" : "notes"} as caption material.`
+          : "Add quick notes while traveling so each photo has context beyond the filename.",
+      },
+    ],
+  };
+}
+
+function buildDayRecapStory({ trip, destination, mediaMoments, noteMoments, activities }) {
+  const days = groupActivitiesByDay(activities).slice(0, 5);
+  const sections = days.length
+    ? days.map((day) => ({
+        title: day.title,
+        body: `${day.items.map((event) => event.title).slice(0, 4).join(", ")}${day.items.length > 4 ? ", and more" : ""}.`,
+      }))
+    : [{
+        title: "Day Notes",
+        body: `No itinerary blocks are scheduled yet, so this recap can start from captures and notes from ${destination}.`,
+      }];
+
+  sections.push({
+    title: "Captured Along The Way",
+    body: `${mediaMoments.length} media ${mediaMoments.length === 1 ? "item" : "items"} and ${noteMoments.length} ${noteMoments.length === 1 ? "note" : "notes"} are available for the recap.`,
+  });
+
+  return {
+    templateId: "day-recap",
+    templateLabel: "Day-by-day recap",
+    kicker: "ITINERARY MEMORY TEMPLATE",
+    title: `${destination} Day by Day`,
+    lead: `A chronological recap for ${trip.dates || destination}, built from the itinerary, captures, and personal notes.`,
+    sections,
+  };
+}
+
+function buildShareCardStory({ destination, mediaMoments, noteMoments, highlights }) {
+  const topHighlight = highlights[0] || mediaMoments[0]?.placeTitle || destination;
+  return {
+    templateId: "share-card",
+    templateLabel: "Share card",
+    kicker: "COMPACT SHARE TEMPLATE",
+    title: `Postcard from ${destination}`,
+    lead: `${topHighlight} became the headline moment. Plan it. Live it. Remember it.`,
+    sections: [
+      {
+        title: "Front",
+        body: mediaMoments.length
+          ? `Use the strongest image from ${mediaMoments[0].placeTitle || mediaMoments[0].geoLabel || destination} as the cover.`
+          : "Add one cover capture to turn this into a share-ready memory card.",
+      },
+      {
+        title: "Back",
+        body: noteMoments[0]?.text || `A short memory from ${destination}, tuned for sharing with fellow travelers.`,
+      },
+      {
+        title: "Details",
+        body: `${mediaMoments.length} captures, ${noteMoments.length} notes, and ${highlights.length} suggested highlights can feed this card.`,
+      },
+    ],
+  };
+}
+
+function buildTravelLogStory({ destination, noteMoments, activities, highlights }) {
+  const sections = noteMoments.length
+    ? noteMoments.slice(0, 5).map((moment) => ({
+        title: moment.title || moment.date || "Travel note",
+        body: moment.text || "Saved as a travel log entry.",
+      }))
+    : [
+        {
+          title: "First Entry",
+          body: `Start the travel log with what changed your plan, what surprised you, and what you want to remember from ${destination}.`,
+        },
+        {
+          title: "Places To Mention",
+          body: highlights.length ? formatInlineList(highlights.slice(0, 5)) : `${activities.length} itinerary items are ready to become log entries.`,
+        },
+      ];
+
+  return {
+    templateId: "travel-log",
+    templateLabel: "Travel log",
+    kicker: "NOTES-FIRST TEMPLATE",
+    title: `${destination} Travel Log`,
+    lead: `A written archive for ${destination}, shaped around notes, observations, and the route as it unfolds.`,
+    sections,
+  };
+}
+
+function isMediaStoryMoment(moment = {}) {
+  const mediaUrl = moment.media_url || moment.mediaUrl || "";
+  return moment.type === "photo" || moment.type === "video" || Boolean(mediaUrl);
+}
+
+function getTripHighlightTitles(trip) {
+  const saved = trip.ideas?.filter((idea) => state.savedPlaceIds?.has(idea.id)) || [];
+  const source = saved.length ? saved : (trip.ideas || []);
+  return source.map((idea) => idea.title).filter(Boolean);
+}
+
+function groupActivitiesByDay(activities = []) {
+  const byDay = new Map();
+  activities.forEach((event) => {
+    const key = event.dayName || `Day ${Number(event.dayIndex || 0) + 1}`;
+    if (!byDay.has(key)) byDay.set(key, []);
+    byDay.get(key).push(event);
+  });
+  return Array.from(byDay.entries()).map(([title, items]) => ({ title, items }));
+}
+
+function formatInlineList(items = []) {
+  const clean = items.filter(Boolean);
+  if (!clean.length) return "";
+  if (clean.length === 1) return clean[0];
+  if (clean.length === 2) return `${clean[0]} and ${clean[1]}`;
+  return `${clean.slice(0, -1).join(", ")} and ${clean[clean.length - 1]}`;
 }
 
 function readFileAsDataUrl(file, onProgress = () => {}) {
