@@ -774,6 +774,12 @@ document.addEventListener("click", async (e) => {
   // Bottom dock navigation
   if (target.dataset.nav) {
     const nav = target.dataset.nav;
+    if (nav === "journal") {
+      state.setPlanSubTab("journal");
+      flashPageLoader("Opening journal");
+      state.setView("plan");
+      return;
+    }
     if (nav === "live" && !state.tripMode) {
       const confirmActivate = confirm(`📍 Live Journey Mode requires Trip Mode ON.\n\nWould you like to activate Trip Mode for ${state.activeTrip.destination}?`);
       if (confirmActivate) {
