@@ -40,13 +40,17 @@ export function renderHeader() {
           ${TRIP_LOGO_SVG("", 40)}
         </div>
         <div class="app-header__user">
-          ${renderMobileThemeSwitch()}
           <div class="header-live-time-pill" title="Live Open-Meteo weather in ${escapeHtml(trip.destination.split(',')[0])} & time">
             <span class="header-weather-badge">${trip.weather?.icon || '☀️'} ${trip.weather?.temp || '20°C'}</span>
             <span class="header-time-divider">•</span>
-            <span class="live-time-text">${liveDayTime}</span>
+            <span class="live-time-marquee" aria-label="${escapeHtml(liveDayTime)}">
+              <span class="live-time-text">${escapeHtml(liveDayTime)}</span>
+              <span class="live-time-text" aria-hidden="true">${escapeHtml(liveDayTime)}</span>
+            </span>
             <span class="status-light-dot" title="Status: Online"></span>
           </div>
+
+          ${renderMobileThemeSwitch()}
 
           <button class="btn btn--icon btn--ghost" data-action="view-notifications" aria-label="Notifications" title="Notifications">
             ${renderIcon("bell")}
@@ -124,15 +128,16 @@ export function renderHeader() {
 }
 
 function renderMobileThemeSwitch() {
+  const systemTheme = window.matchMedia?.("(prefers-color-scheme: dark)")?.matches ? "dark" : "light";
+  const currentTheme = state.themeMode === "system" ? systemTheme : state.themeMode;
+  const nextTheme = currentTheme === "dark" ? "light" : "dark";
+  const icon = currentTheme === "dark" ? "sun" : "moon";
+  const label = currentTheme === "dark" ? "Switch to light theme" : "Switch to dark theme";
+
   return `
-    <div class="mobile-theme-switch" aria-label="Theme mode">
-      <button class="btn btn--icon btn--ghost ${state.themeMode === "light" ? "is-active" : ""}" data-action="set-theme-mode" data-theme-mode="light" aria-label="Switch to light theme" title="Light theme">
-        ${renderIcon("sun")}
-      </button>
-      <button class="btn btn--icon btn--ghost ${state.themeMode === "dark" ? "is-active" : ""}" data-action="set-theme-mode" data-theme-mode="dark" aria-label="Switch to dark theme" title="Dark theme">
-        ${renderIcon("moon")}
-      </button>
-    </div>
+    <button class="btn btn--icon btn--ghost mobile-theme-toggle is-${currentTheme}" data-action="set-theme-mode" data-theme-mode="${nextTheme}" aria-label="${label}" title="${label}">
+      ${renderIcon(icon)}
+    </button>
   `;
 }
 
@@ -150,13 +155,18 @@ function getTripRibbon(stage) {
 
 function getLiveDayTimeFormatted() {
   const now = new Date();
-  return new Intl.DateTimeFormat([], {
+  const parts = new Intl.DateTimeFormat([], {
     weekday: "short",
-    day: "numeric",
+    day: "2-digit",
     month: "short",
     hour: "2-digit",
-    minute: "2-digit"
-  }).format(now);
+    minute: "2-digit",
+    hour12: false
+  }).formatToParts(now).reduce((acc, part) => {
+    acc[part.type] = part.value;
+    return acc;
+  }, {});
+  return `${parts.weekday || ""} ${parts.day || ""} ${parts.month || ""} ${parts.hour || "00"}:${parts.minute || "00"}`.trim();
 }
 
 function escapeHtml(str) {

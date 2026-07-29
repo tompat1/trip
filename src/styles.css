@@ -768,7 +768,7 @@ textarea {
   flex-wrap: nowrap;
 }
 
-.mobile-theme-switch {
+.mobile-theme-toggle {
   display: none;
 }
 
@@ -789,7 +789,8 @@ textarea {
   gap: 4px;
   background: var(--paper-card);
   border: 1px solid var(--line);
-  padding: 4px 8px;
+  min-height: 36px;
+  padding: 0 10px;
   border-radius: var(--radius-pill);
   font-size: 0.72rem;
   font-weight: 700;
@@ -811,6 +812,33 @@ textarea {
 .live-time-text {
   font-family: var(--font-mono);
   white-space: nowrap;
+}
+
+.live-time-marquee {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ink);
+  font-family: var(--font-mono);
+  white-space: nowrap;
+  mask-image: linear-gradient(90deg, transparent 0, #000 10px, #000 calc(100% - 10px), transparent 100%);
+}
+
+.live-time-marquee .live-time-text {
+  flex: 0 0 auto;
+  padding-right: 18px;
+  animation: liveTimeScroll 8s linear infinite;
+}
+
+@keyframes liveTimeScroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-100%);
+  }
 }
 
 .header-time-divider {
@@ -1136,9 +1164,14 @@ textarea {
   .trip-flap-spinner span,
   .status-light-dot,
   .trip-page-busy,
-  .trip-page-busy__bg {
+  .trip-page-busy__bg,
+  .live-time-marquee .live-time-text {
     animation: none;
     transition: none;
+  }
+
+  .live-time-marquee .live-time-text[aria-hidden="true"] {
+    display: none;
   }
 }
 
@@ -7167,7 +7200,8 @@ textarea {
   }
 
   .top-nav--landing {
-    padding-inline: 16px !important;
+    padding-inline: 24px !important;
+    padding-block: 24px 8px !important;
   }
 
   .app-header__top,
@@ -7176,20 +7210,23 @@ textarea {
   }
 
   .app-header__top {
-    gap: 10px !important;
+    gap: 6px !important;
   }
 
   .brand-monogram,
   .top-nav__brand {
-    min-height: 58px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    min-height: 44px !important;
     margin-left: 0 !important;
     flex: 0 0 auto !important;
   }
 
   .brand-monogram .trip-logo-mark,
   .top-nav__brand .trip-logo-mark {
-    width: 74px !important;
-    height: 56px !important;
+    width: 54px !important;
+    height: 40px !important;
   }
 
   .top-nav__actions {
@@ -7202,62 +7239,82 @@ textarea {
 
   .app-header__user {
     min-width: 0 !important;
-    gap: 6px !important;
+    gap: 3px !important;
+    flex: 1 1 auto !important;
+    justify-content: flex-end !important;
   }
 
-  .mobile-theme-switch {
+  .app-header__user > .btn--icon,
+  .mobile-theme-toggle {
     display: inline-flex !important;
     align-items: center !important;
-    gap: 3px !important;
-    padding: 3px !important;
+    justify-content: center !important;
+    width: 30px !important;
+    height: 30px !important;
+    min-width: 30px !important;
+    min-height: 30px !important;
+    padding: 0 !important;
     border: 1px solid var(--line) !important;
-    border-radius: var(--radius-pill) !important;
-    background: var(--paper-card) !important;
+    border-radius: 12px !important;
+    background: color-mix(in srgb, var(--paper-card) 88%, transparent) !important;
+    color: var(--ink) !important;
     box-shadow: var(--shadow-sm) !important;
     flex: 0 0 auto !important;
   }
 
-  .mobile-theme-switch .btn {
-    width: 31px !important;
-    height: 31px !important;
-    min-height: 31px !important;
-    padding: 0 !important;
-    border-radius: 999px !important;
-    color: var(--ink) !important;
-    background: transparent !important;
+  .app-header__user > .btn--icon svg,
+  .mobile-theme-toggle svg {
+    width: 17px !important;
+    height: 17px !important;
+    stroke-width: 2.35 !important;
   }
 
-  .mobile-theme-switch .btn.is-active {
+  .mobile-theme-toggle.is-light {
+    background: color-mix(in srgb, var(--sun) 22%, var(--paper-card)) !important;
     color: #0F1B2B !important;
-    background: var(--orange) !important;
-    box-shadow: 0 6px 14px rgba(255, 122, 47, 0.24) !important;
   }
 
-  :root[data-theme="dark"] .mobile-theme-switch {
-    background: var(--surface-overlay) !important;
+  .mobile-theme-toggle.is-dark {
+    background: color-mix(in srgb, var(--surface-overlay) 88%, #0F1B2B) !important;
+    color: #F4F7FB !important;
+    border-color: color-mix(in srgb, var(--line) 68%, rgba(255, 255, 255, 0.18)) !important;
   }
 
   .header-logout-btn {
     display: inline-flex !important;
-    width: 34px !important;
-    height: 34px !important;
-    padding: 0 !important;
   }
 
   .header-live-time-pill {
-    min-width: 0 !important;
-    max-width: 96px !important;
-    padding-inline: 7px !important;
+    min-width: 138px !important;
+    height: 30px !important;
+    max-width: 196px !important;
+    padding-inline: 8px !important;
+    border-radius: 12px !important;
+    gap: 4px !important;
     overflow: hidden !important;
+    background: color-mix(in srgb, var(--paper-card) 88%, transparent) !important;
+    flex: 1 1 176px !important;
   }
 
-  .live-time-text,
+  .live-time-marquee,
   .header-time-divider {
-    display: none !important;
+    display: inline-flex !important;
+  }
+
+  .live-time-marquee {
+    flex: 1 1 auto !important;
+    max-width: 100% !important;
+    min-width: 38px !important;
   }
 
   .header-weather-badge {
-    min-width: 0 !important;
+    flex: 0 0 auto !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  .live-time-text {
+    min-width: max-content !important;
     overflow: hidden !important;
     text-overflow: ellipsis !important;
   }
@@ -7373,10 +7430,6 @@ textarea {
     touch-action: pan-x pan-y !important;
   }
 
-  .brand-monogram,
-  .trip-main-logo {
-    margin-right: 8px !important;
-  }
 }
 
 /* ==========================================================================
