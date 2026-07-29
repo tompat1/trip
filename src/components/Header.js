@@ -16,6 +16,7 @@ export function renderHeader() {
           ${TRIP_LOGO_SVG("", 40)}
         </div>
         <div class="top-nav__actions">
+          ${renderMobileThemeSwitch()}
           <button class="btn btn--primary btn--sm" data-action="create-trip">Get started</button>
         </div>
       </header>
@@ -39,6 +40,7 @@ export function renderHeader() {
           ${TRIP_LOGO_SVG("", 40)}
         </div>
         <div class="app-header__user">
+          ${renderMobileThemeSwitch()}
           <div class="header-live-time-pill" title="Live Open-Meteo weather in ${escapeHtml(trip.destination.split(',')[0])} & time">
             <span class="header-weather-badge">${trip.weather?.icon || '☀️'} ${trip.weather?.temp || '20°C'}</span>
             <span class="header-time-divider">•</span>
@@ -121,6 +123,19 @@ export function renderHeader() {
         </div>
       </div>
     </header>
+  `;
+}
+
+function renderMobileThemeSwitch() {
+  return `
+    <div class="mobile-theme-switch" aria-label="Theme mode">
+      <button class="btn btn--icon btn--ghost ${state.themeMode === "light" ? "is-active" : ""}" data-action="set-theme-mode" data-theme-mode="light" aria-label="Switch to light theme" title="Light theme">
+        ${renderIcon("sun")}
+      </button>
+      <button class="btn btn--icon btn--ghost ${state.themeMode === "dark" ? "is-active" : ""}" data-action="set-theme-mode" data-theme-mode="dark" aria-label="Switch to dark theme" title="Dark theme">
+        ${renderIcon("moon")}
+      </button>
+    </div>
   `;
 }
 

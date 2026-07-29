@@ -768,6 +768,10 @@ textarea {
   flex-wrap: nowrap;
 }
 
+.mobile-theme-switch {
+  display: none;
+}
+
 .header-logout-btn {
   display: inline-flex;
   flex-shrink: 0;
@@ -1086,6 +1090,53 @@ textarea {
   }
 }
 
+@keyframes mobileCtaBreath {
+  0%, 100% {
+    box-shadow: 0 10px 24px rgba(255, 122, 47, 0.24);
+  }
+  50% {
+    box-shadow: 0 14px 30px rgba(255, 122, 47, 0.36);
+  }
+}
+
+@keyframes mobileIconNudge {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  42% {
+    transform: translateX(3px);
+  }
+}
+
+@keyframes mobileCardSettle {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes mobileCardArrowDrift {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  45% {
+    transform: translateX(4px);
+  }
+}
+
+@keyframes mobileIllustrationFloat {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .app-view--route-enter main,
   .app-view--route-enter .home-view,
@@ -1107,6 +1158,11 @@ textarea {
   .btn.is-pressing svg,
   .profile-menu-item.is-pressing svg,
   .btn.is-refreshing svg,
+  .hero-actions .btn--primary,
+  .hero-actions .btn svg,
+  .feature-card,
+  .landing-feature-cta,
+  .landing-illustration-placeholder img,
   :root[data-motion-refresh="refresh-weather"] [data-action="refresh-weather"] svg,
   :root[data-motion-refresh="refresh-trip-ideas"] [data-action="refresh-trip-ideas"] svg,
   :root[data-motion-refresh="refresh-trip-events"] [data-action="refresh-trip-events"] svg,
@@ -1792,6 +1848,61 @@ textarea {
 .feature-card:hover .landing-feature-cta,
 .feature-card:focus-visible .landing-feature-cta {
   transform: translateX(3px);
+}
+
+@media (hover: none) and (pointer: coarse) {
+  .landing-page .hero-actions .btn--primary {
+    animation: mobileCtaBreath 2.8s var(--ease-out) infinite;
+  }
+
+  .landing-page .hero-actions .btn svg {
+    animation: mobileIconNudge 2.4s var(--ease-out) infinite;
+  }
+
+  .landing-page .hero-actions .btn:nth-child(2) svg {
+    animation-delay: 320ms;
+  }
+
+  .landing-page .hero-actions .btn:active {
+    box-shadow: inset 0 2px 8px rgba(15, 27, 43, 0.18);
+  }
+
+  .landing-page .feature-card {
+    animation: mobileCardSettle 420ms var(--ease-out) both;
+    transition:
+      border-color 180ms var(--ease-out),
+      background-color 180ms var(--ease-out),
+      box-shadow 180ms var(--ease-out);
+  }
+
+  .landing-page .feature-card:nth-child(2) {
+    animation-delay: 70ms;
+  }
+
+  .landing-page .feature-card:nth-child(3) {
+    animation-delay: 140ms;
+  }
+
+  .landing-page .feature-card:active {
+    border-color: var(--orange);
+    box-shadow: inset 0 2px 10px rgba(15, 27, 43, 0.12);
+  }
+
+  .landing-page .landing-feature-cta {
+    animation: mobileCardArrowDrift 2.2s var(--ease-out) infinite;
+  }
+
+  .landing-page .feature-card:nth-child(2) .landing-feature-cta {
+    animation-delay: 240ms;
+  }
+
+  .landing-page .feature-card:nth-child(3) .landing-feature-cta {
+    animation-delay: 480ms;
+  }
+
+  .landing-page .landing-illustration-placeholder img {
+    animation: mobileIllustrationFloat 5.4s var(--ease-out) infinite;
+  }
 }
 
 .landing-illustration-placeholder {
