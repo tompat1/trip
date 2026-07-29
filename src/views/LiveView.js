@@ -255,6 +255,11 @@ export function renderProfileView() {
   const customPersonas = profile.customPersonas || [];
   const personaDescriptions = new Map(TRAVELER_PERSONA_ARCHETYPES);
   const personas = [...new Set([...TRAVELER_PERSONA_ARCHETYPES.map(([label]) => label), ...customPersonas])];
+  const activePersonas = personas.filter((persona) => state.userPreferences && state.userPreferences.has(persona));
+  const orderedPersonas = [
+    ...activePersonas,
+    ...personas.filter((persona) => !(state.userPreferences && state.userPreferences.has(persona))),
+  ];
   const isAdmin = Boolean(state.isAdmin);
   const futureTrips = trips.filter((trip) => isFutureTrip(trip));
   const companionTripId = state.profileCompanionTripId && futureTrips.some((trip) => trip.id === state.profileCompanionTripId)
@@ -303,7 +308,7 @@ export function renderProfileView() {
           </div>
         </div>
 
-        <div class="profile-menu-card mb-sm" style="padding: 16px;">
+        <div class="profile-menu-card profile-personas-card mb-sm">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
             <div>
               <h4 class="profile-menu-item__title" style="margin: 0; font-size: 0.95rem;">Traveler Personas & Interests</h4>
@@ -311,8 +316,18 @@ export function renderProfileView() {
             </div>
             <span class="profile-personas-count">${state.userPreferences?.size || 0} selected</span>
           </div>
-          <div class="profile-personas-grid">
-            ${personas.map(persona => {
+          <div class="profile-active-personas" aria-label="Active traveler personas">
+            ${activePersonas.length ? activePersonas.map((persona) => `
+              <button class="profile-active-persona-pill" data-action="toggle-user-persona" data-persona="${escapeHtml(persona)}" type="button" aria-label="Turn off ${escapeHtml(persona)}">
+                ${escapeHtml(persona)}
+              </button>
+            `).join("") : `
+              <span class="profile-active-personas__empty">No active personas yet.</span>
+            `}
+          </div>
+          <div class="profile-personas-scroll" tabindex="0" aria-label="All traveler personas and interests">
+            <div class="profile-personas-grid">
+              ${orderedPersonas.map(persona => {
               const isSelected = state.userPreferences && state.userPreferences.has(persona);
               const isCustom = customPersonas.includes(persona);
               const description = personaDescriptions.get(persona) || "Custom travel style.";
@@ -332,7 +347,8 @@ export function renderProfileView() {
                   ` : ""}
                 </span>
               `;
-            }).join("")}
+              }).join("")}
+            </div>
           </div>
           ${isAdmin ? `
             <form class="profile-persona-add-form" id="profile-persona-add-form">

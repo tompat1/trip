@@ -422,9 +422,12 @@ textarea {
   width: 100%;
   height: 100%;
   filter: drop-shadow(0px 2px 4px rgba(248, 96, 8, 0.35));
+  transform-origin: center;
+  animation: routeLineBreathe 4.8s var(--ease-out) infinite;
 }
 
 .route-line-dashed-banner {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -439,6 +442,23 @@ textarea {
     border-color 0.2s var(--ease-out),
     box-shadow 0.2s var(--ease-out),
     transform 0.2s var(--ease-out);
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.route-line-dashed-banner::after {
+  content: "";
+  position: absolute;
+  inset: 1px;
+  border-radius: inherit;
+  background:
+    linear-gradient(115deg, transparent 0 36%, rgba(255, 122, 47, 0.14) 48%, transparent 60%),
+    radial-gradient(circle at 14% 84%, rgba(117, 167, 200, 0.14), transparent 28%);
+  opacity: 0.78;
+  transform: translateX(-44%);
+  animation: routeCardSweep 5.6s var(--ease-out) infinite;
+  pointer-events: none;
+  z-index: -1;
 }
 
 .route-line-dashed-banner:hover,
@@ -475,6 +495,7 @@ textarea {
 .route-line-dashed-banner__arrow {
   display: inline-flex;
   transition: transform 0.2s var(--ease-out);
+  animation: routeArrowNudge 1.8s var(--ease-out) infinite;
 }
 
 .route-line-dashed-banner:hover .route-line-dashed-banner__arrow,
@@ -483,10 +504,70 @@ textarea {
 }
 
 .route-line-dashed-banner__map {
+  position: relative;
   width: 100%;
   border-radius: var(--radius-sm);
   background: rgba(248, 96, 8, 0.04);
   padding: 4px 8px;
+  overflow: hidden;
+}
+
+.route-line-dashed-banner__map::before {
+  content: "";
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  top: 50%;
+  height: 2px;
+  border-radius: var(--radius-pill);
+  background: linear-gradient(90deg, transparent, rgba(255, 122, 47, 0.42), transparent);
+  opacity: 0.72;
+  transform: translate(-92%, -50%);
+  animation: routeProgressGlow 3.8s var(--ease-out) infinite;
+  pointer-events: none;
+}
+
+@keyframes routeCardSweep {
+  0%, 54% {
+    opacity: 0;
+    transform: translateX(-54%);
+  }
+  68% {
+    opacity: 0.78;
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(54%);
+  }
+}
+
+@keyframes routeLineBreathe {
+  0%, 100% {
+    transform: translateX(0) scaleX(1);
+    filter: drop-shadow(0px 2px 4px rgba(248, 96, 8, 0.3));
+  }
+  50% {
+    transform: translateX(1.5%) scaleX(1.015);
+    filter: drop-shadow(0px 3px 8px rgba(248, 96, 8, 0.42));
+  }
+}
+
+@keyframes routeProgressGlow {
+  0% {
+    transform: translate(-92%, -50%);
+  }
+  100% {
+    transform: translate(92%, -50%);
+  }
+}
+
+@keyframes routeArrowNudge {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  50% {
+    transform: translateX(4px);
+  }
 }
 
 .route-line-dashed {
@@ -1165,7 +1246,11 @@ textarea {
   .status-light-dot,
   .trip-page-busy,
   .trip-page-busy__bg,
-  .live-time-marquee .live-time-text {
+  .live-time-marquee .live-time-text,
+  .trip-route-line,
+  .route-line-dashed-banner::after,
+  .route-line-dashed-banner__map::before,
+  .route-line-dashed-banner__arrow {
     animation: none;
     transition: none;
   }
@@ -7824,6 +7909,71 @@ textarea {
   font-weight: 800;
 }
 
+.profile-personas-card {
+  padding: 16px;
+}
+
+.profile-active-personas {
+  display: flex;
+  gap: 7px;
+  margin-bottom: 10px;
+  padding-bottom: 10px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  border-bottom: 1px solid var(--line-light);
+  -webkit-overflow-scrolling: touch;
+}
+
+.profile-active-personas::-webkit-scrollbar {
+  display: none;
+}
+
+.profile-active-persona-pill,
+.profile-active-personas__empty {
+  flex: 0 0 auto;
+  min-height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 10px;
+  border: 1px solid rgba(255, 85, 0, 0.24);
+  border-radius: var(--radius-pill);
+  background: rgba(255, 85, 0, 0.1);
+  color: var(--ink);
+  font-size: 0.72rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.profile-active-persona-pill {
+  cursor: pointer;
+}
+
+.profile-active-persona-pill:active {
+  box-shadow: inset 0 2px 8px rgba(15, 27, 43, 0.12);
+}
+
+.profile-active-personas__empty {
+  border-color: var(--line);
+  background: var(--paper);
+  color: var(--ink-muted);
+}
+
+.profile-personas-scroll {
+  max-height: 286px;
+  overflow-y: auto;
+  padding-right: 4px;
+  overscroll-behavior: contain;
+  scrollbar-color: color-mix(in srgb, var(--orange) 45%, var(--line)) transparent;
+  scrollbar-width: thin;
+}
+
+.profile-personas-scroll:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--orange) 52%, transparent);
+  outline-offset: 3px;
+  border-radius: var(--radius-md);
+}
+
 .profile-personas-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(186px, 1fr));
@@ -7886,6 +8036,7 @@ textarea {
   border-color: var(--orange);
   background: rgba(255, 85, 0, 0.09);
   color: var(--ink);
+  order: -1;
 }
 
 .profile-persona-chip.is-active .profile-persona-chip__status {
@@ -8520,6 +8671,10 @@ textarea {
 
   .profile-personas-grid {
     grid-template-columns: 1fr;
+  }
+
+  .profile-personas-scroll {
+    max-height: 238px;
   }
 
   .profile-panel-header {
