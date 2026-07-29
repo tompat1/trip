@@ -452,7 +452,7 @@ class AppState {
     this.userLocation = null; // [lat, lng]
     this.locationResolved = null; // { area, town, city, country }
     this.liveNearbyPlaces = [];
-    this.backendHealth = { status: "checking", bindings: {} };
+    this.backendHealth = { status: "checking", bindings: {}, secrets: {}, services: {}, generatedAt: "" };
     this.tourismDiscoveryStatus = {};
     this.eventDiscoveryStatus = {};
     this.tripIntelligenceStatus = {};
@@ -1737,12 +1737,18 @@ class AppState {
       const res = await fetch(`${apiBase}/api/health`, { headers: { Accept: "application/json" } });
       if (res.ok) {
         const data = await res.json();
-        this.backendHealth = { status: "connected", bindings: data.bindings || {} };
+        this.backendHealth = {
+          status: "connected",
+          bindings: data.bindings || {},
+          secrets: data.secrets || {},
+          services: data.services || {},
+          generatedAt: data.generatedAt || "",
+        };
       } else {
-        this.backendHealth = { status: "standalone", bindings: {} };
+        this.backendHealth = { status: "standalone", bindings: {}, secrets: {}, services: {}, generatedAt: "" };
       }
     } catch {
-      this.backendHealth = { status: "standalone", bindings: {} };
+      this.backendHealth = { status: "standalone", bindings: {}, secrets: {}, services: {}, generatedAt: "" };
     }
     this.notify();
   }

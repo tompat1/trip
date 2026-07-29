@@ -120,7 +120,20 @@ async function createApiContext(request, env, ctx, params) {
   };
 }
 
-function healthHandler({ hasDb, hasCache, hasMedia, hasLightMedia }) {
+function healthHandler({ env, hasDb, hasCache, hasMedia, hasLightMedia }) {
+  const secretStatus = {
+    OPENTRIPMAP_API_KEY: env.OPENTRIPMAP_API_KEY ? "configured" : "missing",
+    AMADEUS_CLIENT_ID: env.AMADEUS_CLIENT_ID ? "configured" : "missing",
+    AMADEUS_CLIENT_SECRET: env.AMADEUS_CLIENT_SECRET ? "configured" : "missing",
+    TICKETMASTER_API_KEY: env.TICKETMASTER_API_KEY ? "configured" : "missing",
+    BANDSINTOWN_APP_ID: env.BANDSINTOWN_APP_ID ? "configured" : "missing",
+    UNSPLASH_ACCESS_KEY: env.UNSPLASH_ACCESS_KEY ? "configured" : "missing",
+    PEXELS_API_KEY: env.PEXELS_API_KEY ? "configured" : "missing",
+    TRIP_ADMIN_TOKEN: env.TRIP_ADMIN_TOKEN ? "configured" : "missing",
+    TRIP_ADMIN_EMAIL: env.TRIP_ADMIN_EMAIL ? "configured" : "missing",
+    TRIP_ADMIN_PASSWORD: env.TRIP_ADMIN_PASSWORD ? "configured" : "missing",
+  };
+
   return json({
     ok: true,
     service: "trip-enrichment-api",
@@ -130,6 +143,22 @@ function healthHandler({ hasDb, hasCache, hasMedia, hasLightMedia }) {
       kv: hasCache ? "ready" : "missing",
       r2: hasMedia ? "ready" : "missing",
       lightMedia: hasLightMedia ? "ready-d1" : "missing",
+    },
+    secrets: secretStatus,
+    services: {
+      opentripmap: secretStatus.OPENTRIPMAP_API_KEY === "configured" ? "ready" : "missing-key",
+      amadeus: secretStatus.AMADEUS_CLIENT_ID === "configured" && secretStatus.AMADEUS_CLIENT_SECRET === "configured" ? "ready" : "missing-key",
+      ticketmaster: secretStatus.TICKETMASTER_API_KEY === "configured" ? "ready" : "missing-key",
+      bandsintown: secretStatus.BANDSINTOWN_APP_ID === "configured" ? "ready" : "missing-key",
+      unsplash: secretStatus.UNSPLASH_ACCESS_KEY === "configured" ? "ready" : "optional-missing-key",
+      pexels: secretStatus.PEXELS_API_KEY === "configured" ? "ready" : "optional-missing-key",
+      commons: "ready",
+      openverse: "ready",
+      openstreetmap: "ready",
+      overpass: "ready",
+      openmeteo: "ready",
+      nasaEonet: "ready",
+      gbfs: "destination-dependent",
     },
     generatedAt: new Date().toISOString(),
   });

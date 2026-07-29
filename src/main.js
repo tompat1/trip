@@ -876,6 +876,12 @@ document.addEventListener("click", async (e) => {
         showToast(okCount ? `Trip intelligence refreshed from ${okCount} live sources.` : "Trip intelligence refreshed with available fallbacks.");
       }
     }
+    else if (action === "refresh-backend-health") {
+      showToast("Checking production services...");
+      await state.checkBackendHealth();
+      const health = state.backendHealth || {};
+      showToast(health.status === "connected" ? "Production service status refreshed." : "Production health unavailable. Showing local status.");
+    }
     else if (action === "search-trip-flights") {
       showToast("Searching flights for this route...");
       await withPageLoader("Searching flights", () => state.searchFlightsForActiveTrip());

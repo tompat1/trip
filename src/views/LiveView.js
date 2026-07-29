@@ -361,14 +361,15 @@ export function renderProfileView() {
           ` : ""}
         </div>
 
-        <div class="profile-section-tabs" aria-label="Profile settings sections">
+        <div class="profile-section-tabs ${isAdmin ? "profile-section-tabs--admin" : ""}" aria-label="Profile settings sections">
           ${renderProfileSectionTab("profile", "user", "My profile", activeSection)}
           ${renderProfileSectionTab("preferences", "slidersHorizontal", "Travel preferences", activeSection)}
           ${renderProfileSectionTab("notifications", "bell", "Notifications", activeSection)}
           ${renderProfileSectionTab("privacy", "shieldCheck", "Privacy & security", activeSection)}
+          ${isAdmin ? renderProfileSectionTab("services", "plugZap", "Services", activeSection) : ""}
         </div>
 
-        ${renderProfileSettingsPanel(activeSection, profile)}
+        ${renderProfileSettingsPanel(activeSection, profile, isAdmin)}
 
         ${renderAccountAccessPanel(isAdmin)}
 
@@ -421,10 +422,11 @@ function renderProfileSectionTab(id, icon, label, activeSection) {
   `;
 }
 
-function renderProfileSettingsPanel(section, profile) {
+function renderProfileSettingsPanel(section, profile, isAdmin = false) {
   if (section === "preferences") return renderTravelPreferencesPanel(profile);
   if (section === "notifications") return renderNotificationsPanel(profile);
   if (section === "privacy") return renderPrivacyPanel(profile);
+  if (section === "services" && isAdmin) return renderAdminServicesPanel();
   return renderMyProfilePanel(profile);
 }
 
@@ -530,6 +532,208 @@ function renderPrivacyPanel(profile) {
       </div>
     </section>
   `;
+}
+
+const ADMIN_PROVIDER_GROUPS = [
+  {
+    title: "Missing In Production",
+    description: "High-impact secrets that unlock live POIs, flights, concerts and enrichment.",
+    items: [
+      { name: "OpenTripMap", key: "OPENTRIPMAP_API_KEY", service: "opentripmap", required: true, area: "POIs, hidden gems, place details" },
+      { name: "Amadeus client id", key: "AMADEUS_CLIENT_ID", service: "amadeus", required: true, area: "Airport search and live flight offers" },
+      { name: "Amadeus client secret", key: "AMADEUS_CLIENT_SECRET", service: "amadeus", required: true, area: "Airport search and live flight offers" },
+      { name: "Ticketmaster", key: "TICKETMASTER_API_KEY", service: "ticketmaster", required: true, area: "Events and concerts" },
+      { name: "Bandsintown", key: "BANDSINTOWN_APP_ID", service: "bandsintown", required: true, area: "Concert discovery" },
+    ],
+  },
+  {
+    title: "Enrichment Media",
+    description: "Optional image providers. Commons/Openverse work without keys; these improve coverage.",
+    items: [
+      { name: "Unsplash", key: "UNSPLASH_ACCESS_KEY", service: "unsplash", required: false, area: "Fallback place imagery" },
+      { name: "Pexels", key: "PEXELS_API_KEY", service: "pexels", required: false, area: "Fallback place imagery" },
+      { name: "Wikimedia Commons", service: "commons", noKey: true, area: "Verified open media" },
+      { name: "Openverse", service: "openverse", noKey: true, area: "Open licensed imagery" },
+    ],
+  },
+  {
+    title: "Travel Intelligence",
+    description: "Context providers for weather, signals, commute and civic/event intelligence.",
+    items: [
+      { name: "OpenStreetMap / Overpass", service: "overpass", noKey: true, area: "Nearby POIs and persona-biased scans" },
+      { name: "Open-Meteo", service: "openmeteo", noKey: true, area: "Weather, sunrise, sunset" },
+      { name: "NASA EONET", service: "nasaEonet", noKey: true, area: "Natural events and safety signals" },
+      { name: "GBFS feeds", service: "gbfs", noKey: true, area: "Bike/scooter availability where city feeds exist" },
+      { name: "OpenAgenda", key: "VITE_OPENAGENDA_API_KEY", service: "openagenda", required: false, frontendEnv: true, area: "Civic events where available" },
+    ],
+  },
+  {
+    title: "Cloudflare Platform",
+    description: "Storage and session bindings that power account, companions, cache and media review flows.",
+    items: [
+      { name: "D1 database", binding: "d1", key: "TRIP_DB", required: true, area: "Trips, accounts, companions, place cache" },
+      { name: "KV cache", binding: "kv", key: "TRIP_CACHE", required: false, area: "Provider cache and rate relief" },
+      { name: "R2 media bucket", binding: "r2", key: "TRIP_MEDIA", required: false, area: "Original media storage" },
+      { name: "D1 light media", binding: "lightMedia", key: "TRIP_DB", required: false, area: "Light media index fallback" },
+      { name: "Admin bootstrap token", key: "TRIP_ADMIN_TOKEN", required: false, area: "Admin session bootstrap" },
+      { name: "Admin bootstrap email", key: "TRIP_ADMIN_EMAIL", required: false, area: "Admin login bootstrap" },
+      { name: "Admin bootstrap password", key: "TRIP_ADMIN_PASSWORD", required: false, area: "Admin login bootstrap" },
+    ],
+  },
+];
+
+function renderAdminServicesPanel() {
+  const health = state.backendHealth || {};
+  const readiness = getProductionEnrichmentReadiness(health);
+  const missingRequired = getAdminProviderItems()
+    .filter((item) => item.required && getProviderStatus(item, health).tone !== "ready");
+  const readyCount = getAdminProviderItems()
+    .filter((item) => getProviderStatus(item, health).tone === "ready").length;
+  const totalCount = getAdminProviderItems().length;
+
+  return `
+    <section class="profile-settings-panel admin-services-panel" aria-labelledby="admin-services-title">
+      <div class="profile-panel-header admin-services-panel__header">
+        <div>
+          <h3 id="admin-services-title">Enrichment services</h3>
+          <p>Provider health, production secrets and service coverage for POIs, events, media and the enrichment center.</p>
+        </div>
+        <div class="admin-services-summary">
+          <span class="admin-services-summary__score">${readyCount}/${totalCount} ready</span>
+          <button class="btn btn--outline btn--sm" data-action="refresh-backend-health" type="button">${renderIcon("refreshCw")} Refresh</button>
+        </div>
+      </div>
+
+      <div class="admin-service-progress" aria-label="Production enrichment readiness">
+        <div class="admin-service-progress__top">
+          <strong>${readiness.percent}% production enrichment level</strong>
+          <span>${escapeHtml(readiness.label)}</span>
+        </div>
+        <div class="admin-service-progress__track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${readiness.percent}">
+          <span style="width: ${readiness.percent}%"></span>
+        </div>
+        <p>${escapeHtml(readiness.detail)}</p>
+      </div>
+
+      <div class="admin-missing-keys">
+        <span class="admin-missing-keys__label">Missing In Production</span>
+        ${missingRequired.length ? `
+          <div class="admin-missing-keys__list">
+            ${missingRequired.map((item) => `<code>${escapeHtml(item.key)}</code>`).join("")}
+          </div>
+        ` : `
+          <strong>All required high-impact keys look configured.</strong>
+        `}
+      </div>
+
+      <div class="admin-provider-groups">
+        ${ADMIN_PROVIDER_GROUPS.map((group) => renderAdminProviderGroup(group, health)).join("")}
+      </div>
+
+      <div class="admin-services-note">
+        <strong>Secret install commands</strong>
+        <code>npx wrangler secret put OPENTRIPMAP_API_KEY</code>
+        <code>npx wrangler secret put AMADEUS_CLIENT_ID</code>
+        <code>npx wrangler secret put AMADEUS_CLIENT_SECRET</code>
+        <code>npx wrangler secret put TICKETMASTER_API_KEY</code>
+        <code>npx wrangler secret put BANDSINTOWN_APP_ID</code>
+      </div>
+    </section>
+  `;
+}
+
+function getAdminProviderItems() {
+  return ADMIN_PROVIDER_GROUPS.flatMap((group) => group.items);
+}
+
+function getProductionEnrichmentReadiness(health = {}) {
+  const items = getAdminProviderItems();
+  const required = items.filter((item) => item.required);
+  const optional = items.filter((item) => !item.required);
+  const readyRequired = required.filter((item) => getProviderStatus(item, health).tone === "ready").length;
+  const readyOptional = optional.filter((item) => getProviderStatus(item, health).tone === "ready").length;
+  const requiredScore = required.length ? readyRequired / required.length : 1;
+  const optionalScore = optional.length ? readyOptional / optional.length : 1;
+  const percent = Math.round(requiredScore * 72 + optionalScore * 28);
+  const missingRequired = required.length - readyRequired;
+
+  if (missingRequired > 0) {
+    return {
+      percent,
+      label: `${missingRequired} critical ${missingRequired === 1 ? "gap" : "gaps"} left`,
+      detail: "Prioritize required production keys first; they unlock live POIs, flights, concerts and trip enrichment.",
+    };
+  }
+  if (percent < 90) {
+    return {
+      percent,
+      label: "Core live planning ready",
+      detail: "Required services are in place. Optional media and civic providers can lift coverage and polish.",
+    };
+  }
+  return {
+    percent,
+    label: "Strong production coverage",
+    detail: "The enrichment center has the core provider coverage needed for true TRIP planning.",
+  };
+}
+
+function renderAdminProviderGroup(group, health) {
+  return `
+    <div class="admin-provider-group">
+      <div class="admin-provider-group__title">
+        <strong>${escapeHtml(group.title)}</strong>
+        <span>${escapeHtml(group.description)}</span>
+      </div>
+      <div class="admin-provider-list">
+        ${group.items.map((item) => renderAdminProviderRow(item, health)).join("")}
+      </div>
+    </div>
+  `;
+}
+
+function renderAdminProviderRow(item, health) {
+  const status = getProviderStatus(item, health);
+  return `
+    <div class="admin-provider-row admin-provider-row--${status.tone}">
+      <div class="admin-provider-row__main">
+        <span class="admin-provider-row__dot" aria-hidden="true"></span>
+        <div>
+          <strong>${escapeHtml(item.name)}</strong>
+          <span>${escapeHtml(item.area || "")}</span>
+        </div>
+      </div>
+      <div class="admin-provider-row__meta">
+        ${item.key ? `<code>${escapeHtml(item.key)}</code>` : `<code>No key</code>`}
+        <span>${escapeHtml(status.label)}</span>
+      </div>
+    </div>
+  `;
+}
+
+function getProviderStatus(item, health = {}) {
+  if (item.binding) {
+    const value = health.bindings?.[item.binding] || "";
+    if (value && value !== "missing") return { tone: "ready", label: value };
+    return item.required ? { tone: "missing", label: "missing binding" } : { tone: "optional", label: "optional missing" };
+  }
+
+  if (item.noKey) {
+    const value = health.services?.[item.service] || "ready";
+    return value === "ready" ? { tone: "ready", label: "no key needed" } : { tone: "optional", label: value };
+  }
+
+  if (item.frontendEnv) {
+    return { tone: "optional", label: "frontend env not reported by Worker" };
+  }
+
+  const secret = item.key ? health.secrets?.[item.key] : "";
+  const service = item.service ? health.services?.[item.service] : "";
+  if (secret === "configured" || service === "ready") return { tone: "ready", label: "configured" };
+  if (health.status !== "connected") return item.required
+    ? { tone: "unknown", label: "production health unavailable" }
+    : { tone: "optional", label: "optional key" };
+  return item.required ? { tone: "missing", label: "missing key" } : { tone: "optional", label: "optional key" };
 }
 
 function renderAccountAccessPanel(isAdmin) {
