@@ -599,6 +599,7 @@ class AppState {
     this.helpOpen = false;
     this.helpQuery = "";
     this.authExitOpen = false;
+    this.authMode = "login"; // "login" | "signup" | "forgot"
     this.premiumOpen = false;
     this.tripCreateOpen = false;
     this.listeners = new Set();
@@ -802,8 +803,9 @@ class AppState {
     this.notify();
   }
 
-  showAuthExit() {
+  showAuthExit(mode = "login") {
     this.authExitOpen = true;
+    this.authMode = ["login", "signup", "forgot"].includes(mode) ? mode : "login";
     this.helpOpen = false;
     this.onboardingOpen = false;
     this.activeInvite = null;
@@ -815,6 +817,14 @@ class AppState {
     this.authExitOpen = false;
     if (options.view) this.activeView = options.view;
     this.notify();
+  }
+
+  setAuthMode(mode = "login") {
+    const next = ["login", "signup", "forgot"].includes(mode) ? mode : "login";
+    if (this.authMode !== next) {
+      this.authMode = next;
+      this.notify();
+    }
   }
 
   openPremium() {

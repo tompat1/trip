@@ -900,6 +900,15 @@ document.addEventListener("click", async (e) => {
     else if (action === "close-help") {
       state.closeHelp();
     }
+    else if (action === "open-auth-panel") {
+      state.showAuthExit(target.dataset.authMode || "login");
+    }
+    else if (action === "close-auth-panel") {
+      state.closeAuthExit();
+    }
+    else if (action === "set-auth-mode") {
+      state.setAuthMode(target.dataset.authMode || "login");
+    }
     else if (action === "invite-companions") {
       flashPageLoader("Opening invites");
       state.setView("profile");
@@ -1629,6 +1638,56 @@ document.addEventListener("submit", async (e) => {
     } finally {
       if (button) button.disabled = false;
     }
+    return;
+  }
+
+  if (e.target.id === "auth-signup-form") {
+    e.preventDefault();
+    const form = e.target;
+    const name = form.name?.value?.trim() || "";
+    const email = form.email?.value?.trim() || "";
+    const password = form.password?.value || "";
+    if (!name || !email || password.length < 8) {
+      showToast("Add your name, email, and an 8+ character password.");
+      return;
+    }
+    const button = form.querySelector("button[type='submit']");
+    if (button) button.disabled = true;
+    try {
+      await withPageLoader("Creating account", async () => {
+        await enrichmentService.registerAccount({
+          name,
+          email,
+          password,
+          inviteTripId: state.activeInvite?.tripId || "",
+        });
+        state.updateUserProfile({ name, email }, { notify: false });
+        await state.refreshUserSession();
+      }, { delay: 0 });
+      state.closeAuthExit({ view: "home" });
+      showToast("Account created. Welcome to TRIP.");
+    } catch (error) {
+      showToast(error?.status === 409 ? "An account already exists. Sign in instead." : "Could not create account right now.");
+      if (error?.status === 409) state.setAuthMode("login");
+    } finally {
+      if (button) button.disabled = false;
+    }
+    return;
+  }
+
+  if (e.target.id === "auth-forgot-form") {
+    e.preventDefault();
+    const form = e.target;
+    const email = form.email?.value?.trim() || "";
+    if (!email) {
+      showToast("Enter your email first.");
+      return;
+    }
+    try {
+      localStorage.setItem("trip_password_reset_requested_v1", JSON.stringify({ email, requestedAt: new Date().toISOString() }));
+    } catch {}
+    state.setAuthMode("login");
+    showToast("Password reset noted. Email reset delivery comes next.");
     return;
   }
 

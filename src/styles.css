@@ -6760,6 +6760,7 @@ textarea {
 }
 
 .auth-exit-card {
+  position: relative;
   width: min(100%, 420px);
   padding: 26px;
   border: 1px solid rgba(255, 255, 255, 0.5);
@@ -6769,6 +6770,28 @@ textarea {
     var(--paper-card);
   box-shadow: var(--shadow-lg);
   text-align: left;
+}
+
+.auth-exit-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 38px;
+  height: 38px;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  display: inline-grid;
+  place-items: center;
+  color: var(--ink);
+  background: var(--paper);
+  box-shadow: var(--shadow-xs);
+  cursor: pointer;
+}
+
+.auth-exit-close:hover,
+.auth-exit-close:focus-visible {
+  color: var(--orange);
+  border-color: rgba(255, 85, 0, 0.32);
 }
 
 .auth-exit-brand {
@@ -6798,6 +6821,34 @@ textarea {
   color: var(--ink-muted);
   font-size: 0.9rem;
   line-height: 1.5;
+}
+
+.auth-mode-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-top: 18px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pill);
+  background: var(--paper);
+}
+
+.auth-mode-tabs button {
+  min-height: 34px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  color: var(--ink-muted);
+  background: transparent;
+  font-size: 0.8rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.auth-mode-tabs button.is-active {
+  color: var(--ink);
+  background: var(--paper-card);
+  box-shadow: var(--shadow-xs);
 }
 
 .auth-exit-login-form {
@@ -6893,6 +6944,29 @@ textarea {
   color: var(--ink);
   padding: 10px 12px;
   font-size: 0.9rem;
+}
+
+.auth-support-links {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+.auth-support-links button {
+  border: 0;
+  padding: 0;
+  color: var(--orange);
+  background: transparent;
+  font-size: 0.78rem;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.auth-support-links button:hover,
+.auth-support-links button:focus-visible {
+  text-decoration: underline;
 }
 
 .auth-exit-actions {
