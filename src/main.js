@@ -751,7 +751,7 @@ async function logOutAndShowExit() {
 
 // Global Event Listeners Delegation
 document.addEventListener("click", async (e) => {
-  const target = e.target.closest("[data-nav], [data-action], [data-subtab], [data-viewmode], [data-day-select], [data-map-day-filter], [data-trip-length], [data-cat], [data-subfilter]");
+  const target = e.target.closest("[data-nav], [data-action], [data-subtab], [data-journal-section], [data-viewmode], [data-day-select], [data-map-day-filter], [data-trip-length], [data-cat], [data-subfilter]");
   if (!target) {
     if (!e.target.closest?.(".airport-autocomplete")) closeAirportAutocompleteMenus();
     return;
@@ -1347,6 +1347,10 @@ document.addEventListener("click", async (e) => {
   // Subtab switcher
   if (target.dataset.subtab) {
     state.setPlanSubTab(target.dataset.subtab);
+  }
+
+  if (target.dataset.journalSection) {
+    state.setJournalSection(target.dataset.journalSection);
   }
 
   // View mode switcher

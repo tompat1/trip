@@ -12,8 +12,14 @@ const SUB_TABS = [
   { id: "overview", label: "Overview", icon: renderIcon("compass") },
   { id: "transit", label: "Transit", icon: renderIcon("navigation") },
   { id: "explore", label: "Explore", icon: renderIcon("sparkles") },
-  { id: "plan", label: "Plan", icon: renderIcon("calendar") },
-  { id: "journal", label: "Journal", icon: renderIcon("bookOpen") }
+  { id: "plan", label: "Plan", icon: renderIcon("calendar") }
+];
+
+const JOURNAL_SECTIONS = [
+  { id: "gallery", label: "Gallery", icon: renderIcon("image") },
+  { id: "notes", label: "Notes", icon: renderIcon("fileText") },
+  { id: "story", label: "Story", icon: renderIcon("bookOpen") },
+  { id: "templates", label: "Templates", icon: renderIcon("save") }
 ];
 
 const VIEW_MODES = [
@@ -28,6 +34,9 @@ const DAYS_HEADER = ["Sat 3 Oct", "Sun 4 Oct", "Mon 5 Oct", "Tue 6 Oct", "Wed 7 
 export function renderPlanView() {
   const trip = state.activeTrip;
   const activeSubTab = state.planSubTab === "story" ? "journal" : state.planSubTab;
+  const isJournalMode = activeSubTab === "journal";
+  const activeJournalSection = state.journalSection || "gallery";
+  const navItems = isJournalMode ? JOURNAL_SECTIONS : SUB_TABS;
 
   return `
     <div class="plan-page">
@@ -36,10 +45,10 @@ export function renderPlanView() {
 
       <div class="plan-page-body" style="padding: 0 16px;">
         <!-- Primary Sub-Navigation Bar -->
-        <nav class="sub-tab-nav">
-          ${SUB_TABS.map(
+        <nav class="sub-tab-nav ${isJournalMode ? "sub-tab-nav--journal" : ""}">
+          ${navItems.map(
             (tab) => `
-              <button class="sub-tab-item ${activeSubTab === tab.id ? 'is-active' : ''}" data-subtab="${tab.id}">
+              <button class="sub-tab-item ${(isJournalMode ? activeJournalSection : activeSubTab) === tab.id ? 'is-active' : ''}" ${isJournalMode ? `data-journal-section="${tab.id}"` : `data-subtab="${tab.id}"`}>
                 <span class="sub-tab-icon">${tab.icon}</span>
                 <span class="sub-tab-label">${tab.label}</span>
               </button>
@@ -99,6 +108,7 @@ function renderJournalSubTab() {
   const mediaMoments = moments.filter(isMediaMoment);
   const noteMoments = moments.filter(m => !isMediaMoment(m));
   const mediaGroups = groupMediaMoments(mediaMoments);
+  const section = state.journalSection || "gallery";
 
   return `
     <div class="journal-subtab-view" style="padding: 8px 4px 24px 4px;">
@@ -107,47 +117,105 @@ function renderJournalSubTab() {
         <p style="font-size: 0.85rem; color: var(--ink-muted); margin: 0;">Captured photos, videos, and personal notes from ${escapeHtml(state.activeTrip.destination)}</p>
       </div>
 
-      <!-- Media Gallery Grid -->
-      <div class="journal-media-grid mb-lg" style="margin-bottom: 24px;">
-        ${mediaMoments.length === 0 ? `
-          <div class="empty-media-card" style="background: var(--paper-card); border: 1px dashed var(--line); border-radius: var(--radius-lg); padding: 32px 20px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 8px;">
-            <div style="width: 44px; height: 44px; border-radius: 50%; background: var(--paper-subtle); display: flex; align-items: center; justify-content: center; color: var(--ink-muted); margin-bottom: 4px;">
-              ${renderIcon("camera")}
-            </div>
-            <h4 style="font-size: 0.98rem; font-weight: 700; color: var(--ink); margin: 0;">No photos or videos captured yet</h4>
-            <p style="font-size: 0.82rem; color: var(--ink-muted); margin: 0; max-width: 320px; line-height: 1.4;">Use Quick Capture to record photos, videos, and journey notes for this trip.</p>
-            <button class="btn btn--primary btn--sm" data-action="open-quick-capture" type="button" style="margin-top: 8px;">
-              ${renderIcon("camera")} Open Quick Capture
-            </button>
-          </div>
-        ` : `
-          ${mediaGroups.map(renderJournalMediaGroup).join("")}
-        `}
-      </div>
+      ${section === "notes" ? renderJournalNotesSection(noteMoments) : ""}
+      ${section === "story" ? renderStorySubTab(state.activeTrip) : ""}
+      ${section === "templates" ? renderJournalTemplatesSection(state.activeTrip, { mediaCount: mediaMoments.length, noteCount: noteMoments.length }) : ""}
+      ${section === "gallery" ? renderJournalGallerySection(mediaGroups, mediaMoments.length) : ""}
+    </div>
+  `;
+}
 
-      <!-- Notes Feed -->
-      <div class="journal-notes-section">
-        <h3 style="font-size: 1.1rem; font-weight: 700; color: var(--ink); margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--line-light);">Personal Notes & Thoughts</h3>
-        <div class="notes-feed" style="display: flex; flex-direction: column; gap: 10px;">
-          ${noteMoments.length === 0 ? `
-            <p style="font-size: 0.85rem; color: var(--ink-muted); font-style: italic;">No personal notes written yet.</p>
-          ` : noteMoments.map(m => `
-            <div class="note-card" style="background: var(--paper-card); border: 1px solid var(--line); border-radius: var(--radius-md); padding: 14px 16px; box-shadow: var(--shadow-sm); display: flex; gap: 12px; align-items: flex-start;">
-              <div style="color: var(--blue); margin-top: 2px;">
-                ${renderIcon("fileText")}
-              </div>
-              <div class="note-body" style="flex: 1;">
-                <h4 class="note-title" style="font-size: 0.92rem; font-weight: 700; color: var(--ink); margin: 0 0 4px 0;">${escapeHtml(m.title)}</h4>
-                <p class="note-text" style="font-size: 0.85rem; color: var(--ink-muted); margin: 0 0 6px 0; line-height: 1.4;">${escapeHtml(m.text)}</p>
-                <span class="note-date voice-mono" style="font-size: 0.72rem; color: var(--ink-light);">${m.date}</span>
-              </div>
-            </div>
-          `).join('')}
+function renderJournalGallerySection(mediaGroups, mediaCount) {
+  return `
+    <section class="journal-section-panel" aria-labelledby="journal-gallery-title">
+      <div class="journal-section-header">
+        <div>
+          <span class="voice-mono">Media archive</span>
+          <h3 id="journal-gallery-title">Gallery</h3>
+        </div>
+        <button class="btn btn--primary btn--sm" data-action="open-quick-capture" type="button">${renderIcon("camera")} Capture</button>
+      </div>
+      <div class="journal-media-grid mb-lg" style="margin-bottom: 24px;">
+        ${mediaCount === 0 ? renderEmptyJournalMediaCard() : mediaGroups.map(renderJournalMediaGroup).join("")}
+      </div>
+    </section>
+  `;
+}
+
+function renderEmptyJournalMediaCard() {
+  return `
+    <div class="empty-media-card" style="background: var(--paper-card); border: 1px dashed var(--line); border-radius: var(--radius-lg); padding: 32px 20px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 8px;">
+      <div style="width: 44px; height: 44px; border-radius: 50%; background: var(--paper-subtle); display: flex; align-items: center; justify-content: center; color: var(--ink-muted); margin-bottom: 4px;">
+        ${renderIcon("camera")}
+      </div>
+      <h4 style="font-size: 0.98rem; font-weight: 700; color: var(--ink); margin: 0;">No photos or videos captured yet</h4>
+      <p style="font-size: 0.82rem; color: var(--ink-muted); margin: 0; max-width: 320px; line-height: 1.4;">Use Quick Capture to record photos, videos, and journey notes for this trip.</p>
+      <button class="btn btn--primary btn--sm" data-action="open-quick-capture" type="button" style="margin-top: 8px;">
+        ${renderIcon("camera")} Open Quick Capture
+      </button>
+    </div>
+  `;
+}
+
+function renderJournalNotesSection(noteMoments) {
+  return `
+    <section class="journal-section-panel journal-notes-section" aria-labelledby="journal-notes-title">
+      <div class="journal-section-header">
+        <div>
+          <span class="voice-mono">Written moments</span>
+          <h3 id="journal-notes-title">Notes</h3>
+        </div>
+        <button class="btn btn--outline btn--sm" data-action="open-quick-capture" type="button">${renderIcon("plus")} Add note</button>
+      </div>
+      <div class="notes-feed" style="display: flex; flex-direction: column; gap: 10px;">
+        ${noteMoments.length === 0 ? `
+          <p style="font-size: 0.85rem; color: var(--ink-muted); font-style: italic;">No personal notes written yet.</p>
+        ` : noteMoments.map(renderJournalNoteCard).join('')}
+      </div>
+    </section>
+  `;
+}
+
+function renderJournalNoteCard(m) {
+  return `
+    <div class="note-card" style="background: var(--paper-card); border: 1px solid var(--line); border-radius: var(--radius-md); padding: 14px 16px; box-shadow: var(--shadow-sm); display: flex; gap: 12px; align-items: flex-start;">
+      <div style="color: var(--blue); margin-top: 2px;">
+        ${renderIcon("fileText")}
+      </div>
+      <div class="note-body" style="flex: 1;">
+        <h4 class="note-title" style="font-size: 0.92rem; font-weight: 700; color: var(--ink); margin: 0 0 4px 0;">${escapeHtml(m.title)}</h4>
+        <p class="note-text" style="font-size: 0.85rem; color: var(--ink-muted); margin: 0 0 6px 0; line-height: 1.4;">${escapeHtml(m.text)}</p>
+        <span class="note-date voice-mono" style="font-size: 0.72rem; color: var(--ink-light);">${escapeHtml(m.date || "")}</span>
+      </div>
+    </div>
+  `;
+}
+
+function renderJournalTemplatesSection(trip, counts = {}) {
+  const templates = [
+    { title: "Photo essay", detail: `${counts.mediaCount || 0} media items ready`, icon: "image" },
+    { title: "Day-by-day recap", detail: "Use itinerary, notes and captures", icon: "calendar" },
+    { title: "Share card", detail: `One-page memory from ${trip.destination}`, icon: "share" },
+    { title: "Travel log", detail: `${counts.noteCount || 0} notes available`, icon: "bookOpen" },
+  ];
+  return `
+    <section class="journal-section-panel" aria-labelledby="journal-templates-title">
+      <div class="journal-section-header">
+        <div>
+          <span class="voice-mono">Output formats</span>
+          <h3 id="journal-templates-title">Templates</h3>
         </div>
       </div>
-
-      ${renderStorySubTab(state.activeTrip)}
-    </div>
+      <div class="journal-template-grid">
+        ${templates.map((template) => `
+          <button class="journal-template-card" data-action="generate-ai-story" type="button">
+            <span>${renderIcon(template.icon)}</span>
+            <strong>${escapeHtml(template.title)}</strong>
+            <small>${escapeHtml(template.detail)}</small>
+          </button>
+        `).join("")}
+      </div>
+    </section>
   `;
 }
 

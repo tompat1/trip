@@ -421,7 +421,8 @@ class AppState {
     this.tripMode = false; // Default: Planning mode ("Before you go" / Just got home from Crete!)
     
     // Plan view settings
-    this.planSubTab = "plan"; // "overview" | "plan" | "explore" | "journal" | "story"
+    this.planSubTab = "plan"; // "overview" | "plan" | "explore" | "journal"
+    this.journalSection = "gallery"; // "gallery" | "notes" | "story" | "templates"
     this.planViewMode = getDefaultPlanViewMode(); // "day" | "week" | "timeline" | "map"
     this.activeDayIndex = 0;
     this.mapDayFilter = null;
@@ -1080,6 +1081,14 @@ class AppState {
   setView(view) {
     if (this.activeView !== view) {
       this.activeView = view;
+      this.notify();
+    }
+  }
+
+  setJournalSection(section = "gallery") {
+    const next = ["gallery", "notes", "story", "templates"].includes(section) ? section : "gallery";
+    if (this.journalSection !== next) {
+      this.journalSection = next;
       this.notify();
     }
   }
