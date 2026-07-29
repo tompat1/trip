@@ -1636,6 +1636,10 @@ document.addEventListener("submit", async (e) => {
   if (e.target.id === "profile-persona-add-form") {
     e.preventDefault();
     const form = e.target;
+    if (!state.isAdmin) {
+      showToast("Admin access is required to add new personas.");
+      return;
+    }
     const input = form.personaLabel;
     const label = input?.value?.trim() || "";
     if (!label) {
@@ -1646,8 +1650,6 @@ document.addEventListener("submit", async (e) => {
     if (state.addCustomPersona(label)) {
       showToast(`Added ${label}.`);
       form.reset();
-    } else if (!state.isAdmin) {
-      showToast("Admin access is required to add new personas.");
     } else {
       showToast("That persona already exists.");
     }

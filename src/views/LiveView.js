@@ -358,9 +358,7 @@ export function renderProfileView() {
               </label>
               <button class="btn btn--primary btn--sm" type="submit">${renderIcon("plus")} Add</button>
             </form>
-          ` : `
-            <p class="profile-persona-admin-note">Sign in as admin to add new personas.</p>
-          `}
+          ` : ""}
         </div>
 
         <div class="profile-section-tabs" aria-label="Profile settings sections">
