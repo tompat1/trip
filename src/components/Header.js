@@ -17,7 +17,10 @@ export function renderHeader() {
         </div>
         <div class="top-nav__actions">
           ${renderMobileThemeSwitch()}
-          <button class="btn btn--primary btn--sm" data-action="create-trip">Get started</button>
+          <button class="btn btn--primary btn--sm landing-login-btn" data-action="open-auth-panel" data-auth-mode="login">
+            <span>Login</span>
+            ${renderIcon("arrowRight")}
+          </button>
         </div>
       </header>
     `;
