@@ -4,7 +4,8 @@ export function renderLightbox() {
   const media = state.activeLightboxMedia;
   if (!media) return "";
 
-  const isVideo = media.type === "video" || (media.media_url && media.media_url.includes("data:video"));
+  const mediaUrl = media.media_url || media.mediaUrl || "";
+  const isVideo = media.type === "video" || mediaUrl.includes("data:video");
 
   return `
     <div class="lightbox-overlay" data-action="close-lightbox">
@@ -16,8 +17,8 @@ export function renderLightbox() {
         <div class="lightbox-media-wrapper">
           ${
             isVideo
-              ? `<video src="${media.media_url}" controls autoplay class="lightbox-video"></video>`
-              : `<img src="${media.media_url}" alt="${escapeHtml(media.title || 'Trip Photo')}" class="lightbox-img" />`
+              ? `<video src="${mediaUrl}" controls autoplay class="lightbox-video"></video>`
+              : `<img src="${mediaUrl}" alt="${escapeHtml(media.title || 'Trip Photo')}" class="lightbox-img" />`
           }
         </div>
 

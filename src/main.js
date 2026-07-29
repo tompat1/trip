@@ -1302,7 +1302,12 @@ document.addEventListener("click", async (e) => {
     else if (action === "open-lightbox") {
       const momentId = target.dataset.momentId;
       const media = (state.moments || []).find((m) => m.id === momentId);
-      if (media) state.openLightbox(media);
+      if (!media) return;
+      if (!(media.media_url || media.mediaUrl)) {
+        showToast("This capture is listed, but the image data is not available on this device.");
+        return;
+      }
+      state.openLightbox(media);
     }
     else if (action === "edit-journal-media") {
       const momentId = target.dataset.momentId;

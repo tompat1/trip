@@ -100,8 +100,8 @@ function renderSubtabContent(trip) {
 
 function renderJournalSubTab() {
   const moments = getMomentsForTrip(state.activeTrip.id);
-  const mediaMoments = moments.filter(m => m.media_url);
-  const noteMoments = moments.filter(m => !m.media_url);
+  const mediaMoments = moments.filter(isMediaMoment);
+  const noteMoments = moments.filter(m => !isMediaMoment(m));
   const mediaGroups = groupMediaMoments(mediaMoments);
 
   return `
@@ -197,11 +197,19 @@ function renderJournalMediaGroup(group) {
 }
 
 function renderJournalMediaCard(m) {
+  const mediaUrl = getMomentMediaUrl(m);
+  const isVideo = m.type === "video" || mediaUrl.includes("data:video");
   return `
     <div class="journal-media-card" data-action="open-lightbox" data-moment-id="${m.id}" style="background: var(--paper-card); border: 1px solid var(--line); border-radius: var(--radius-md); overflow: hidden; cursor: pointer; box-shadow: var(--shadow-sm);">
-      <div class="journal-media-thumb" style="height: 110px; background-image: url('${m.media_url}'); background-size: cover; background-position: center; position: relative;">
+      <div class="journal-media-thumb ${mediaUrl ? "" : "journal-media-thumb--missing"}" style="height: 110px; ${mediaUrl ? `background-image: url('${escapeHtml(mediaUrl)}');` : ""} background-size: cover; background-position: center; position: relative;">
+        ${mediaUrl ? "" : `
+          <div class="journal-media-missing">
+            ${renderIcon(m.type === "video" ? "video" : "camera")}
+            <span>Media unavailable on this device</span>
+          </div>
+        `}
         <span class="media-type-badge voice-mono" style="position: absolute; bottom: 6px; right: 6px; background: rgba(23,24,23,0.8); color: #fff; padding: 2px 8px; border-radius: var(--radius-pill); font-size: 0.68rem; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">
-          ${m.type === 'video' ? renderIcon("video") : renderIcon("camera")} ${escapeHtml(m.type)}
+          ${isVideo ? renderIcon("video") : renderIcon("camera")} ${escapeHtml(m.type || "photo")}
         </span>
         ${m.groupFileCount > 1 ? `
           <span class="journal-media-batch-badge voice-mono">${escapeHtml(String(m.groupFileCount))} batch</span>
@@ -694,9 +702,45 @@ function renderExploreIdeaCard(idea, events) {
 
 function getMomentsForTrip(tripId) {
   return (state.moments || []).filter((moment) => {
-    if (!moment.tripId) return tripId === "paris";
-    return moment.tripId === tripId;
+    return getMomentTripId(moment) === tripId;
   });
+}
+
+function getMomentTripId(moment = {}) {
+  if (moment.tripId || moment.trip_id) return moment.tripId || moment.trip_id;
+  if (isMediaMoment(moment)) {
+    return inferTripIdFromMomentDate(moment) || state.activeTrip?.id || "paris";
+  }
+  return "paris";
+}
+
+function inferTripIdFromMomentDate(moment = {}) {
+  const value = moment.date || moment.createdAt || moment.created_at || "";
+  const momentTime = Date.parse(String(value).slice(0, 10));
+  if (Number.isNaN(momentTime)) return "";
+
+  const dayMs = 24 * 60 * 60 * 1000;
+  const tripMatches = (state.getAllTrips ? state.getAllTrips() : [state.activeTrip])
+    .map((trip) => {
+      const startTime = Date.parse(trip.startDate || "");
+      if (Number.isNaN(startTime)) return null;
+      const endTime = startTime + Math.max(1, Number(trip.daysCount || 1)) * dayMs;
+      const distance = momentTime < startTime ? startTime - momentTime : momentTime > endTime ? momentTime - endTime : 0;
+      return { trip, distance };
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.distance - b.distance);
+
+  const nearest = tripMatches[0];
+  return nearest && nearest.distance <= 21 * dayMs ? nearest.trip.id : "";
+}
+
+function isMediaMoment(moment = {}) {
+  return Boolean(getMomentMediaUrl(moment)) || ["photo", "video", "image"].includes(String(moment.type || "").toLowerCase());
+}
+
+function getMomentMediaUrl(moment = {}) {
+  return String(moment.media_url || moment.mediaUrl || "");
 }
 
 function renderMomentTags(moment) {

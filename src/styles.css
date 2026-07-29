@@ -4905,6 +4905,32 @@ textarea {
   padding: 6px;
 }
 
+.journal-media-thumb--missing {
+  display: grid;
+  place-items: center;
+  background:
+    linear-gradient(135deg, rgba(255, 122, 47, 0.12), transparent 62%),
+    var(--paper-subtle);
+}
+
+.journal-media-missing {
+  display: grid;
+  place-items: center;
+  gap: 6px;
+  max-width: 150px;
+  color: var(--ink-muted);
+  text-align: center;
+  font-size: 0.72rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.journal-media-missing svg {
+  width: 24px;
+  height: 24px;
+  color: var(--orange);
+}
+
 .media-type-badge {
   font-size: 0.65rem;
   font-weight: 700;
