@@ -996,6 +996,15 @@ textarea {
   }
 }
 
+@keyframes landingLoginArrowNudge {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  42% {
+    transform: translateX(4px);
+  }
+}
+
 .trip-loading-page {
   position: fixed;
   inset: 0;
@@ -1252,7 +1261,8 @@ textarea {
   .trip-route-line,
   .route-line-dashed-banner::after,
   .route-line-dashed-banner__map::before,
-  .route-line-dashed-banner__arrow {
+  .route-line-dashed-banner__arrow,
+  .landing-login-btn svg {
     animation: none;
     transition: none;
   }
@@ -2124,6 +2134,23 @@ textarea {
   font-size: 0.72rem;
   color: var(--ink-muted);
   display: block;
+}
+
+.landing-login-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.landing-login-btn svg {
+  width: 15px;
+  height: 15px;
+  transition: transform 0.2s var(--ease-out);
+}
+
+.landing-login-btn:hover svg,
+.landing-login-btn:focus-visible svg {
+  transform: translateX(3px);
 }
 
 .hero-card {
@@ -8203,6 +8230,10 @@ textarea {
     justify-content: flex-end !important;
     gap: 8px !important;
     min-width: 0 !important;
+  }
+
+  .landing-login-btn svg {
+    animation: landingLoginArrowNudge 1.45s var(--ease-out) infinite;
   }
 
   .app-header__user {
