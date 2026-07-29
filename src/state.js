@@ -30,6 +30,7 @@ export const TRAVELER_PERSONA_ARCHETYPES = [
   ["🗺️ Route Master", "Finds the best roads, scenic routes and navigation."],
   ["☕ Coffee Hunter", "Discovers cafés and specialty coffee."],
   ["🍽️ Food Explorer", "Finds restaurants, taverns and local cuisine."],
+  ["🍷 Wine Seeker", "Finds wine bars, vineyards, tastings and regional pours."],
   ["📸 Memory Maker", "Captures photos and videos."],
   ["🌍 Local Explorer", "Finds hidden gems away from the tourist trail."],
   ["🏛️ History Buff", "Adds historical places and cultural context."],
