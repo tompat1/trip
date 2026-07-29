@@ -45,9 +45,6 @@ export function renderHeader() {
             <span class="header-weather-badge">${trip.weather?.icon || '☀️'} ${trip.weather?.temp || '20°C'}</span>
             <span class="header-time-divider">•</span>
             <span class="live-time-text">${liveDayTime}</span>
-            <span class="trip-flap-spinner" aria-label="TRIP syncing">
-              ${["T", "R", "I", "P"].map((letter, index) => `<span style="--flap-index: ${index}">${letter}</span>`).join("")}
-            </span>
             <span class="status-light-dot" title="Status: Online"></span>
           </div>
 

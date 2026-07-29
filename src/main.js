@@ -25,6 +25,8 @@ import "./styles.css";
 
 let activeMaps = new Map();
 let lastRenderedView = "";
+let showInitialTripLoader = true;
+let initialTripLoaderTimer = null;
 
 const PLAN_EVENT_LOCATION_COORDS = {
   "cdg airport": [49.0097, 2.5479],
@@ -111,9 +113,11 @@ function render() {
   const helpHtml = renderHelpCenter();
   const authExitHtml = renderAuthExitPage();
   const premiumHtml = renderPremiumSupportSheet();
+  const loaderHtml = showInitialTripLoader ? renderTripPageLoader() : "";
 
   appEl.innerHTML = `
     <div class="app-view app-view--${view} ${isRouteChange ? "app-view--route-enter" : ""}">
+      ${loaderHtml}
       ${viewHtml}
       ${bottomNavHtml}
       ${quickCaptureHtml}
@@ -128,10 +132,30 @@ function render() {
     </div>
   `;
 
+  if (showInitialTripLoader && !initialTripLoaderTimer) {
+    initialTripLoaderTimer = window.setTimeout(() => {
+      showInitialTripLoader = false;
+      initialTripLoaderTimer = null;
+      render();
+    }, 1850);
+  }
+
   // Initialize maps after DOM update
   requestAnimationFrame(() => {
     initMapsForView(view);
   });
+}
+
+function renderTripPageLoader() {
+  return `
+    <div class="trip-page-loader" role="status" aria-label="Loading TRIP">
+      <div class="trip-page-loader__panel">
+        <span class="trip-flap-spinner trip-flap-spinner--loader" aria-hidden="true">
+          ${["T", "R", "I", "P"].map((letter, index) => `<span style="--flap-index: ${index}">${letter}</span>`).join("")}
+        </span>
+      </div>
+    </div>
+  `;
 }
 
 function applyThemeMode() {
