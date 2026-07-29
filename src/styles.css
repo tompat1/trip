@@ -1001,7 +1001,7 @@ textarea {
   inset: 0;
   z-index: 10000;
   display: grid;
-  place-items: center;
+  place-items: start center;
   padding: 20px;
   background:
     radial-gradient(circle at 50% 42%, rgba(255, 122, 47, 0.18), transparent 34%),
@@ -1012,28 +1012,27 @@ textarea {
 .trip-page-loader__panel {
   display: grid;
   place-items: center;
+  align-content: start;
   gap: 8px;
   width: min(440px, 100%);
   min-height: min(760px, calc(100dvh - 40px));
-  padding: 10px 10px 14px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-lg);
-  background: var(--surface-overlay);
-  box-shadow: var(--shadow-lg);
-  grid-template-rows: minmax(0, 1fr) auto auto auto;
+  padding: 0 10px 14px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  grid-template-rows: auto auto auto auto;
 }
 
 .trip-loading-page__illustration {
   position: relative;
   width: 100%;
   aspect-ratio: 1 / 1;
-  align-self: stretch;
-  padding: 8px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-lg);
-  background:
-    linear-gradient(135deg, rgba(255, 122, 47, 0.12), transparent 45%),
-    #FFFFFF;
+  align-self: start;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
   overflow: hidden;
 }
 
@@ -1043,8 +1042,8 @@ textarea {
   height: 100%;
   max-height: none;
   object-fit: contain;
-  object-position: center;
-  border-radius: calc(var(--radius-lg) - 8px);
+  object-position: top center;
+  border-radius: 0;
   opacity: 1;
   transition: opacity 260ms var(--ease-out), filter 260ms var(--ease-out);
 }
