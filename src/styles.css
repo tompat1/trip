@@ -6939,13 +6939,79 @@ textarea {
     display: none;
   }
 
+  .app-header {
+    padding-inline: 24px !important;
+  }
+
+  .top-nav--landing {
+    padding-inline: 16px !important;
+  }
+
+  .app-header__top,
+  .top-nav--landing {
+    align-items: center !important;
+  }
+
   .app-header__top {
     gap: 10px !important;
+  }
+
+  .brand-monogram,
+  .top-nav__brand {
+    min-height: 58px !important;
+    margin-left: 0 !important;
+    flex: 0 0 auto !important;
+  }
+
+  .brand-monogram .trip-logo-mark,
+  .top-nav__brand .trip-logo-mark {
+    width: 74px !important;
+    height: 56px !important;
+  }
+
+  .top-nav__actions {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+    gap: 8px !important;
+    min-width: 0 !important;
   }
 
   .app-header__user {
     min-width: 0 !important;
     gap: 6px !important;
+  }
+
+  .mobile-theme-switch {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 3px !important;
+    padding: 3px !important;
+    border: 1px solid var(--line) !important;
+    border-radius: var(--radius-pill) !important;
+    background: var(--paper-card) !important;
+    box-shadow: var(--shadow-sm) !important;
+    flex: 0 0 auto !important;
+  }
+
+  .mobile-theme-switch .btn {
+    width: 31px !important;
+    height: 31px !important;
+    min-height: 31px !important;
+    padding: 0 !important;
+    border-radius: 999px !important;
+    color: var(--ink) !important;
+    background: transparent !important;
+  }
+
+  .mobile-theme-switch .btn.is-active {
+    color: #0F1B2B !important;
+    background: var(--orange) !important;
+    box-shadow: 0 6px 14px rgba(255, 122, 47, 0.24) !important;
+  }
+
+  :root[data-theme="dark"] .mobile-theme-switch {
+    background: var(--surface-overlay) !important;
   }
 
   .header-logout-btn {
