@@ -131,7 +131,6 @@ function renderJournalSubTab() {
       ${section === "story" ? renderStorySubTab(state.activeTrip) : ""}
       ${section === "templates" ? renderJournalTemplatesSection(state.activeTrip, { mediaCount: allMediaMoments.length, noteCount: noteMoments.length }) : ""}
       ${section === "gallery" ? renderJournalGallerySection(mediaGroups, mediaMoments.length) : ""}
-      ${renderTemplateMomentPicker(state.activeTrip)}
     </div>
   `;
 }
@@ -296,7 +295,7 @@ function getTemplatePreviewImages(trip) {
   return Array.from({ length: 8 }, (_, index) => fallbackImages[index % fallbackImages.length]);
 }
 
-function renderTemplateMomentPicker(trip) {
+export function renderTemplateMomentPicker(trip) {
   const picker = state.activeTemplatePicker;
   if (!picker) return "";
 

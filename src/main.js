@@ -2,7 +2,7 @@ import * as L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { state } from "./state.js";
 import { renderHomeView } from "./views/HomeView.js";
-import { renderPlanView } from "./views/PlanView.js";
+import { renderPlanView, renderTemplateMomentPicker } from "./views/PlanView.js";
 import { renderSearchResults, renderSearchView } from "./views/SearchView.js";
 import { renderLandingView } from "./views/LandingView.js";
 import { renderLiveView, renderProfileView } from "./views/LiveView.js";
@@ -161,6 +161,7 @@ function render() {
   const helpHtml = renderHelpCenter();
   const authExitHtml = renderAuthExitPage();
   const premiumHtml = renderPremiumSupportSheet();
+  const templatePickerHtml = view !== "landing" ? renderTemplateMomentPicker(state.activeTrip) : "";
 
   appEl.innerHTML = `
     <div class="app-view app-view--${view} ${isRouteChange ? "app-view--route-enter" : ""}">
@@ -175,6 +176,7 @@ function render() {
       ${helpHtml}
       ${authExitHtml}
       ${premiumHtml}
+      ${templatePickerHtml}
     </div>
   `;
 
