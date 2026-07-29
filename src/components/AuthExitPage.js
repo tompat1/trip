@@ -13,7 +13,7 @@ export function renderAuthExitPage() {
     ? "Create an account to sync trips, invite companions, and keep memories connected."
     : isForgot
       ? "Enter your email and we’ll prepare the reset flow. Email delivery wiring comes next."
-      : "Sign in to sync account features, or continue as guest and keep planning locally.";
+      : "Sign in to sync trips, companions, planning, and memories across visits.";
 
   return `
     <div class="auth-exit-page" role="dialog" aria-modal="true" aria-labelledby="auth-exit-title">
@@ -79,11 +79,11 @@ export function renderAuthExitPage() {
           <button class="btn btn--outline btn--sm" data-action="open-premium" type="button">
             ${renderIcon("sparkles")} Premium
           </button>
-          <button class="btn btn--outline btn--sm" data-action="continue-as-guest" type="button">
-            ${renderIcon("user")} Continue as guest
+          <button class="btn btn--outline btn--sm" data-action="set-auth-mode" data-auth-mode="signup" type="button">
+            ${renderIcon("userPlus")} Create account
           </button>
           <button class="btn btn--ghost btn--sm" data-action="go-home-from-exit" type="button">
-            ${renderIcon("map")} Back to trips
+            ${renderIcon("map")} Back to TRIP
           </button>
         </div>
       </section>

@@ -594,7 +594,7 @@ class AppState {
     this.activeEventDrawer = null; // { mode: 'create'|'edit', event: {} }
     this.activeCompanionQrId = "";
     this.activeInvite = getInviteFromLocation();
-    this.onboardingOpen = !this.activeInvite && !hasSeenOnboarding();
+    this.onboardingOpen = false;
     this.onboardingSlideIndex = 0;
     this.helpOpen = false;
     this.helpQuery = "";
@@ -809,7 +809,6 @@ class AppState {
     this.helpOpen = false;
     this.onboardingOpen = false;
     this.activeInvite = null;
-    this.userSession = { status: "ready", role: "anonymous", userId: "", authType: "none" };
     this.notify();
   }
 

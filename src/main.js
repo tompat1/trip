@@ -749,6 +749,17 @@ async function logOutAndShowExit() {
   showToast("Signed out.");
 }
 
+function hasAppSession() {
+  return ["admin", "traveler"].includes(state.userSession?.role);
+}
+
+function requireAppSession(mode = "login", message = "Sign in to continue.") {
+  if (hasAppSession()) return true;
+  state.showAuthExit(mode);
+  showToast(message);
+  return false;
+}
+
 // Global Event Listeners Delegation
 document.addEventListener("click", async (e) => {
   const target = e.target.closest("[data-nav], [data-action], [data-subtab], [data-journal-section], [data-template-filter], [data-viewmode], [data-day-select], [data-map-day-filter], [data-trip-length], [data-cat], [data-subfilter]");
@@ -774,6 +785,7 @@ document.addEventListener("click", async (e) => {
   // Bottom dock navigation
   if (target.dataset.nav) {
     const nav = target.dataset.nav;
+    if (!requireAppSession("login", "Sign in to open TRIP.")) return;
     if (nav === "journal") {
       state.setPlanSubTab("journal");
       flashPageLoader("Opening journal");
@@ -798,34 +810,41 @@ document.addEventListener("click", async (e) => {
   const action = target.dataset.action;
   if (action) {
     if (action === "go-app" || action === "go-home") {
+      if (!requireAppSession("login", "Sign in to open your trip board.")) return;
       flashPageLoader("Opening home");
       state.setView("home");
     }
     else if (action === "go-plan") {
+      if (!requireAppSession("login", "Sign in to open trip planning.")) return;
       if (target.dataset.subtab) state.setPlanSubTab(target.dataset.subtab);
       flashPageLoader("Opening trips");
       state.setView("plan");
     }
     else if (action === "go-plan-timeline") {
+      if (!requireAppSession("login", "Sign in to open your itinerary.")) return;
       state.setPlanSubTab("plan");
       state.setPlanViewMode("timeline");
       flashPageLoader("Opening timeline");
       state.setView("plan");
     }
     else if (action === "go-search") {
+      if (!requireAppSession("signup", "Create an account or sign in to explore TRIP ideas.")) return;
       flashPageLoader("Opening search");
       state.setView("search");
     }
     else if (action === "go-live") {
+      if (!requireAppSession("login", "Sign in before using Live mode.")) return;
       flashPageLoader("Opening live");
       state.setView("live");
     }
     else if (action === "go-moments") {
+      if (!requireAppSession("login", "Sign in to open Journal and Story.")) return;
       flashPageLoader("Opening journal");
       state.setView("plan");
       state.setPlanSubTab("journal");
     }
     else if (action === "go-profile") {
+      if (!requireAppSession("login", "Sign in to open your profile.")) return;
       flashPageLoader("Opening profile");
       state.setView("profile");
     }
@@ -901,7 +920,12 @@ document.addEventListener("click", async (e) => {
       state.closeHelp();
     }
     else if (action === "open-auth-panel") {
-      state.showAuthExit(target.dataset.authMode || "login");
+      if (hasAppSession()) {
+        flashPageLoader("Opening home");
+        state.setView("home");
+      } else {
+        state.showAuthExit(target.dataset.authMode || "login");
+      }
     }
     else if (action === "close-auth-panel") {
       state.closeAuthExit();
@@ -931,6 +955,7 @@ document.addEventListener("click", async (e) => {
       state.toggleQuickCapture();
     }
     else if (action === "open-quick-capture") {
+      if (!requireAppSession("login", "Sign in to capture trip moments.")) return;
       if (state.activeTemplatePicker) state.closeTemplatePicker();
       state.setQuickCaptureTrip(state.activeTripId);
       state.toggleQuickCapture(true);
@@ -1218,6 +1243,7 @@ document.addEventListener("click", async (e) => {
       showToast("Trip details updated. Refreshing local ideas and events.");
     }
     else if (action === "create-trip") {
+      if (!requireAppSession("signup", "Create an account or sign in before creating trips.")) return;
       state.openTripCreate();
     }
     else if (action === "close-trip-create") {
@@ -1364,11 +1390,11 @@ document.addEventListener("click", async (e) => {
       await withPageLoader("Signing out", () => logOutAndShowExit(), { delay: 0 });
     }
     else if (action === "continue-as-guest") {
-      state.closeAuthExit({ view: "home" });
-      showToast("Continuing as guest.");
+      state.closeAuthExit({ view: "landing" });
+      showToast("Sign in or create an account to enter TRIP.");
     }
     else if (action === "go-home-from-exit") {
-      state.closeAuthExit({ view: "home" });
+      state.closeAuthExit({ view: "landing" });
     }
     else if (action === "open-premium") {
       state.openPremium();
@@ -1665,6 +1691,7 @@ document.addEventListener("submit", async (e) => {
         await state.refreshUserSession();
       }, { delay: 0 });
       state.closeAuthExit({ view: "home" });
+      state.openOnboarding();
       showToast("Account created. Welcome to TRIP.");
     } catch (error) {
       showToast(error?.status === 409 ? "An account already exists. Sign in instead." : "Could not create account right now.");
@@ -1775,6 +1802,7 @@ document.addEventListener("submit", async (e) => {
         await state.refreshUserSession();
       }, { delay: 0 });
       state.acceptTripInvite({ mode: "account" });
+      state.openOnboarding();
       showToast("Account created. Trip added to your planner.");
     } catch (error) {
       showToast(error?.status === 409 ? "An account already exists. Sign in instead." : "Could not create account right now.");
