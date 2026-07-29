@@ -904,7 +904,7 @@ document.addEventListener("click", async (e) => {
       setTimeout(() => document.getElementById("profile-companion-form")?.querySelector("input[name='email']")?.focus(), 0);
     }
     else if (action === "toggle-filters") {
-      const subFilter = state.searchSubFilter === "top-rated" ? "all" : "top-rated";
+      const subFilter = state.searchSubFilter === "Top rated" ? "All" : "Top rated";
       state.setSearchSubFilter(subFilter);
     }
     else if (action === "search-this-area") {

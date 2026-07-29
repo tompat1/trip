@@ -6,25 +6,122 @@ import { renderIcon } from "../utils/icons.js";
 
 const PRIMARY_CATEGORIES = ["All", "Places", "Concerts", "Events", "Guides", "Stories"];
 const QUICK_INTENT_CHIPS = [
-  { id: "coffee", label: "☕ Specialty Coffee", query: "Best coffee shops" },
-  { id: "concerts", label: "🎵 Live Concerts", query: "Live concerts & gigs", cat: "Concerts" },
-  { id: "food", label: "🍕 Local Eats & Bistros", query: "Top rated restaurants" },
+  { id: "coffee", label: "☕ Specialty Coffee", query: "Best coffee shops", personas: ["☕ Coffee Hunter"] },
+  { id: "concerts", label: "🎵 Live Concerts", query: "Live concerts & gigs", cat: "Concerts", personas: ["🎟️ Event Scout", "🎨 Culture Seeker", "🌙 Night Owl"] },
+  { id: "food", label: "🍽️ Local Eats & Bistros", query: "Top rated restaurants", personas: ["🍽️ Food Explorer"] },
   { id: "museums", label: "🖼️ Museums & Art", query: "Museums and galleries" },
-  { id: "sunset", label: "🌅 Sunset Spots", query: "Best sunset views" },
-  { id: "bars", label: "🍷 Wine Bars", query: "Cozy wine bars" }
+  { id: "sunset", label: "🌅 Golden Hour Spots", query: "Best sunset views", personas: ["🌅 Sunrise Chaser", "📸 Memory Maker"] },
+  { id: "bars", label: "🍷 Wine Bars", query: "Cozy wine bars", personas: ["🍷 Wine Seeker", "🌙 Night Owl"] }
 ];
 
 const SUB_FILTERS = [
   { id: "All", label: "All Spots" },
+  { id: "Persona picks", label: "For my personas ✦" },
   { id: "Open now", label: "Open now 🟢" },
   { id: "Top rated", label: "Top rated ★ 4.8+" },
   { id: "Specialty coffee", label: "Specialty coffee ☕" },
   { id: "Walking distance", label: "Walking distance 🚶" }
 ];
 
+const PERSONA_SEARCH_SIGNALS = {
+  "🏛️ Architect": {
+    label: "Architect",
+    keywords: ["architecture", "architect", "design", "building", "monument", "landmark", "palace", "cathedral", "tower", "urban"],
+    chip: { id: "architecture", label: "🏛️ Architecture", query: "Architecture landmarks" },
+  },
+  "🗺️ Route Master": {
+    label: "Route Master",
+    keywords: ["route", "walk", "walking", "scenic", "view", "bridge", "trail", "navigation", "river", "road"],
+    chip: { id: "routes", label: "🗺️ Scenic Routes", query: "Scenic walks and routes" },
+  },
+  "☕ Coffee Hunter": {
+    label: "Coffee Hunter",
+    keywords: ["coffee", "cafe", "café", "espresso", "roaster", "roastery", "pastry", "specialty"],
+    chip: { id: "coffee-persona", label: "☕ Coffee Hunter Picks", query: "Specialty coffee" },
+  },
+  "🍽️ Food Explorer": {
+    label: "Food Explorer",
+    keywords: ["restaurant", "food", "dining", "bistro", "tavern", "local cuisine", "brunch", "market", "wine", "pastry"],
+    chip: { id: "food-persona", label: "🍽️ Food Explorer Picks", query: "Restaurants and local food" },
+  },
+  "🍷 Wine Seeker": {
+    label: "Wine Seeker",
+    keywords: ["wine", "bar", "vineyard", "tasting", "cellar", "bistro", "cheese"],
+    chip: { id: "wine-persona", label: "🍷 Wine Spots", query: "Wine bars and tastings" },
+  },
+  "📸 Memory Maker": {
+    label: "Memory Maker",
+    keywords: ["photo", "view", "scenic", "sunset", "sunrise", "golden", "landmark", "river", "tower", "viewpoint"],
+    chip: { id: "photo", label: "📸 Photo Moments", query: "Best photo spots" },
+  },
+  "🌍 Local Explorer": {
+    label: "Local Explorer",
+    keywords: ["hidden", "local", "neighborhood", "market", "away", "gem", "street", "small", "cozy"],
+    chip: { id: "hidden", label: "🌍 Hidden Gems", query: "Hidden local gems" },
+  },
+  "🏛️ History Buff": {
+    label: "History Buff",
+    keywords: ["history", "historical", "museum", "monument", "palace", "cathedral", "heritage", "old", "cultural"],
+    chip: { id: "history", label: "🏛️ History", query: "Historical places" },
+  },
+  "🎨 Culture Seeker": {
+    label: "Culture Seeker",
+    keywords: ["museum", "gallery", "art", "culture", "architecture", "theatre", "opera", "event", "concert"],
+    chip: { id: "culture", label: "🎨 Culture", query: "Museums galleries events" },
+  },
+  "🌄 Nature Lover": {
+    label: "Nature Lover",
+    keywords: ["park", "garden", "nature", "beach", "forest", "hiking", "trail", "viewpoint", "river"],
+    chip: { id: "nature", label: "🌄 Nature", query: "Parks viewpoints nature" },
+  },
+  "🌅 Sunrise Chaser": {
+    label: "Sunrise Chaser",
+    keywords: ["sunrise", "sunset", "golden", "view", "viewpoint", "river", "scenic", "morning"],
+    chip: { id: "sunrise", label: "🌅 Golden Hour", query: "Sunrise sunset viewpoints" },
+  },
+  "🌙 Night Owl": {
+    label: "Night Owl",
+    keywords: ["night", "bar", "jazz", "club", "evening", "cocktail", "music", "concert", "late"],
+    chip: { id: "night", label: "🌙 Night Moves", query: "Bars nightlife evening" },
+  },
+  "🚗 Driver": {
+    label: "Driver",
+    keywords: ["parking", "drive", "road", "scenic", "route", "viewpoint", "station", "transport"],
+    chip: { id: "driver", label: "🚗 Easy Drives", query: "Scenic routes parking viewpoints" },
+  },
+  "💰 Budget Keeper": {
+    label: "Budget Keeper",
+    keywords: ["free", "market", "park", "walk", "public", "budget", "cheap", "affordable"],
+    chip: { id: "budget", label: "💰 Budget Friendly", query: "Free affordable things" },
+  },
+  "🛍️ Shopper": {
+    label: "Shopper",
+    keywords: ["shopping", "shop", "boutique", "market", "souvenir", "design", "fashion"],
+    chip: { id: "shopping", label: "🛍️ Shops & Markets", query: "Boutiques markets shopping" },
+  },
+  "📅 Organizer": {
+    label: "Organizer",
+    keywords: ["reservation", "schedule", "tour", "ticket", "timed", "museum", "event"],
+    chip: { id: "organized", label: "📅 Easy To Plan", query: "Tours tickets reservations" },
+  },
+  "🎟️ Event Scout": {
+    label: "Event Scout",
+    keywords: ["event", "concert", "festival", "gig", "music", "venue", "ticket", "tour"],
+    chip: { id: "events", label: "🎟️ Events", query: "Concerts festivals events", cat: "Concerts" },
+  },
+  "🤝 Social Connector": {
+    label: "Social Connector",
+    keywords: ["group", "social", "bar", "restaurant", "market", "event", "tour", "venue"],
+    chip: { id: "social", label: "🤝 Group Friendly", query: "Group friendly places" },
+  },
+};
+
 export function renderSearchView() {
   const query = state.searchQuery || "";
   const currentTrip = state.activeTrip;
+  const activePersonaSignals = getActivePersonaSignals();
+  const quickIntentChips = getPersonaQuickIntentChips(activePersonaSignals);
+  const personaSummary = formatPersonaSummary(activePersonaSignals);
 
   return `
     <div class="search-page">
@@ -37,6 +134,11 @@ export function renderSearchView() {
             <div>
               <span class="voice-mono" style="font-size: 0.72rem; color: var(--orange); font-weight: 700; letter-spacing: 1px; text-transform: uppercase;">Intelligent Search</span>
               <h2 class="voice-serif" style="font-size: 1.4rem; font-weight: 800; color: var(--ink); margin-top: 2px;">Discover ${escapeHtml(currentTrip.destination)} ${currentTrip.flag || ''}</h2>
+              ${activePersonaSignals.length ? `
+                <p class="search-persona-context">
+                  Tuned for ${escapeHtml(personaSummary)}
+                </p>
+              ` : ""}
             </div>
             <span style="font-size: 0.7rem; background: rgba(56,92,115,0.12); color: var(--blue); padding: 4px 10px; border-radius: 12px; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;">
               ⚡ Live Enriched
@@ -57,8 +159,8 @@ export function renderSearchView() {
 
           <!-- Quick Intent Shortcut Chips -->
           <div class="quick-intents-scroll" style="display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; margin-top: 12px; padding-bottom: 2px;">
-            ${QUICK_INTENT_CHIPS.map(chip => `
-              <button class="chip" data-action="apply-quick-intent" data-query="${escapeHtml(chip.query)}" data-cat="${chip.cat || 'All'}" style="white-space: nowrap; font-size: 0.78rem; padding: 6px 12px; border-radius: 18px; border: 1px solid var(--line-light); background: rgba(255,255,255,0.85); cursor: pointer; transition: transform 0.15s ease;">
+            ${quickIntentChips.map(chip => `
+              <button class="chip ${chip.isPersona ? "chip--persona" : ""}" data-action="apply-quick-intent" data-query="${escapeHtml(chip.query)}" data-cat="${chip.cat || 'All'}" style="white-space: nowrap; font-size: 0.78rem; padding: 6px 12px; border-radius: 18px; border: 1px solid var(--line-light); background: rgba(255,255,255,0.85); cursor: pointer; transition: transform 0.15s ease;">
                 ${chip.label}
               </button>
             `).join('')}
@@ -117,12 +219,21 @@ export function renderSearchView() {
 
 export function renderSearchResults() {
   const query = state.searchQuery || "";
+  const activePersonaSignals = getActivePersonaSignals();
   const placesForTrip = [
     ...filterPlacesByActiveTrip(searchPlacesData),
     ...getTourismSearchPlaces(state.activeTrip),
   ];
-  const places = filterPlacesByQuery(placesForTrip, query);
-  const concerts = filterConcertsByQuery(getTripConcerts(state.activeTrip), query);
+  const places = applySearchSubFilter(
+    rankItemsByPersona(filterPlacesByQuery(placesForTrip, query), activePersonaSignals),
+    state.searchSubFilter,
+    activePersonaSignals,
+  );
+  const concerts = applySearchSubFilter(
+    rankItemsByPersona(filterConcertsByQuery(getTripConcerts(state.activeTrip), query), activePersonaSignals),
+    state.searchSubFilter,
+    activePersonaSignals,
+  );
 
   return `
     <!-- Results Header Bar -->
@@ -174,6 +285,125 @@ function filterPlacesByQuery(places, query) {
   });
 }
 
+function getActivePersonaSignals() {
+  const selected = state.userPreferences ? Array.from(state.userPreferences) : [];
+  return selected
+    .map((persona) => {
+      const signal = PERSONA_SEARCH_SIGNALS[persona];
+      return signal ? { persona, ...signal } : null;
+    })
+    .filter(Boolean);
+}
+
+function getPersonaQuickIntentChips(activePersonaSignals) {
+  const personaChips = activePersonaSignals
+    .map((signal) => signal.chip ? { ...signal.chip, isPersona: true } : null)
+    .filter(Boolean);
+  const activePersonas = new Set(activePersonaSignals.map((signal) => signal.persona));
+  const scoredBaseChips = QUICK_INTENT_CHIPS
+    .map((chip) => ({
+      ...chip,
+      isPersona: (chip.personas || []).some((persona) => activePersonas.has(persona)),
+      personaWeight: (chip.personas || []).filter((persona) => activePersonas.has(persona)).length,
+    }))
+    .sort((a, b) => b.personaWeight - a.personaWeight);
+
+  const seen = new Set();
+  return [...personaChips, ...scoredBaseChips].filter((chip) => {
+    const key = `${chip.query}-${chip.cat || "All"}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function formatPersonaSummary(activePersonaSignals) {
+  const labels = activePersonaSignals.map((signal) => signal.label);
+  if (labels.length <= 3) return labels.join(", ");
+  return `${labels.slice(0, 3).join(", ")} +${labels.length - 3}`;
+}
+
+function rankItemsByPersona(items, activePersonaSignals) {
+  if (!activePersonaSignals.length) return [...items];
+
+  return items
+    .map((item) => {
+      const personaMeta = getPersonaRelevance(item, activePersonaSignals);
+      return { ...item, __personaScore: personaMeta.score, __personaMatches: personaMeta.matches };
+    })
+    .sort((a, b) => {
+      if ((b.__personaScore || 0) !== (a.__personaScore || 0)) {
+        return (b.__personaScore || 0) - (a.__personaScore || 0);
+      }
+      return Number(b.rating || 0) - Number(a.rating || 0);
+    });
+}
+
+function getPersonaRelevance(item, activePersonaSignals) {
+  const text = [
+    item.name,
+    item.title,
+    item.artist,
+    item.category,
+    item.genre,
+    item.tour,
+    item.neighborhood,
+    item.subtitle,
+    item.distance,
+    item.description,
+    item.reason,
+    item.source,
+    item.venue,
+    item.city,
+  ].filter(Boolean).join(" ").toLowerCase();
+
+  const matches = [];
+  let score = 0;
+
+  activePersonaSignals.forEach((signal) => {
+    const hits = signal.keywords.filter((keyword) => text.includes(keyword));
+    if (!hits.length) return;
+    matches.push(signal.label);
+    score += 10 + Math.min(hits.length, 4) * 3;
+  });
+
+  if (Number(item.rating) >= 4.8) score += 2;
+  if (String(item.source || "").startsWith("OpenStreetMap") || item.source === "OpenTripMap") score += 1;
+
+  return { score, matches };
+}
+
+function applySearchSubFilter(items, subFilter, activePersonaSignals) {
+  if (!subFilter || subFilter === "All") return items;
+  if (subFilter === "Persona picks") {
+    if (!activePersonaSignals.length) return items;
+    return items.filter((item) => (item.__personaScore || 0) > 0);
+  }
+  if (subFilter === "Top rated") {
+    return items.filter((item) => Number(item.rating || 0) >= 4.8 || Number(item.__personaScore || 0) >= 20);
+  }
+  if (subFilter === "Specialty coffee") {
+    return items.filter((item) => itemMatchesAny(item, ["coffee", "cafe", "café", "espresso", "roaster", "specialty"]));
+  }
+  if (subFilter === "Walking distance") {
+    return items.filter((item) => itemLooksWalkable(item));
+  }
+  return items;
+}
+
+function itemMatchesAny(item, terms) {
+  const text = [item.name, item.title, item.category, item.neighborhood, item.subtitle, item.distance, item.description, item.reason]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+  return terms.some((term) => text.includes(term));
+}
+
+function itemLooksWalkable(item) {
+  const distance = String(item.distance || item.subtitle || item.neighborhood || "").toLowerCase();
+  return /\b\d+(\.\d+)?\s?(m|km)\b/.test(distance) || ["walk", "walking", "nearby", "from trip center"].some((term) => distance.includes(term));
+}
+
 function getTourismSearchPlaces(trip) {
   return [...(trip?.tourismPois || []), ...(trip?.hiddenGems || []), ...(trip?.osmPlaces || [])].map((place) => ({
     ...place,
@@ -211,6 +441,7 @@ function renderSearchPlaceCard(place) {
   const name = place.name || place.title || "Place";
   const location = place.neighborhood || place.subtitle || place.distance || "";
   const description = place.description || place.reason || "";
+  const personaMatches = Array.isArray(place.__personaMatches) ? place.__personaMatches.slice(0, 2) : [];
   const isOpenTripMap = place.source === "OpenTripMap";
   const isOpenStreetMap = String(place.source || "").startsWith("OpenStreetMap") || place.sourceRole === "osm";
   const providerLabel = isOpenStreetMap ? "OpenStreetMap" : "OpenTripMap";
@@ -244,6 +475,11 @@ function renderSearchPlaceCard(place) {
           `}
         </div>
         <p class="search-place-card__desc" style="margin-top: 6px; font-size: 0.82rem; color: var(--ink-muted); line-height: 1.4;">${escapeHtml(description)}</p>
+        ${personaMatches.length ? `
+          <div class="search-persona-match">
+            ${personaMatches.map((match) => `<span>${escapeHtml(match)}</span>`).join("")}
+          </div>
+        ` : ""}
       </div>
     </div>
   `;
@@ -251,6 +487,7 @@ function renderSearchPlaceCard(place) {
 
 function renderConcertCard(concert) {
   const isSaved = state.savedPlaceIds && state.savedPlaceIds.has(concert.id);
+  const personaMatches = Array.isArray(concert.__personaMatches) ? concert.__personaMatches.slice(0, 2) : [];
 
   return `
     <div class="search-place-card concert-card" style="border-left: 3px solid var(--orange);">
@@ -274,6 +511,11 @@ function renderConcertCard(concert) {
         <div style="margin-top: 10px; display: flex; gap: 8px;">
           <a href="${concert.ticketUrl}" target="_blank" rel="noopener" class="btn btn--primary btn--xs" style="text-decoration: none; font-size: 0.75rem; padding: 5px 12px;">🎟️ Get Tickets</a>
         </div>
+        ${personaMatches.length ? `
+          <div class="search-persona-match">
+            ${personaMatches.map((match) => `<span>${escapeHtml(match)}</span>`).join("")}
+          </div>
+        ` : ""}
       </div>
     </div>
   `;
