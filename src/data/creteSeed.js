@@ -427,9 +427,4 @@ export const creteSeed = {
     { title: "Koules Fortress", reason: "Harbor walk and sunset-friendly photos", tag: "Sight", distance: "1.0 km", coordinates: [35.3447, 25.1367] },
     { title: "Peskesi", reason: "Cretan dinner anchor close to the old town", tag: "Food", distance: "450 m", coordinates: [35.3393, 25.1319] },
   ],
-  mediaQueue: [
-    { title: "34 photos", bucket: "Heraklion harbor", status: "Ready to pin to Koules" },
-    { title: "6 videos", bucket: "Old town walk", status: "Ready for story draft" },
-    { title: "3 notes", bucket: "Cretan food finds", status: "Pinned to places" },
-  ],
 };
