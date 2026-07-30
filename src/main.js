@@ -1,20 +1,7 @@
 import * as L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { state } from "./state.js";
-import { renderHomeView } from "./views/HomeView.js";
-import { renderPlanView, renderTemplateMomentPicker } from "./views/PlanView.js";
-import { renderSearchResults, renderSearchView } from "./views/SearchView.js";
-import { renderLandingView } from "./views/LandingView.js";
-import { renderLiveView, renderProfileView } from "./views/LiveView.js";
-import { renderBottomNav } from "./components/BottomNav.js";
-import { renderLightbox } from "./components/Lightbox.js";
-import { renderEventDrawer } from "./components/EventDrawer.js";
-import { renderTripCreateModal } from "./components/TripCreateModal.js";
-import { renderQuickCaptureWidget } from "./components/QuickCaptureWidget.js";
-import { renderOnboardingWalkthrough } from "./components/OnboardingWalkthrough.js";
-import { renderHelpCenter } from "./components/HelpCenter.js";
-import { renderAuthExitPage } from "./components/AuthExitPage.js";
-import { renderPremiumSupportSheet } from "./components/PremiumSupportSheet.js";
+import { renderSearchResults } from "./views/SearchView.js";
 import { fetchConcertsForTrip } from "./services/concertService.js";
 import { fetchOpenMeteoWeather } from "./services/weatherService.js";
 import { formatAirportLabel, getFlightRouteDisplay, resolveAirportInput, searchAirportsWorldwide } from "./services/airportService.js";
@@ -22,6 +9,8 @@ import { normalizeFlightType } from "./services/flightService.js";
 import { formatTripDateRangeFromParts } from "./utils/tripDates.js";
 import { enrichmentService } from "./enrichment/enrichmentService.js";
 import { bootApp, flashPageLoader, isAppBooted, renderTripLoadingPage, withPageLoader } from "./app/loadingController.js";
+import { handleDockNavigation, handleRouteAction } from "./app/navigationController.js";
+import { renderAppShell } from "./app/renderController.js";
 import "./styles.css";
 
 let activeMaps = new Map();
@@ -91,52 +80,7 @@ function render() {
   const isRouteChange = lastRenderedView && lastRenderedView !== view;
   lastRenderedView = view;
 
-  let viewHtml = "";
-  if (view === "landing") {
-    viewHtml = renderLandingView();
-  } else if (view === "home") {
-    viewHtml = renderHomeView();
-  } else if (view === "plan") {
-    viewHtml = renderPlanView();
-  } else if (view === "search") {
-    viewHtml = renderSearchView();
-  } else if (view === "live") {
-    viewHtml = renderLiveView();
-  } else if (view === "profile") {
-    viewHtml = renderProfileView();
-  } else {
-    viewHtml = renderHomeView();
-  }
-
-  // Include floating bottom navigation dock for non-landing views
-  const bottomNavHtml = view !== "landing" ? renderBottomNav() : "";
-  const quickCaptureHtml = view !== "landing" ? renderQuickCaptureWidget() : "";
-  const lightboxHtml = renderLightbox();
-  const drawerHtml = renderEventDrawer();
-  const tripCreateHtml = renderTripCreateModal();
-  const inviteAcceptanceHtml = renderInviteAcceptance();
-  const onboardingHtml = renderOnboardingWalkthrough();
-  const helpHtml = renderHelpCenter();
-  const authExitHtml = renderAuthExitPage();
-  const premiumHtml = renderPremiumSupportSheet();
-  const templatePickerHtml = view !== "landing" ? renderTemplateMomentPicker(state.activeTrip) : "";
-
-  appEl.innerHTML = `
-    <div class="app-view app-view--${view} ${isRouteChange ? "app-view--route-enter" : ""}">
-      ${viewHtml}
-      ${bottomNavHtml}
-      ${quickCaptureHtml}
-      ${lightboxHtml}
-      ${drawerHtml}
-      ${tripCreateHtml}
-      ${inviteAcceptanceHtml}
-      ${onboardingHtml}
-      ${helpHtml}
-      ${authExitHtml}
-      ${premiumHtml}
-      ${templatePickerHtml}
-    </div>
-  `;
+  appEl.innerHTML = renderAppShell(view, { isRouteChange });
 
   // Initialize maps after DOM update
   requestAnimationFrame(() => {
@@ -151,44 +95,6 @@ function applyThemeMode() {
   document.documentElement.dataset.themePreference = theme;
   document.documentElement.dataset.theme = resolvedTheme;
   document.documentElement.style.colorScheme = resolvedTheme;
-}
-
-function renderInviteAcceptance() {
-  const invite = state.activeInvite;
-  if (!invite || invite.status === "accepted") return "";
-  const trip = state.activeTrip;
-  const title = trip.title || trip.name || (trip.destination ? `Roadtrip ${trip.destination}` : "This trip");
-  const coverImage = trip.coverImage || trip.image || trip.upcomingActivity?.image || "";
-  const travelersCount = Math.max(1, (trip.companions || []).length + 1);
-  const isKnownUser = ["admin", "traveler"].includes(state.userSession?.role);
-  const isAccountMode = invite.mode === "account";
-  return `
-    <section class="trip-invite-acceptance" aria-label="Trip invitation">
-      ${coverImage ? `<img src="${escapeHtml(coverImage)}" alt="" loading="lazy" />` : ""}
-      <div class="trip-invite-acceptance__copy">
-        <span>Trip invitation</span>
-        <strong>${escapeHtml(title)}</strong>
-        <small>${escapeHtml(trip.destination || "Destination")} · ${escapeHtml(trip.dates || "Dates TBD")} · ${travelersCount} travelers</small>
-      </div>
-      ${isAccountMode ? `
-        <form class="trip-invite-account-form" id="trip-invite-account-form">
-          <input name="name" type="text" value="${escapeHtml(state.userProfile?.name || "")}" autocomplete="name" placeholder="Your name" required />
-          <input name="email" type="email" value="${escapeHtml(state.userProfile?.email || "")}" autocomplete="email" placeholder="you@example.com" required />
-          <input name="password" type="password" autocomplete="new-password" placeholder="Create password" minlength="8" required />
-          <button class="btn btn--primary btn--sm" type="submit">Create Account</button>
-          <button class="btn btn--ghost btn--sm" data-action="show-invite-options" type="button">Back</button>
-        </form>
-      ` : `
-        <div class="trip-invite-acceptance__actions">
-          <button class="btn btn--primary btn--sm" data-action="accept-trip-invite" data-invite-mode="${isKnownUser ? "user" : "guest"}" type="button">
-            ${isKnownUser ? "Join instantly" : "Continue as Guest"}
-          </button>
-          ${!isKnownUser ? `<button class="btn btn--outline btn--sm" data-action="create-account-from-invite" type="button">Create Account</button>` : ""}
-          <button class="btn btn--icon btn--ghost" data-action="dismiss-trip-invite" type="button" aria-label="Dismiss invitation">×</button>
-        </div>
-      `}
-    </section>
-  `;
 }
 
 function initMapsForView(view) {
@@ -464,75 +370,16 @@ document.addEventListener("click", async (e) => {
 
   // Bottom dock navigation
   if (target.dataset.nav) {
-    const nav = target.dataset.nav;
-    if (!requireAppSession("login", "Sign in to open TRIP.")) return;
-    if (nav === "journal") {
-      state.setPlanSubTab("journal");
-      flashPageLoader("Opening journal");
-      state.setView("plan");
-      return;
-    }
-    if (nav === "live" && !state.tripMode) {
-      const confirmActivate = confirm(`📍 Live Journey Mode requires Trip Mode ON.\n\nWould you like to activate Trip Mode for ${state.activeTrip.destination}?`);
-      if (confirmActivate) {
-        state.toggleTripMode(true);
-        state.setView("live");
-      }
-      return;
-    }
-    if (nav === "plan") state.setPlanSubTab("overview");
-    flashPageLoader(`Opening ${nav}`);
-    state.setView(nav);
+    handleDockNavigation(target, { requireAppSession, flashPageLoader });
     return;
   }
 
   // Data action handlers
   const action = target.dataset.action;
   if (action) {
-    if (action === "go-app" || action === "go-home") {
-      if (!requireAppSession("login", "Sign in to open your trip board.")) return;
-      flashPageLoader("Opening home");
-      state.setView("home");
-    }
-    else if (action === "go-plan") {
-      if (!requireAppSession("login", "Sign in to open trip planning.")) return;
-      if (target.dataset.subtab) state.setPlanSubTab(target.dataset.subtab);
-      flashPageLoader("Opening trips");
-      state.setView("plan");
-    }
-    else if (action === "go-plan-timeline") {
-      if (!requireAppSession("login", "Sign in to open your itinerary.")) return;
-      state.setPlanSubTab("plan");
-      state.setPlanViewMode("timeline");
-      flashPageLoader("Opening timeline");
-      state.setView("plan");
-    }
-    else if (action === "go-search") {
-      if (!requireAppSession("signup", "Create an account or sign in to explore TRIP ideas.")) return;
-      flashPageLoader("Opening search");
-      state.setView("search");
-    }
-    else if (action === "go-live") {
-      if (!requireAppSession("login", "Sign in before using Live mode.")) return;
-      flashPageLoader("Opening live");
-      state.setView("live");
-    }
-    else if (action === "go-moments") {
-      if (!requireAppSession("login", "Sign in to open Journal and Story.")) return;
-      flashPageLoader("Opening journal");
-      state.setView("plan");
-      state.setPlanSubTab("journal");
-    }
-    else if (action === "go-profile") {
-      if (!requireAppSession("login", "Sign in to open your profile.")) return;
-      flashPageLoader("Opening profile");
-      state.setView("profile");
-    }
-    else if (action === "switch-to-landing") {
-      flashPageLoader("Opening TRIP");
-      state.setView("landing");
-    }
-    else if (action === "set-theme-mode") {
+    if (handleRouteAction(action, target, { requireAppSession, flashPageLoader })) return;
+
+    if (action === "set-theme-mode") {
       state.setThemeMode(target.dataset.themeMode || "system");
       showToast(`Theme set to ${state.themeMode}.`);
     }

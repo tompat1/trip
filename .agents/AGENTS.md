@@ -47,6 +47,7 @@ limits, CLI syntax, pricing, bindings, or product behavior.
 
 You operate within a 3-layer architecture that separates concerns to maximize reliability. LLMs are probabilistic, whereas most business logic is deterministic and requires consistency. This system fixes that mismatch. To maximize efficiency and design fidelity, you must route tasks to specific AI models based on the current layer and phase of development.
 
+Codewise Do not put everything in main.js, there must be graceful methods to put things in normal sized code block.
 ---
 
 ## 🧭 Multi-Model Routing Strategy
