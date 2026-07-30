@@ -128,6 +128,7 @@ export class AppState {
     this.authMode = "login"; // "login" | "signup" | "forgot"
     this.premiumOpen = false;
     this.tripCreateOpen = false;
+    this.activePoiDetail = null;
 
     // ── Pub/sub ──────────────────────────────────────────────────────────────
     this.listeners = new Set();

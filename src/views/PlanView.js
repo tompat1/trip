@@ -941,7 +941,7 @@ function renderExploreIdeaCard(idea, events) {
   const providerLabel = isOpenStreetMap ? "OpenStreetMap" : "OpenTripMap";
   return `
     <div class="explore-card" style="background: var(--paper-card); border: 1px solid var(--line); border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow-sm); display: flex; flex-direction: column;">
-      <div style="height: 160px; background-image: url('${idea.image}'); background-size: cover; background-position: center; position: relative;">
+      <div data-action="open-poi-detail" data-idea-id="${idea.id}" style="height: 160px; background-image: url('${idea.image}'); background-size: cover; background-position: center; position: relative; cursor: pointer;">
         <button class="btn-bookmark ${isSaved ? 'is-saved' : ''}" data-action="toggle-bookmark" data-place-id="${idea.id}" style="position: absolute; top: 12px; right: 12px; background: rgba(255,255,255,0.9); border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border: none; box-shadow: var(--shadow-sm);" aria-label="Bookmark">
           ${renderIcon("bookmark")}
         </button>
@@ -949,7 +949,7 @@ function renderExploreIdeaCard(idea, events) {
       </div>
 
       <div style="padding: 16px; display: flex; flex-direction: column; gap: 8px;">
-        <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 10px;">
+        <div data-action="open-poi-detail" data-idea-id="${idea.id}" style="display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; cursor: pointer;">
           <div>
             <h3 style="font-size: 1.1rem; font-weight: 700; color: var(--ink); margin-bottom: 2px;">${escapeHtml(idea.title)}</h3>
             <p style="font-size: 0.82rem; color: var(--ink-muted); margin: 0;">${escapeHtml(idea.subtitle)}</p>

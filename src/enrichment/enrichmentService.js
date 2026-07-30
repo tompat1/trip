@@ -200,6 +200,26 @@ export function createEnrichmentService(options = {}) {
       }));
     },
 
+    async discoverFoursquarePlaces(input = {}) {
+      const personaContext = getPersonaDiscoveryContext(input.personas || []);
+      const coordinates = normalizeCoordinates(input.coordinates || [input.lat, input.lng]);
+      if (!coordinates) throw new Error("invalid-coordinates");
+      const url = buildApiUrl(apiBase, "/api/foursquare/places");
+      url.searchParams.set("lat", String(coordinates[0]));
+      url.searchParams.set("lng", String(coordinates[1]));
+      url.searchParams.set("radius", String(input.radiusMeters || 1800));
+      url.searchParams.set("limit", String(input.limit || 20));
+      url.searchParams.set("intent", input.intent || personaContext.osmIntent || "food");
+      const res = await fetchImpl(url.href, { headers: { Accept: "application/json" } }).catch(() => null);
+      if (!res || !res.ok) return { status: "error", places: [] };
+      const data = await res.json().catch(() => ({}));
+      return {
+        status: data.status || "ok",
+        places: rankItemsByPersonas(data.places || [], personaContext.personas),
+        providerStatus: data.providerStatus || [],
+      };
+    },
+
     async fetchOpenTripMapDetails(xid, options = {}) {
       return fetchOpenTripMapDetailsViaWorker(xid, { ...options, apiBase, fetchImpl })
         .catch(() => fetchOpenTripMapPlaceDetails(xid, { ...options, fetchImpl }));

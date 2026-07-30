@@ -82,6 +82,7 @@ function matchRoute(method, pathname) {
     ["GET", /^\/api\/places\/enrich$/, enrichPlaceHandler],
     ["GET", /^\/api\/opentripmap\/places$/, openTripMapPlacesHandler],
     ["GET", /^\/api\/opentripmap\/places\/([^/]+)$/, openTripMapPlaceDetailsHandler],
+    ["GET", /^\/api\/foursquare\/places$/, foursquarePlacesHandler],
     ["POST", /^\/api\/places\/([^/]+)\/media\/refresh$/, mediaRefreshHandler],
     ["POST", /^\/api\/media\/light$/, lightMediaPutHandler],
     ["GET", /^\/api\/media\/light\/([^/]+)$/, lightMediaGetHandler],
@@ -558,6 +559,125 @@ async function openTripMapPlaceDetailsHandler(context) {
     place: result.place,
     providerStatus: [result.providerStatus],
   }, context));
+}
+
+async function foursquarePlacesHandler(context) {
+  if (!context.env.FSQ_API_KEY) {
+    return json({
+      status: "not-configured",
+      places: [],
+      providerStatus: [{ provider: "foursquare", status: "not-configured", error: "missing-fsq-api-key" }],
+    });
+  }
+
+  const url = new URL(context.request.url);
+  const coordinates = normalizeCoordinates([url.searchParams.get("lat"), url.searchParams.get("lng")]);
+  if (!coordinates) return jsonError("invalid_coordinates", "Provide lat and lng query parameters.", 400);
+
+  const radius = clampNumber(url.searchParams.get("radius"), 100, 10000, 1800);
+  const limit = clampNumber(url.searchParams.get("limit"), 1, 50, 20);
+  const intent = url.searchParams.get("intent") || "food";
+
+  // Foursquare category IDs — https://developer.foursquare.com/docs/categories
+  const CATEGORY_MAP = {
+    coffee: "13032",       // Coffee Shop
+    cafe: "13032,13033",   // Coffee Shop + Café
+    food: "13000",         // Food (all)
+    restaurant: "13065",   // Restaurant
+    nightlife: "10000",    // Arts & Entertainment + Nightlife
+    bar: "13003",          // Bar
+    bakery: "13002",       // Bakery
+    social: "13000,13065", // Food + Restaurant
+  };
+  const categories = CATEGORY_MAP[intent] || CATEGORY_MAP.food;
+
+  try {
+    const fsqUrl = new URL("https://api.foursquare.com/v3/places/search");
+    fsqUrl.searchParams.set("ll", `${coordinates[0]},${coordinates[1]}`);
+    fsqUrl.searchParams.set("radius", String(radius));
+    fsqUrl.searchParams.set("limit", String(limit));
+    fsqUrl.searchParams.set("categories", categories);
+    fsqUrl.searchParams.set("fields", "fsq_id,name,categories,location,geocodes,rating,price,hours,website,photos");
+    fsqUrl.searchParams.set("sort", "RELEVANCE");
+    fsqUrl.searchParams.set("open_now", "false");
+
+    const startedAt = Date.now();
+    const response = await fetch(fsqUrl.href, {
+      headers: {
+        Authorization: context.env.FSQ_API_KEY,
+        Accept: "application/json",
+      },
+    });
+    const latencyMs = Date.now() - startedAt;
+
+    if (!response.ok) throw new Error(`foursquare-http-${response.status}`);
+    const data = await response.json();
+
+    const places = (data.results || []).map((result) => normalizeFoursquarePlace(result, coordinates));
+    return json({
+      status: "ok",
+      places,
+      providerStatus: [{ provider: "foursquare", status: "ok", count: places.length, latencyMs }],
+    });
+  } catch (error) {
+    return json({
+      status: "error",
+      places: [],
+      providerStatus: [{ provider: "foursquare", status: "error", error: error?.message || "foursquare-failed" }],
+    }, 200); // 200 so client handles gracefully
+  }
+}
+
+function normalizeFoursquarePlace(result = {}, origin = null) {
+  const geo = result.geocodes?.main || result.geocodes?.rooftop || {};
+  const coordinates = geo.latitude && geo.longitude ? [geo.latitude, geo.longitude] : null;
+  const category = (result.categories?.[0]?.name) || "Place";
+  const mappedCategory = /coffee|café|cafe/i.test(category)
+    ? "Coffee"
+    : /restaurant|food|dining|pizza|sushi|bistro|tavern|kebab/i.test(category)
+    ? "Food"
+    : /bar|pub|nightlife|cocktail|brewery/i.test(category)
+    ? "Nightlife"
+    : /bakery|pastry|dessert/i.test(category)
+    ? "Bakery"
+    : "Place";
+
+  const distanceMeters = coordinates && origin
+    ? Math.round(getDistanceMeters(origin, [coordinates[0], coordinates[1]]))
+    : null;
+
+  const photoPrefix = result.photos?.[0]?.prefix;
+  const photoSuffix = result.photos?.[0]?.suffix;
+  const imageUrl = photoPrefix && photoSuffix ? `${photoPrefix}original${photoSuffix}` : "";
+
+  return {
+    id: result.fsq_id ? `fsq-${result.fsq_id}` : `fsq-${slugify(result.name || "place")}-${Date.now()}`,
+    fsqId: result.fsq_id || "",
+    title: result.name || "Unknown place",
+    canonicalName: result.name || "",
+    category: mappedCategory,
+    tag: mappedCategory,
+    categories: result.categories?.map((c) => c.name) || [mappedCategory],
+    coordinates,
+    lat: coordinates?.[0] || null,
+    lng: coordinates?.[1] || null,
+    distanceMeters,
+    distance: distanceMeters != null ? (distanceMeters < 1000 ? `${Math.round(distanceMeters / 10) * 10} m` : `${(distanceMeters / 1000).toFixed(1)} km`) : "",
+    rating: result.rating ? String((result.rating / 2).toFixed(1)) : "",
+    price: result.price || null,
+    imageUrl,
+    website: result.website || "",
+    openingHours: result.hours?.display || "",
+    isOpenNow: result.hours?.open_now ?? null,
+    address: [
+      result.location?.address,
+      result.location?.locality || result.location?.city,
+    ].filter(Boolean).join(", "),
+    source: "Foursquare",
+    sourceRole: "foursquare",
+    sourceUrl: result.fsq_id ? `https://foursquare.com/v/${result.fsq_id}` : "",
+    reason: `${mappedCategory} from Foursquare.`,
+  };
 }
 
 async function eventsDiscoverHandler(context) {

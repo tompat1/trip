@@ -409,6 +409,25 @@ document.addEventListener("click", async (e) => {
         showToast(isSaving ? "🔖 Saved spot to your trip bookmarks!" : "Removed from saved bookmarks.");
       }
     }
+    else if (action === "open-poi-detail") {
+      const ideaId = target.dataset.ideaId;
+      const trip = state.activeTrip;
+      if (ideaId && trip) {
+        const allIdeas = [
+          ...(trip.tourismPois || []),
+          ...(trip.hiddenGems || []),
+          ...(trip.osmPlaces || []),
+          ...(trip.ideas || []),
+        ];
+        const poi = allIdeas.find((item) => String(item.id) === String(ideaId));
+        if (poi) {
+          state.openPoiDetail(poi);
+        }
+      }
+    }
+    else if (action === "close-poi-detail") {
+      state.closePoiDetail();
+    }
     else if (action === "add-idea-to-itinerary") {
       const title = target.dataset.title || "Explore Spot";
       const location = target.dataset.location || "";

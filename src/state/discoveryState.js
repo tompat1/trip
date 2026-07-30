@@ -10,6 +10,24 @@ import { fetchOpenMeteoWeather } from "../services/weatherService.js";
 import { getPersonaDiscoveryContext, rankItemsByPersonas } from "../utils/personaSignals.js";
 import { getOpenTripMapStatus, normalizeTourismIdea, writeStoredTourismDiscovery } from "./helpers.js";
 
+// Personas that benefit from a dedicated food/drink Overpass pass
+const FOOD_PERSONAS = new Set([
+  "☕ Coffee Hunter",
+  "🍽️ Food Explorer",
+  "🍷 Wine Seeker",
+  "🌙 Night Owl",
+  "🤝 Social Connector",
+]);
+
+// Overpass intent tokens for food-oriented personas
+const FOOD_INTENT_MAP = {
+  "☕ Coffee Hunter": "coffee",
+  "🍽️ Food Explorer": "food",
+  "🍷 Wine Seeker": "nightlife",
+  "🌙 Night Owl": "nightlife",
+  "🤝 Social Connector": "social",
+};
+
 export const discoveryStateMixin = {
   // ── Backend health ─────────────────────────────────────────────────────────
 
@@ -113,13 +131,62 @@ export const discoveryStateMixin = {
         personas
       );
 
-      await this.enrichDiscoveryMedia([...tourismPois, ...hiddenGems, ...osmPlaces].slice(0, 8));
+      // Determine dominant food intent for a dedicated Overpass pass
+      const foodPersonas = personas.filter((p) => FOOD_PERSONAS.has(p));
+      const dominantFoodIntent = foodPersonas
+        .map((p) => FOOD_INTENT_MAP[p])
+        .filter(Boolean)
+        .reduce((acc, intent) => {
+          acc[intent] = (acc[intent] || 0) + 1;
+          return acc;
+        }, {});
+      const topFoodIntent = Object.entries(dominantFoodIntent).sort((a, b) => b[1] - a[1])[0]?.[0];
+
+      // Fire dedicated food/coffee pass (Foursquare first if configured, Overpass fallback)
+      let foodOsmPlaces = [];
+      if (topFoodIntent) {
+        try {
+          const fsqResult = await enrichmentService.discoverFoursquarePlaces({
+            coordinates: trip.center,
+            radiusMeters: options.foodRadiusMeters || 1800,
+            intent: topFoodIntent,
+            personas,
+          });
+          if (fsqResult?.places?.length) {
+            foodOsmPlaces = fsqResult.places.map((place) => normalizeTourismIdea(place, "foursquare"));
+          } else {
+            const foodResult = await enrichmentService.discoverNearby({
+              coordinates: trip.center,
+              radiusMeters: options.foodRadiusMeters || 1800,
+              intent: topFoodIntent,
+              personas,
+            });
+            foodOsmPlaces = (foodResult?.places || []).map((place) => ({
+              ...normalizeTourismIdea(place, "osm"),
+              sourceRole: "osm-food",
+              foodSource: topFoodIntent,
+            }));
+          }
+        } catch (e) {
+          console.warn("Food discovery pass fallback:", e);
+        }
+      }
+
+      // Merge: dedupe food OSM places against already-found OSM places by title
+      const osmTitles = new Set(osmPlaces.map((p) => p.title?.toLowerCase()));
+      const newFoodPlaces = foodOsmPlaces.filter((p) => !osmTitles.has(p.title?.toLowerCase()));
+      const mergedOsmPlaces = rankItemsByPersonas([...newFoodPlaces, ...osmPlaces], personas);
+
+      await this.enrichDiscoveryMedia(
+        [...tourismPois, ...hiddenGems, ...mergedOsmPlaces].slice(0, 8),
+        { destination: trip.destination }
+      );
       const status = getOpenTripMapStatus([topResult, hiddenResult]);
       const updatedAt = new Date().toISOString();
 
       trip.tourismPois = tourismPois;
       trip.hiddenGems = hiddenGems;
-      trip.osmPlaces = osmPlaces;
+      trip.osmPlaces = mergedOsmPlaces;
       this.tourismDiscoveryStatus[tripId] = {
         status: tourismPois.length || hiddenGems.length || osmPlaces.length ? "ready" : status,
         error:
@@ -146,7 +213,8 @@ export const discoveryStateMixin = {
     return this.tourismDiscoveryStatus[tripId];
   },
 
-  async enrichDiscoveryMedia(ideas = []) {
+  async enrichDiscoveryMedia(ideas = [], options = {}) {
+    const destination = options.destination || this.activeTrip?.destination || "";
     await Promise.allSettled(
       ideas.map(async (idea) => {
         if (!idea || !idea.id) return;
@@ -158,6 +226,8 @@ export const discoveryStateMixin = {
           wikidataId: idea.wikidataId || "",
           categories: idea.categories || [idea.category].filter(Boolean),
           sourceUrl: idea.sourceUrl || "",
+          // Thread destination so media scoring can filter generic regional images
+          destinationContext: destination,
         });
         const hero = media?.hero;
         if (hero?.imageUrl && !hero.illustrativeOnly) {
@@ -169,6 +239,7 @@ export const discoveryStateMixin = {
       })
     );
   },
+
 
   // ── Event discovery ────────────────────────────────────────────────────────
 

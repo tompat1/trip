@@ -168,4 +168,48 @@ export const uiStateMixin = {
     };
     this.notify();
   },
+
+  // ── POI detail sheet ───────────────────────────────────────────────────────
+
+  async openPoiDetail(poi) {
+    if (!poi) return;
+    this.activePoiDetail = { ...poi, loadingDetails: Boolean(poi.xid && !poi._detailLoaded) };
+    this.notify();
+
+    if (poi.xid && !poi._detailLoaded) {
+      try {
+        const { enrichmentService } = await import("../enrichment/enrichmentService.js");
+        const details = await enrichmentService.fetchOpenTripMapDetails(poi.xid);
+        if (details) {
+          poi.description = details.description || poi.description || "";
+          poi.website = details.website || poi.sourceUrl || "";
+          poi.wikipedia = details.wikipedia || "";
+          poi.image = poi.image || details.imageUrl || "";
+          poi.address = details.address ? Object.values(details.address).filter(Boolean).join(", ") : "";
+          poi._detailLoaded = true;
+          if (this.activePoiDetail && (this.activePoiDetail.id === poi.id || this.activePoiDetail.xid === poi.xid)) {
+            this.activePoiDetail = { ...poi, loadingDetails: false };
+            this.notify();
+          }
+        } else {
+          poi._detailLoaded = true;
+          if (this.activePoiDetail) {
+            this.activePoiDetail.loadingDetails = false;
+            this.notify();
+          }
+        }
+      } catch (e) {
+        console.warn("Lazy fetch OTM details error:", e);
+        if (this.activePoiDetail) {
+          this.activePoiDetail.loadingDetails = false;
+          this.notify();
+        }
+      }
+    }
+  },
+
+  closePoiDetail() {
+    this.activePoiDetail = null;
+    this.notify();
+  },
 };

@@ -3,12 +3,14 @@ const WIKIDATA_ENTITY_DATA = "https://www.wikidata.org/wiki/Special:EntityData/"
 const OPENVERSE_IMAGES_API = "https://api.openverse.org/v1/images/";
 
 export async function enrichPlaceMedia(place, options = {}) {
+  // Pass destination context so image ranking and generic detection work for any trip city
+  const destinationContext = options.destination || place.destinationContext || "";
   const fetchImpl = options.fetchImpl || fetch;
   const providerStatus = [];
   const commons = await runProvider("commons", providerStatus, () => searchCommonsMedia(place, fetchImpl));
   const openverse = await runProvider("openverse", providerStatus, () => searchOpenverseMedia(place, fetchImpl));
   const candidates = dedupeImages([...(commons || []), ...(openverse || [])])
-    .map((image) => rankImageCandidate(image, place))
+    .map((image) => rankImageCandidate(image, place, destinationContext))
     .filter((image) => !image.rejected)
     .sort((a, b) => b.finalScore - a.finalScore);
   const hero =
@@ -250,7 +252,7 @@ function normalizeOpenverseImage(result, place) {
   };
 }
 
-function rankImageCandidate(image, place) {
+function rankImageCandidate(image, place, destinationContext = "") {
   const longEdge = getLongEdge(image);
   const aspect = image.aspectRatio || (image.width && image.height ? image.width / image.height : 0);
   const exactNameMatch = getNameMatchScore(image.rawTitle || image.sourcePageUrl, place);
@@ -258,7 +260,7 @@ function rankImageCandidate(image, place) {
   const nearbyRadius = getNearbyImageRadius(place);
   const weakNameMatch = exactNameMatch < 0.25;
   const possibleMismatch = weakNameMatch && (!image.exactLocation || distanceMeters > nearbyRadius) ? 1 : 0;
-  const genericStockPenalty = isGenericRegionalImage(image, place) ? 1 : 0;
+  const genericStockPenalty = isGenericRegionalImage(image, place, destinationContext) ? 1 : 0;
   const rejectionReason = getHardRejectionReason(image, longEdge, { weakNameMatch, distanceMeters, nearbyRadius });
   const finalScore = calculateImageScore({
     exactNameMatch,
@@ -325,11 +327,13 @@ function getMediaQueries(place) {
   if (Array.isArray(place.mediaQueries) && place.mediaQueries.length) return place.mediaQueries;
   const title = place.identity?.canonicalName || place.canonicalName || place.title || "";
   const aliases = place.identity?.aliases || place.aliases || [];
-  const area = place.area || place.identity?.municipality || "";
+  // Use actual trip destination context — never hardcode a city name here
+  const area = place.area || place.identity?.municipality || place.destinationContext || "";
+  const country = place.identity?.countryCode || place.countryCode || "";
   return [
     [title, area].filter(Boolean).join(" "),
-    [title, "Crete"].filter(Boolean).join(" "),
-    ...aliases.slice(0, 4).map((alias) => [alias, area || "Crete"].filter(Boolean).join(" ")),
+    [title, country].filter(Boolean).join(" "),
+    ...aliases.slice(0, 4).map((alias) => [alias, area].filter(Boolean).join(" ")),
     title,
   ].filter(Boolean).filter((query, index, all) => all.indexOf(query) === index);
 }
@@ -398,10 +402,23 @@ function getDistanceMeters(origin, destination) {
   return earthRadius * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-function isGenericRegionalImage(image, place) {
+function isGenericRegionalImage(image, place, destinationContext = "") {
   const haystack = normalizeText(`${image.rawTitle || ""} ${image.sourcePageUrl || ""}`);
   const placeName = normalizeText(place.title || place.identity?.canonicalName || "");
-  return haystack.includes("crete") && placeName && !placeName.split(" ").some((token) => token.length > 3 && haystack.includes(token));
+  if (!placeName) return false;
+  // Build a list of destination-level terms (city, country, context) to detect regional stock photos
+  const destinationTerms = [
+    destinationContext,
+    place.destinationContext,
+    place.area,
+    place.identity?.municipality,
+  ]
+    .map((term) => normalizeText(term || ""))
+    .filter((term) => term.length > 3);
+  // An image is "generic regional" when it mentions a destination term but not any word from the place name
+  return destinationTerms.some(
+    (term) => haystack.includes(term) && !placeName.split(" ").some((token) => token.length > 3 && haystack.includes(token))
+  );
 }
 
 function inferVisualRole(place, width, height) {
