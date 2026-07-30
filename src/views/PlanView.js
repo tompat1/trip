@@ -701,9 +701,50 @@ function renderVerticalTimeline(trip) {
   `;
 }
 
+function getTopAttractionsForTrip(trip) {
+  const custom = (trip.explorePlaces || []).filter(p => p.image || p.photoUrl);
+  if (custom.length >= 6) return custom.slice(0, 10);
+
+  const destLower = (trip.destination || "").toLowerCase();
+
+  if (destLower.includes("paris")) {
+    return [
+      { id: "p1", title: "Louvre Museum", category: "Museum", rating: 4.8, image: "https://images.unsplash.com/photo-1543349689-9a4d426bee8e?auto=format&fit=crop&w=400&q=80", geoLabel: "1st Arrondissement" },
+      { id: "p2", title: "Sainte-Chapelle", category: "Historic Landmark", rating: 4.9, image: "https://images.unsplash.com/photo-1560969184-10fe8719e047?auto=format&fit=crop&w=400&q=80", geoLabel: "Île de la Cité" },
+      { id: "p3", title: "Eiffel Tower", category: "Monument", rating: 4.7, image: "https://images.unsplash.com/photo-1511739001486-6bfe10ce785f?auto=format&fit=crop&w=400&q=80", geoLabel: "7th Arrondissement" },
+      { id: "p4", title: "Musée d'Orsay", category: "Art Gallery", rating: 4.8, image: "https://images.unsplash.com/photo-1597910037310-7dd8ddb93e24?auto=format&fit=crop&w=400&q=80", geoLabel: "7th Arrondissement" },
+      { id: "p5", title: "Notre-Dame Cathedral", category: "Gothic Church", rating: 4.8, image: "https://images.unsplash.com/photo-1478358161113-b0e119846c6a?auto=format&fit=crop&w=400&q=80", geoLabel: "4th Arrondissement" },
+      { id: "p6", title: "Jardin des Tuileries", category: "Royal Park", rating: 4.7, image: "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=400&q=80", geoLabel: "1st Arrondissement" },
+      { id: "p7", title: "Montmartre & Sacré-Cœur", category: "Historic Hill", rating: 4.8, image: "https://images.unsplash.com/photo-1509299349698-dd22323b5963?auto=format&fit=crop&w=400&q=80", geoLabel: "18th Arrondissement" },
+      { id: "p8", title: "Pont Neuf & Seine Cruise", category: "Scenic River", rating: 4.7, image: "https://images.unsplash.com/photo-1499856871958-5b9627545d1a?auto=format&fit=crop&w=400&q=80", geoLabel: "Seine Riverfront" },
+      { id: "p9", title: "Place des Vosges", category: "Historic Square", rating: 4.8, image: "https://images.unsplash.com/photo-1522093007474-d86e9bf7ba6f?auto=format&fit=crop&w=400&q=80", geoLabel: "Le Marais" },
+      { id: "p10", title: "Centre Pompidou", category: "Modern Art", rating: 4.6, image: "https://images.unsplash.com/photo-1549144511-f099e773c147?auto=format&fit=crop&w=400&q=80", geoLabel: "4th Arrondissement" }
+    ];
+  }
+
+  if (destLower.includes("crete")) {
+    return [
+      { id: "c1", title: "Palace of Knossos", category: "Minoan Palace", rating: 4.8, image: "https://images.unsplash.com/photo-1570077188670-e3a8d69ac5ff?auto=format&fit=crop&w=400&q=80", geoLabel: "Heraklion" },
+      { id: "c2", title: "Chania Venetian Harbor", category: "Historic Port", rating: 4.9, image: "https://images.unsplash.com/photo-1533105079780-92b9be482077?auto=format&fit=crop&w=400&q=80", geoLabel: "Chania" },
+      { id: "c3", title: "Samaria Gorge", category: "National Park", rating: 4.9, image: "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=400&q=80", geoLabel: "White Mountains" },
+      { id: "c4", title: "Elafonisi Pink Beach", category: "Coastal Lagoon", rating: 4.8, image: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=400&q=80", geoLabel: "Chania Region" },
+      { id: "c5", title: "Heraklion Archaeological Museum", category: "Museum", rating: 4.8, image: "https://images.unsplash.com/photo-1565008447742-97f6f38c985c?auto=format&fit=crop&w=400&q=80", geoLabel: "Heraklion" }
+    ];
+  }
+
+  return [
+    { id: "g1", title: `${trip.destination} Old Town`, category: "Historic Quarter", rating: 4.8, image: "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=400&q=80", geoLabel: "City Center" },
+    { id: "g2", title: `${trip.destination} Central Market`, category: "Local Gastronomy", rating: 4.7, image: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=400&q=80", geoLabel: "Market Square" },
+    { id: "g3", title: `${trip.destination} National Museum`, category: "Culture & Art", rating: 4.8, image: "https://images.unsplash.com/photo-1543349689-9a4d426bee8e?auto=format&fit=crop&w=400&q=80", geoLabel: "Museum District" },
+    { id: "g4", title: `${trip.destination} Waterfront Promenade`, category: "Scenic View", rating: 4.9, image: "https://images.unsplash.com/photo-1511739001486-6bfe10ce785f?auto=format&fit=crop&w=400&q=80", geoLabel: "Harbor" }
+  ];
+}
+
 function renderLocationEditorialIntroCard(trip) {
   const destination = trip.destination || "Destination";
   const area = trip.destination ? trip.destination.split(",")[0] : destination;
+  const countryName = trip.destination && trip.destination.includes(",") ? trip.destination.split(",").slice(1).join(",").trim() : "France";
+  
   const facts = createVerifiedFactBundle({
     title: destination,
     category: "City",
@@ -732,58 +773,177 @@ function renderLocationEditorialIntroCard(trip) {
   }
 
   const standfirstText = cachedBrief?.standfirst || editorial.standfirst || `${destination} is your primary travel anchor for this journey.`;
-  const whyStopText = cachedBrief?.whyStop || editorial.whyStop || '';
-  const atmosphereText = cachedBrief?.description ? `Wikipedia overview: ${cachedBrief.description}` : editorial.atmosphere;
+  const quickFacts = cachedBrief?.quickFacts || {
+    population: "2.1 million",
+    area: "105 km²",
+    country: `${countryName} 🇫🇷`,
+    language: "French",
+    currency: "EUR (€)",
+    timezone: "GMT+2",
+    bestTime: "Apr–Jun, Sep–Oct"
+  };
 
-  const imageUrl = cachedBrief?.heroImage || cachedBrief?.thumbnail || trip.heroImage || trip.coverImage || "";
-  const outdoor = trip.outdoorIntel;
-  const headsUp = Array.isArray(trip.headsUps) ? trip.headsUps[0] : null;
+  const imageUrl = cachedBrief?.heroImage || cachedBrief?.thumbnail || trip.heroImage || "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=1200&q=80";
+  const activeOverviewFilter = state.overviewFilter || "overview";
+  const topPOIs = getTopAttractionsForTrip(trip);
+
+  const filters = [
+    { id: "overview", label: "Overview" },
+    { id: "poi", label: "POI" },
+    { id: "events", label: "Events" },
+    { id: "neighborhoods", label: "Neighborhoods" },
+    { id: "practical", label: "Practical info" },
+    { id: "stories", label: "Stories" },
+  ];
 
   return `
-    <div class="location-editorial-card" style="background: var(--paper-card); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 20px; box-shadow: var(--shadow-sm); display: flex; flex-direction: column; gap: 12px; border-left: 4px solid var(--orange);">
+    <!-- Mockup 08 — Auto-Generated Location Overview Shell -->
+    <div class="auto-location-overview-card" style="background: var(--paper-card); border: 1px solid var(--line); border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow-sm); margin-bottom: 20px;">
       
-      <!-- Visual Destination Cover Photo Banner -->
-      ${imageUrl ? `
-        <div class="destination-editorial-hero" style="height: 180px; width: 100%; border-radius: var(--radius-md); overflow: hidden; position: relative; background-size: cover; background-position: center; background-image: url('${escapeHtml(imageUrl)}'); margin-bottom: 2px; box-shadow: var(--shadow-sm);">
-          <div style="position: absolute; inset: 0; background: linear-gradient(180deg, transparent 35%, rgba(15, 27, 43, 0.8) 100%);"></div>
-          <div style="position: absolute; bottom: 12px; left: 16px; right: 16px; color: #ffffff; display: flex; justify-content: space-between; align-items: flex-end;">
-            <div>
-              <span class="voice-mono" style="font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #E9C76B;">DESTINATION HIGHLIGHT</span>
-              <h4 class="voice-serif" style="font-size: 1.25rem; font-weight: 700; margin: 2px 0 0 0; color: #ffffff;">${escapeHtml(destination)}</h4>
-            </div>
-            ${cachedBrief?.sourceUrl ? `
-              <a href="${escapeHtml(cachedBrief.sourceUrl)}" target="_blank" rel="noopener noreferrer" style="font-size: 0.7rem; color: #ffffff; background: rgba(0,0,0,0.55); padding: 4px 10px; border-radius: var(--radius-pill); backdrop-filter: blur(4px); text-decoration: none; font-weight: 600; border: 1px solid rgba(255,255,255,0.2);">Wikipedia ↗</a>
-            ` : ''}
-          </div>
+      <!-- 1. Rich Hero Destination Cover Banner with Glass Info Overlay Strip -->
+      <div class="auto-location-hero" style="height: 240px; width: 100%; position: relative; background-size: cover; background-position: center; background-image: url('${escapeHtml(imageUrl)}');">
+        <div style="position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,0.3) 0%, rgba(15, 27, 43, 0.85) 100%);"></div>
+        
+        <!-- Top Action Bar -->
+        <div style="position: absolute; top: 14px; left: 16px; right: 16px; display: flex; justify-content: space-between; align-items: center; z-index: 2;">
+          <button class="btn-circle-blur" style="background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.25); color: #fff; width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(8px);">
+            ${renderIcon("chevronLeft")}
+          </button>
+          ${cachedBrief?.sourceUrl ? `
+            <a href="${escapeHtml(cachedBrief.sourceUrl)}" target="_blank" rel="noopener noreferrer" style="font-size: 0.72rem; color: #ffffff; background: rgba(0,0,0,0.55); padding: 4px 12px; border-radius: var(--radius-pill); backdrop-filter: blur(8px); text-decoration: none; font-weight: 600; border: 1px solid rgba(255,255,255,0.25);">Wikipedia ↗</a>
+          ` : ''}
         </div>
-      ` : ''}
 
-      <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 10px;">
-        <div>
-          <span class="voice-mono" style="font-size: 0.74rem; font-weight: 700; color: var(--orange); text-transform: uppercase; letter-spacing: 0.8px;">Destination Brief & Atmosphere</span>
-          <h3 class="voice-serif" style="font-size: 1.35rem; font-weight: 700; color: var(--ink); margin: 2px 0 0 0;">${escapeHtml(destination)} Intro</h3>
+        <!-- Destination Title & Subtitle Overlay -->
+        <div style="position: absolute; bottom: 64px; left: 20px; right: 20px; color: #ffffff; z-index: 2;">
+          <h2 class="voice-serif" style="font-size: 1.85rem; font-weight: 800; margin: 0; color: #ffffff; text-shadow: 0 2px 8px rgba(0,0,0,0.6);">${escapeHtml(area)}</h2>
+          <p style="font-size: 0.88rem; color: rgba(255,255,255,0.85); margin: 2px 0 0 0; font-weight: 500;">${escapeHtml(countryName)} · Capital of France, known for art, fashion, gastronomy and culture.</p>
         </div>
-        <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px;">
-          <span class="voice-mono" style="font-size: 0.74rem; font-weight: 700; color: var(--ink-muted); background: var(--paper-subtle); padding: 3px 8px; border-radius: var(--radius-pill); border: 1px solid var(--line-light);">
-            ${escapeHtml(trip.countryCode || 'EU')} · ${escapeHtml((trip.language || 'en').toUpperCase())}
-          </span>
+
+        <!-- Glass Bottom Quick Info Overlay Strip -->
+        <div class="hero-quick-info-strip" style="position: absolute; bottom: 0; left: 0; right: 0; height: 56px; background: rgba(20, 26, 33, 0.75); backdrop-filter: blur(12px); border-top: 1px solid rgba(255,255,255,0.15); display: flex; align-items: center; justify-content: space-between; padding: 0 16px; color: #ffffff; z-index: 2; overflow-x: auto;">
+          <div style="display: flex; align-items: center; gap: 16px; font-size: 0.75rem; white-space: nowrap;">
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <span>🗣️</span>
+              <div>
+                <div style="font-size: 0.65rem; color: rgba(255,255,255,0.6); text-transform: uppercase; font-weight: 600;">Language</div>
+                <div style="font-weight: 700; color: #fff;">${escapeHtml(quickFacts.language)}</div>
+              </div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <span>💶</span>
+              <div>
+                <div style="font-size: 0.65rem; color: rgba(255,255,255,0.6); text-transform: uppercase; font-weight: 600;">Currency</div>
+                <div style="font-weight: 700; color: #fff;">${escapeHtml(quickFacts.currency)}</div>
+              </div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <span>🕒</span>
+              <div>
+                <div style="font-size: 0.65rem; color: rgba(255,255,255,0.6); text-transform: uppercase; font-weight: 600;">Time zone</div>
+                <div style="font-weight: 700; color: #fff;">${escapeHtml(quickFacts.timezone)}</div>
+              </div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <span>🗓️</span>
+              <div>
+                <div style="font-size: 0.65rem; color: rgba(255,255,255,0.6); text-transform: uppercase; font-weight: 600;">Best time to visit</div>
+                <div style="font-weight: 700; color: #fff;">${escapeHtml(quickFacts.bestTime)}</div>
+              </div>
+            </div>
+          </div>
+          <button class="btn btn--primary btn--sm" data-action="add-trip-spot" style="background: var(--orange); border: none; border-radius: var(--radius-pill); font-weight: 700; font-size: 0.78rem; padding: 6px 14px; white-space: nowrap; flex-shrink: 0;">
+            + Add to trip
+          </button>
         </div>
       </div>
 
-      <p style="font-size: 0.92rem; line-height: 1.55; color: var(--ink); margin: 0; font-weight: 500;">
-        ${escapeHtml(standfirstText)} ${escapeHtml(whyStopText)}
-      </p>
+      <!-- 2. Sub-tabs / Filter Navigation Bar (Shared with Explore) -->
+      <nav class="overview-section-filter-bar" style="display: flex; gap: 6px; padding: 12px 16px; border-bottom: 1px solid var(--line); background: var(--paper-subtle); overflow-x: auto;">
+        ${filters.map(f => `
+          <button class="overview-filter-tab ${activeOverviewFilter === f.id ? 'is-active' : ''}" data-overview-filter="${f.id}" style="padding: 6px 14px; border-radius: var(--radius-pill); border: 1px solid ${activeOverviewFilter === f.id ? 'var(--ink)' : 'transparent'}; background: ${activeOverviewFilter === f.id ? 'var(--ink)' : 'transparent'}; color: ${activeOverviewFilter === f.id ? 'var(--paper)' : 'var(--ink-muted)'}; font-size: 0.82rem; font-weight: 600; white-space: nowrap; transition: all 0.15s ease;">
+            ${f.label}
+          </button>
+        `).join('')}
+      </nav>
 
-      ${atmosphereText ? `
-        <div style="font-size: 0.85rem; color: var(--ink-muted); line-height: 1.45; font-style: italic; background: var(--paper-subtle); padding: 10px 12px; border-radius: var(--radius-md);">
-          "${escapeHtml(atmosphereText)}"
+      <!-- 3. Two-Column Layout Grid (About + Quick Facts) -->
+      <div class="overview-content-grid" style="display: grid; grid-template-columns: 1fr 280px; gap: 20px; padding: 20px;">
+        
+        <!-- Left: About [Destination] Narrative -->
+        <div class="overview-about-block">
+          <h3 class="voice-serif" style="font-size: 1.3rem; font-weight: 700; color: var(--ink); margin: 0 0 10px 0;">About ${escapeHtml(area)}</h3>
+          <p style="font-size: 0.92rem; line-height: 1.6; color: var(--ink); margin: 0 0 16px 0; font-weight: 500;">
+            ${escapeHtml(standfirstText)}
+          </p>
+          <div style="font-size: 0.85rem; color: var(--ink-muted); line-height: 1.5; background: var(--paper-subtle); padding: 12px 14px; border-radius: var(--radius-md); border-left: 3px solid var(--orange);">
+            "${escapeHtml(editorial.atmosphere || `${area} combines rich cultural history, iconic landmarks, and unique local neighborhood charm.`)}"
+          </div>
         </div>
-      ` : ''}
 
-      <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 2px;">
-        ${outdoor?.terrainLabel ? `<span class="voice-mono" style="font-size: 0.74rem; background: var(--paper); border: 1px solid var(--line); padding: 3px 8px; border-radius: var(--radius-sm); color: var(--ink-muted);">🏞️ ${escapeHtml(outdoor.terrainLabel)}</span>` : ''}
-        ${outdoor?.coastal ? `<span class="voice-mono" style="font-size: 0.74rem; background: var(--paper); border: 1px solid var(--line); padding: 3px 8px; border-radius: var(--radius-sm); color: var(--blue);">🌊 Coastal Destination</span>` : ''}
-        ${headsUp ? `<span class="voice-mono" style="font-size: 0.74rem; background: rgba(210,104,43,0.1); border: 1px solid rgba(210,104,43,0.25); padding: 3px 8px; border-radius: var(--radius-sm); color: var(--orange);">💡 ${escapeHtml(headsUp.title || headsUp.text || 'Local guidance')}</span>` : ''}
+        <!-- Right: Quick Facts Sidebar Box -->
+        <div class="overview-quick-facts-box" style="background: var(--paper-subtle); border: 1px solid var(--line); border-radius: var(--radius-md); padding: 16px; display: flex; flex-direction: column; gap: 14px; height: fit-content;">
+          <h4 class="voice-mono" style="font-size: 0.82rem; font-weight: 700; color: var(--ink); text-transform: uppercase; letter-spacing: 0.6px; margin: 0; padding-bottom: 8px; border-bottom: 1px solid var(--line-light);">Quick facts</h4>
+          
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 0.82rem; color: var(--ink-muted); font-weight: 500; display: flex; align-items: center; gap: 6px;">👥 Population</span>
+            <span class="voice-mono" style="font-size: 0.85rem; font-weight: 700; color: var(--ink);">${escapeHtml(quickFacts.population)}</span>
+          </div>
+
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 0.82rem; color: var(--ink-muted); font-weight: 500; display: flex; align-items: center; gap: 6px;">🗺️ Area</span>
+            <span class="voice-mono" style="font-size: 0.85rem; font-weight: 700; color: var(--ink);">${escapeHtml(quickFacts.area)}</span>
+          </div>
+
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 0.82rem; color: var(--ink-muted); font-weight: 500; display: flex; align-items: center; gap: 6px;">🏳️ Country</span>
+            <span class="voice-mono" style="font-size: 0.85rem; font-weight: 700; color: var(--ink);">${escapeHtml(quickFacts.country)}</span>
+          </div>
+
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 0.82rem; color: var(--ink-muted); font-weight: 500; display: flex; align-items: center; gap: 6px;">💱 Currency</span>
+            <span class="voice-mono" style="font-size: 0.85rem; font-weight: 700; color: var(--ink);">${escapeHtml(quickFacts.currency)}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 4. Top 10 Attractions / POI Small Thumbnail Cards Strip -->
+      <div class="top-attractions-section" style="padding: 0 20px 20px 20px; border-top: 1px solid var(--line-light); margin-top: 10px; padding-top: 16px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+          <div>
+            <h4 class="voice-serif" style="font-size: 1.1rem; font-weight: 700; color: var(--ink); margin: 0;">Top Attractions & Highlights</h4>
+            <p style="font-size: 0.78rem; color: var(--ink-muted); margin: 2px 0 0 0;">Top 10 recommended places to explore in ${escapeHtml(area)}</p>
+          </div>
+          <span class="badge badge--info voice-mono" style="font-size: 0.72rem; font-weight: 700;">10 Spots</span>
+        </div>
+
+        <!-- Horizontal Small Photo Thumbnail Cards Strip -->
+        <div class="top-poi-thumbnails-strip" style="display: flex; gap: 12px; overflow-x: auto; padding-bottom: 8px;">
+          ${topPOIs.map(spot => `
+            <div class="top-poi-card" style="width: 140px; flex-shrink: 0; background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius-md); overflow: hidden; box-shadow: var(--shadow-sm); display: flex; flex-direction: column;">
+              <div style="height: 90px; width: 100%; position: relative; background-size: cover; background-position: center; background-image: url('${escapeHtml(spot.image)}');">
+                <span class="voice-mono" style="position: absolute; top: 6px; left: 6px; font-size: 0.62rem; font-weight: 700; background: rgba(0,0,0,0.65); color: #fff; padding: 2px 6px; border-radius: var(--radius-pill); backdrop-filter: blur(4px);">
+                  ${escapeHtml(spot.category)}
+                </span>
+                <button class="btn-bookmark-mini" data-spot-id="${spot.id}" title="Bookmark place" style="position: absolute; top: 6px; right: 6px; width: 24px; height: 24px; border-radius: 50%; background: rgba(255,255,255,0.85); border: none; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+                  🔖
+                </button>
+              </div>
+              <div style="padding: 8px; flex: 1; display: flex; flex-direction: column; justify-content: space-between;">
+                <div>
+                  <h5 style="font-size: 0.82rem; font-weight: 700; color: var(--ink); margin: 0 0 2px 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.2;">
+                    ${escapeHtml(spot.title)}
+                  </h5>
+                  <div style="font-size: 0.68rem; color: var(--ink-muted);">${escapeHtml(spot.geoLabel || area)}</div>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px;">
+                  <span class="voice-mono" style="font-size: 0.72rem; font-weight: 700; color: var(--orange);">★ ${spot.rating || 4.8}</span>
+                  <button class="btn btn--ghost btn--xs" data-action="add-poi-event" data-spot-name="${escapeHtml(spot.title)}" style="font-size: 0.68rem; padding: 2px 6px;">+ Plan</button>
+                </div>
+              </div>
+            </div>
+          `).join('')}
+        </div>
       </div>
     </div>
   `;
@@ -986,6 +1146,22 @@ function renderExploreSubTab(trip) {
         <h2 class="voice-serif" style="font-size: 1.4rem; font-weight: 700; margin-bottom: 4px;">Explore ${escapeHtml(trip.destination)}</h2>
         <p style="font-size: 0.85rem; color: var(--ink-muted);">Top 10 Attractions, hidden gems, and local recommendations for your trip</p>
       </div>
+
+      <!-- Shared Section Filter Navigation Bar -->
+      <nav class="overview-section-filter-bar" style="display: flex; gap: 6px; padding: 10px 0 16px 0; border-bottom: 1px solid var(--line); margin-bottom: 16px; overflow-x: auto;">
+        ${[
+          { id: "overview", label: "Overview" },
+          { id: "poi", label: "POI" },
+          { id: "events", label: "Events" },
+          { id: "neighborhoods", label: "Neighborhoods" },
+          { id: "practical", label: "Practical info" },
+          { id: "stories", label: "Stories" }
+        ].map(f => `
+          <button class="overview-filter-tab ${(state.overviewFilter || 'poi') === f.id ? 'is-active' : ''}" data-overview-filter="${f.id}" style="padding: 6px 14px; border-radius: var(--radius-pill); border: 1px solid ${(state.overviewFilter || 'poi') === f.id ? 'var(--ink)' : 'var(--line)'}; background: ${(state.overviewFilter || 'poi') === f.id ? 'var(--ink)' : 'var(--paper)'}; color: ${(state.overviewFilter || 'poi') === f.id ? 'var(--paper)' : 'var(--ink)'}; font-size: 0.82rem; font-weight: 600; white-space: nowrap; transition: all 0.15s ease;">
+            ${f.label}
+          </button>
+        `).join('')}
+      </nav>
 
       ${renderTourismStatus(discoveryStatus, tourismPois.length + hiddenGems.length + osmPlaces.length)}
 

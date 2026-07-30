@@ -147,12 +147,18 @@ function requireAppSession(mode = "login", message = "Sign in to continue.") {
 
 // Global Event Listeners Delegation
 document.addEventListener("click", async (e) => {
-  const target = e.target.closest("[data-nav], [data-action], [data-subtab], [data-journal-section], [data-template-filter], [data-viewmode], [data-day-select], [data-map-day-filter], [data-trip-length], [data-cat], [data-subfilter]");
+  const target = e.target.closest("[data-nav], [data-action], [data-subtab], [data-journal-section], [data-template-filter], [data-viewmode], [data-day-select], [data-map-day-filter], [data-trip-length], [data-cat], [data-subfilter], [data-overview-filter]");
   if (!target) {
     if (!e.target.closest?.(".airport-autocomplete")) closeAirportAutocompleteMenus();
     return;
   }
   primeMotionFeedback(target);
+
+  if (target.dataset.overviewFilter) {
+    state.overviewFilter = target.dataset.overviewFilter;
+    state.notify();
+    return;
+  }
 
   if (target.dataset.action === "select-airport-suggestion") {
     const wrapper = target.closest(".airport-autocomplete");

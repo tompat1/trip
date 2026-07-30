@@ -11019,3 +11019,37 @@ textarea {
   color: var(--ink-muted);
 }
 
+/* ── Mockup 08 — Auto-Generated Location Overview ──────────────────────── */
+.auto-location-overview-card {
+  transition: all 0.2s ease;
+}
+
+@media (max-width: 768px) {
+  .overview-content-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+.top-poi-thumbnails-strip::-webkit-scrollbar,
+.overview-section-filter-bar::-webkit-scrollbar,
+.hero-quick-info-strip::-webkit-scrollbar {
+  display: none;
+}
+
+.top-poi-thumbnails-strip,
+.overview-section-filter-bar,
+.hero-quick-info-strip {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.top-poi-card {
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.top-poi-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md) !important;
+}
+
