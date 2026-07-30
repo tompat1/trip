@@ -123,7 +123,7 @@ export const discoveryStateMixin = {
         }),
       ]);
 
-      const tourismPois = rankItemsByPersonas(
+      let tourismPois = rankItemsByPersonas(
         (topResult?.places || []).map((place) => normalizeTourismIdea(place, "poi")),
         personas
       );
@@ -135,6 +135,26 @@ export const discoveryStateMixin = {
         (osmResult?.places || []).map((place) => normalizeTourismIdea(place, "osm")),
         personas
       );
+
+      // Fallback: If OpenTripMap key is absent or returned 0 POIs, populate Top POIs via Overpass culture/heritage sights
+      if (!tourismPois.length) {
+        try {
+          const cultureResult = await enrichmentService.discoverNearby({
+            coordinates: trip.center,
+            radiusMeters: options.radiusMeters || 4500,
+            intent: "culture",
+            personas,
+          });
+          if (cultureResult?.places?.length) {
+            tourismPois = rankItemsByPersonas(
+              cultureResult.places.map((place) => normalizeTourismIdea(place, "osm")),
+              personas
+            );
+          }
+        } catch (e) {
+          console.warn("Top POIs Overpass culture fallback:", e);
+        }
+      }
 
       // Determine dominant food intent for a dedicated Overpass pass
       const foodPersonas = personas.filter((p) => FOOD_PERSONAS.has(p));

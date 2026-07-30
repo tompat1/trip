@@ -957,16 +957,8 @@ function renderTourismStatus(discoveryStatus, resultCount) {
   if (discoveryStatus.status === "loading") {
     return `
       <div class="dashboard-card" style="padding: 14px 16px; margin-bottom: 16px; border-color: rgba(210,104,43,0.28);">
-        <span class="voice-mono" style="font-size: 0.76rem; font-weight: 700; color: var(--orange);">OPENTRIPMAP</span>
-        <p style="font-size: 0.85rem; color: var(--ink-muted); margin: 4px 0 0 0;">Loading live tourism POIs around this trip...</p>
-      </div>
-    `;
-  }
-  if (discoveryStatus.status === "not-configured") {
-    return `
-      <div class="dashboard-card" style="padding: 14px 16px; margin-bottom: 16px;">
-        <span class="voice-mono" style="font-size: 0.76rem; font-weight: 700; color: var(--orange);">OPENTRIPMAP READY</span>
-        <p style="font-size: 0.85rem; color: var(--ink-muted); margin: 4px 0 0 0;">Add an OpenTripMap API key to show live Top POIs and Hidden Gems here. Curated picks still work.</p>
+        <span class="voice-mono" style="font-size: 0.76rem; font-weight: 700; color: var(--orange);">DISCOVERY</span>
+        <p style="font-size: 0.85rem; color: var(--ink-muted); margin: 4px 0 0 0;">Loading live POIs & local recommendations...</p>
       </div>
     `;
   }
