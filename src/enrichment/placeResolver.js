@@ -159,6 +159,7 @@ export function createResolvedPlaceIdentity(input = {}) {
     wikidataId: normalizeWikidataId(input.wikidataId),
     wikipediaUrl: input.wikipediaUrl || "",
     officialWebsite: input.officialWebsite || "",
+    description: input.description || "",
     categories: [...new Set((input.categories || []).filter(Boolean).map(String))],
   };
 }
@@ -196,7 +197,8 @@ async function fetchWikidataEntity(id, fetchImpl) {
   if (!response.ok) return null;
   const data = await response.json();
   const entity = data.entities?.[entityId];
-  return entity ? { id: entityId, entity } : null;
+  const description = entity?.descriptions?.en?.value || entity?.descriptions?.el?.value || "";
+  return entity ? { id: entityId, entity, description } : null;
 }
 
 async function fetchWithTimeout(url, fetchImpl, timeoutMs) {

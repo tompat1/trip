@@ -164,6 +164,26 @@ export function getPersonaQuickIntentChips(activePersonaSignals = [], baseChips 
   });
 }
 
+export function hydratePersonaChipsWithDiscoveryCount(chips = [], discoveryPois = []) {
+  if (!discoveryPois.length) return chips;
+
+  return chips
+    .map((chip) => {
+      const matchTerms = [chip.label, chip.query, chip.cat].filter(Boolean).map((t) => t.toLowerCase());
+      const count = discoveryPois.filter((poi) => {
+        const text = `${poi.title || ""} ${poi.category || ""} ${poi.subtitle || ""}`.toLowerCase();
+        return matchTerms.some((term) => text.includes(term));
+      }).length;
+
+      return {
+        ...chip,
+        matchCount: count,
+        badgeLabel: count > 0 ? `${count}` : "",
+      };
+    })
+    .sort((a, b) => (b.matchCount || 0) - (a.matchCount || 0));
+}
+
 export function getPersonaDiscoveryContext(personas = []) {
   const signals = getPersonaSignals(personas);
   const kinds = new Set();

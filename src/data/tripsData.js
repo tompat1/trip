@@ -2,6 +2,8 @@ export const tripsData = {
   paris: {
     id: "paris",
     destination: "Paris, France",
+    countryCode: "FR",
+    language: "fr",
     flag: "🇫🇷",
     dates: "3 – 9 Oct 2026",
     daysCount: 7,
@@ -268,6 +270,8 @@ export const tripsData = {
   crete: {
     id: "crete",
     destination: "Heraklion, Crete",
+    countryCode: "GR",
+    language: "el",
     flag: "🇬🇷",
     dates: "17 Jul – 24 Jul 2026",
     daysCount: 8,

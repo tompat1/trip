@@ -106,12 +106,14 @@ export const discoveryStateMixin = {
           radiusMeters: options.radiusMeters || 4500,
           limit: options.topLimit || 14,
           personas,
+          lang: trip.language || "en",
         }),
         enrichmentService.discoverHiddenGems({
           coordinates: trip.center,
           radiusMeters: options.hiddenRadiusMeters || 6500,
           limit: options.hiddenLimit || 10,
           personas,
+          lang: trip.language || "en",
         }),
         enrichmentService.discoverNearby({
           coordinates: trip.center,

@@ -291,33 +291,46 @@ function rankImageCandidate(image, place, destinationContext = "") {
   };
 }
 
+const FALLBACK_CATEGORY_IMAGES = {
+  Food: "https://images.unsplash.com/photo-1551218808-94e220e084d2?auto=format&fit=crop&w=800&q=80",
+  Coffee: "https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&w=800&q=80",
+  Museum: "https://images.unsplash.com/photo-1564399580075-5dfe19c205f3?auto=format&fit=crop&w=800&q=80",
+  Sight: "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=800&q=80",
+  Nature: "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&w=800&q=80",
+  Shopping: "https://images.unsplash.com/photo-1519567241046-7f570eee3ce6?auto=format&fit=crop&w=800&q=80",
+  Nightlife: "https://images.unsplash.com/photo-1514933651103-005eec06c04b?auto=format&fit=crop&w=800&q=80",
+  Place: "https://images.unsplash.com/photo-1488646953014-85cb44e25828?auto=format&fit=crop&w=800&q=80",
+};
+
 function createDesignedFallbackImage(place) {
+  const cat = place.category || place.tag || "Place";
+  const imageUrl = FALLBACK_CATEGORY_IMAGES[cat] || FALLBACK_CATEGORY_IMAGES.Place;
   return {
     id: `fallback-${place.id || place.identity?.id || "place"}`,
     placeId: place.id || place.identity?.id || "",
     provider: "editorial",
     providerId: "designed-fallback",
-    imageUrl: "",
-    thumbnailUrl: "",
+    imageUrl,
+    thumbnailUrl: imageUrl,
     sourcePageUrl: "",
     creatorName: "Trip Planner Deluxe",
     creatorUrl: "",
     licenseCode: "",
     licenseName: "Designed fallback",
     licenseUrl: "",
-    attributionText: "Designed fallback, no external photo available",
-    width: 0,
-    height: 0,
-    aspectRatio: 0,
+    attributionText: "Category fallback, photo courtesy of Unsplash",
+    width: 800,
+    height: 600,
+    aspectRatio: 1.33,
     exactLocation: false,
     approximateLocation: false,
     illustrativeOnly: true,
-    subjects: [place.category || place.tag || "place"],
+    subjects: [cat],
     visualRole: "hero",
-    relevanceScore: 0,
-    qualityScore: 0,
-    editorialScore: 0,
-    finalScore: 0,
+    relevanceScore: 0.3,
+    qualityScore: 0.8,
+    editorialScore: 0.5,
+    finalScore: 50,
     checkedAt: new Date().toISOString(),
     reviewStatus: "pending",
   };
