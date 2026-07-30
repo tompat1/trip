@@ -24,7 +24,10 @@
       "binding": "TRIP_CACHE",
       "id": "650d3d064cb141aaa25f94dc4ae8a055"
     }
-  ]
+  ],
+  "ai": {
+    "binding": "AI"
+  }
   // Add after enabling R2 in the Cloudflare Dashboard:
   // "r2_buckets": [
   //   {

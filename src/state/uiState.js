@@ -234,4 +234,38 @@ export const uiStateMixin = {
     this.activePoiDetail = null;
     this.notify();
   },
+
+  toggleAiConcierge(open) {
+    this.aiConciergeOpen = open !== undefined ? open : !this.aiConciergeOpen;
+    this.notify();
+  },
+
+  async askAiConcierge(promptText = "") {
+    if (!promptText.trim()) return;
+    this.aiConciergeHistory = this.aiConciergeHistory || [];
+    this.aiConciergeHistory.push({ role: "user", text: promptText });
+    this.aiConciergeLoading = true;
+    this.notify();
+
+    try {
+      const { aiService } = await import("../services/AiService.js");
+      const trip = this.activeTrip || { destination: "Paris, France" };
+      const personas = (this.userProfile?.personas || ["Food Explorer"]);
+      const result = await aiService.askConcierge({ prompt: promptText, trip, personas });
+
+      this.aiConciergeHistory.push({
+        role: "assistant",
+        text: result.answer || "Here are some top places to explore nearby!",
+      });
+    } catch (err) {
+      console.warn("AI Concierge request error:", err);
+      this.aiConciergeHistory.push({
+        role: "assistant",
+        text: "Sorry, I had trouble reaching Workers AI. Please try asking again!",
+      });
+    } finally {
+      this.aiConciergeLoading = false;
+      this.notify();
+    }
+  },
 };

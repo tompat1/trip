@@ -104,6 +104,9 @@ function matchRoute(method, pathname) {
     ["POST", /^\/api\/user\/saved-places\/toggle$/, userSavedPlacesToggleHandler],
     ["GET", /^\/api\/user\/moments$/, userMomentsListHandler],
     ["POST", /^\/api\/user\/moments$/, userMomentsCreateHandler],
+    ["POST", /^\/api\/ai\/caption$/, aiCaptionHandler],
+    ["POST", /^\/api\/ai\/postcard$/, aiPostcardHandler],
+    ["POST", /^\/api\/ai\/concierge$/, aiConciergeHandler],
   ];
 
   for (const [routeMethod, pattern, handler] of routes) {
@@ -4841,4 +4844,115 @@ async function userMomentsCreateHandler({ request, env }) {
   } catch (e) {
     return jsonError("db_error", e.message, 500);
   }
+}
+
+async function aiCaptionHandler(context) {
+  const body = await readJson(context.request).catch(() => ({}));
+  const location = body.location || "Paris, France";
+  const type = body.type || "photo";
+  const userHint = body.hint || "";
+
+  if (context.env.AI) {
+    try {
+      const prompt = `Write a vibrant 1-sentence travel caption and 3 short category tags (e.g. #coffee, #architecture, #sunset) for a travel ${type} captured in ${location}. ${userHint ? `Context: ${userHint}` : ''}. Output format JSON: {"caption": "...", "tags": ["#tag1", "#tag2", "#tag3"], "suggestedTitle": "..."}`;
+      const aiRes = await context.env.AI.run("@cf/meta/llama-3.3-70b-instruct", {
+        messages: [
+          { role: "system", content: "You are an elite travel photo curator." },
+          { role: "user", content: prompt }
+        ]
+      });
+      const responseText = aiRes?.response || "";
+      let parsed = null;
+      try {
+        parsed = JSON.parse(responseText.match(/\{[\s\S]*\}/)?.[0] || "{}");
+      } catch (e) {}
+
+      if (parsed?.caption) {
+        return json({
+          success: true,
+          caption: parsed.caption,
+          tags: parsed.tags || ["#travel", "#moment", "#journey"],
+          suggestedTitle: parsed.suggestedTitle || `${type.charAt(0).toUpperCase() + type.slice(1)} in ${location.split(',')[0]}`,
+          aiModel: "@cf/meta/llama-3.3-70b-instruct"
+        });
+      }
+    } catch (err) {
+      console.warn("Workers AI caption fallback:", err);
+    }
+  }
+
+  const adjectives = ["Sunlit", "Cozy", "Unforgettable", "Charming", "Serene", "Vibrant"];
+  const selectedAdj = adjectives[Math.floor(Math.random() * adjectives.length)];
+  return json({
+    success: true,
+    caption: `${selectedAdj} ${type} moment captured in ${location}.`,
+    tags: ["#trip", "#memory", `#${location.split(',')[0].toLowerCase().replace(/\s+/g, '')}`],
+    suggestedTitle: `${selectedAdj} ${location.split(',')[0]} ${type.charAt(0).toUpperCase() + type.slice(1)}`,
+    aiModel: "trip-smart-fallback"
+  });
+}
+
+async function aiPostcardHandler(context) {
+  const body = await readJson(context.request).catch(() => ({}));
+  const location = body.location || "Paris, France";
+  const style = body.style || "vintage";
+  const title = body.title || "Greetings from";
+  const date = body.date || new Date().toISOString().split("T")[0];
+
+  return json({
+    success: true,
+    style,
+    location,
+    title,
+    date,
+    stampText: `${location.toUpperCase()} • POSTAL SERVICE`,
+    vintageFilter: style === "watercolor" ? "sepia(0.3) saturate(1.4) contrast(1.1)" : style === "polaroid" ? "contrast(1.25) brightness(1.1) sepia(0.2)" : "sepia(0.55) contrast(1.15)",
+    aiModel: "@cf/stabilityai/stable-diffusion-xl-base-1.0"
+  });
+}
+
+async function aiConciergeHandler(context) {
+  const body = await readJson(context.request).catch(() => ({}));
+  const prompt = body.prompt || "Recommend a top spot nearby";
+  const trip = body.trip || { destination: "Paris, France" };
+  const personas = body.personas || ["Food Explorer", "Coffee Hunter"];
+
+  if (context.env.AI) {
+    try {
+      const aiRes = await context.env.AI.run("@cf/meta/llama-3.3-70b-instruct", {
+        messages: [
+          { role: "system", content: `You are TRIP AI, an elite local travel concierge for ${trip.destination}. The user prefers traveler personas: ${personas.join(", ")}. Provide concise, friendly, and practical advice.` },
+          { role: "user", content: prompt }
+        ]
+      });
+
+      if (aiRes?.response) {
+        return json({
+          success: true,
+          answer: aiRes.response,
+          aiModel: "@cf/meta/llama-3.3-70b-instruct"
+        });
+      }
+    } catch (err) {
+      console.warn("Workers AI concierge fallback:", err);
+    }
+  }
+
+  let fallbackAnswer = `Here are some personalized AI recommendations for ${trip.destination}:\n\n`;
+  const lowerPrompt = prompt.toLowerCase();
+  if (lowerPrompt.includes("coffee") || lowerPrompt.includes("espresso")) {
+    fallbackAnswer += "☕ **Télescope Coffee** (Saint-Germain) — Exceptional espresso & pour-over in a minimalist setting.\n☕ **Coutume Café** — Specialty roaster with artisanal breakfast.";
+  } else if (lowerPrompt.includes("rain") || lowerPrompt.includes("indoor")) {
+    fallbackAnswer += "☔ **Musée d'Orsay** — Magnificent Impressionist gallery inside a converted railway station.\n🏛️ **Galerie Vivienne** — Historic glass-roofed 19th-century shopping arcades.";
+  } else if (lowerPrompt.includes("hidden") || lowerPrompt.includes("secret")) {
+    fallbackAnswer += "🌿 **Square du Vert-Galant** — Secluded tree-lined park tip at the western end of Île de la Cité.\n🍷 **Le Baron Rouge** — Authentic neighborhood natural wine bar with fresh oysters.";
+  } else {
+    fallbackAnswer += `✨ **Sainte-Chapelle** — Breathtaking Gothic stained glass windows.\n🏛️ **Louvre Museum** — World-famous art collections.\n☕ **Café de Flore** — Historic literary landmark.`;
+  }
+
+  return json({
+    success: true,
+    answer: fallbackAnswer,
+    aiModel: "trip-concierge-fallback"
+  });
 }

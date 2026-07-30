@@ -58,12 +58,15 @@ export function renderQuickCaptureWidget() {
             <textarea id="capture-text" rows="3" placeholder="Write your travel thoughts..." style="width: 100%; padding: 10px 14px; border: 1px solid var(--line); border-radius: var(--radius-md); font-size: 0.88rem; background: var(--paper-card); color: var(--ink); resize: none;"></textarea>
           </div>
 
-          <div style="display: flex; gap: 10px; align-items: center; margin-top: 16px;">
-            <button type="button" class="btn btn--outline btn--sm" data-action="trigger-file-upload" style="flex: 1;" ${isUploading ? "disabled" : ""}>
-              ${renderIcon("image")} ${isUploading ? "Preparing..." : "Attach Media"}
+          <div style="display: flex; gap: 8px; align-items: center; margin-top: 16px; flex-wrap: wrap;">
+            <button type="button" class="btn btn--outline btn--sm" data-action="trigger-file-upload" style="flex: 1; min-width: 110px;" ${isUploading ? "disabled" : ""}>
+              ${renderIcon("image")} Attach Media
             </button>
-            <button type="submit" class="btn btn--primary btn--sm" data-action="submit-quick-capture" style="flex: 1;" ${isUploading ? "disabled" : ""}>
-              ${renderIcon("check")} Save Note
+            <button type="button" class="btn btn--outline btn--sm" data-action="auto-describe-moment" style="flex: 1; min-width: 130px; border-color: var(--orange); color: var(--orange);" ${isUploading ? "disabled" : ""}>
+              ${renderIcon("sparkles")} AI Auto-Describe
+            </button>
+            <button type="submit" class="btn btn--primary btn--sm" data-action="submit-quick-capture" style="flex: 1; min-width: 90px;" ${isUploading ? "disabled" : ""}>
+              ${renderIcon("check")} Save
             </button>
           </div>
 

@@ -309,6 +309,64 @@ document.addEventListener("click", async (e) => {
       if (target.classList.contains("quick-capture-overlay") && e.target !== target) return;
       state.toggleQuickCapture(false);
     }
+    else if (action === "toggle-ai-concierge") {
+      state.toggleAiConcierge();
+    }
+    else if (action === "close-ai-concierge") {
+      if (target.classList.contains("ai-concierge-overlay") && e.target !== target) return;
+      state.toggleAiConcierge(false);
+    }
+    else if (action === "send-ai-chip") {
+      const promptText = target.dataset.prompt || "";
+      if (promptText) state.askAiConcierge(promptText);
+    }
+    else if (action === "submit-ai-concierge") {
+      const input = document.getElementById("ai-concierge-input");
+      if (input && input.value.trim()) {
+        const query = input.value.trim();
+        input.value = "";
+        state.askAiConcierge(query);
+      }
+    }
+    else if (action === "auto-describe-moment") {
+      const location = state.activeTrip?.destination || "Paris, France";
+      const titleInput = document.getElementById("capture-title");
+      const textInput = document.getElementById("capture-text");
+      const userHint = (titleInput?.value || textInput?.value || "").trim();
+
+      showToast("🪄 Workers AI analyzing moment...");
+      import("./services/AiService.js").then(({ aiService }) => {
+        aiService.autoDescribeMoment({ location, type: "photo", hint: userHint }).then((result) => {
+          if (titleInput) {
+            titleInput.value = result.suggestedTitle;
+          }
+          if (textInput) {
+            textInput.value = `${result.caption}\n\n${result.tags.join(" ")}`;
+          }
+          showToast("✨ AI title & caption generated!");
+        });
+      });
+    }
+    else if (action === "generate-ai-postcard") {
+      e.stopPropagation();
+      const momentId = target.dataset.momentId;
+      const moment = (state.moments || []).find((m) => m.id === momentId);
+      if (!moment) return;
+
+      const location = moment.geoLabel || state.activeTrip?.destination || "Paris, France";
+      showToast("🎨 Workers AI creating vintage postcard...");
+      import("./services/AiService.js").then(({ aiService }) => {
+        aiService.generatePostcard({ location, style: "vintage", title: moment.title || "Greetings from", date: moment.date }).then((postcard) => {
+          state.updateMoment(momentId, {
+            isPostcard: true,
+            postcardStyle: postcard.style,
+            postcardFilter: postcard.vintageFilter,
+            tags: Array.from(new Set([...(moment.tags || []), "#postcard", "#vintage"])),
+          });
+          showToast("✨ Transformed into Vintage Postcard!");
+        });
+      });
+    }
     else if (action === "change-avatar") {
       const isSignedIn = ["admin", "traveler"].includes(state.userSession?.role);
       if (!isSignedIn) {

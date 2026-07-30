@@ -131,6 +131,9 @@ export class AppState {
     this.activePoiDetail = null;
     this.termsOpen = false;
     this.privacyOpen = false;
+    this.aiConciergeOpen = false;
+    this.aiConciergeHistory = [];
+    this.aiConciergeLoading = false;
 
     // ── Pub/sub ──────────────────────────────────────────────────────────────
     this.listeners = new Set();

@@ -150,6 +150,7 @@ function renderJournalGallerySection(mediaGroups, mediaCount) {
         <div class="journal-section-actions">
           <button class="journal-icon-action" data-action="search-journal-media" type="button" aria-label="${escapeHtml(queryLabel)}" title="${escapeHtml(queryLabel)}">${renderIcon("search")}</button>
           <button class="btn btn--outline btn--sm" data-action="cycle-journal-media-filter" type="button">${renderIcon("filter")} ${escapeHtml(filterLabel)}</button>
+          <button class="btn btn--outline btn--sm" data-action="toggle-ai-concierge" type="button" style="border-color: var(--orange); color: var(--orange);">${renderIcon("sparkles")} AI Concierge</button>
           <button class="btn btn--primary btn--sm" data-action="open-quick-capture" type="button">${renderIcon("plus")} New moment</button>
         </div>
       </div>
@@ -438,6 +439,7 @@ function renderJournalMediaCard(m) {
           <span class="journal-media-batch-badge voice-mono">${escapeHtml(String(m.groupFileCount))} batch</span>
         ` : ""}
         <div class="journal-media-card-actions" style="position: absolute; top: 6px; right: 6px; display: flex; gap: 4px; z-index: 10;">
+          <button class="journal-media-postcard-btn" data-action="generate-ai-postcard" data-moment-id="${m.id}" title="Transform into Postcard" aria-label="Transform into Postcard">${renderIcon("sparkles")}</button>
           <button class="journal-media-edit-btn" data-action="edit-journal-media" data-moment-id="${m.id}" title="Edit place tags" aria-label="Edit place tags">${renderIcon("pencil")}</button>
           <button class="journal-media-delete-btn" data-action="delete-journal-moment" data-moment-id="${m.id}" title="Delete moment" aria-label="Delete moment">${renderIcon("trash2")}</button>
         </div>

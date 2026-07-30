@@ -15,6 +15,7 @@ import { renderAuthExitPage } from "../components/AuthExitPage.js";
 import { renderPremiumSupportSheet } from "../components/PremiumSupportSheet.js";
 import { renderPoiDetailSheet } from "../components/PoiDetailSheet.js";
 import { renderLegalModals } from "../components/LegalModals.js";
+import { renderAiConciergeDrawer } from "../components/AiConciergeDrawer.js";
 
 export function renderAppShell(view = state.activeView, { isRouteChange = false } = {}) {
   const isLanding = view === "landing";
@@ -34,6 +35,7 @@ export function renderAppShell(view = state.activeView, { isRouteChange = false 
       ${renderPremiumSupportSheet()}
       ${renderPoiDetailSheet()}
       ${renderLegalModals()}
+      ${renderAiConciergeDrawer()}
       ${isLanding ? "" : renderTemplateMomentPicker(state.activeTrip)}
     </div>
   `;
