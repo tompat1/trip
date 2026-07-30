@@ -1,3 +1,5 @@
+import { buildTripApiUrl } from "../enrichment/enrichmentService.js";
+
 const EONET_EVENTS_API = "https://eonet.gsfc.nasa.gov/api/v3/events";
 const OPEN_METEO_ELEVATION_API = "https://api.open-meteo.com/v1/elevation";
 const OPEN_METEO_MARINE_API = "https://marine-api.open-meteo.com/v1/marine";
@@ -10,6 +12,7 @@ const GBFS_FEEDS = [
     cities: ["paris"],
     name: "Vélib' Métropole",
     url: "https://velib-metropole-opendata.smovengo.cloud/opendata/Velib_Metropole/gbfs.json",
+    proxyId: "velib-paris",
     requiresProxyInBrowser: true,
   },
 ];
@@ -244,17 +247,20 @@ async function fetchSharedMobility(trip, coordinates) {
     return { mobility: [], providerStatus: [createStatus("gbfs", "not-configured", "no-local-feed-for-destination", 0, startedAt)] };
   }
 
-  if (feed.requiresProxyInBrowser && isBrowserRuntime() && !trip.gbfsProxyUrl) {
+  if (feed.requiresProxyInBrowser && isBrowserRuntime() && !feed.proxyId && !trip.gbfsProxyUrl) {
     return { mobility: [], providerStatus: [createStatus("gbfs", "not-configured", "gbfs-cors-proxy-required", 0, startedAt)] };
   }
 
   try {
-    const root = await fetchJson(trip.gbfsProxyUrl || feed.url);
+    const root = await fetchGbfsJson(feed, trip.gbfsProxyUrl || feed.url);
     const feeds = Object.values(root.data || {})[0]?.feeds || root.data?.feeds || [];
     const stationInfoUrl = getGbfsFeedUrl(feeds, "station_information");
     const stationStatusUrl = getGbfsFeedUrl(feeds, "station_status");
     if (!stationInfoUrl || !stationStatusUrl) throw new Error("missing-gbfs-station-feeds");
-    const [info, status] = await Promise.all([fetchJson(stationInfoUrl), fetchJson(stationStatusUrl)]);
+    const [info, status] = await Promise.all([
+      fetchGbfsJson(feed, stationInfoUrl),
+      fetchGbfsJson(feed, stationStatusUrl),
+    ]);
     const statusById = new Map((status.data?.stations || []).map((station) => [station.station_id, station]));
     const mobility = (info.data?.stations || [])
       .map((station) => normalizeGbfsStation(station, statusById.get(station.station_id), coordinates, feed))
@@ -269,6 +275,16 @@ async function fetchSharedMobility(trip, coordinates) {
 
 function isBrowserRuntime() {
   return typeof window !== "undefined" && typeof document !== "undefined";
+}
+
+async function fetchGbfsJson(feed, url) {
+  if (feed.proxyId && isBrowserRuntime()) {
+    const proxyUrl = buildTripApiUrl(`/api/gbfs/${encodeURIComponent(feed.proxyId)}`);
+    if (url && url !== feed.url) proxyUrl.searchParams.set("url", url);
+    const payload = await fetchJson(proxyUrl.href);
+    return payload.data || payload;
+  }
+  return fetchJson(url);
 }
 
 async function fetchOpenAgendaEvents(trip, coordinates, options = {}) {

@@ -426,6 +426,14 @@ export function createEnrichmentService(options = {}) {
 
 export const enrichmentService = createEnrichmentService();
 
+export function getTripApiBase() {
+  return getDefaultApiBase();
+}
+
+export function buildTripApiUrl(path) {
+  return buildApiUrl(getDefaultApiBase(), path);
+}
+
 function getDefaultApiBase() {
   const envBase = import.meta.env?.VITE_TRIP_API_BASE;
   if (envBase) return envBase;

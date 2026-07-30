@@ -17,6 +17,14 @@ const OVERPASS_ENDPOINTS = [
   "https://overpass-api.de/api/interpreter",
   "https://overpass.kumi.systems/api/interpreter",
 ];
+const GBFS_PROXY_FEEDS = {
+  "velib-paris": {
+    id: "velib-paris",
+    name: "Vélib' Métropole",
+    rootUrl: "https://velib-metropole-opendata.smovengo.cloud/opendata/Velib_Metropole/gbfs.json",
+    allowedHosts: ["velib-metropole-opendata.smovengo.cloud"],
+  },
+};
 const ROLE = Object.freeze({
   anonymous: "anonymous",
   traveler: "traveler",
@@ -69,6 +77,7 @@ function matchRoute(method, pathname) {
     ["GET", /^\/api\/events\/discover$/, eventsDiscoverHandler],
     ["GET", /^\/api\/airports\/search$/, airportsSearchHandler],
     ["GET", /^\/api\/flights\/search$/, flightsSearchHandler],
+    ["GET", /^\/api\/gbfs\/([^/]+)$/, gbfsProxyHandler],
     ["POST", /^\/api\/places\/enrich-location$/, enrichLocationHandler],
     ["GET", /^\/api\/places\/enrich$/, enrichPlaceHandler],
     ["GET", /^\/api\/opentripmap\/places$/, openTripMapPlacesHandler],
@@ -173,6 +182,53 @@ function sessionHandler(context) {
       canUseTravelerFeatures: [ROLE.traveler, ROLE.admin].includes(context.principal.role),
     },
   }, context));
+}
+
+async function gbfsProxyHandler({ request, params }) {
+  const feedId = params[0];
+  const feed = GBFS_PROXY_FEEDS[feedId];
+  if (!feed) return jsonError("unknown_gbfs_feed", "GBFS feed is not configured.", 404);
+
+  const requestUrl = new URL(request.url);
+  const targetUrl = resolveGbfsProxyUrl(feed, requestUrl.searchParams.get("url"));
+  if (!targetUrl) return jsonError("invalid_gbfs_url", "GBFS URL is not allowed for this feed.", 400);
+
+  const response = await fetch(targetUrl.href, {
+    headers: {
+      Accept: "application/json",
+      "User-Agent": "TRIP/1.0 GBFS proxy",
+    },
+    cf: {
+      cacheTtl: targetUrl.href === feed.rootUrl ? 300 : 45,
+      cacheEverything: true,
+    },
+  });
+
+  if (!response.ok) return jsonError("gbfs_fetch_failed", `GBFS fetch failed with ${response.status}.`, response.status);
+  const data = await response.json();
+
+  return json({
+    ok: true,
+    feed: {
+      id: feed.id,
+      name: feed.name,
+      sourceUrl: targetUrl.href,
+    },
+    data,
+    generatedAt: new Date().toISOString(),
+  });
+}
+
+function resolveGbfsProxyUrl(feed, rawUrl = "") {
+  if (!rawUrl) return new URL(feed.rootUrl);
+  try {
+    const url = new URL(rawUrl);
+    if (url.protocol !== "https:") return null;
+    if (!feed.allowedHosts.includes(url.hostname)) return null;
+    return url;
+  } catch {
+    return null;
+  }
 }
 
 async function authRegisterHandler(context) {
