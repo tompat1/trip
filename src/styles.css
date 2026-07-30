@@ -11053,3 +11053,27 @@ textarea {
   box-shadow: var(--shadow-md) !important;
 }
 
+/* POI Leaflet Map Marker Styling - Prevents clipping & text overflow */
+.poi-leaflet-marker-wrapper {
+  background: transparent !important;
+  border: none !important;
+  width: auto !important;
+  height: auto !important;
+  overflow: visible !important;
+  white-space: nowrap !important;
+}
+
+.poi-leaflet-pill {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  white-space: nowrap !important;
+  pointer-events: auto !important;
+  box-sizing: border-box !important;
+}
+
+.poi-leaflet-pill * {
+  white-space: nowrap !important;
+}
+
+

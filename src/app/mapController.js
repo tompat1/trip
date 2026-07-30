@@ -69,6 +69,10 @@ export function initMapsForView(view) {
   } else if (view === "plan" && state.planViewMode === "map") {
     initPlanMap(trip);
   }
+
+  if (document.getElementById("poi-map-container")) {
+    initPoiOverviewMap(trip);
+  }
 }
 
 export function resolveTripCenter(destination = "") {
@@ -233,4 +237,127 @@ function escapeHtml(str) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
+}
+
+function initPoiOverviewMap(trip) {
+  const container = document.getElementById("poi-map-container");
+  if (!container) return;
+
+  if (activeMaps.has("poi-overview")) {
+    try { activeMaps.get("poi-overview").remove(); } catch {}
+    activeMaps.delete("poi-overview");
+  }
+
+  const center = trip.center || resolveTripCenter(trip.destination);
+  const map = L.map(container, { zoomControl: false, attributionControl: false }).setView(center, 14);
+
+  L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
+    maxZoom: 19,
+    subdomains: 'abcd'
+  }).addTo(map);
+
+  const pois = [
+    { id: "p1", title: "Louvre Museum", lat: center[0] + 0.0035, lng: center[1] - 0.012, icon: "🏛️", rating: 4.9, category: "Museum", distance: "1.2 km away", img: "https://images.unsplash.com/photo-1499856871958-5b9627545d1a?auto=format&fit=crop&w=400&q=80" },
+    { id: "p2", title: "Sainte-Chapelle", lat: center[0] + 0.008, lng: center[1] - 0.006, icon: "🏛️", rating: 4.8, category: "Historic Landmark", distance: "850m", img: "https://images.unsplash.com/photo-1560969184-10fe8719e047?auto=format&fit=crop&w=400&q=80" },
+    { id: "p3", title: "Eiffel Tower", lat: center[0] - 0.002, lng: center[1] - 0.045, icon: "🗼", rating: 4.7, category: "Monument", distance: "3.4 km away", img: "https://images.unsplash.com/photo-1511739001486-6bfe10ce785f?auto=format&fit=crop&w=400&q=80" },
+    { id: "p4", title: "Télescope Cafe", lat: center[0] - 0.002, lng: center[1] - 0.003, icon: "☕", rating: 4.7, category: "Cafe", distance: "340m", img: "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=400&q=80" },
+    { id: "p5", title: "Le Baron", lat: center[0] - 0.005, lng: center[1] + 0.008, icon: "🍷", rating: 4.6, category: "Wine Bar", distance: "1.4 km away", img: "https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?auto=format&fit=crop&w=400&q=80" }
+  ];
+
+  const userLat = center[0] - 0.006;
+  const userLng = center[1] - 0.007;
+
+  const userIcon = L.divIcon({
+    className: "poi-leaflet-marker-wrapper",
+    html: `<div style="display:flex; flex-direction:column; align-items:center;">
+             <div style="width:20px; height:20px; border-radius:50%; background:#fff; border:3px solid #385C73; box-shadow:0 0 0 4px rgba(56,92,115,0.35); display:flex; align-items:center; justify-content:center;">
+               <div style="width:8px; height:8px; border-radius:50%; background:#385C73;"></div>
+             </div>
+             <span style="font-size:10px; font-weight:700; color:#fff; background:rgba(0,0,0,0.65); padding:1px 6px; border-radius:10px; margin-top:2px;">You</span>
+           </div>`,
+    iconSize: null
+  });
+  L.marker([userLat, userLng], { icon: userIcon }).addTo(map);
+
+  const routePoints = [
+    [userLat, userLng],
+    [center[0] - 0.002, center[1] - 0.003],
+    [center[0] + 0.0035, center[1] - 0.012]
+  ];
+  L.polyline(routePoints, {
+    color: '#D94A3A',
+    dashArray: '6, 6',
+    weight: 4,
+    opacity: 0.9
+  }).addTo(map);
+
+  pois.forEach((poi, idx) => {
+    const isActive = idx === 0;
+    const bg = isActive ? '#D94A3A' : (poi.icon === '☕' ? '#D2682B' : (poi.icon === '🍷' ? '#9C6E55' : '#385C73'));
+    const shadow = isActive ? 'box-shadow: 0 4px 16px rgba(217, 74, 58, 0.6), 0 0 0 2px #ffffff;' : 'box-shadow: 0 2px 10px rgba(0,0,0,0.35); border: 1px solid rgba(255,255,255,0.3);';
+
+    const pillHtml = `
+      <div class="poi-leaflet-pill" id="poi-pill-marker-${idx}" style="
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: ${bg};
+        color: #ffffff;
+        padding: 5px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 700;
+        white-space: nowrap;
+        cursor: pointer;
+        user-select: none;
+        pointer-events: auto;
+        line-height: 1.2;
+        transition: all 0.2s ease;
+        ${shadow}
+      ">
+        <span style="font-size: 13px;">${poi.icon}</span>
+        <span>${escapeHtml(poi.title)}</span>
+        <span style="color: #E9C76B; font-weight: 800; font-size: 11px; background: rgba(0,0,0,0.25); padding: 1px 6px; border-radius: 10px;">★ ${poi.rating || 4.8}</span>
+      </div>
+    `;
+
+    const pillIcon = L.divIcon({
+      className: "poi-leaflet-marker-wrapper",
+      html: pillHtml,
+      iconSize: null
+    });
+
+    const marker = L.marker([poi.lat, poi.lng], { icon: pillIcon, zIndexOffset: isActive ? 1000 : 100 }).addTo(map);
+
+    marker.on("click", () => {
+      const cardTitle = document.getElementById("poi-floating-title");
+      if (cardTitle) cardTitle.textContent = poi.title;
+      const cardDetail = document.getElementById("poi-floating-detail");
+      if (cardDetail) cardDetail.textContent = `★ ${poi.rating || 4.8} · ${poi.distance} · Open until 18:00`;
+      const cardImg = document.getElementById("poi-floating-img");
+      if (cardImg && poi.img) {
+        cardImg.src = poi.img;
+        cardImg.onerror = function() {
+          this.onerror = null;
+          this.src = "https://images.unsplash.com/photo-1499856871958-5b9627545d1a?auto=format&fit=crop&w=400&q=80";
+        };
+      }
+      const cardTag = document.getElementById("poi-floating-tag");
+      if (cardTag) cardTag.textContent = poi.category || "Landmark";
+
+      document.querySelectorAll(".poi-leaflet-pill").forEach(el => {
+        el.style.background = "#385C73";
+        el.style.boxShadow = "0 2px 10px rgba(0,0,0,0.35); border: 1px solid rgba(255,255,255,0.3);";
+      });
+      const currentPill = document.getElementById(`poi-pill-marker-${idx}`);
+      if (currentPill) {
+        currentPill.style.background = "#D94A3A";
+        currentPill.style.boxShadow = "0 4px 16px rgba(217, 74, 58, 0.6), 0 0 0 2px #ffffff";
+      }
+
+      map.panTo([poi.lat, poi.lng], { animate: true });
+    });
+  });
+
+  activeMaps.set("poi-overview", map);
 }

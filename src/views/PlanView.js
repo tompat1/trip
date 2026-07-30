@@ -12,7 +12,6 @@ import { composeEditorialProfile, createVerifiedFactBundle } from "../enrichment
 const SUB_TABS = [
   { id: "overview", label: "Overview", icon: renderIcon("compass") },
   { id: "transit", label: "Transit", icon: renderIcon("navigation") },
-  { id: "explore", label: "Explore", icon: renderIcon("sparkles") },
   { id: "plan", label: "Plan", icon: renderIcon("calendar") }
 ];
 
@@ -43,7 +42,7 @@ const DAYS_HEADER = ["Sat 3 Oct", "Sun 4 Oct", "Mon 5 Oct", "Tue 6 Oct", "Wed 7 
 
 export function renderPlanView() {
   const trip = state.activeTrip;
-  const activeSubTab = state.planSubTab === "story" ? "journal" : state.planSubTab;
+  const activeSubTab = state.planSubTab === "story" ? "journal" : (state.planSubTab === "explore" ? "overview" : state.planSubTab);
   const isJournalMode = activeSubTab === "journal";
   const activeJournalSection = state.journalSection || "gallery";
   const navItems = isJournalMode ? JOURNAL_SECTIONS : SUB_TABS;
@@ -76,13 +75,10 @@ export function renderPlanView() {
 }
 
 function renderSubtabContent(trip) {
-  const tab = state.planSubTab === "story" ? "journal" : state.planSubTab;
+  const tab = state.planSubTab === "story" ? "journal" : (state.planSubTab === "explore" ? "overview" : state.planSubTab);
 
   if (tab === "overview") {
     return renderOverviewSubTab(trip);
-  }
-  if (tab === "explore") {
-    return renderExploreSubTab(trip);
   }
   if (tab === "transit") {
     return renderTransitSubTab(trip);
@@ -709,7 +705,7 @@ function getTopAttractionsForTrip(trip) {
 
   if (destLower.includes("paris")) {
     return [
-      { id: "p1", title: "Louvre Museum", category: "Museum", rating: 4.8, image: "https://images.unsplash.com/photo-1543349689-9a4d426bee8e?auto=format&fit=crop&w=400&q=80", geoLabel: "1st Arrondissement" },
+      { id: "p1", title: "Louvre Museum", category: "Museum", rating: 4.8, image: "https://images.unsplash.com/photo-1499856871958-5b9627545d1a?auto=format&fit=crop&w=400&q=80", geoLabel: "1st Arrondissement" },
       { id: "p2", title: "Sainte-Chapelle", category: "Historic Landmark", rating: 4.9, image: "https://images.unsplash.com/photo-1560969184-10fe8719e047?auto=format&fit=crop&w=400&q=80", geoLabel: "Île de la Cité" },
       { id: "p3", title: "Eiffel Tower", category: "Monument", rating: 4.7, image: "https://images.unsplash.com/photo-1511739001486-6bfe10ce785f?auto=format&fit=crop&w=400&q=80", geoLabel: "7th Arrondissement" },
       { id: "p4", title: "Musée d'Orsay", category: "Art Gallery", rating: 4.8, image: "https://images.unsplash.com/photo-1597910037310-7dd8ddb93e24?auto=format&fit=crop&w=400&q=80", geoLabel: "7th Arrondissement" },
@@ -735,9 +731,67 @@ function getTopAttractionsForTrip(trip) {
   return [
     { id: "g1", title: `${trip.destination} Old Town`, category: "Historic Quarter", rating: 4.8, image: "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=400&q=80", geoLabel: "City Center" },
     { id: "g2", title: `${trip.destination} Central Market`, category: "Local Gastronomy", rating: 4.7, image: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=400&q=80", geoLabel: "Market Square" },
-    { id: "g3", title: `${trip.destination} National Museum`, category: "Culture & Art", rating: 4.8, image: "https://images.unsplash.com/photo-1543349689-9a4d426bee8e?auto=format&fit=crop&w=400&q=80", geoLabel: "Museum District" },
+    { id: "g3", title: `${trip.destination} National Museum`, category: "Culture & Art", rating: 4.8, image: "https://images.unsplash.com/photo-1499856871958-5b9627545d1a?auto=format&fit=crop&w=400&q=80", geoLabel: "Museum District" },
     { id: "g4", title: `${trip.destination} Waterfront Promenade`, category: "Scenic View", rating: 4.9, image: "https://images.unsplash.com/photo-1511739001486-6bfe10ce785f?auto=format&fit=crop&w=400&q=80", geoLabel: "Harbor" }
   ];
+}
+
+function renderPoiMapCanvas(trip, topPOIs) {
+  const destination = trip.destination || "Paris, France";
+  const area = destination.split(",")[0].trim();
+  const activeSpot = topPOIs[0] || {
+    title: "Louvre Museum & Tuileries",
+    rating: 4.9,
+    category: "Museum",
+    geoLabel: "1.2 km away",
+    image: "https://images.unsplash.com/photo-1499856871958-5b9627545d1a?auto=format&fit=crop&w=400&q=80"
+  };
+
+  return `
+    <!-- Map Canvas Backdrop Container (Live Leaflet Integrated) -->
+    <div class="poi-map-backdrop-shell" style="height: 320px; width: 100%; border-radius: var(--radius-lg); overflow: hidden; position: relative; background: #0f1b2b; border: 1px solid rgba(255,255,255,0.15); box-shadow: var(--shadow-md); margin-bottom: 16px;">
+      
+      <!-- Real Leaflet Map Render Canvas Container -->
+      <div id="poi-map-container" style="width: 100%; height: 100%; position: absolute; inset: 0; z-index: 1;"></div>
+
+      <!-- Map Header Bar Overlay -->
+      <div style="position: absolute; top: 12px; left: 14px; right: 14px; display: flex; justify-content: space-between; align-items: center; z-index: 5; pointer-events: auto;">
+        <div style="display: flex; align-items: center; gap: 8px; background: rgba(15, 23, 33, 0.85); padding: 5px 12px; border-radius: var(--radius-pill); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.18);">
+          <span style="font-size: 0.9rem;">${trip.flag || '🇫🇷'}</span>
+          <span class="voice-serif" style="font-size: 0.85rem; font-weight: 700; color: #fff;">${escapeHtml(destination)}</span>
+          <span class="voice-mono" style="font-size: 0.7rem; color: rgba(255,255,255,0.65);">${escapeHtml(trip.dates || '3–9 Oct 2026')}</span>
+        </div>
+        <button class="btn btn--primary btn--xs" data-viewmode="map" style="background: var(--orange); border: none; border-radius: var(--radius-pill); font-weight: 700; padding: 5px 12px; font-size: 0.74rem; display: flex; align-items: center; gap: 4px; box-shadow: 0 2px 8px rgba(217,74,58,0.4);">
+          ${renderIcon("navigation")} FULL MAP
+        </button>
+      </div>
+
+      <!-- Selected POI Detail Floating Sheet Overlay (Exact Mockup Alignment) -->
+      <div class="poi-map-floating-card" style="position: absolute; bottom: 12px; left: 14px; right: 14px; background: rgba(20, 28, 38, 0.9); backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,0.18); border-radius: var(--radius-md); padding: 10px 12px; display: flex; align-items: center; justify-content: space-between; gap: 12px; z-index: 5; box-shadow: 0 8px 24px rgba(0,0,0,0.45); pointer-events: auto;">
+        <div style="display: flex; align-items: center; gap: 10px; min-width: 0;">
+          <img id="poi-floating-img" src="${escapeHtml(activeSpot.image)}" alt="${escapeHtml(activeSpot.title)}" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1499856871958-5b9627545d1a?auto=format&fit=crop&w=400&q=80';" style="width: 48px; height: 48px; border-radius: var(--radius-sm); object-fit: cover; flex-shrink: 0; border: 1px solid rgba(255,255,255,0.2);" />
+          <div style="min-width: 0;">
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <h5 id="poi-floating-title" style="font-size: 0.88rem; font-weight: 700; color: #ffffff; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(activeSpot.title)}</h5>
+              <span class="voice-mono" style="font-size: 0.62rem; font-weight: 700; background: rgba(217,74,58,0.25); color: var(--orange); border: 1px solid rgba(217,74,58,0.4); padding: 1px 6px; border-radius: var(--radius-pill); flex-shrink: 0;">Architect</span>
+            </div>
+            <div id="poi-floating-detail" style="font-size: 0.72rem; color: rgba(255,255,255,0.75); margin-top: 2px;">
+              ★ ${activeSpot.rating || 4.9} · 1.2 km away · Open until 18:00
+            </div>
+          </div>
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 6px; flex-shrink: 0;">
+          <button class="btn btn--primary btn--xs" data-action="add-poi-event" data-spot-name="${escapeHtml(activeSpot.title)}" style="background: var(--orange); border: none; border-radius: var(--radius-pill); font-weight: 700; font-size: 0.72rem; padding: 5px 10px;">
+            ${renderIcon("navigation")} Directions
+          </button>
+          <button class="btn btn--outline btn--xs" data-action="save-spot" style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.25); color: #fff; border-radius: var(--radius-pill); font-size: 0.72rem; padding: 5px 10px;">
+            🔖 Save
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
 }
 
 function renderOverviewTabBody(trip, activeFilter, cachedBrief, editorial, topPOIs, quickFacts) {
@@ -754,6 +808,9 @@ function renderOverviewTabBody(trip, activeFilter, cachedBrief, editorial, topPO
           </div>
           <span class="badge badge--info voice-mono" style="font-weight: 700;">${topPOIs.length} Attractions</span>
         </div>
+
+        <!-- POI Map Backdrop Canvas -->
+        ${renderPoiMapCanvas(trip, topPOIs)}
 
         <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px;">
           ${topPOIs.map(spot => `
@@ -971,6 +1028,9 @@ function renderOverviewTabBody(trip, activeFilter, cachedBrief, editorial, topPO
         </div>
         <span class="badge badge--info voice-mono" style="font-size: 0.72rem; font-weight: 700;">10 Spots</span>
       </div>
+
+      <!-- Interactive POI Map Backdrop Canvas -->
+      ${renderPoiMapCanvas(trip, topPOIs)}
 
       <!-- Horizontal Small Photo Thumbnail Cards Strip -->
       <div class="top-poi-thumbnails-strip" style="display: flex; gap: 12px; overflow-x: auto; padding-bottom: 8px;">
