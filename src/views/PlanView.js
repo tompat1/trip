@@ -736,9 +736,20 @@ function getTopAttractionsForTrip(trip) {
   ];
 }
 
+function isPoiAddedToCalendar(events, spotTitle) {
+  if (!events || !events.length || !spotTitle) return false;
+  const titleLower = spotTitle.toLowerCase().trim();
+  return events.some(e => {
+    const eTitle = (e.title || "").toLowerCase();
+    const eLoc = (e.location || "").toLowerCase();
+    return eTitle.includes(titleLower) || titleLower.includes(eTitle) || eLoc.includes(titleLower);
+  });
+}
+
 function renderPoiMapCanvas(trip, topPOIs) {
   const destination = trip.destination || "Paris, France";
   const area = destination.split(",")[0].trim();
+  const events = trip.calendarEvents || [];
   const activeSpot = topPOIs[0] || {
     title: "Louvre Museum & Tuileries",
     rating: 4.9,
@@ -746,6 +757,7 @@ function renderPoiMapCanvas(trip, topPOIs) {
     geoLabel: "1.2 km away",
     image: "https://images.unsplash.com/photo-1499856871958-5b9627545d1a?auto=format&fit=crop&w=400&q=80"
   };
+  const isLouvreAdded = isPoiAddedToCalendar(events, activeSpot.title);
 
   return `
     <!-- Map Canvas Backdrop Container (Live Leaflet Integrated) -->
@@ -773,7 +785,7 @@ function renderPoiMapCanvas(trip, topPOIs) {
           <div style="min-width: 0;">
             <div style="display: flex; align-items: center; gap: 6px;">
               <h5 id="poi-floating-title" style="font-size: 0.88rem; font-weight: 700; color: #ffffff; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(activeSpot.title)}</h5>
-              <span class="voice-mono" style="font-size: 0.62rem; font-weight: 700; background: rgba(217,74,58,0.25); color: var(--orange); border: 1px solid rgba(217,74,58,0.4); padding: 1px 6px; border-radius: var(--radius-pill); flex-shrink: 0;">Architect</span>
+              <span id="poi-floating-tag" class="voice-mono" style="font-size: 0.62rem; font-weight: 700; background: rgba(217,74,58,0.25); color: var(--orange); border: 1px solid rgba(217,74,58,0.4); padding: 1px 6px; border-radius: var(--radius-pill); flex-shrink: 0;">Architect</span>
             </div>
             <div id="poi-floating-detail" style="font-size: 0.72rem; color: rgba(255,255,255,0.75); margin-top: 2px;">
               ★ ${activeSpot.rating || 4.9} · 1.2 km away · Open until 18:00
@@ -782,11 +794,11 @@ function renderPoiMapCanvas(trip, topPOIs) {
         </div>
 
         <div style="display: flex; align-items: center; gap: 6px; flex-shrink: 0;">
-          <button class="btn btn--primary btn--xs" data-action="add-poi-event" data-spot-name="${escapeHtml(activeSpot.title)}" style="background: var(--orange); border: none; border-radius: var(--radius-pill); font-weight: 700; font-size: 0.72rem; padding: 5px 10px;">
+          <button class="btn btn--primary btn--xs" data-action="open-directions" data-spot-name="${escapeHtml(activeSpot.title)}" style="background: var(--orange); border: none; border-radius: var(--radius-pill); font-weight: 700; font-size: 0.72rem; padding: 5px 10px;">
             ${renderIcon("navigation")} Directions
           </button>
-          <button class="btn btn--outline btn--xs" data-action="save-spot" style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.25); color: #fff; border-radius: var(--radius-pill); font-size: 0.72rem; padding: 5px 10px;">
-            🔖 Save
+          <button id="poi-floating-plan-btn" class="btn btn--outline btn--xs" data-action="add-poi-event" data-spot-name="${escapeHtml(activeSpot.title)}" style="${isLouvreAdded ? 'background: rgba(101,112,91,0.25); color: #8fa082; border: 1px solid #8fa082;' : 'background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.25); color: #fff;'} border-radius: var(--radius-pill); font-size: 0.72rem; padding: 5px 10px;">
+            ${isLouvreAdded ? '✓ Added' : '+ Plan'}
           </button>
         </div>
       </div>
@@ -797,6 +809,7 @@ function renderPoiMapCanvas(trip, topPOIs) {
 function renderOverviewTabBody(trip, activeFilter, cachedBrief, editorial, topPOIs, quickFacts) {
   const destination = trip.destination || "Destination";
   const area = destination.split(",")[0].trim();
+  const events = trip.calendarEvents || [];
 
   if (activeFilter === "poi") {
     return `
@@ -813,27 +826,30 @@ function renderOverviewTabBody(trip, activeFilter, cachedBrief, editorial, topPO
         ${renderPoiMapCanvas(trip, topPOIs)}
 
         <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px;">
-          ${topPOIs.map(spot => `
-            <div style="background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius-md); overflow: hidden; box-shadow: var(--shadow-sm); display: flex; flex-direction: column;">
-              <div style="height: 120px; width: 100%; position: relative; background-size: cover; background-position: center; background-image: url('${escapeHtml(spot.image)}');">
-                <span class="voice-mono" style="position: absolute; top: 8px; left: 8px; font-size: 0.65rem; font-weight: 700; background: rgba(0,0,0,0.7); color: #fff; padding: 3px 8px; border-radius: var(--radius-pill);">
-                  ${escapeHtml(spot.category)}
-                </span>
-                <span class="voice-mono" style="position: absolute; bottom: 8px; right: 8px; font-size: 0.72rem; font-weight: 700; background: rgba(255,255,255,0.9); color: var(--ink); padding: 2px 6px; border-radius: var(--radius-sm);">
-                  ★ ${spot.rating || 4.8}
-                </span>
-              </div>
-              <div style="padding: 12px; flex: 1; display: flex; flex-direction: column; justify-content: space-between;">
-                <div>
-                  <h4 style="font-size: 0.95rem; font-weight: 700; color: var(--ink); margin: 0 0 4px 0;">${escapeHtml(spot.title)}</h4>
-                  <p style="font-size: 0.75rem; color: var(--ink-muted); margin: 0 0 10px 0;">📍 ${escapeHtml(spot.geoLabel || area)}</p>
+          ${topPOIs.map(spot => {
+            const isAdded = isPoiAddedToCalendar(events, spot.title);
+            return `
+              <div class="top-poi-card" data-action="select-top-poi" data-spot-name="${escapeHtml(spot.title)}" style="background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius-md); overflow: hidden; box-shadow: var(--shadow-sm); display: flex; flex-direction: column; cursor: pointer;">
+                <div style="height: 120px; width: 100%; position: relative; background-size: cover; background-position: center; background-image: url('${escapeHtml(spot.image)}');">
+                  <span class="voice-mono" style="position: absolute; top: 8px; left: 8px; font-size: 0.65rem; font-weight: 700; background: rgba(0,0,0,0.7); color: #fff; padding: 3px 8px; border-radius: var(--radius-pill);">
+                    ${escapeHtml(spot.category)}
+                  </span>
+                  <span class="voice-mono" style="position: absolute; bottom: 8px; right: 8px; font-size: 0.72rem; font-weight: 700; background: rgba(255,255,255,0.9); color: var(--ink); padding: 2px 6px; border-radius: var(--radius-sm);">
+                    ★ ${spot.rating || 4.8}
+                  </span>
                 </div>
-                <button class="btn btn--outline btn--sm" data-action="add-poi-event" data-spot-name="${escapeHtml(spot.title)}" style="width: 100%; font-size: 0.78rem; font-weight: 600;">
-                  + Add to Plan
-                </button>
+                <div style="padding: 12px; flex: 1; display: flex; flex-direction: column; justify-content: space-between;">
+                  <div>
+                    <h4 style="font-size: 0.95rem; font-weight: 700; color: var(--ink); margin: 0 0 4px 0;">${escapeHtml(spot.title)}</h4>
+                    <p style="font-size: 0.75rem; color: var(--ink-muted); margin: 0 0 10px 0;">📍 ${escapeHtml(spot.geoLabel || area)}</p>
+                  </div>
+                  <button class="btn ${isAdded ? 'btn--success' : 'btn--outline'} btn--sm" data-action="add-poi-event" data-spot-name="${escapeHtml(spot.title)}" style="width: 100%; font-size: 0.78rem; font-weight: 600; ${isAdded ? 'background: rgba(101,112,91,0.15); color: var(--field-green); border-color: var(--field-green);' : ''}">
+                    ${isAdded ? '✓ Added' : '+ Add to Plan'}
+                  </button>
+                </div>
               </div>
-            </div>
-          `).join("")}
+            `;
+          }).join("")}
         </div>
       </div>
     `;
@@ -1034,30 +1050,35 @@ function renderOverviewTabBody(trip, activeFilter, cachedBrief, editorial, topPO
 
       <!-- Horizontal Small Photo Thumbnail Cards Strip -->
       <div class="top-poi-thumbnails-strip" style="display: flex; gap: 12px; overflow-x: auto; padding-bottom: 8px;">
-        ${topPOIs.map(spot => `
-          <div class="top-poi-card" style="width: 140px; flex-shrink: 0; background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius-md); overflow: hidden; box-shadow: var(--shadow-sm); display: flex; flex-direction: column;">
-            <div style="height: 90px; width: 100%; position: relative; background-size: cover; background-position: center; background-image: url('${escapeHtml(spot.image)}');">
-              <span class="voice-mono" style="position: absolute; top: 6px; left: 6px; font-size: 0.62rem; font-weight: 700; background: rgba(0,0,0,0.65); color: #fff; padding: 2px 6px; border-radius: var(--radius-pill); backdrop-filter: blur(4px);">
-                ${escapeHtml(spot.category)}
-              </span>
-              <button class="btn-bookmark-mini" data-spot-id="${spot.id}" title="Bookmark place" style="position: absolute; top: 6px; right: 6px; width: 24px; height: 24px; border-radius: 50%; background: rgba(255,255,255,0.85); border: none; display: flex; align-items: center; justify-content: center; cursor: pointer;">
-                🔖
-              </button>
-            </div>
-            <div style="padding: 8px; flex: 1; display: flex; flex-direction: column; justify-content: space-between;">
-              <div>
-                <h5 style="font-size: 0.82rem; font-weight: 700; color: var(--ink); margin: 0 0 2px 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.2;">
-                  ${escapeHtml(spot.title)}
-                </h5>
-                <div style="font-size: 0.68rem; color: var(--ink-muted);">${escapeHtml(spot.geoLabel || area)}</div>
+        ${topPOIs.map((spot, idx) => {
+          const isAdded = isPoiAddedToCalendar(events, spot.title);
+          return `
+            <div class="top-poi-card" data-action="select-top-poi" data-spot-name="${escapeHtml(spot.title)}" data-spot-idx="${idx}" style="width: 140px; flex-shrink: 0; background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius-md); overflow: hidden; box-shadow: var(--shadow-sm); display: flex; flex-direction: column; cursor: pointer;">
+              <div style="height: 90px; width: 100%; position: relative; background-size: cover; background-position: center; background-image: url('${escapeHtml(spot.image)}');">
+                <span class="voice-mono" style="position: absolute; top: 6px; left: 6px; font-size: 0.62rem; font-weight: 700; background: rgba(0,0,0,0.65); color: #fff; padding: 2px 6px; border-radius: var(--radius-pill); backdrop-filter: blur(4px);">
+                  ${escapeHtml(spot.category)}
+                </span>
+                <button class="btn-bookmark-mini" data-action="toggle-bookmark" data-place-id="${spot.id}" title="Bookmark place" style="position: absolute; top: 6px; right: 6px; width: 24px; height: 24px; border-radius: 50%; background: rgba(255,255,255,0.85); border: none; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+                  🔖
+                </button>
               </div>
-              <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px;">
-                <span class="voice-mono" style="font-size: 0.72rem; font-weight: 700; color: var(--orange);">★ ${spot.rating || 4.8}</span>
-                <button class="btn btn--ghost btn--xs" data-action="add-poi-event" data-spot-name="${escapeHtml(spot.title)}" style="font-size: 0.68rem; padding: 2px 6px;">+ Plan</button>
+              <div style="padding: 8px; flex: 1; display: flex; flex-direction: column; justify-content: space-between;">
+                <div>
+                  <h5 style="font-size: 0.82rem; font-weight: 700; color: var(--ink); margin: 0 0 2px 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.2;">
+                    ${escapeHtml(spot.title)}
+                  </h5>
+                  <div style="font-size: 0.68rem; color: var(--ink-muted);">${escapeHtml(spot.geoLabel || area)}</div>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px;">
+                  <span class="voice-mono" style="font-size: 0.72rem; font-weight: 700; color: var(--orange);">★ ${spot.rating || 4.8}</span>
+                  <button class="btn btn--ghost btn--xs" data-action="add-poi-event" data-spot-name="${escapeHtml(spot.title)}" style="font-size: 0.68rem; padding: 2px 6px; ${isAdded ? 'color: var(--field-green); font-weight: 700;' : ''}">
+                    ${isAdded ? '✓ Added' : '+ Plan'}
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
-        `).join('')}
+          `;
+        }).join('')}
       </div>
     </div>
   `;

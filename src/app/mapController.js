@@ -239,6 +239,59 @@ function escapeHtml(str) {
     .replaceAll("'", "&#039;");
 }
 
+let currentPoiOverviewList = [];
+
+export function selectPoiOnOverviewMap(spotIdx, spotName = "") {
+  const map = activeMaps.get("poi-overview");
+  const container = document.getElementById("poi-map-container");
+  if (!map || !container) return;
+
+  container.scrollIntoView({ behavior: "smooth", block: "nearest" });
+
+  let idx = spotIdx;
+  if ((idx === undefined || idx < 0 || isNaN(idx)) && spotName) {
+    const titleLower = spotName.toLowerCase().trim();
+    idx = currentPoiOverviewList.findIndex(p => p.title.toLowerCase().includes(titleLower) || titleLower.includes(p.title.toLowerCase()));
+  }
+  if (idx < 0 || idx === undefined || isNaN(idx) || !currentPoiOverviewList[idx]) idx = 0;
+
+  const poi = currentPoiOverviewList[idx];
+  if (!poi) return;
+
+  const cardTitle = document.getElementById("poi-floating-title");
+  if (cardTitle) cardTitle.textContent = poi.title;
+  const cardDetail = document.getElementById("poi-floating-detail");
+  if (cardDetail) cardDetail.textContent = `★ ${poi.rating || 4.8} · ${poi.distance || '1.2 km away'} · Open until 18:00`;
+  const cardImg = document.getElementById("poi-floating-img");
+  if (cardImg && poi.img) {
+    cardImg.src = poi.img;
+    cardImg.onerror = function() {
+      this.onerror = null;
+      this.src = "https://images.unsplash.com/photo-1499856871958-5b9627545d1a?auto=format&fit=crop&w=400&q=80";
+    };
+  }
+  const cardTag = document.getElementById("poi-floating-tag");
+  if (cardTag) cardTag.textContent = poi.category || "Landmark";
+
+  const directionsBtn = document.querySelector(".poi-map-floating-card [data-action='open-directions']");
+  if (directionsBtn) directionsBtn.dataset.spotName = poi.title;
+
+  const planBtn = document.getElementById("poi-floating-plan-btn");
+  if (planBtn) planBtn.dataset.spotName = poi.title;
+
+  document.querySelectorAll(".poi-leaflet-pill").forEach(el => {
+    el.style.background = "#385C73";
+    el.style.boxShadow = "0 2px 10px rgba(0,0,0,0.35); border: 1px solid rgba(255,255,255,0.3);";
+  });
+  const currentPill = document.getElementById(`poi-pill-marker-${idx}`);
+  if (currentPill) {
+    currentPill.style.background = "#D94A3A";
+    currentPill.style.boxShadow = "0 4px 16px rgba(217, 74, 58, 0.6), 0 0 0 2px #ffffff";
+  }
+
+  map.panTo([poi.lat, poi.lng], { animate: true });
+}
+
 function initPoiOverviewMap(trip) {
   const container = document.getElementById("poi-map-container");
   if (!container) return;
@@ -263,6 +316,8 @@ function initPoiOverviewMap(trip) {
     { id: "p4", title: "Télescope Cafe", lat: center[0] - 0.002, lng: center[1] - 0.003, icon: "☕", rating: 4.7, category: "Cafe", distance: "340m", img: "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=400&q=80" },
     { id: "p5", title: "Le Baron", lat: center[0] - 0.005, lng: center[1] + 0.008, icon: "🍷", rating: 4.6, category: "Wine Bar", distance: "1.4 km away", img: "https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?auto=format&fit=crop&w=400&q=80" }
   ];
+
+  currentPoiOverviewList = pois;
 
   const userLat = center[0] - 0.006;
   const userLng = center[1] - 0.007;
@@ -330,32 +385,7 @@ function initPoiOverviewMap(trip) {
     const marker = L.marker([poi.lat, poi.lng], { icon: pillIcon, zIndexOffset: isActive ? 1000 : 100 }).addTo(map);
 
     marker.on("click", () => {
-      const cardTitle = document.getElementById("poi-floating-title");
-      if (cardTitle) cardTitle.textContent = poi.title;
-      const cardDetail = document.getElementById("poi-floating-detail");
-      if (cardDetail) cardDetail.textContent = `★ ${poi.rating || 4.8} · ${poi.distance} · Open until 18:00`;
-      const cardImg = document.getElementById("poi-floating-img");
-      if (cardImg && poi.img) {
-        cardImg.src = poi.img;
-        cardImg.onerror = function() {
-          this.onerror = null;
-          this.src = "https://images.unsplash.com/photo-1499856871958-5b9627545d1a?auto=format&fit=crop&w=400&q=80";
-        };
-      }
-      const cardTag = document.getElementById("poi-floating-tag");
-      if (cardTag) cardTag.textContent = poi.category || "Landmark";
-
-      document.querySelectorAll(".poi-leaflet-pill").forEach(el => {
-        el.style.background = "#385C73";
-        el.style.boxShadow = "0 2px 10px rgba(0,0,0,0.35); border: 1px solid rgba(255,255,255,0.3);";
-      });
-      const currentPill = document.getElementById(`poi-pill-marker-${idx}`);
-      if (currentPill) {
-        currentPill.style.background = "#D94A3A";
-        currentPill.style.boxShadow = "0 4px 16px rgba(217, 74, 58, 0.6), 0 0 0 2px #ffffff";
-      }
-
-      map.panTo([poi.lat, poi.lng], { animate: true });
+      selectPoiOnOverviewMap(idx, poi.title);
     });
   });
 
