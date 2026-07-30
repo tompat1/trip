@@ -10,6 +10,7 @@ const GBFS_FEEDS = [
     cities: ["paris"],
     name: "Vélib' Métropole",
     url: "https://velib-metropole-opendata.smovengo.cloud/opendata/Velib_Metropole/gbfs.json",
+    requiresProxyInBrowser: true,
   },
 ];
 
@@ -243,8 +244,12 @@ async function fetchSharedMobility(trip, coordinates) {
     return { mobility: [], providerStatus: [createStatus("gbfs", "not-configured", "no-local-feed-for-destination", 0, startedAt)] };
   }
 
+  if (feed.requiresProxyInBrowser && isBrowserRuntime() && !trip.gbfsProxyUrl) {
+    return { mobility: [], providerStatus: [createStatus("gbfs", "not-configured", "gbfs-cors-proxy-required", 0, startedAt)] };
+  }
+
   try {
-    const root = await fetchJson(feed.url);
+    const root = await fetchJson(trip.gbfsProxyUrl || feed.url);
     const feeds = Object.values(root.data || {})[0]?.feeds || root.data?.feeds || [];
     const stationInfoUrl = getGbfsFeedUrl(feeds, "station_information");
     const stationStatusUrl = getGbfsFeedUrl(feeds, "station_status");
@@ -260,6 +265,10 @@ async function fetchSharedMobility(trip, coordinates) {
   } catch (error) {
     return { mobility: [], providerStatus: [createStatus("gbfs", "error", error?.message || "failed", 0, startedAt)] };
   }
+}
+
+function isBrowserRuntime() {
+  return typeof window !== "undefined" && typeof document !== "undefined";
 }
 
 async function fetchOpenAgendaEvents(trip, coordinates, options = {}) {
