@@ -82,11 +82,13 @@ export const discoveryStateMixin = {
     const personas = Array.from(this.userPreferences || []);
     const personaContext = getPersonaDiscoveryContext(personas);
     const personaKey = personaContext.personas.join("|");
-    const existing = [...(trip.tourismPois || []), ...(trip.hiddenGems || []), ...(trip.osmPlaces || [])];
     const currentStatus = this.tourismDiscoveryStatus[tripId];
     const isPersonaMatched = (currentStatus?.personaKey || "") === personaKey;
+    const DISCOVERY_MAX_AGE_MS = 1000 * 60 * 60 * 48; // 48 hours
+    const updatedAtTime = currentStatus?.updatedAt ? new Date(currentStatus.updatedAt).getTime() : 0;
+    const isTooOld = !updatedAtTime || Date.now() - updatedAtTime > DISCOVERY_MAX_AGE_MS;
     if (currentStatus?.status === "loading" && !options.force && isPersonaMatched) return currentStatus;
-    if (existing.length && !options.force && isPersonaMatched)
+    if (existing.length && !options.force && isPersonaMatched && !isTooOld)
       return currentStatus || { status: "ready", error: "", personaKey };
 
     this.tourismDiscoveryStatus[tripId] = {
