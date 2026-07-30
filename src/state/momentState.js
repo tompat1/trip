@@ -88,6 +88,13 @@ export const momentStateMixin = {
     saveStoredMoment(moment).catch((error) => console.warn("Moment local update fallback:", error));
   },
 
+  deleteMoment(momentId) {
+    if (!momentId) return;
+    this.moments = (this.moments || []).filter((m) => m.id !== momentId);
+    this.notify();
+    saveStoredMoments(this.moments.filter((m) => m.media_url || m.mediaUrl)).catch(() => {});
+  },
+
   // ── Admin demo moments ─────────────────────────────────────────────────────
 
   syncAdminDemoMoments() {
@@ -117,7 +124,7 @@ export const momentStateMixin = {
   },
 
   setQuickCaptureTrip(tripId) {
-    if (!tripsData[tripId]) return;
+    if (!tripId) return;
     this.quickCaptureTripId = tripId;
     this.notify();
   },

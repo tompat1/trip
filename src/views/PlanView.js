@@ -224,6 +224,9 @@ function renderJournalNoteCard(m) {
         <p class="note-text" style="font-size: 0.85rem; color: var(--ink-muted); margin: 0 0 6px 0; line-height: 1.4;">${escapeHtml(m.text)}</p>
         <span class="note-date voice-mono" style="font-size: 0.72rem; color: var(--ink-light);">${escapeHtml(m.date || "")}</span>
       </div>
+      <button class="btn btn--icon btn--ghost" data-action="delete-journal-moment" data-moment-id="${m.id}" title="Delete note" aria-label="Delete note" style="color: var(--red); opacity: 0.85; flex-shrink: 0;">
+        ${renderIcon("trash2")}
+      </button>
     </div>
   `;
 }
@@ -434,7 +437,10 @@ function renderJournalMediaCard(m) {
         ${m.groupFileCount > 1 ? `
           <span class="journal-media-batch-badge voice-mono">${escapeHtml(String(m.groupFileCount))} batch</span>
         ` : ""}
-        ${m.adminDemo ? "" : `<button class="journal-media-edit-btn" data-action="edit-journal-media" data-moment-id="${m.id}" title="Edit place tags" aria-label="Edit place tags">${renderIcon("pencil")}</button>`}
+        <div class="journal-media-card-actions" style="position: absolute; top: 6px; right: 6px; display: flex; gap: 4px; z-index: 10;">
+          <button class="journal-media-edit-btn" data-action="edit-journal-media" data-moment-id="${m.id}" title="Edit place tags" aria-label="Edit place tags">${renderIcon("pencil")}</button>
+          <button class="journal-media-delete-btn" data-action="delete-journal-moment" data-moment-id="${m.id}" title="Delete moment" aria-label="Delete moment">${renderIcon("trash2")}</button>
+        </div>
       </div>
       <div class="journal-media-body" style="padding: 10px;">
         <h4 class="journal-media-title" style="font-size: 0.85rem; font-weight: 700; margin: 0 0 2px 0; color: var(--ink);">${escapeHtml(m.title || 'Trip Moment')}</h4>

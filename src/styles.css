@@ -5209,10 +5209,9 @@ textarea {
   border-color: rgba(255, 85, 0, 0.22);
 }
 
-.journal-media-edit-btn {
-  position: absolute;
-  top: 6px;
-  right: 6px;
+.journal-media-edit-btn,
+.journal-media-delete-btn {
+  position: relative;
   width: 30px;
   height: 30px;
   border: 0;
@@ -5224,12 +5223,24 @@ textarea {
   background: rgba(255, 255, 255, 0.92);
   box-shadow: var(--shadow-sm);
   cursor: pointer;
+  transition: transform var(--transition-fast), background var(--transition-fast);
 }
 
 .journal-media-edit-btn:hover,
 .journal-media-edit-btn:focus-visible {
   color: var(--orange);
-  transform: scale(1.04);
+  transform: scale(1.05);
+}
+
+.journal-media-delete-btn {
+  color: var(--red);
+}
+
+.journal-media-delete-btn:hover,
+.journal-media-delete-btn:focus-visible {
+  background: var(--red);
+  color: #ffffff;
+  transform: scale(1.05);
 }
 
 .journal-media-thumb {

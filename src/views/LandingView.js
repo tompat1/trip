@@ -15,6 +15,7 @@ function escapeHtml(str = "") {
 export function renderLandingView() {
   const activeTrip = state.activeTrip || { destination: "Paris, France", dates: "3 – 9 Oct 2026", flag: "🇫🇷" };
   const personas = Object.entries(PERSONA_SEARCH_SIGNALS).slice(0, 6);
+  const isSignedIn = ["admin", "traveler"].includes(state.userSession?.role);
 
   return `
     <div class="landing-page-desktop-site">
@@ -39,15 +40,20 @@ export function renderLandingView() {
             </p>
 
             <div class="hero-cta-group">
-              <button class="btn btn--primary btn--lg hero-btn-main" data-action="go-app">
-                <span>Launch Web App</span>
-                ${renderIcon("arrowRight")}
-              </button>
-              
-              <button class="btn btn--outline btn--lg hero-btn-secondary" data-action="go-plan">
-                ${renderIcon("sparkles")}
-                <span>Explore Demo Trip</span>
-              </button>
+              ${isSignedIn ? `
+                <button class="btn btn--primary btn--lg hero-btn-main" data-action="go-app">
+                  <span>Open TRIP App</span>
+                  ${renderIcon("arrowRight")}
+                </button>
+              ` : `
+                <button class="btn btn--primary btn--lg hero-btn-main" data-action="open-auth-panel" data-auth-mode="signup">
+                  <span>Get Started — Free</span>
+                  ${renderIcon("arrowRight")}
+                </button>
+                <button class="btn btn--outline btn--lg hero-btn-secondary" data-action="open-auth-panel" data-auth-mode="login">
+                  <span>Sign In</span>
+                </button>
+              `}
             </div>
 
             <div class="hero-qr-strip">
@@ -265,13 +271,20 @@ export function renderLandingView() {
           <h2 class="voice-serif">Ready to start your next trip?</h2>
           <p>Launch the TRIP web app now on desktop or mobile. Zero app store installation required.</p>
           <div class="cta-actions">
-            <button class="btn btn--primary btn--lg" data-action="open-auth-panel" data-auth-mode="signup">
-              <span>Create Free Account</span>
-              ${renderIcon("arrowRight")}
-            </button>
-            <button class="btn btn--outline btn--lg" data-action="go-app">
-              <span>Launch App</span>
-            </button>
+            ${isSignedIn ? `
+              <button class="btn btn--primary btn--lg" data-action="go-app">
+                <span>Open TRIP App</span>
+                ${renderIcon("arrowRight")}
+              </button>
+            ` : `
+              <button class="btn btn--primary btn--lg" data-action="open-auth-panel" data-auth-mode="signup">
+                <span>Get Started — Free</span>
+                ${renderIcon("arrowRight")}
+              </button>
+              <button class="btn btn--outline btn--lg" data-action="open-auth-panel" data-auth-mode="login">
+                <span>Sign In</span>
+              </button>
+            `}
           </div>
         </div>
       </section>

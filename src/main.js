@@ -281,11 +281,18 @@ document.addEventListener("click", async (e) => {
       state.toggleQuickCapture();
     }
     else if (action === "open-quick-capture") {
-      if (!requireAppSession("login", "Sign in to capture trip moments.")) return;
       if (state.activeTemplatePicker) state.closeTemplatePicker();
       state.setQuickCaptureTrip(state.activeTripId);
       state.toggleQuickCapture(true);
-      showToast(`Quick Capture opened for ${state.activeTrip.destination}.`);
+    }
+    else if (action === "delete-journal-moment") {
+      e.stopPropagation();
+      const momentId = target.dataset.momentId;
+      if (!momentId) return;
+      if (confirm("Delete this moment from your trip journal?")) {
+        state.deleteMoment(momentId);
+        showToast("Moment deleted.");
+      }
     }
     else if (action === "search-journal-media") {
       const nextQuery = prompt("Search moments by place, tag, or title:", state.journalMediaQuery || "");
