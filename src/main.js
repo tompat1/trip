@@ -35,7 +35,6 @@ let isAppBooted = false;
 let startupIllustrationUrls = [];
 let startupIllustrationIndex = 0;
 let startupIllustrationTimer = null;
-let startupIllustrationPhase = "in";
 let pageLoaderCount = 0;
 let pageLoaderShowTimer = null;
 let pageLoaderHideTimer = null;
@@ -56,13 +55,12 @@ const landingIllustrationPreloads = Object.values(import.meta.glob("./assets/ill
 const LANDING_HERO_URL = "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1200&q=85";
 const STARTUP_PRELOAD_TIMEOUT_MS = 2400;
 const STARTUP_MINIMUM_MS = 4200;
-const STARTUP_ILLUSTRATION_INTERVAL_MS = 1300;
-const STARTUP_ILLUSTRATION_FADE_MS = 260;
+const STARTUP_ILLUSTRATION_INTERVAL_MS = 1550;
 const STARTUP_PRELOAD_REVEAL_STEP_MS = 430;
 const PAGE_LOADER_DELAY_MS = 160;
 const PAGE_LOADER_MINIMUM_MS = 520;
 
-function getRandomStartupIllustrations(count = 3) {
+function getRandomStartupIllustrations(count = 5) {
   if (!landingIllustrationPreloads.length) return "";
   return [...landingIllustrationPreloads]
     .sort(() => Math.random() - 0.5)
@@ -188,14 +186,21 @@ function render() {
 
 function renderTripLoadingPage() {
   prepareStartupIllustrations();
-  const illustrationSrc = startupIllustrationUrls[startupIllustrationIndex] || "";
   const preloadItem = getCurrentStartupPreloadItem();
   return `
     <div class="trip-loading-page" role="status" aria-label="Loading TRIP">
       <div class="trip-page-loader__panel">
-        ${illustrationSrc ? `
-          <div class="trip-loading-page__illustration is-${escapeHtml(startupIllustrationPhase)}" aria-hidden="true">
-            <img src="${illustrationSrc}" alt="" />
+        ${startupIllustrationUrls.length ? `
+          <div class="trip-loading-page__illustration" aria-hidden="true">
+            ${startupIllustrationUrls.map((src, index) => `
+              <img
+                class="${index === startupIllustrationIndex ? "is-active" : ""}"
+                src="${escapeHtml(src)}"
+                alt=""
+                decoding="async"
+                style="--loader-image-index: ${index}"
+              />
+            `).join("")}
             ${startupIllustrationUrls.length > 1 ? `
               <span class="trip-loading-page__illustration-count">${startupIllustrationIndex + 1}/${startupIllustrationUrls.length}</span>
             ` : ""}
@@ -348,21 +353,15 @@ async function preloadStartupResources() {
 
 function prepareStartupIllustrations() {
   if (!startupIllustrationUrls.length) {
-    startupIllustrationUrls = getRandomStartupIllustrations(3);
+    startupIllustrationUrls = getRandomStartupIllustrations(5);
   }
 }
 
 function startStartupIllustrationRotation() {
   if (startupIllustrationTimer || startupIllustrationUrls.length <= 1) return;
   startupIllustrationTimer = window.setInterval(() => {
-    startupIllustrationPhase = "out";
+    startupIllustrationIndex = (startupIllustrationIndex + 1) % startupIllustrationUrls.length;
     if (!isAppBooted) updateStartupIllustration();
-    window.setTimeout(() => {
-      if (isAppBooted) return;
-      startupIllustrationIndex = (startupIllustrationIndex + 1) % startupIllustrationUrls.length;
-      startupIllustrationPhase = "in";
-      updateStartupIllustration();
-    }, STARTUP_ILLUSTRATION_FADE_MS);
   }, STARTUP_ILLUSTRATION_INTERVAL_MS);
 }
 
@@ -400,17 +399,11 @@ function updateStartupIllustration() {
     render();
     return;
   }
-  const image = frame.querySelector("img");
   const count = frame.querySelector(".trip-loading-page__illustration-count");
-  frame.classList.toggle("is-out", startupIllustrationPhase === "out");
-  frame.classList.toggle("is-in", startupIllustrationPhase !== "out");
-  if (startupIllustrationPhase === "in" && image) {
-    const nextSrc = startupIllustrationUrls[startupIllustrationIndex] || "";
-    if (nextSrc && image.getAttribute("src") !== nextSrc) {
-      image.setAttribute("src", nextSrc);
-    }
-    if (count) count.textContent = `${startupIllustrationIndex + 1}/${startupIllustrationUrls.length}`;
-  }
+  frame.querySelectorAll("img").forEach((image, index) => {
+    image.classList.toggle("is-active", index === startupIllustrationIndex);
+  });
+  if (count) count.textContent = `${startupIllustrationIndex + 1}/${startupIllustrationUrls.length}`;
 }
 
 function updateStartupPreloadList() {
