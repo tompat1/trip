@@ -979,6 +979,24 @@ textarea {
   border-top: 1px solid rgba(15, 27, 43, 0.18);
 }
 
+.trip-flap-spinner__chip--marker {
+  color: var(--orange);
+}
+
+.trip-flap-spinner__marker {
+  display: block;
+  width: 1em;
+  height: 1em;
+}
+
+.trip-flap-spinner__marker path {
+  fill: currentColor;
+}
+
+.trip-flap-spinner__marker circle {
+  fill: var(--surface-overlay);
+}
+
 @keyframes tripFlap {
   0%, 16% {
     transform: translateY(0) rotateX(0deg);

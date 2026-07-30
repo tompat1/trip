@@ -119,9 +119,20 @@ function getCurrentStartupPreloadItem() {
 }
 
 function renderTripFlapSpinner(modifier = "") {
+  const markerChip = `
+    <svg class="trip-flap-spinner__marker" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path d="M12 21s6-5.2 6-11a6 6 0 1 0-12 0c0 5.8 6 11 6 11Z"></path>
+      <circle cx="12" cy="10" r="2.15"></circle>
+    </svg>
+  `;
+
   return `
     <span class="trip-flap-spinner ${modifier}" aria-hidden="true">
-      ${["T", "R", "I", "P"].map((letter, index) => `<span style="--flap-index: ${index}">${letter}</span>`).join("")}
+      ${["T", "R", "I", "P", markerChip].map((item, index) => `
+        <span class="trip-flap-spinner__chip${index === 4 ? " trip-flap-spinner__chip--marker" : ""}" style="--flap-index: ${index}">
+          ${item}
+        </span>
+      `).join("")}
     </span>
   `;
 }
