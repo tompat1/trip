@@ -1,3 +1,4 @@
+@import url('https://api.fontshare.com/v2/css?f[]=satoshi@700,800,900&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,400&family=Playfair+Display:ital,wght@0,600;0,700;1,400;1,600&family=Sora:wght@400;500;600;700;800&display=swap');
 
 :root {
@@ -46,6 +47,7 @@
   /* Voice 2: Secondary Editorial Serif Typeface */
   --font-mono: "IBM Plex Mono", "JetBrains Mono", monospace;
   /* Voice 3: Monospace / Accent Voice */
+  --font-badge: "Satoshi", "Sora", system-ui, sans-serif;
 
   /* Elevation Shadows */
   --shadow-sm: 0 2px 8px rgba(15, 27, 43, 0.04);
@@ -1664,8 +1666,6 @@ textarea {
   z-index: 5;
   width: clamp(143px, 20.9vw, 237px);
   aspect-ratio: 994 / 305;
-  object-fit: contain;
-  object-position: center;
   opacity: 0.98;
   filter:
     drop-shadow(0 9px 10px rgba(23, 24, 23, 0.22))
@@ -1673,11 +1673,40 @@ textarea {
   pointer-events: none;
 }
 
+.trip-stage-ribbon__image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center;
+}
+
+.trip-stage-ribbon__label {
+  position: absolute;
+  left: 5.6%;
+  top: 42%;
+  width: 65%;
+  color: #223047;
+  font-family: var(--font-badge);
+  font-size: clamp(0.54rem, 1.02vw, 0.9rem);
+  font-weight: 900;
+  letter-spacing: 0.055em;
+  line-height: 1;
+  text-align: center;
+  text-transform: uppercase;
+  white-space: nowrap;
+  transform: translateY(-50%) rotate(-0.4deg);
+}
+
 @media (max-width: 540px) {
   .trip-stage-ribbon {
     top: -22px;
     right: -24px;
     width: 210px;
+  }
+
+  .trip-stage-ribbon__label {
+    font-size: 0.72rem;
   }
 }
 
@@ -1792,18 +1821,26 @@ textarea {
 
 .trip-context-card>.trip-stage-ribbon {
   position: absolute;
-  top: 8px;
-  right: -10px;
+  top: 4px;
+  right: -12px;
   z-index: 6;
-  width: 146px;
+  width: 166px;
   pointer-events: none;
+}
+
+.trip-context-card>.trip-stage-ribbon .trip-stage-ribbon__label {
+  font-size: 0.55rem;
 }
 
 @media (max-width: 540px) {
   .trip-context-card>.trip-stage-ribbon {
-    top: 8px;
-    right: -10px;
-    width: 122px;
+    top: 5px;
+    right: -12px;
+    width: 138px;
+  }
+
+  .trip-context-card>.trip-stage-ribbon .trip-stage-ribbon__label {
+    font-size: 0.45rem;
   }
 }
 

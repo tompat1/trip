@@ -2,9 +2,9 @@ import { state } from "../state.js";
 import { renderIcon } from "../utils/icons.js";
 import { TRIP_LOGO_SVG } from "./BrandAssets.js";
 import { getTripDateStatus } from "../utils/tripDates.js";
-import ribbonLive from "../assets/trip_badge_ribbon_live.webp";
-import ribbonPlan from "../assets/trip_badge_ribbon_plan.webp";
-import ribbonRemember from "../assets/trip_badge_ribbon_rmbr.webp";
+import ribbonLive from "../assets/trip_badge_clean_ribbon_live.webp";
+import ribbonPlan from "../assets/trip_badge_clean_ribbon_planning.webp";
+import ribbonRemember from "../assets/trip_badge_clean_ribbon_rmbr.webp";
 
 export function renderHeader() {
   const isLanding = state.activeView === "landing";
@@ -82,7 +82,10 @@ export function renderHeader() {
       </div>
 
       <div class="trip-context-card trip-context-card--${tripStage}">
-        <img class="trip-stage-ribbon" src="${ribbon.src}" alt="${escapeHtml(ribbon.label)}" />
+        <div class="trip-stage-ribbon trip-stage-ribbon--${tripStage}" aria-label="${escapeHtml(ribbon.label)}">
+          <img class="trip-stage-ribbon__image" src="${ribbon.src}" alt="" aria-hidden="true" />
+          <span class="trip-stage-ribbon__label">${escapeHtml(ribbon.label)}</span>
+        </div>
         <div class="trip-context-card__header">
           <div class="card-eyebrow-row">
             <div class="trip-selector-wrap">
@@ -149,9 +152,9 @@ function getTripStage(dateStatus) {
 }
 
 function getTripRibbon(stage) {
-  if (stage === "remember") return { src: ribbonRemember, label: "REMEMBER" };
-  if (stage === "live") return { src: ribbonLive, label: "LIVE JOURNEY" };
-  return { src: ribbonPlan, label: "PLANNING MODE" };
+  if (stage === "remember") return { src: ribbonRemember, label: "Remember mode" };
+  if (stage === "live") return { src: ribbonLive, label: "Live mode" };
+  return { src: ribbonPlan, label: "Planning mode" };
 }
 
 function getLiveDayTimeFormatted() {

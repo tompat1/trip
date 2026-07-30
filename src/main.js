@@ -24,9 +24,9 @@ import { enrichmentService } from "./enrichment/enrichmentService.js";
 import tripLogoUrl from "./assets/trip_logo.svg";
 import tripLogoWhiteUrl from "./assets/trip_logo_white.svg";
 import tripMapPatternUrl from "./assets/trip_MapPattern.svg";
-import ribbonLiveUrl from "./assets/trip_badge_ribbon_live.webp";
-import ribbonPlanUrl from "./assets/trip_badge_ribbon_plan.webp";
-import ribbonRememberUrl from "./assets/trip_badge_ribbon_rmbr.webp";
+import ribbonLiveUrl from "./assets/trip_badge_clean_ribbon_live.webp";
+import ribbonPlanUrl from "./assets/trip_badge_clean_ribbon_planning.webp";
+import ribbonRememberUrl from "./assets/trip_badge_clean_ribbon_rmbr.webp";
 import "./styles.css";
 
 let activeMaps = new Map();
