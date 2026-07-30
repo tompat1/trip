@@ -18,6 +18,52 @@ export function createVerifiedFactBundle(place = {}, context = {}) {
   ].filter((fact) => fact && fact.value !== undefined && fact.value !== null && fact.value !== "");
 }
 
+const DESTINATION_EDITORIALS = {
+  paris: {
+    standfirst: "Paris is the capital and cultural heart of France, situated along the Seine River in Île-de-France. Famed for its revolutionary heritage, Haussmannian boulevards, and artistic legacy, Paris has been a preeminent global center for art, fashion, gastronomy, and philosophy since the 17th century.",
+    whyStop: "Home to iconic landmarks such as the Eiffel Tower, Notre-Dame Cathedral, the Louvre Museum, and Sainte-Chapelle, Paris seamlessly combines monumental architecture with vibrant neighborhood culture — from the cobbled alleyways of Montmartre to the historic cafes of Saint-Germain-des-Prés.",
+    atmosphere: "An elegant, highly walkable metropolis defined by riverbank bouquinistes, historic bistro terraces, world-class art collections, and timeless architectural vistas.",
+    essentialExperience: [
+      "Walk the historic Île de la Cité & Sainte-Chapelle",
+      "Explore Saint-Germain-des-Prés specialty cafes & galleries",
+      "Visit the Louvre Museum and Jardin des Tuileries",
+      "Sunset stroll along the Seine River & Pont Neuf"
+    ],
+    dontMiss: [
+      "Stained glass of Sainte-Chapelle",
+      "Impressionist collection at Musée d'Orsay",
+      "Specialty coffee in Marais",
+      "Evening natural wine in the 11th arr."
+    ]
+  },
+  france: {
+    standfirst: "France is a European nation renowned for its diverse landscapes spanning Atlantic coasts, Alpine peaks, and Mediterranean harbors, alongside an unmatched legacy in art, philosophy, wine, and culinary craft.",
+    whyStop: "From the capital city of Paris to the vineyards of Bordeaux and the French Riviera, France offers a timeless mosaic of historic cathedrals, royal châteaux, and regional gastronomy.",
+    atmosphere: "Refined, culturally rich, and steeped in centuries of heritage, gastronomy, and varied natural landscapes."
+  },
+  crete: {
+    standfirst: "Crete is the largest of the Greek islands, cradled between the Aegean and Libyan Seas. Famed as the cradle of Minoan civilization — Europe's earliest recorded high culture — Crete offers a dramatic synthesis of Bronze Age palaces, Venetian harbors, and mountain gorges.",
+    whyStop: "From the ancient Palace of Knossos to the pastel-hued Venetian harbor of Chania and the dramatic Samaria Gorge, Crete merges millennia of history with Aegean coastal beauty and renowned island gastronomy.",
+    atmosphere: "Sun-drenched Mediterranean warmth, coastal sea breezes, dramatic mountain ridges, and authentic Cretan hospitality.",
+    essentialExperience: [
+      "Explore the Minoan Palace of Knossos",
+      "Wander Chania's 14th-century Venetian harbor & old town",
+      "Hike Samaria Gorge or relax at Balos Lagoon",
+      "Savor authentic Cretan olive oil, wild herbs, and seafood"
+    ],
+    dontMiss: [
+      "Minoan frescoes at Heraklion Archaeological Museum",
+      "Venetian Lighthouse of Chania",
+      "Pink sand beaches of Elafonisi"
+    ]
+  },
+  greece: {
+    standfirst: "Greece is a historic Mediterranean nation located at the crossroads of Europe, Asia, and Africa, celebrated as the cradle of Western civilization, democracy, philosophy, and the Olympic Games.",
+    whyStop: "Featuring ancient classical monuments, whitewashed island villages, and azure Aegean waters, Greece offers an unforgettable journey through millennia of history and vibrant island culture.",
+    atmosphere: "Aegean marine light, ancient marble heritage, vibrant harbor tavernas, and Mediterranean warmth."
+  }
+};
+
 export function composeEditorialProfile(place = {}, options = {}) {
   const facts = options.facts || createVerifiedFactBundle(place, options.locationContext || {});
   const media = options.media || {};
@@ -30,12 +76,39 @@ export function composeEditorialProfile(place = {}, options = {}) {
   const sourceIds = [...new Set(facts.flatMap((fact) => fact.sourceIds || [fact.id]).filter(Boolean))];
   const angle = getTravellerAngle(category, travellerProfile);
 
+  const nameLower = String(name || "").toLowerCase();
+  const isCityCategory = categoryTextIncludes(category, ["city", "destination", "region", "capital", "country", "island"]);
+  const matchedDestKey = Object.keys(DESTINATION_EDITORIALS).find((key) => nameLower.includes(key));
+  const destEntry = matchedDestKey ? DESTINATION_EDITORIALS[matchedDestKey] : null;
+
+  let standfirst = "";
+  let whyStop = "";
+  let atmosphere = "";
+  let essentialExperience = null;
+  let dontMiss = null;
+
+  if (destEntry) {
+    standfirst = destEntry.standfirst;
+    whyStop = destEntry.whyStop;
+    atmosphere = destEntry.atmosphere;
+    if (destEntry.essentialExperience) essentialExperience = destEntry.essentialExperience;
+    if (destEntry.dontMiss) dontMiss = destEntry.dontMiss;
+  } else if (isCityCategory) {
+    standfirst = buildCityStandfirst(name, area);
+    whyStop = buildCityWhyStop(name, category, area);
+    atmosphere = buildCityAtmosphere(name);
+  } else {
+    standfirst = buildStandardStandfirst(name, area, category);
+    whyStop = buildWhyStop(name, category, area, angle, routeContext);
+    atmosphere = buildAtmosphere(category, media);
+  }
+
   const draft = {
-    standfirst: [name, area ? `in ${area}` : "", category ? `works as a ${category.toLowerCase()} stop` : ""].filter(Boolean).join(" "),
-    whyStop: buildWhyStop(name, category, area, angle, routeContext),
-    atmosphere: buildAtmosphere(category, media),
-    essentialExperience: buildEssentialExperience(name, category),
-    dontMiss: buildDontMiss(category),
+    standfirst,
+    whyStop,
+    atmosphere,
+    essentialExperience: essentialExperience || buildEssentialExperience(name, category),
+    dontMiss: dontMiss || buildDontMiss(category),
     hiddenDetails: buildHiddenDetails(place, facts),
     idealFor: buildIdealFor(category, travellerProfile),
     skipIf: buildSkipIf(category),
@@ -126,6 +199,38 @@ function createFact(key, value, sourceName, sourceType, retrievedAt, confidence,
     volatile,
     sourceIds,
   };
+}
+
+function buildStandardStandfirst(name, area, category) {
+  const cat = String(category || "spot").toLowerCase();
+  if (cat.includes("coffee") || cat.includes("cafe")) {
+    return `${name}${area ? ` in ${area}` : ""} is a highlighted specialty coffee destination.`;
+  }
+  if (cat.includes("museum") || cat.includes("gallery") || cat.includes("historic")) {
+    return `${name}${area ? ` in ${area}` : ""} serves as a key cultural anchor for your journey.`;
+  }
+  if (cat.includes("restaurant") || cat.includes("food") || cat.includes("bakery")) {
+    return `${name}${area ? ` in ${area}` : ""} is a curated local food stop.`;
+  }
+  return `${name}${area ? ` in ${area}` : ""} is a curated stop for your travel itinerary.`;
+}
+
+function buildCityStandfirst(name, area) {
+  const cleanName = String(name || "").replace(/,\s*.*$/, "").trim();
+  const country = String(name || "").includes(",") ? name.split(",").slice(1).join(",").trim() : area;
+  if (country && country.toLowerCase() !== cleanName.toLowerCase()) {
+    return `${cleanName} is a major cultural and historic destination in ${country}, celebrated for its distinct architectural heritage, vibrant neighborhoods, and rich local life.`;
+  }
+  return `${cleanName} is your primary travel anchor for this journey, offering a compelling blend of historic landmarks, cultural attractions, and local neighborhood discovery.`;
+}
+
+function buildCityWhyStop(name, category, area) {
+  const cleanName = String(name || "").replace(/,\s*.*$/, "").trim();
+  return `${cleanName} serves as your primary destination hub, connecting key sightseeing highlights, historic quarters, and curated local spots.`;
+}
+
+function buildCityAtmosphere(name) {
+  return "Dynamic urban rhythm balanced with historic quarters, active cafe culture, and walkable avenues.";
 }
 
 function buildWhyStop(name, category, area, angle, routeContext) {

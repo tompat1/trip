@@ -134,6 +134,7 @@ export class AppState {
     this.aiConciergeOpen = false;
     this.aiConciergeHistory = [];
     this.aiConciergeLoading = false;
+    this.destinationSummaries = {};
 
     // ── Pub/sub ──────────────────────────────────────────────────────────────
     this.listeners = new Set();

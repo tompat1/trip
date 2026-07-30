@@ -717,28 +717,66 @@ function renderLocationEditorialIntroCard(trip) {
     coordinates: trip.center,
   }, { facts, travellerProfile: { focus: Array.from(state.userPreferences || []).join(", ") } });
 
+  const cachedBrief = state.destinationSummaries ? state.destinationSummaries[destination] : null;
+
+  if (!cachedBrief) {
+    import("../services/destinationService.js").then(({ fetchDynamicDestinationBrief }) => {
+      fetchDynamicDestinationBrief(destination).then((brief) => {
+        if (brief) {
+          state.destinationSummaries = state.destinationSummaries || {};
+          state.destinationSummaries[destination] = brief;
+          state.notify();
+        }
+      });
+    });
+  }
+
+  const standfirstText = cachedBrief?.standfirst || editorial.standfirst || `${destination} is your primary travel anchor for this journey.`;
+  const whyStopText = cachedBrief?.whyStop || editorial.whyStop || '';
+  const atmosphereText = cachedBrief?.description ? `Wikipedia overview: ${cachedBrief.description}` : editorial.atmosphere;
+
+  const imageUrl = cachedBrief?.heroImage || cachedBrief?.thumbnail || trip.heroImage || trip.coverImage || "";
   const outdoor = trip.outdoorIntel;
   const headsUp = Array.isArray(trip.headsUps) ? trip.headsUps[0] : null;
 
   return `
     <div class="location-editorial-card" style="background: var(--paper-card); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 20px; box-shadow: var(--shadow-sm); display: flex; flex-direction: column; gap: 12px; border-left: 4px solid var(--orange);">
+      
+      <!-- Visual Destination Cover Photo Banner -->
+      ${imageUrl ? `
+        <div class="destination-editorial-hero" style="height: 180px; width: 100%; border-radius: var(--radius-md); overflow: hidden; position: relative; background-size: cover; background-position: center; background-image: url('${escapeHtml(imageUrl)}'); margin-bottom: 2px; box-shadow: var(--shadow-sm);">
+          <div style="position: absolute; inset: 0; background: linear-gradient(180deg, transparent 35%, rgba(15, 27, 43, 0.8) 100%);"></div>
+          <div style="position: absolute; bottom: 12px; left: 16px; right: 16px; color: #ffffff; display: flex; justify-content: space-between; align-items: flex-end;">
+            <div>
+              <span class="voice-mono" style="font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #E9C76B;">DESTINATION HIGHLIGHT</span>
+              <h4 class="voice-serif" style="font-size: 1.25rem; font-weight: 700; margin: 2px 0 0 0; color: #ffffff;">${escapeHtml(destination)}</h4>
+            </div>
+            ${cachedBrief?.sourceUrl ? `
+              <a href="${escapeHtml(cachedBrief.sourceUrl)}" target="_blank" rel="noopener noreferrer" style="font-size: 0.7rem; color: #ffffff; background: rgba(0,0,0,0.55); padding: 4px 10px; border-radius: var(--radius-pill); backdrop-filter: blur(4px); text-decoration: none; font-weight: 600; border: 1px solid rgba(255,255,255,0.2);">Wikipedia ↗</a>
+            ` : ''}
+          </div>
+        </div>
+      ` : ''}
+
       <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 10px;">
         <div>
           <span class="voice-mono" style="font-size: 0.74rem; font-weight: 700; color: var(--orange); text-transform: uppercase; letter-spacing: 0.8px;">Destination Brief & Atmosphere</span>
           <h3 class="voice-serif" style="font-size: 1.35rem; font-weight: 700; color: var(--ink); margin: 2px 0 0 0;">${escapeHtml(destination)} Intro</h3>
         </div>
-        <span class="voice-mono" style="font-size: 0.74rem; font-weight: 700; color: var(--ink-muted); background: var(--paper-subtle); padding: 3px 8px; border-radius: var(--radius-pill); border: 1px solid var(--line-light);">
-          ${escapeHtml(trip.countryCode || 'EU')} · ${escapeHtml((trip.language || 'en').toUpperCase())}
-        </span>
+        <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px;">
+          <span class="voice-mono" style="font-size: 0.74rem; font-weight: 700; color: var(--ink-muted); background: var(--paper-subtle); padding: 3px 8px; border-radius: var(--radius-pill); border: 1px solid var(--line-light);">
+            ${escapeHtml(trip.countryCode || 'EU')} · ${escapeHtml((trip.language || 'en').toUpperCase())}
+          </span>
+        </div>
       </div>
 
-      <p style="font-size: 0.92rem; line-height: 1.5; color: var(--ink); margin: 0; font-weight: 500;">
-        ${escapeHtml(editorial.standfirst || `${destination} is your primary travel anchor for this journey.`)} ${escapeHtml(editorial.whyStop || '')}
+      <p style="font-size: 0.92rem; line-height: 1.55; color: var(--ink); margin: 0; font-weight: 500;">
+        ${escapeHtml(standfirstText)} ${escapeHtml(whyStopText)}
       </p>
 
-      ${editorial.atmosphere ? `
+      ${atmosphereText ? `
         <div style="font-size: 0.85rem; color: var(--ink-muted); line-height: 1.45; font-style: italic; background: var(--paper-subtle); padding: 10px 12px; border-radius: var(--radius-md);">
-          "${escapeHtml(editorial.atmosphere)}"
+          "${escapeHtml(atmosphereText)}"
         </div>
       ` : ''}
 
