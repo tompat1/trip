@@ -7,6 +7,7 @@ import { calculateFlightDistance, formatAirportLabel, getFlightRouteDisplay } fr
 import { getDestinationTransitGuide } from "../services/transitService.js";
 import { FLIGHT_TYPE_OPTIONS, getFlightRouteForTrip } from "../services/flightService.js";
 import { CONCERTS_DATABASE } from "../services/concertService.js";
+import { composeEditorialProfile, createVerifiedFactBundle } from "../enrichment/editorialComposer.js";
 
 const SUB_TABS = [
   { id: "overview", label: "Overview", icon: renderIcon("compass") },
@@ -692,6 +693,56 @@ function renderVerticalTimeline(trip) {
   `;
 }
 
+function renderLocationEditorialIntroCard(trip) {
+  const destination = trip.destination || "Destination";
+  const area = trip.destination ? trip.destination.split(",")[0] : destination;
+  const facts = createVerifiedFactBundle({
+    title: destination,
+    category: "City",
+    area,
+    coordinates: trip.center,
+  });
+  const editorial = composeEditorialProfile({
+    title: destination,
+    category: "City",
+    area,
+    coordinates: trip.center,
+  }, { facts, travellerProfile: { focus: Array.from(state.userPreferences || []).join(", ") } });
+
+  const outdoor = trip.outdoorIntel;
+  const headsUp = Array.isArray(trip.headsUps) ? trip.headsUps[0] : null;
+
+  return `
+    <div class="location-editorial-card" style="background: var(--paper-card); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 20px; box-shadow: var(--shadow-sm); display: flex; flex-direction: column; gap: 12px; border-left: 4px solid var(--orange);">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 10px;">
+        <div>
+          <span class="voice-mono" style="font-size: 0.74rem; font-weight: 700; color: var(--orange); text-transform: uppercase; letter-spacing: 0.8px;">Destination Brief & Atmosphere</span>
+          <h3 class="voice-serif" style="font-size: 1.35rem; font-weight: 700; color: var(--ink); margin: 2px 0 0 0;">${escapeHtml(destination)} Intro</h3>
+        </div>
+        <span class="voice-mono" style="font-size: 0.74rem; font-weight: 700; color: var(--ink-muted); background: var(--paper-subtle); padding: 3px 8px; border-radius: var(--radius-pill); border: 1px solid var(--line-light);">
+          ${escapeHtml(trip.countryCode || 'EU')} · ${escapeHtml((trip.language || 'en').toUpperCase())}
+        </span>
+      </div>
+
+      <p style="font-size: 0.92rem; line-height: 1.5; color: var(--ink); margin: 0; font-weight: 500;">
+        ${escapeHtml(editorial.standfirst || `${destination} is your primary travel anchor for this journey.`)} ${escapeHtml(editorial.whyStop || '')}
+      </p>
+
+      ${editorial.atmosphere ? `
+        <div style="font-size: 0.85rem; color: var(--ink-muted); line-height: 1.45; font-style: italic; background: var(--paper-subtle); padding: 10px 12px; border-radius: var(--radius-md);">
+          "${escapeHtml(editorial.atmosphere)}"
+        </div>
+      ` : ''}
+
+      <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 2px;">
+        ${outdoor?.terrainLabel ? `<span class="voice-mono" style="font-size: 0.74rem; background: var(--paper); border: 1px solid var(--line); padding: 3px 8px; border-radius: var(--radius-sm); color: var(--ink-muted);">🏞️ ${escapeHtml(outdoor.terrainLabel)}</span>` : ''}
+        ${outdoor?.coastal ? `<span class="voice-mono" style="font-size: 0.74rem; background: var(--paper); border: 1px solid var(--line); padding: 3px 8px; border-radius: var(--radius-sm); color: var(--blue);">🌊 Coastal Destination</span>` : ''}
+        ${headsUp ? `<span class="voice-mono" style="font-size: 0.74rem; background: rgba(210,104,43,0.1); border: 1px solid rgba(210,104,43,0.25); padding: 3px 8px; border-radius: var(--radius-sm); color: var(--orange);">💡 ${escapeHtml(headsUp.title || headsUp.text || 'Local guidance')}</span>` : ''}
+      </div>
+    </div>
+  `;
+}
+
 function renderOverviewSubTab(trip) {
   const checklist = state.checklists[trip.id] || trip.checklist || [];
   const completedCount = checklist.filter(i => i.completed).length;
@@ -703,6 +754,9 @@ function renderOverviewSubTab(trip) {
 
   return `
     <div class="overview-subtab-view" style="display: flex; flex-direction: column; gap: 20px;">
+      <!-- Dynamic Location Editorial Intro Card -->
+      ${renderLocationEditorialIntroCard(trip)}
+
       <!-- Destination Hero Banner with Brand Stamp Badge -->
       <div class="overview-hero-card" style="background: linear-gradient(135deg, var(--paper-card) 0%, var(--paper-subtle) 100%); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 20px; box-shadow: var(--shadow-sm); position: relative;">
         <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px;">
@@ -877,18 +931,22 @@ function renderExploreSubTab(trip) {
   const discoveryStatus = state.getTourismDiscoveryStatus ? state.getTourismDiscoveryStatus(trip.id) : { status: "idle" };
   const events = trip.calendarEvents || [];
 
+  const top10Pois = tourismPois.slice(0, 10);
+  const remainingPois = tourismPois.slice(10);
+
   return `
     <div class="explore-subtab-view">
       <div class="explore-header mb-md">
         <h2 class="voice-serif" style="font-size: 1.4rem; font-weight: 700; margin-bottom: 4px;">Explore ${escapeHtml(trip.destination)}</h2>
-        <p style="font-size: 0.85rem; color: var(--ink-muted);">Tourism POIs, hidden gems, and curated local recommendations for your trip</p>
+        <p style="font-size: 0.85rem; color: var(--ink-muted);">Top 10 Attractions, hidden gems, and local recommendations for your trip</p>
       </div>
 
       ${renderTourismStatus(discoveryStatus, tourismPois.length + hiddenGems.length + osmPlaces.length)}
 
-      ${tourismPois.length ? renderExploreSection("Top POIs", "Attractions, museums, monuments, architecture, and nature from OpenTripMap.", tourismPois, events) : ""}
+      ${top10Pois.length ? renderExploreSection("Top 10 Destination POIs", "Attractions, monuments, architecture, historic sites, and natural landmarks.", top10Pois, events) : ""}
       ${hiddenGems.length ? renderExploreSection("Hidden Gems", "Lower-noise interesting places around your destination.", hiddenGems, events) : ""}
-      ${osmPlaces.length ? renderExploreSection("OpenStreetMap Nearby", "Cafes, food, shops, toilets, water, parks, viewpoints, and tagged access details from OSM.", osmPlaces, events) : ""}
+      ${osmPlaces.length ? renderExploreSection("OpenStreetMap & Local Food", "Cafes, food, nightlife, shops, parks, viewpoints, and local spots from OSM & Foursquare.", osmPlaces, events) : ""}
+      ${remainingPois.length ? renderExploreSection("More Attractions", "Additional top rated places around the area.", remainingPois, events) : ""}
       ${renderExploreSection("Curated Picks", "Hand-picked starting points already in your trip.", curatedIdeas, events)}
     </div>
   `;
