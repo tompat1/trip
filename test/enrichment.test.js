@@ -1294,3 +1294,41 @@ test("enrichment service falls back to local editorial when Worker generation fa
   assert.match(editorial.whyStop, /cultural anchor/);
   assert.equal(editorial.editorialVersion, "deterministic-v1");
 });
+
+test("Worker Foursquare route reports missing key clearly", async () => {
+  const req = new Request("https://trip.rynell.org/api/foursquare/places?lat=48.8566&lng=2.3522&intent=food");
+  const res = await worker.fetch(req, {}, {});
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.equal(body.status, "not-configured");
+  assert.equal(body.providerStatus[0].provider, "foursquare");
+  assert.equal(body.providerStatus[0].status, "not-configured");
+});
+
+test("enrichment service discoverFoursquarePlaces queries worker endpoint", async () => {
+  let requestedUrl = "";
+  const service = createEnrichmentService({
+    apiBase: "https://trip.test",
+    fetchImpl: async (url) => {
+      requestedUrl = url;
+      return new Response(JSON.stringify({
+        status: "ok",
+        places: [{ id: "fsq-1", title: "Café de Flore", category: "Coffee", distanceMeters: 120 }],
+        providerStatus: [{ provider: "foursquare", status: "ok" }],
+      }), { status: 200, headers: { "Content-Type": "application/json" } });
+    },
+  });
+
+  const res = await service.discoverFoursquarePlaces({
+    coordinates: [48.8566, 2.3522],
+    radiusMeters: 1500,
+    intent: "coffee",
+    personas: ["☕ Coffee Hunter"],
+  });
+
+  assert.match(requestedUrl, /\/api\/foursquare\/places/);
+  assert.match(requestedUrl, /lat=48\.8566/);
+  assert.match(requestedUrl, /intent=coffee/);
+  assert.equal(res.status, "ok");
+  assert.equal(res.places[0].title, "Café de Flore");
+});

@@ -14,6 +14,7 @@ import {
   normalizeEmailInput,
   normalizeInviteMethodInput,
   normalizePersonaLabels,
+  readStoredTripCompanions,
   readStoredUserProfile,
   resolveFutureTripId,
   writeStoredTripCompanions,

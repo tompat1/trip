@@ -82,6 +82,7 @@ export const discoveryStateMixin = {
     const personas = Array.from(this.userPreferences || []);
     const personaContext = getPersonaDiscoveryContext(personas);
     const personaKey = personaContext.personas.join("|");
+    const existing = [...(trip.tourismPois || []), ...(trip.hiddenGems || []), ...(trip.osmPlaces || [])];
     const currentStatus = this.tourismDiscoveryStatus[tripId];
     const isPersonaMatched = (currentStatus?.personaKey || "") === personaKey;
     const DISCOVERY_MAX_AGE_MS = 1000 * 60 * 60 * 48; // 48 hours
