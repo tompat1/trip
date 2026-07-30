@@ -1,4 +1,30 @@
-import { icons } from "lucide";
+import {
+  AlertTriangle, ArrowLeft, ArrowRight, Bell, Bike,
+  BookOpen, Bookmark, Calendar, CalendarDays, Camera,
+  Check, ChevronDown, ChevronLeft, ChevronRight, CircleHelp,
+  Clock, CloudSun, Compass, Copy, FileText, Filter, Flag,
+  GripVertical, Heart, Home, Image, Info, LogIn, LogOut,
+  Mail, Map, MapPin, MessageCircle, Monitor, Moon, Navigation,
+  Pencil, Play, Plus, QrCode, Radio, RefreshCw, RotateCw,
+  Save, Search, Send, Share2, ShieldCheck, ShoppingBag,
+  Sparkles, Sun, Sunrise, Sunset, Trash2, User, UserPlus,
+  Video, X,
+} from "lucide";
+
+// Static icon map — only the icons used across the app.
+// Keyed by PascalCase Lucide name.
+const ICON_MAP = {
+  AlertTriangle, ArrowLeft, ArrowRight, Bell, Bike,
+  BookOpen, Bookmark, Calendar, CalendarDays, Camera,
+  Check, ChevronDown, ChevronLeft, ChevronRight, CircleHelp,
+  Clock, CloudSun, Compass, Copy, FileText, Filter, Flag,
+  GripVertical, Heart, Home, Image, Info, LogIn, LogOut,
+  Mail, Map, MapPin, MessageCircle, Monitor, Moon, Navigation,
+  Pencil, Play, Plus, QrCode, Radio, RefreshCw, RotateCw,
+  Save, Search, Send, Share2, ShieldCheck, ShoppingBag,
+  Sparkles, Sun, Sunrise, Sunset, Trash2, User, UserPlus,
+  Video, X,
+};
 
 // Custom alias mapping for camelCase, shorthands, and legacy keys
 const ALIASES = {
@@ -25,7 +51,19 @@ const ALIASES = {
   shoppingBag: "ShoppingBag",
   chevronRight: "ChevronRight",
   chevronLeft: "ChevronLeft",
-  chevronDown: "ChevronDown"
+  chevronDown: "ChevronDown",
+  circleHelp: "CircleHelp",
+  alertTriangle: "AlertTriangle",
+  arrowLeft: "ArrowLeft",
+  arrowRight: "ArrowRight",
+  gripVertical: "GripVertical",
+  messageCircle: "MessageCircle",
+  shieldCheck: "ShieldCheck",
+  logIn: "LogIn",
+  logOut: "LogOut",
+  "log-in": "LogIn",
+  "log-out": "LogOut",
+  qrCode: "QrCode",
 };
 
 function nodeToSvg(children, customClass = "") {
@@ -50,18 +88,18 @@ function nodeToSvg(children, customClass = "") {
 export function renderIcon(name, customClass = "") {
   if (!name) return "";
 
-  // 1. Direct lookup in Lucide icons
-  let iconNode = icons[name];
+  // 1. Direct lookup in static map
+  let iconNode = ICON_MAP[name];
 
   // 2. Check alias map
   if (!iconNode && ALIASES[name]) {
-    iconNode = icons[ALIASES[name]];
+    iconNode = ICON_MAP[ALIASES[name]];
   }
 
   // 3. Try PascalCase (e.g. "refreshCw" -> "RefreshCw")
   if (!iconNode) {
     const pascalName = name.charAt(0).toUpperCase() + name.slice(1);
-    iconNode = icons[pascalName];
+    iconNode = ICON_MAP[pascalName];
   }
 
   // 4. Try kebab to PascalCase (e.g. "refresh-cw" -> "RefreshCw")
@@ -70,14 +108,14 @@ export function renderIcon(name, customClass = "") {
       .split("-")
       .map((p) => p.charAt(0).toUpperCase() + p.slice(1))
       .join("");
-    iconNode = icons[pascalKebab];
+    iconNode = ICON_MAP[pascalKebab];
   }
 
-  // If found in Lucide, render SVG string
+  // If found, render SVG string
   if (iconNode) {
     return nodeToSvg(iconNode, customClass);
   }
 
-  // Clean vector fallback (Sparkles) if icon name is unknown
-  return nodeToSvg(icons.Sparkles || icons.Circle, customClass);
+  // Sparkles fallback if icon name is unknown
+  return nodeToSvg(ICON_MAP.Sparkles, customClass);
 }
