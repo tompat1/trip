@@ -8,6 +8,7 @@ import ribbonRemember from "../assets/trip_badge_clean_ribbon_rmbr.webp";
 
 export function renderHeader() {
   const isLanding = state.activeView === "landing";
+  const isSignedIn = ["admin", "traveler"].includes(state.userSession?.role);
 
   if (isLanding) {
     return `
@@ -17,10 +18,17 @@ export function renderHeader() {
         </div>
         <div class="top-nav__actions">
           ${renderMobileThemeSwitch()}
-          <button class="btn btn--primary btn--sm landing-login-btn" data-action="open-auth-panel" data-auth-mode="login">
-            <span>Login</span>
-            ${renderIcon("arrowRight")}
-          </button>
+          ${isSignedIn ? `
+            <button class="btn btn--primary btn--sm landing-login-btn" data-action="go-app">
+              <span>Open TRIP</span>
+              ${renderIcon("arrowRight")}
+            </button>
+          ` : `
+            <button class="btn btn--primary btn--sm landing-login-btn" data-action="open-auth-panel" data-auth-mode="login">
+              <span>Login</span>
+              ${renderIcon("arrowRight")}
+            </button>
+          `}
         </div>
       </header>
     `;
@@ -34,7 +42,6 @@ export function renderHeader() {
   const isDoneTrip = dateStatus.state === "done";
   const tripStage = getTripStage(dateStatus);
   const ribbon = getTripRibbon(tripStage);
-  const isSignedIn = ["admin", "traveler"].includes(state.userSession?.role);
 
   return `
     <header class="app-header">
