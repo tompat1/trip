@@ -9,7 +9,7 @@ import { enrichmentService } from "./enrichment/enrichmentService.js";
 import { buildJournalTemplateStory, getRecommendedTemplateMomentIds } from "./app/journalController.js";
 import { bootApp, flashPageLoader, isAppBooted, renderTripLoadingPage, withPageLoader } from "./app/loadingController.js";
 import { initMapsForView, resolveTripCenter } from "./app/mapController.js";
-import { buildGroupedMomentTitle, createMediaGroup, enrichCapturedMediaFile, readFileAsDataUrl, summarizeMediaGroup } from "./app/mediaCaptureController.js";
+import { handleQuickCaptureFiles } from "./app/mediaCaptureController.js";
 import { handleDockNavigation, handleRouteAction } from "./app/navigationController.js";
 import { renderAppShell } from "./app/renderController.js";
 import "./styles.css";
@@ -1267,98 +1267,7 @@ document.addEventListener("change", async (e) => {
     state.setProfileCompanionTrip(e.target.value || state.activeTripId);
   }
   if (e.target.id === "quick-capture-file-input" && e.target.files && e.target.files[0]) {
-    const files = Array.from(e.target.files).filter((file) => /^(image|video)\//.test(file.type || ""));
-    if (!files.length) return;
-
-    const receiverTripId = state.quickCaptureTripId || state.activeTripId;
-    const receiverTrip = state.getAllTrips().find((trip) => trip.id === receiverTripId) || state.activeTrip;
-    const group = createMediaGroup(files, receiverTrip);
-    const savedMoments = [];
-
-    for (let index = 0; index < files.length; index += 1) {
-      const file = files[index];
-      const selectedType = file.type.startsWith("video") ? "video" : "photo";
-      const progressLabel = files.length > 1 ? `${file.name} (${index + 1}/${files.length})` : file.name;
-      const baseProgress = Math.max(8, Math.round((index / files.length) * 92));
-
-      state.setQuickCaptureUpload({
-        status: "reading",
-        progress: baseProgress,
-        fileName: progressLabel,
-        type: selectedType,
-      });
-
-      try {
-        const dataUrl = await readFileAsDataUrl(file, (ratio) => {
-          const progress = Math.min(92, Math.max(8, Math.round(((index + ratio) / files.length) * 92)));
-          state.setQuickCaptureUpload({
-            status: "reading",
-            progress,
-            fileName: progressLabel,
-            type: selectedType,
-          });
-        });
-
-        state.setQuickCaptureUpload({
-          status: "saving",
-          progress: Math.min(98, Math.max(10, Math.round(((index + 0.96) / files.length) * 100))),
-          fileName: progressLabel,
-          type: selectedType,
-        });
-
-        const enrichment = selectedType === "photo"
-          ? await enrichCapturedMediaFile(file, receiverTrip).catch(() => ({ tags: ["Needs place tag"], geoSource: "manual-needed" }))
-          : { tags: ["Video"], geoSource: "video" };
-
-        const savedMoment = await state.addMoment({
-          tripId: receiverTripId,
-          groupId: group.groupId,
-          groupTitle: group.groupTitle,
-          groupCapturedAt: group.capturedAt,
-          groupFileCount: group.fileCount,
-          title: buildGroupedMomentTitle(file, selectedType, index, files.length, group),
-          text: file.name,
-          type: selectedType,
-          media_url: dataUrl,
-          ...enrichment
-        });
-        savedMoments.push(savedMoment);
-      } catch (error) {
-        state.setQuickCaptureUpload({
-          status: "error",
-          progress: 100,
-          fileName: file.name,
-          type: selectedType,
-        });
-        showToast(`Could not read ${file.name}.`);
-      }
-    }
-
-    if (savedMoments.length) {
-      const groupSummary = summarizeMediaGroup(savedMoments, receiverTrip);
-      const resolvedGroupTitle = groupSummary.groupPlaceTitle
-        ? `${groupSummary.groupPlaceTitle} media`
-        : `${groupSummary.groupGeoLabel || receiverTrip.destination} media`;
-
-      savedMoments.forEach((moment) => {
-        state.updateMoment(moment.id, {
-          ...groupSummary,
-          groupTitle: files.length > 1 ? resolvedGroupTitle : moment.groupTitle,
-        });
-      });
-
-      state.setQuickCaptureUpload({
-        status: "complete",
-        progress: 100,
-        fileName: files.length > 1 ? `${savedMoments.length} media saved` : files[0].name,
-        type: files.length > 1 ? "batch" : savedMoments[0].type,
-      });
-      showToast(files.length > 1
-        ? `${savedMoments.length} media saved to ${receiverTrip.destination} Journal.`
-        : `${files[0].name} saved to ${receiverTrip.destination} Journal.`);
-      setTimeout(() => state.toggleQuickCapture(false), 650);
-    }
-
+    await handleQuickCaptureFiles(e.target.files, { showToast });
     e.target.value = "";
   }
 });
