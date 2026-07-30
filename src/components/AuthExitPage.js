@@ -58,6 +58,9 @@ export function renderAuthExitPage() {
               <input name="password" type="password" autocomplete="${isSignup ? "new-password" : "current-password"}" minlength="${isSignup ? "8" : "1"}" required />
             </label>
           `}
+          <p class="auth-legal-notice" style="font-size: 0.76rem; color: var(--ink-muted); text-align: center; margin: 10px 0 14px 0; line-height: 1.45;">
+            By continuing, you agree to our <a href="#" data-action="open-terms" style="color: var(--orange); text-decoration: underline;">Terms of Use</a> and <a href="#" data-action="open-privacy" style="color: var(--orange); text-decoration: underline;">Privacy Policy</a>.
+          </p>
           <button class="btn btn--primary" type="submit">
             ${renderIcon(isSignup ? "userPlus" : isForgot ? "mail" : "logIn")}
             ${isSignup ? "Create account" : isForgot ? "Send reset link" : "Sign in"}

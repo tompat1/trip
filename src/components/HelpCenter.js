@@ -33,6 +33,16 @@ const FAQ_ITEMS = [
     answer: "Open the invite link, choose Create Account, then enter name, email and password. The trip appears immediately after account creation.",
     tags: ["account", "invite", "guest", "login"],
   },
+  {
+    question: "What are TRIP's Terms of Use?",
+    answer: "By creating an account, inviting companions, or syncing trip itineraries on trip.rynell.org, you agree to keep your account credentials secure, follow local destination laws, and respect intellectual property rights of uploaded media.",
+    tags: ["terms", "tos", "legal", "terms of use"],
+  },
+  {
+    question: "How does TRIP protect my privacy?",
+    answer: "TRIP stores user profiles, trip bookmarks, and travel moments securely. Location coordinates and API credentials are kept private and never sold to third parties.",
+    tags: ["privacy", "policy", "gdpr", "data", "privacy policy"],
+  },
 ];
 
 const HELP_ACTIONS = [

@@ -73,6 +73,9 @@ function renderInviteAcceptance() {
           <input name="password" type="password" autocomplete="new-password" placeholder="Create password" minlength="8" required />
           <button class="btn btn--primary btn--sm" type="submit">Create Account</button>
           <button class="btn btn--ghost btn--sm" data-action="show-invite-options" type="button">Back</button>
+          <p class="auth-legal-notice" style="font-size: 0.72rem; color: var(--ink-muted); text-align: center; margin: 6px 0 0 0; width: 100%;">
+            By continuing, you agree to our <a href="#" data-action="open-terms" style="color: var(--orange); text-decoration: underline;">Terms of Use</a> and <a href="#" data-action="open-privacy" style="color: var(--orange); text-decoration: underline;">Privacy Policy</a>.
+          </p>
         </form>
       ` : `
         <div class="trip-invite-acceptance__actions">
