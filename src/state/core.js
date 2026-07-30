@@ -129,6 +129,8 @@ export class AppState {
     this.premiumOpen = false;
     this.tripCreateOpen = false;
     this.activePoiDetail = null;
+    this.termsOpen = false;
+    this.privacyOpen = false;
 
     // ── Pub/sub ──────────────────────────────────────────────────────────────
     this.listeners = new Set();

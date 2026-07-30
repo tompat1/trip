@@ -51,11 +51,33 @@ export const uiStateMixin = {
     this.notify();
   },
 
-  // ── Help center ───────────────────────────────────────────────────────────
+  // ── Help center & Legal ───────────────────────────────────────────────────
 
   openHelp(query = "") {
     this.helpOpen = true;
     if (query !== undefined) this.helpQuery = String(query || "");
+    this.notify();
+  },
+
+  openTerms() {
+    this.termsOpen = true;
+    this.privacyOpen = false;
+    this.notify();
+  },
+
+  closeTerms() {
+    this.termsOpen = false;
+    this.notify();
+  },
+
+  openPrivacy() {
+    this.privacyOpen = true;
+    this.termsOpen = false;
+    this.notify();
+  },
+
+  closePrivacy() {
+    this.privacyOpen = false;
     this.notify();
   },
 

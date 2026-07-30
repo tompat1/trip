@@ -451,10 +451,16 @@ document.addEventListener("click", async (e) => {
       state.closeTemplatePicker();
     }
     else if (action === "open-terms") {
-      state.openHelp("terms");
+      state.openTerms();
+    }
+    else if (action === "close-terms") {
+      state.closeTerms();
     }
     else if (action === "open-privacy") {
-      state.openHelp("privacy");
+      state.openPrivacy();
+    }
+    else if (action === "close-privacy") {
+      state.closePrivacy();
     }
     else if (action === "toggle-template-picker-moment") {
       state.toggleTemplatePickerMoment(target.dataset.momentId || "");
