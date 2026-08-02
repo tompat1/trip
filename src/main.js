@@ -7,7 +7,7 @@ import { scheduleBackgroundEnrichmentScan } from "./app/backgroundEnrichmentCont
 import { registerCalendarDragController } from "./app/calendarDragController.js";
 import { buildJournalTemplateStory, getRecommendedTemplateMomentIds } from "./app/journalController.js";
 import { bootApp, flashPageLoader, isAppBooted, renderTripLoadingPage, withPageLoader } from "./app/loadingController.js";
-import { initMapsForView, resolveTripCenter } from "./app/mapController.js";
+import { initMapsForView, resolveTripCenter, selectPoiOnOverviewMap } from "./app/mapController.js";
 import { handleQuickCaptureFiles } from "./app/mediaCaptureController.js";
 import { handleDockNavigation, handleRouteAction } from "./app/navigationController.js";
 import { renderAppShell } from "./app/renderController.js";
@@ -642,6 +642,39 @@ document.addEventListener("click", async (e) => {
     }
     else if (action === "clear-search-query") {
       state.setSearchQuery("");
+    }
+    else if (action === "add-poi-event") {
+      const spotName = target.dataset.spotName || "Attraction";
+      const trip = state.activeTrip;
+      const events = trip ? (trip.calendarEvents || []) : [];
+      const isAdded = events.some(e => (e.title || "").toLowerCase().includes(spotName.toLowerCase()) || spotName.toLowerCase().includes((e.title || "").toLowerCase()));
+      if (isAdded) {
+        showToast(`"${spotName}" is already on your itinerary calendar!`);
+      } else {
+        state.addCalendarEvent(state.activeTripId, {
+          title: spotName,
+          location: spotName,
+          dayIndex: 0,
+          startTime: "10:00",
+          endTime: "12:00",
+          colorScheme: "peach"
+        });
+        showToast(`✓ Added "${spotName}" to Day 1 of your trip itinerary!`);
+      }
+    }
+    else if (action === "select-top-poi") {
+      if (e.target.closest("button[data-action='add-poi-event'], button[data-action='toggle-bookmark']")) return;
+      const spotIdx = parseInt(target.dataset.spotIdx, 10);
+      const spotName = target.dataset.spotName || "";
+      selectPoiOnOverviewMap(spotIdx, spotName);
+    }
+    else if (action === "open-directions") {
+      const spotName = target.dataset.spotName || "Louvre Museum";
+      const dest = state.activeTrip?.destination || "Paris";
+      const query = encodeURIComponent(`${spotName} ${dest}`);
+      const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${query}`;
+      window.open(mapsUrl, "_blank");
+      showToast(`🧭 Opening directions for "${spotName}" in Maps...`);
     }
     else if (action === "locate-user" || action === "toggle-map-view" || action === "toggle-full-map") {
       flashPageLoader("Opening live");

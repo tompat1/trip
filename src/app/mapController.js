@@ -1,6 +1,9 @@
-import * as L from "leaflet";
-import "leaflet/dist/leaflet.css";
 import { state } from "../state.js";
+
+let L = null;
+if (typeof window !== "undefined") {
+  import("leaflet").then(m => { L = m.default || m; });
+}
 
 const activeMaps = new Map();
 
@@ -109,6 +112,7 @@ export function resolveTripCenter(destination = "") {
 }
 
 function initHomeMap(trip) {
+  if (typeof window === "undefined" || !L) return;
   const container = document.getElementById("home-map-container");
   if (!container) return;
 
@@ -124,6 +128,7 @@ function initHomeMap(trip) {
 }
 
 function initSearchMap(trip) {
+  if (typeof window === "undefined" || !L) return;
   const container = document.getElementById("search-map-container");
   if (!container) return;
 
@@ -143,6 +148,7 @@ function initSearchMap(trip) {
 }
 
 function initLiveMap(trip) {
+  if (typeof window === "undefined" || !L) return;
   const container = document.getElementById("live-map-container");
   if (!container) return;
 
@@ -152,6 +158,7 @@ function initLiveMap(trip) {
 }
 
 function initPlanMap(trip) {
+  if (typeof window === "undefined" || !L) return;
   const container = document.getElementById("plan-map-container");
   if (!container) return;
 
@@ -320,6 +327,7 @@ export function selectPoiOnOverviewMap(spotIdx, spotName = "") {
 }
 
 function initPoiOverviewMap(trip) {
+  if (typeof window === "undefined" || !L) return;
   const container = document.getElementById("poi-map-container");
   if (!container) return;
 

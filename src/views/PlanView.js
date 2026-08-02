@@ -781,92 +781,35 @@ function getNeighborhoodsForDestination(destinationName = "") {
 }
 
 function getTopAttractionsForTrip(trip) {
-  const custom = (trip.explorePlaces || trip.tourismPois || []).filter(p => p.image || p.photoUrl);
-  if (custom.length >= 5) return custom.slice(0, 10);
+  const livePlaces = [
+    ...(trip.explorePlaces || []),
+    ...(trip.tourismPois || []),
+    ...(trip.hiddenGems || []),
+    ...(trip.osmPlaces || []),
+    ...(trip.ideas || [])
+  ].filter((p, idx, arr) => p && (p.title || p.name) && arr.findIndex(x => (x.title || x.name) === (p.title || p.name)) === idx);
 
-  const destLower = (trip.destination || "").toLowerCase();
-
-  if (destLower.includes("london")) {
-    return [
-      { id: "l1", title: "Big Ben & Palace of Westminster", category: "Historic Landmark", rating: 4.9, image: "https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?auto=format&fit=crop&w=400&q=80", geoLabel: "Westminster" },
-      { id: "l2", title: "Tower Bridge & Tower of London", category: "Castle & Bridge", rating: 4.8, image: "https://images.unsplash.com/photo-1505761671935-60b3a7427bad?auto=format&fit=crop&w=400&q=80", geoLabel: "Tower Hill" },
-      { id: "l3", title: "British Museum", category: "World Museum", rating: 4.9, image: "https://images.unsplash.com/photo-1565008447742-97f6f38c985c?auto=format&fit=crop&w=400&q=80", geoLabel: "Bloomsbury" },
-      { id: "l4", title: "Tate Modern & Millennium Bridge", category: "Modern Art", rating: 4.8, image: "https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?auto=format&fit=crop&w=400&q=80", geoLabel: "Bankside" },
-      { id: "l5", title: "Borough Market", category: "Food Market", rating: 4.8, image: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=400&q=80", geoLabel: "Southwark" },
-      { id: "l6", title: "Hyde Park & Kensington Gardens", category: "Royal Park", rating: 4.7, image: "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=400&q=80", geoLabel: "Mayfair" }
-    ];
+  if (livePlaces.length > 0) {
+    return livePlaces.slice(0, 10).map((spot, idx) => ({
+      id: spot.id || `live-poi-${idx}`,
+      title: spot.title || spot.name,
+      category: spot.category || spot.tag || spot.kind || "Attraction",
+      rating: spot.rating || 4.8,
+      image: spot.image || spot.photoUrl || spot.heroImage || "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=400&q=80",
+      geoLabel: spot.geoLabel || spot.subtitle || (spot.dist ? `${(spot.dist / 1000).toFixed(1)} km away` : (trip.destination || "Local")),
+      lat: spot.lat || spot.latitude,
+      lng: spot.lng || spot.longitude
+    }));
   }
 
-  if (destLower.includes("tokyo")) {
-    return [
-      { id: "t1", title: "Shibuya Crossing & Hachiko", category: "Iconic Intersection", rating: 4.9, image: "https://images.unsplash.com/photo-1503899036084-c55cdd92da26?auto=format&fit=crop&w=400&q=80", geoLabel: "Shibuya" },
-      { id: "t2", title: "Senso-ji Temple", category: "Buddhist Shrine", rating: 4.8, image: "https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?auto=format&fit=crop&w=400&q=80", geoLabel: "Asakusa" },
-      { id: "t3", title: "Tokyo Skytree", category: "Observation Tower", rating: 4.8, image: "https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?auto=format&fit=crop&w=400&q=80", geoLabel: "Sumida" },
-      { id: "t4", title: "Meiji Shrine & Yoyogi Park", category: "Shinto Shrine", rating: 4.9, image: "https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?auto=format&fit=crop&w=400&q=80", geoLabel: "Harajuku" },
-      { id: "t5", title: "Tsukiji Outer Market", category: "Seafood Market", rating: 4.7, image: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=400&q=80", geoLabel: "Chuo" }
-    ];
-  }
-
-  if (destLower.includes("new york") || destLower.includes("nyc")) {
-    return [
-      { id: "ny1", title: "Central Park", category: "Urban Park", rating: 4.9, image: "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=400&q=80", geoLabel: "Manhattan" },
-      { id: "ny2", title: "Statue of Liberty & Ellis Island", category: "National Monument", rating: 4.8, image: "https://images.unsplash.com/photo-1500673922987-e212871fec22?auto=format&fit=crop&w=400&q=80", geoLabel: "NY Harbor" },
-      { id: "ny3", title: "Metropolitan Museum of Art", category: "Art Museum", rating: 4.9, image: "https://images.unsplash.com/photo-1565008447742-97f6f38c985c?auto=format&fit=crop&w=400&q=80", geoLabel: "Upper East Side" },
-      { id: "ny4", title: "Brooklyn Bridge Walk", category: "Historic Bridge", rating: 4.8, image: "https://images.unsplash.com/photo-1505761671935-60b3a7427bad?auto=format&fit=crop&w=400&q=80", geoLabel: "DUMBO" },
-      { id: "ny5", title: "The High Line & Chelsea Market", category: "Elevated Park", rating: 4.8, image: "https://images.unsplash.com/photo-1518391846015-55a9cc003b25?auto=format&fit=crop&w=400&q=80", geoLabel: "Meatpacking" }
-    ];
-  }
-
-  if (destLower.includes("stockholm")) {
-    return [
-      { id: "s1", title: "Gamla Stan (Old Town)", category: "Historic Quarter", rating: 4.9, image: "https://images.unsplash.com/photo-1509299349698-dd22323b5963?auto=format&fit=crop&w=400&q=80", geoLabel: "Gamla Stan" },
-      { id: "s2", title: "Vasa Museum", category: "Maritime Warship", rating: 4.9, image: "https://images.unsplash.com/photo-1565008447742-97f6f38c985c?auto=format&fit=crop&w=400&q=80", geoLabel: "Djurgården" },
-      { id: "s3", title: "Stockholm Palace & Royal Armory", category: "Royal Residence", rating: 4.8, image: "https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?auto=format&fit=crop&w=400&q=80", geoLabel: "Gamla Stan" },
-      { id: "s4", title: "Fotografiska Museum", category: "Photography Center", rating: 4.8, image: "https://images.unsplash.com/photo-1597910037310-7dd8ddb93e24?auto=format&fit=crop&w=400&q=80", geoLabel: "Södermalm" }
-    ];
-  }
-
-  if (destLower.includes("rome")) {
-    return [
-      { id: "r1", title: "Colosseum & Roman Forum", category: "Ancient Amphitheater", rating: 4.9, image: "https://images.unsplash.com/photo-1552832230-c0197dd311b5?auto=format&fit=crop&w=400&q=80", geoLabel: "Piazza del Colosseo" },
-      { id: "r2", title: "Pantheon", category: "Roman Temple", rating: 4.9, image: "https://images.unsplash.com/photo-1515542622106-78bda8ba0e5b?auto=format&fit=crop&w=400&q=80", geoLabel: "Piazza della Rotonda" },
-      { id: "r3", title: "Trevi Fountain", category: "Baroque Fountain", rating: 4.8, image: "https://images.unsplash.com/photo-1531572753322-ad063cecc140?auto=format&fit=crop&w=400&q=80", geoLabel: "Trevi District" },
-      { id: "r4", title: "Vatican Museums & Sistine Chapel", category: "Papal Art", rating: 4.9, image: "https://images.unsplash.com/photo-1565008447742-97f6f38c985c?auto=format&fit=crop&w=400&q=80", geoLabel: "Vatican City" }
-    ];
-  }
-
-  if (destLower.includes("barcelona")) {
-    return [
-      { id: "b1", title: "Sagrada Família", category: "Gaudí Basilica", rating: 4.9, image: "https://images.unsplash.com/photo-1583778176476-4a8b02a64c01?auto=format&fit=crop&w=400&q=80", geoLabel: "Eixample" },
-      { id: "b2", title: "Park Güell", category: "Modernist Park", rating: 4.8, image: "https://images.unsplash.com/photo-1539037116277-4db20889f2d4?auto=format&fit=crop&w=400&q=80", geoLabel: "Gràcia" },
-      { id: "b3", title: "Gothic Quarter & Cathedral", category: "Historic District", rating: 4.8, image: "https://images.unsplash.com/photo-1509299349698-dd22323b5963?auto=format&fit=crop&w=400&q=80", geoLabel: "Barri Gòtic" }
-    ];
-  }
-
-  if (destLower.includes("paris")) {
-    return [
-      { id: "p1", title: "Louvre Museum", category: "Museum", rating: 4.8, image: "https://images.unsplash.com/photo-1499856871958-5b9627545d1a?auto=format&fit=crop&w=400&q=80", geoLabel: "1st Arrondissement" },
-      { id: "p2", title: "Sainte-Chapelle", category: "Historic Landmark", rating: 4.9, image: "https://images.unsplash.com/photo-1560969184-10fe8719e047?auto=format&fit=crop&w=400&q=80", geoLabel: "Île de la Cité" },
-      { id: "p3", title: "Eiffel Tower", category: "Monument", rating: 4.7, image: "https://images.unsplash.com/photo-1511739001486-6bfe10ce785f?auto=format&fit=crop&w=400&q=80", geoLabel: "7th Arrondissement" },
-      { id: "p4", title: "Musée d'Orsay", category: "Art Gallery", rating: 4.8, image: "https://images.unsplash.com/photo-1597910037310-7dd8ddb93e24?auto=format&fit=crop&w=400&q=80", geoLabel: "7th Arrondissement" }
-    ];
-  }
-
-  if (destLower.includes("crete")) {
-    return [
-      { id: "c1", title: "Palace of Knossos", category: "Minoan Palace", rating: 4.8, image: "https://images.unsplash.com/photo-1570077188670-e3a8d69ac5ff?auto=format&fit=crop&w=400&q=80", geoLabel: "Heraklion" },
-      { id: "c2", title: "Chania Venetian Harbor", category: "Historic Port", rating: 4.9, image: "https://images.unsplash.com/photo-1533105079780-92b9be482077?auto=format&fit=crop&w=400&q=80", geoLabel: "Chania" },
-      { id: "c3", title: "Samaria Gorge", category: "National Park", rating: 4.9, image: "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=400&q=80", geoLabel: "White Mountains" }
-    ];
-  }
-
-  const cleanCity = trip.destination ? trip.destination.split(",")[0].trim() : "City";
+  const cleanCity = trip.destination ? trip.destination.split(",")[0].trim() : "Local";
 
   return [
-    { id: "g1", title: `${cleanCity} Old Town & Historic Center`, category: "Historic Quarter", rating: 4.8, image: "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=400&q=80", geoLabel: `${cleanCity} Center` },
-    { id: "g2", title: `${cleanCity} Central Market & Gastronomy`, category: "Local Gastronomy", rating: 4.7, image: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=400&q=80", geoLabel: "Market Square" },
-    { id: "g3", title: `${cleanCity} National Museum & Art Gallery`, category: "Culture & Art", rating: 4.8, image: "https://images.unsplash.com/photo-1499856871958-5b9627545d1a?auto=format&fit=crop&w=400&q=80", geoLabel: "Museum District" },
-    { id: "g4", title: `${cleanCity} Waterfront & Promenade`, category: "Scenic View", rating: 4.9, image: "https://images.unsplash.com/photo-1511739001486-6bfe10ce785f?auto=format&fit=crop&w=400&q=80", geoLabel: "Harbor Front" }
+    { id: "g1", title: `${cleanCity} Central Landmark & Historic Center`, category: "Historic Landmark", rating: 4.9, image: "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=400&q=80", geoLabel: `${cleanCity} Center` },
+    { id: "g2", title: `${cleanCity} Old Town Quarter & Architecture`, category: "Historic Quarter", rating: 4.8, image: "https://images.unsplash.com/photo-1499856871958-5b9627545d1a?auto=format&fit=crop&w=400&q=80", geoLabel: "Historic District" },
+    { id: "g3", title: `${cleanCity} Central Food Market & Gastronomy`, category: "Local Gastronomy", rating: 4.7, image: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=400&q=80", geoLabel: "Market Square" },
+    { id: "g4", title: `${cleanCity} Museum of Art & Culture`, category: "Culture & Art", rating: 4.8, image: "https://images.unsplash.com/photo-1565008447742-97f6f38c985c?auto=format&fit=crop&w=400&q=80", geoLabel: "Museum Quarter" },
+    { id: "g5", title: `${cleanCity} Waterfront & Promenade Vistas`, category: "Scenic View", rating: 4.9, image: "https://images.unsplash.com/photo-1511739001486-6bfe10ce785f?auto=format&fit=crop&w=400&q=80", geoLabel: "Harbor Front" }
   ];
 }
 

@@ -6,6 +6,8 @@ import { tripsData } from "../data/tripsData.js";
 import { enrichmentService } from "../enrichment/enrichmentService.js";
 import { formatAirportLabel, getAirportByIata } from "../services/airportService.js";
 import { normalizeFlightType, searchFlightsForTrip } from "../services/flightService.js";
+import { fetchDynamicDestinationBrief } from "../services/destinationService.js";
+import { resolveTripCenter } from "../app/mapController.js";
 import { getCountryFlagEmoji } from "../utils/countryEmoji.js";
 import {
   buildTripFlightRoute,
@@ -107,6 +109,8 @@ export const tripStateMixin = {
     const flag =
       tripInput.flag && tripInput.flag !== "🗺️" ? tripInput.flag : getCountryFlagEmoji(destination);
 
+    const resolvedCenter = tripInput.center || resolveTripCenter(destination);
+
     const newTrip = {
       id,
       destination,
@@ -117,7 +121,7 @@ export const tripStateMixin = {
       status: "Upcoming",
       statusText: "Trip created",
       tripMode: true,
-      center: tripInput.center || [48.8566, 2.3522],
+      center: resolvedCenter,
       zoom: 13,
       flightRoute: {
         originIata: tripInput.originAirport?.iata || "",
@@ -157,12 +161,30 @@ export const tripStateMixin = {
     this.activeTripId = id;
     this.tripCreateOpen = false;
     this.activeView = "plan";
-    this.planSubTab = "plan";
-    this.planViewMode = getDefaultPlanViewMode();
+    this.planSubTab = "overview";
     this.notify();
-    this.refreshTourismDiscovery(id);
-    this.refreshEventDiscovery(id);
-    this.refreshTripIntelligence(id);
+
+    // Fetch dynamic Wikipedia destination brief & hero image immediately
+    fetchDynamicDestinationBrief(destination).then((brief) => {
+      if (brief) {
+        this.destinationSummaries = this.destinationSummaries || {};
+        this.destinationSummaries[destination] = brief;
+        if (brief.heroImage) {
+          newTrip.heroImage = brief.heroImage;
+          if (newTrip.upcomingActivity) newTrip.upcomingActivity.image = brief.heroImage;
+        }
+        this.notify();
+      }
+    }).catch(() => {});
+
+    // Trigger live POI discovery immediately for this trip
+    Promise.allSettled([
+      this.refreshTourismDiscovery(id, { force: true }),
+      this.refreshEventDiscovery(id, { force: true }),
+      this.refreshTripIntelligence(id, { force: true }),
+    ]).then(() => {
+      this.notify();
+    });
 
     try {
       await enrichmentService.createTrip({
