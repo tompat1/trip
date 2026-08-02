@@ -1318,6 +1318,9 @@ function renderOverviewSubTab(trip) {
       <!-- Dynamic Location Editorial Intro Card -->
       ${renderLocationEditorialIntroCard(trip)}
 
+      <!-- TRIP AI Concierge Banner -->
+      ${renderPlanAiConciergeCard(trip)}
+
       <!-- Destination Hero Banner with Brand Stamp Badge -->
       <div class="overview-hero-card" style="background: linear-gradient(135deg, var(--paper-card) 0%, var(--paper-subtle) 100%); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 20px; box-shadow: var(--shadow-sm); position: relative;">
         <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px;">
@@ -1866,4 +1869,26 @@ function renderFlightOffers(offers = []) {
       <p class="flight-offer-card__hint">${escapeHtml(offer.bookingHint || offer.source || "")}</p>
     </article>
   `).join("");
+}
+
+function renderPlanAiConciergeCard(trip) {
+  const cityName = (trip.destination || "Destination").split(",")[0].trim();
+
+  return `
+    <div class="plan-ai-concierge-banner" style="background: linear-gradient(135deg, rgba(217, 74, 58, 0.08) 0%, rgba(56, 92, 115, 0.12) 100%); border: 1px solid rgba(217, 74, 58, 0.22); border-radius: var(--radius-lg); padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;">
+      <div style="flex: 1; min-width: 220px;">
+        <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">
+          <span class="ai-badge voice-mono" style="background: var(--journey-red); color: white; padding: 2px 7px; border-radius: 5px; font-size: 0.68rem; font-weight: 700;">
+            ${renderIcon("sparkles")} AI CONCIERGE
+          </span>
+          <span style="font-size: 0.76rem; color: var(--ink-muted); font-weight: 600;">Cloudflare Workers AI</span>
+        </div>
+        <h4 style="font-size: 1.05rem; font-weight: 700; color: var(--ink); margin: 0 0 2px 0;">Need local advice for ${escapeHtml(cityName)}?</h4>
+        <p style="font-size: 0.82rem; color: var(--ink-muted); margin: 0; line-height: 1.4;">Ask about specialty coffee, rainy day plans, dining, or hidden local gems.</p>
+      </div>
+      <button class="btn btn--primary btn--sm" data-action="toggle-ai-concierge" type="button" style="white-space: nowrap; font-weight: 600; padding: 8px 16px; border-radius: 20px; box-shadow: 0 2px 10px rgba(217, 74, 58, 0.25);">
+        Ask Concierge ${renderIcon("sparkles")}
+      </button>
+    </div>
+  `;
 }

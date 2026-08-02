@@ -285,6 +285,10 @@ document.addEventListener("click", async (e) => {
     else if (action === "switch-trip" || action === "toggle-trip-switch" || action === "cycle-next-trip") {
       state.cycleNextTrip();
     }
+    else if (action === "switch-quick-capture-tab") {
+      const tab = target.dataset.tab || "concierge";
+      state.switchQuickCaptureTab(tab);
+    }
     else if (action === "toggle-quick-capture") {
       state.toggleQuickCapture();
     }

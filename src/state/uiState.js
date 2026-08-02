@@ -236,7 +236,21 @@ export const uiStateMixin = {
   },
 
   toggleAiConcierge(open) {
-    this.aiConciergeOpen = open !== undefined ? open : !this.aiConciergeOpen;
+    this.quickCaptureTab = "concierge";
+    this.quickCaptureOpen = open !== undefined ? open : !this.quickCaptureOpen;
+    this.aiConciergeOpen = this.quickCaptureOpen;
+    this.notify();
+  },
+
+  toggleQuickCapture(open, tab = "capture") {
+    this.quickCaptureTab = tab;
+    this.quickCaptureOpen = open !== undefined ? open : !this.quickCaptureOpen;
+    this.aiConciergeOpen = this.quickCaptureOpen;
+    this.notify();
+  },
+
+  switchQuickCaptureTab(tab = "concierge") {
+    this.quickCaptureTab = tab;
     this.notify();
   },
 
