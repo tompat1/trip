@@ -304,7 +304,7 @@ export function createEnrichmentService(options = {}) {
 
     async fetchTrips() {
       const url = buildApiUrl(apiBase, "/api/trips");
-      const res = await fetchImpl(url.href, { headers: { Accept: "application/json" } });
+      const res = await fetchImpl(url.href, { headers: createApiHeaders() });
       if (!res.ok) throw new Error(`worker-trips-http-${res.status}`);
       const data = await res.json();
       return data.trips || [];
@@ -314,7 +314,7 @@ export function createEnrichmentService(options = {}) {
       const url = buildApiUrl(apiBase, "/api/trips");
       const res = await fetchImpl(url.href, {
         method: "POST",
-        headers: { Accept: "application/json", "Content-Type": "application/json" },
+        headers: createApiHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify(tripData),
       });
       if (!res.ok) throw new Error(`worker-create-trip-http-${res.status}`);
@@ -325,7 +325,7 @@ export function createEnrichmentService(options = {}) {
       const url = buildApiUrl(apiBase, `/api/trips/${encodeURIComponent(tripId)}`);
       const res = await fetchImpl(url.href, {
         method: "PATCH",
-        headers: { Accept: "application/json", "Content-Type": "application/json" },
+        headers: createApiHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify(tripData),
       });
       if (!res.ok) throw new Error(`worker-update-trip-http-${res.status}`);

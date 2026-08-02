@@ -1047,6 +1047,7 @@ document.addEventListener("submit", async (e) => {
       await withPageLoader("Signing in", async () => {
         await enrichmentService.loginAccount({ email, password });
         await state.refreshUserSession();
+        await state.loadD1Trips();
       }, { delay: 0 });
       state.closeAuthExit({ view: "home" });
       showToast("Signed back in.");
@@ -1080,6 +1081,7 @@ document.addEventListener("submit", async (e) => {
         });
         state.updateUserProfile({ name, email }, { notify: false });
         await state.refreshUserSession();
+        await state.loadD1Trips();
       }, { delay: 0 });
       state.closeAuthExit({ view: "home" });
       state.openOnboarding();
@@ -1124,6 +1126,7 @@ document.addEventListener("submit", async (e) => {
       await withPageLoader("Signing in", async () => {
         await enrichmentService.loginAccount({ email, password, inviteTripId: state.activeInvite?.tripId || "" });
         await state.refreshUserSession();
+        await state.loadD1Trips();
       }, { delay: 0 });
       if (state.activeInvite?.tripId) state.acceptTripInvite({ mode: "user" });
       showToast("Signed in.");

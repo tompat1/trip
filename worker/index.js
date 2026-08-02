@@ -4479,18 +4479,32 @@ function jsonError(code, message, status = 400) {
    USER TRIPS, ITINERARY EVENTS, SAVED PLACES & MOMENTS D1 HANDLERS
    ========================================================================== */
 
-async function tripsListHandler({ env }) {
+async function tripsListHandler(context) {
+  const { env, principal } = context;
   if (!env.TRIP_DB) return json({ ok: true, trips: [] });
+  const userId = principal?.userId || "";
+  // Anonymous users have no persisted trips — return empty rather than leaking all rows.
+  if (!userId || userId === "anonymous" || principal?.role === "anonymous") {
+    return json({ ok: true, trips: [] });
+  }
   try {
-    const { results } = await env.TRIP_DB.prepare("SELECT * FROM user_trips ORDER BY created_at DESC").all();
+    const { results } = await env.TRIP_DB.prepare(
+      "SELECT * FROM user_trips WHERE user_id = ? ORDER BY created_at DESC"
+    ).bind(userId).all();
     return json({ ok: true, trips: results || [] });
   } catch (e) {
     return json({ ok: true, trips: [], note: "tables_not_yet_applied" });
   }
 }
 
-async function tripsCreateHandler({ request, env }) {
+async function tripsCreateHandler(context) {
+  const { request, env, principal } = context;
   if (!env.TRIP_DB) return jsonError("no_db", "Database not bound", 500);
+  // Require an authenticated user to persist trips.
+  const userId = principal?.userId || "";
+  if (!userId || principal?.role === "anonymous") {
+    return jsonError("unauthenticated", "Sign in to save trips.", 401);
+  }
   const body = await request.json().catch(() => ({}));
   const id = body.id || `trip_${Date.now()}`;
   const destination = body.destination || "New Destination";
@@ -4508,17 +4522,22 @@ async function tripsCreateHandler({ request, env }) {
 
   try {
     await env.TRIP_DB.prepare(
-      `INSERT INTO user_trips (id, destination, flag, dates, days_count, start_date, latitude, longitude, origin_iata, destination_iata, origin_label, destination_label, flight_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-    ).bind(id, destination, flag, dates, daysCount, startDate, lat, lng, originIata, destinationIata, originLabel, destinationLabel, flightType).run();
-    return json({ ok: true, trip: { id, destination, flag, dates, daysCount, startDate, latitude: lat, longitude: lng, originIata, destinationIata, originLabel, destinationLabel, flightType } });
+      `INSERT INTO user_trips (id, user_id, destination, flag, dates, days_count, start_date, latitude, longitude, origin_iata, destination_iata, origin_label, destination_label, flight_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    ).bind(id, userId, destination, flag, dates, daysCount, startDate, lat, lng, originIata, destinationIata, originLabel, destinationLabel, flightType).run();
+    return json({ ok: true, trip: { id, userId, destination, flag, dates, daysCount, startDate, latitude: lat, longitude: lng, originIata, destinationIata, originLabel, destinationLabel, flightType } });
   } catch (e) {
     return jsonError("db_error", e.message, 500);
   }
 }
 
-async function tripsUpdateHandler({ params, request, env }) {
+async function tripsUpdateHandler(context) {
+  const { params, request, env, principal } = context;
   const tripId = params[0];
   if (!env.TRIP_DB) return jsonError("no_db", "Database not bound", 500);
+  const userId = principal?.userId || "";
+  if (!userId || principal?.role === "anonymous") {
+    return jsonError("unauthenticated", "Sign in to update trips.", 401);
+  }
   const body = await request.json().catch(() => ({}));
   const destination = body.destination;
   const flag = body.flag;
@@ -4549,8 +4568,8 @@ async function tripsUpdateHandler({ params, request, env }) {
            destination_label = COALESCE(?, destination_label),
            flight_type = COALESCE(?, flight_type),
            updated_at = CURRENT_TIMESTAMP
-       WHERE id = ?`
-    ).bind(destination || null, flag || null, dates || null, daysCount, startDate, Number.isFinite(lat) ? lat : null, Number.isFinite(lng) ? lng : null, originIata, destinationIata, originLabel, destinationLabel, flightType, tripId).run();
+       WHERE id = ? AND user_id = ?`
+    ).bind(destination || null, flag || null, dates || null, daysCount, startDate, Number.isFinite(lat) ? lat : null, Number.isFinite(lng) ? lng : null, originIata, destinationIata, originLabel, destinationLabel, flightType, tripId, userId).run();
     return json({ ok: true, tripId, destination, flag, dates, daysCount, startDate });
   } catch (e) {
     return jsonError("db_error", e.message, 500);

@@ -175,6 +175,11 @@ export class AppState {
     return this.userSession?.role === "admin";
   }
 
+  get isAuthenticated() {
+    const type = this.userSession?.authType || "none";
+    return type === "traveler-session" || type === "admin-session";
+  }
+
   // ── Trip navigation ────────────────────────────────────────────────────────
 
   getAllTrips() {
