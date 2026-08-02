@@ -240,6 +240,11 @@ export const uiStateMixin = {
     this.notify();
   },
 
+  clearAiConcierge() {
+    this.aiConciergeHistory = [];
+    this.notify();
+  },
+
   async askAiConcierge(promptText = "") {
     if (!promptText.trim()) return;
     this.aiConciergeHistory = this.aiConciergeHistory || [];
@@ -249,19 +254,46 @@ export const uiStateMixin = {
 
     try {
       const { aiService } = await import("../services/AiService.js");
-      const trip = this.activeTrip || { destination: "Paris, France" };
-      const personas = (this.userProfile?.personas || ["Food Explorer"]);
-      const result = await aiService.askConcierge({ prompt: promptText, trip, personas });
+      const trip = this.activeTrip || { destination: "Destination" };
+      const personas = Array.from(this.userPreferences || this.userProfile?.personas || ["Food Explorer"]);
+
+      // Extract POIs and live location context for this specific trip
+      const rawPois = [
+        ...(trip.tourismPois || []),
+        ...(trip.hiddenGems || []),
+        ...(trip.osmPlaces || []),
+        ...(trip.ideas || []),
+      ];
+
+      const poiList = rawPois.map(p => ({
+        name: p.name || p.title || p.label || "",
+        category: p.category || p.kind || p.type || "sight",
+        address: p.address || p.vicinity || p.subtitle || "",
+        description: p.description || p.teaser || "",
+        tags: p.tags || []
+      })).filter(p => p.name).slice(0, 30);
+
+      const context = {
+        destination: trip.destination,
+        dates: trip.dates || "",
+        weather: trip.weather || null,
+        flightRoute: trip.flightRoute || null,
+        pois: poiList,
+        personas,
+        history: (this.aiConciergeHistory || []).slice(-6),
+      };
+
+      const result = await aiService.askConcierge({ prompt: promptText, trip, personas, context });
 
       this.aiConciergeHistory.push({
         role: "assistant",
-        text: result.answer || "Here are some top places to explore nearby!",
+        text: result.answer || `Here are top recommendations for ${trip.destination}!`,
       });
     } catch (err) {
       console.warn("AI Concierge request error:", err);
       this.aiConciergeHistory.push({
         role: "assistant",
-        text: "Sorry, I had trouble reaching Workers AI. Please try asking again!",
+        text: "Sorry, I had trouble processing your query. Please try asking again!",
       });
     } finally {
       this.aiConciergeLoading = false;

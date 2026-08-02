@@ -4933,23 +4933,53 @@ async function aiPostcardHandler(context) {
 async function aiConciergeHandler(context) {
   const body = await readJson(context.request).catch(() => ({}));
   const prompt = body.prompt || "Recommend a top spot nearby";
-  const trip = body.trip || { destination: "Paris, France" };
-  const personas = body.personas || ["Food Explorer", "Coffee Hunter"];
+  const trip = body.trip || { destination: "Destination" };
+  const personas = body.personas || ["Food Explorer"];
+  const tripContext = body.context || {};
+  const destination = trip.destination || tripContext.destination || "Destination";
+  const weather = trip.weather || tripContext.weather || {};
+  const weatherStr = weather.condition ? `${weather.condition}, ${weather.temp || ""}` : "";
+  const pois = tripContext.pois || [];
 
   if (context.env.AI) {
     try {
-      const aiRes = await context.env.AI.run("@cf/meta/llama-3.3-70b-instruct", {
-        messages: [
-          { role: "system", content: `You are TRIP AI, an elite local travel concierge for ${trip.destination}. The user prefers traveler personas: ${personas.join(", ")}. Provide concise, friendly, and practical advice.` },
-          { role: "user", content: prompt }
-        ]
-      });
+      const poiSummary = pois.length > 0
+        ? pois.map((p) => `- ${p.name} (${p.category || "spot"}${p.address ? `, ${p.address}` : ""})`).join("\n")
+        : "";
+
+      const historyMessages = Array.isArray(tripContext.history)
+        ? tripContext.history.filter(m => m.text).map(m => ({ role: m.role === "assistant" ? "assistant" : "user", content: m.text }))
+        : [];
+
+      const systemPrompt = `You are TRIP AI, an expert, charming, and highly localized travel concierge for ${destination}.
+Traveler preferences & personas: ${personas.join(", ")}.
+${weatherStr ? `Current destination weather: ${weatherStr}.` : ""}
+${poiSummary ? `Verified local places & POIs in ${destination}:\n${poiSummary}` : ""}
+
+Guidelines:
+- Give specific, helpful, and contextual recommendations strictly for ${destination}.
+- Reference local POIs and places when relevant to the user request.
+- Keep response concise, friendly, elegant, structured with markdown bolding and bullet points with emojis.
+- Do NOT mention cities other than ${destination} unless explicitly asked.`;
+
+      const messages = [
+        { role: "system", content: systemPrompt },
+        ...historyMessages.slice(-4),
+        { role: "user", content: prompt }
+      ];
+
+      let aiRes = null;
+      try {
+        aiRes = await context.env.AI.run("@cf/meta/llama-3.1-8b-instruct", { messages });
+      } catch {
+        aiRes = await context.env.AI.run("@cf/meta/llama-3.3-70b-instruct", { messages });
+      }
 
       if (aiRes?.response) {
         return json({
           success: true,
           answer: aiRes.response,
-          aiModel: "@cf/meta/llama-3.3-70b-instruct"
+          aiModel: "workers-ai"
         });
       }
     } catch (err) {
@@ -4957,21 +4987,58 @@ async function aiConciergeHandler(context) {
     }
   }
 
-  let fallbackAnswer = `Here are some personalized AI recommendations for ${trip.destination}:\n\n`;
-  const lowerPrompt = prompt.toLowerCase();
-  if (lowerPrompt.includes("coffee") || lowerPrompt.includes("espresso")) {
-    fallbackAnswer += "☕ **Télescope Coffee** (Saint-Germain) — Exceptional espresso & pour-over in a minimalist setting.\n☕ **Coutume Café** — Specialty roaster with artisanal breakfast.";
-  } else if (lowerPrompt.includes("rain") || lowerPrompt.includes("indoor")) {
-    fallbackAnswer += "☔ **Musée d'Orsay** — Magnificent Impressionist gallery inside a converted railway station.\n🏛️ **Galerie Vivienne** — Historic glass-roofed 19th-century shopping arcades.";
-  } else if (lowerPrompt.includes("hidden") || lowerPrompt.includes("secret")) {
-    fallbackAnswer += "🌿 **Square du Vert-Galant** — Secluded tree-lined park tip at the western end of Île de la Cité.\n🍷 **Le Baron Rouge** — Authentic neighborhood natural wine bar with fresh oysters.";
-  } else {
-    fallbackAnswer += `✨ **Sainte-Chapelle** — Breathtaking Gothic stained glass windows.\n🏛️ **Louvre Museum** — World-famous art collections.\n☕ **Café de Flore** — Historic literary landmark.`;
-  }
-
+  const fallbackAnswer = generateWorkerDynamicConciergeFallback({ prompt, destination, weatherStr, personas, pois });
   return json({
     success: true,
     answer: fallbackAnswer,
     aiModel: "trip-concierge-fallback"
   });
+}
+
+function generateWorkerDynamicConciergeFallback({ prompt = "", destination = "Destination", weatherStr = "", personas = [], pois = [] }) {
+  const lowerPrompt = prompt.toLowerCase();
+  const cityName = destination.split(",")[0].trim();
+  let answer = `Here are Concierge recommendations for **${destination}**`;
+  if (weatherStr) answer += ` (${weatherStr})`;
+  answer += `:\n\n`;
+
+  let matchedPois = [];
+  if (lowerPrompt.includes("coffee") || lowerPrompt.includes("espresso") || lowerPrompt.includes("cafe")) {
+    matchedPois = pois.filter(p => (p.category === "cafe" || (p.name || "").toLowerCase().includes("coffee") || (p.name || "").toLowerCase().includes("cafe")));
+    if (matchedPois.length) {
+      answer += matchedPois.slice(0, 3).map(p => `☕ **${p.name}**${p.address ? ` (${p.address})` : ""} — Great local cafe in ${cityName}.`).join("\n");
+    } else {
+      answer += `☕ **Artisanal Coffee in ${cityName}** — Explore independent third-wave roasters and specialty coffee bars in ${cityName}.\n☕ **Neighborhood Roaster** — Enjoy fresh espresso and local pastries in the central quarter.`;
+    }
+  } else if (lowerPrompt.includes("rain") || lowerPrompt.includes("indoor") || lowerPrompt.includes("weather")) {
+    matchedPois = pois.filter(p => (p.category === "museum" || p.category === "gallery" || p.category === "sight" || (p.name || "").toLowerCase().includes("museum")));
+    if (matchedPois.length) {
+      answer += matchedPois.slice(0, 3).map(p => `☔ **${p.name}** — Wonderful indoor culture & discovery in ${cityName}.`).join("\n");
+    } else {
+      answer += `☔ **Central Museums & Art Galleries** — Perfect indoor culture in ${cityName}.\n🏛️ **Historic Food Halls & Covered Arcades** — Stay dry while enjoying local food and boutique shopping in ${cityName}.`;
+    }
+  } else if (lowerPrompt.includes("hidden") || lowerPrompt.includes("secret") || lowerPrompt.includes("crowd")) {
+    matchedPois = pois.filter(p => (p.category === "hidden_gem" || (p.tags || []).includes("hidden")));
+    if (matchedPois.length) {
+      answer += matchedPois.slice(0, 3).map(p => `🌿 **${p.name}** — Hidden local discovery in ${cityName}.`).join("\n");
+    } else {
+      answer += `🌿 **Secluded Courtyards & Quiet Parks** — Escape the main tourist crowds in ${cityName}.\n🍷 **Local Neighborhood Wine Bar** — Cozy spot frequented by ${cityName} residents.`;
+    }
+  } else if (lowerPrompt.includes("food") || lowerPrompt.includes("dinner") || lowerPrompt.includes("wine") || lowerPrompt.includes("restaurant")) {
+    matchedPois = pois.filter(p => (p.category === "restaurant" || p.category === "food" || p.category === "wine"));
+    if (matchedPois.length) {
+      answer += matchedPois.slice(0, 3).map(p => `🍽️ **${p.name}**${p.address ? ` (${p.address})` : ""} — Recommended dining spot in ${cityName}.`).join("\n");
+    } else {
+      answer += `🍽️ **Authentic Bistros & Regional Cuisine** — Taste traditional local specialties in ${cityName}.\n🍷 **Evening Wine Bar** — Relax with local craft beverages and small plates in ${cityName}.`;
+    }
+  } else {
+    if (pois.length > 0) {
+      const topPois = pois.slice(0, 4);
+      answer += topPois.map(p => `📍 **${p.name}** (${p.category || "highlight"}) — Recommended spot to visit in ${cityName}.`).join("\n");
+    } else {
+      answer += `✨ **Historic District & Plaza** — Explore the iconic streets and landmarks of ${cityName}.\n🏛️ **Museums & Cultural Sights** — Experience the heritage of ${cityName}.\n☕ **Central Square & Promenade** — Enjoy the local atmosphere and scenic views.`;
+    }
+  }
+
+  return answer;
 }

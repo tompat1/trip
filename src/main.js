@@ -324,6 +324,9 @@ document.addEventListener("click", async (e) => {
       if (target.classList.contains("ai-concierge-overlay") && e.target !== target) return;
       state.toggleAiConcierge(false);
     }
+    else if (action === "clear-ai-concierge") {
+      state.clearAiConcierge();
+    }
     else if (action === "send-ai-chip") {
       const promptText = target.dataset.prompt || "";
       if (promptText) state.askAiConcierge(promptText);
