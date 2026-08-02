@@ -5,6 +5,7 @@ import { renderIcon } from "../utils/icons.js";
 import { TRIP_STAMP_SVG } from "../components/BrandAssets.js";
 import { calculateFlightDistance, formatAirportLabel, getFlightRouteDisplay } from "../services/airportService.js";
 import { getDestinationTransitGuide } from "../services/transitService.js";
+import { getDestinationEtiquetteAndTips } from "../services/destinationService.js";
 import { FLIGHT_TYPE_OPTIONS, getFlightRouteForTrip } from "../services/flightService.js";
 import { CONCERTS_DATABASE } from "../services/concertService.js";
 import { composeEditorialProfile, createVerifiedFactBundle } from "../enrichment/editorialComposer.js";
@@ -1004,6 +1005,7 @@ function renderOverviewTabBody(trip, activeFilter, cachedBrief, editorial, topPO
 
   if (activeFilter === "practical") {
     const transitGuide = getDestinationTransitGuide(destination);
+    const etiquette = getDestinationEtiquetteAndTips(destination);
     return `
       <div style="padding: 20px;">
         <h3 class="voice-serif" style="font-size: 1.3rem; font-weight: 700; margin: 0 0 14px 0; color: var(--ink);">Practical Travel Info & Transit</h3>
@@ -1033,12 +1035,10 @@ function renderOverviewTabBody(trip, activeFilter, cachedBrief, editorial, topPO
 
           <div style="background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius-md); padding: 16px;">
             <h4 style="font-size: 0.95rem; font-weight: 700; color: var(--ink); margin: 0 0 8px 0; display: flex; align-items: center; gap: 8px;">
-              💡 Local Etiquette & Tips
+              💡 Local Etiquette & Tips (${escapeHtml(area)})
             </h4>
             <ul style="font-size: 0.84rem; color: var(--ink-muted); margin: 0; padding-left: 20px; line-height: 1.5;">
-              <li>Greet staff with a polite <em>"Bonjour"</em> before ordering.</li>
-              <li>Service charge is included on food & drink bills by law.</li>
-              <li>Emergency numbers: <strong>112</strong> (General EU Emergency) · <strong>15</strong> (Medical).</li>
+              ${(etiquette.tips || []).map(tip => `<li>${tip}</li>`).join('')}
             </ul>
           </div>
         </div>

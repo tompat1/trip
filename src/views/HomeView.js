@@ -489,6 +489,86 @@ const LOCAL_GLOSSARIES = {
       ["Please", "Por favor"],
     ],
   },
+  uk: {
+    language: "English",
+    sample: "Hello",
+    phrases: [
+      ["Good morning", "Good morning"],
+      ["Good day", "Good day"],
+      ["Good evening", "Good evening"],
+      ["Good night", "Good night"],
+      ["Hello", "Hello / Cheers"],
+      ["Bye", "Cheerio / Bye"],
+      ["Thanks", "Thanks / Cheers"],
+      ["Yes", "Yes"],
+      ["No", "No"],
+      ["Please", "Please"],
+    ],
+  },
+  japan: {
+    language: "Japanese",
+    sample: "Konnichiwa",
+    phrases: [
+      ["Good morning", "Ohayō gozaimasu"],
+      ["Good day", "Konnichiwa"],
+      ["Good evening", "Konbanwa"],
+      ["Good night", "Oyasumi nasai"],
+      ["Hello", "Konnichiwa"],
+      ["Bye", "Sayōnara"],
+      ["Thanks", "Arigatō gozaimasu"],
+      ["Yes", "Hai"],
+      ["No", "Iie"],
+      ["Please", "Onegai shimasu"],
+    ],
+  },
+  sweden: {
+    language: "Swedish",
+    sample: "Hej",
+    phrases: [
+      ["Good morning", "God morgon"],
+      ["Good day", "God dag"],
+      ["Good evening", "God kväll"],
+      ["Good night", "God natt"],
+      ["Hello", "Hej"],
+      ["Bye", "Hej då"],
+      ["Thanks", "Tack"],
+      ["Yes", "Ja"],
+      ["No", "Nej"],
+      ["Please", "Snälla"],
+    ],
+  },
+  italy: {
+    language: "Italian",
+    sample: "Buongiorno",
+    phrases: [
+      ["Good morning", "Buongiorno"],
+      ["Good day", "Buona giornata"],
+      ["Good evening", "Buonasera"],
+      ["Good night", "Buonanotte"],
+      ["Hello", "Ciao"],
+      ["Bye", "Arrivederci"],
+      ["Thanks", "Grazie"],
+      ["Yes", "Sì"],
+      ["No", "No"],
+      ["Please", "Per favore"],
+    ],
+  },
+  germany: {
+    language: "German",
+    sample: "Guten Tag",
+    phrases: [
+      ["Good morning", "Guten Morgen"],
+      ["Good day", "Guten Tag"],
+      ["Good evening", "Guten Abend"],
+      ["Good night", "Gute Nacht"],
+      ["Hello", "Hallo"],
+      ["Bye", "Tschüss"],
+      ["Thanks", "Danke"],
+      ["Yes", "Ja"],
+      ["No", "Nein"],
+      ["Please", "Bitte"],
+    ],
+  },
   default: {
     language: "Local",
     sample: "Hello",
@@ -531,9 +611,14 @@ function getLocalGlossaryForTrip(trip = {}) {
 
 function getGlossaryKeyForTrip(trip = {}) {
   const haystack = `${trip.destination || ""} ${trip.flag || ""}`.toLowerCase();
-  if (haystack.includes("france") || haystack.includes("paris") || haystack.includes("🇫🇷")) return "france";
-  if (haystack.includes("greece") || haystack.includes("crete") || haystack.includes("heraklion") || haystack.includes("🇬🇷")) return "greece";
-  if (haystack.includes("spain") || haystack.includes("espa") || haystack.includes("🇪🇸")) return "spain";
+  if (haystack.includes("france") || haystack.includes("paris") || haystack.includes("lyon") || haystack.includes("nice") || haystack.includes("🇫🇷")) return "france";
+  if (haystack.includes("greece") || haystack.includes("crete") || haystack.includes("athens") || haystack.includes("santorini") || haystack.includes("🇬🇷")) return "greece";
+  if (haystack.includes("spain") || haystack.includes("barcelona") || haystack.includes("madrid") || haystack.includes("seville") || haystack.includes("🇪🇸")) return "spain";
+  if (haystack.includes("uk") || haystack.includes("united kingdom") || haystack.includes("london") || haystack.includes("edinburgh") || haystack.includes("england") || haystack.includes("scotland") || haystack.includes("🇬🇧")) return "uk";
+  if (haystack.includes("japan") || haystack.includes("tokyo") || haystack.includes("kyoto") || haystack.includes("osaka") || haystack.includes("🇯🇵")) return "japan";
+  if (haystack.includes("sweden") || haystack.includes("stockholm") || haystack.includes("gothenburg") || haystack.includes("🇸🇪")) return "sweden";
+  if (haystack.includes("italy") || haystack.includes("rome") || haystack.includes("venice") || haystack.includes("milan") || haystack.includes("florence") || haystack.includes("🇮🇹")) return "italy";
+  if (haystack.includes("germany") || haystack.includes("berlin") || haystack.includes("munich") || haystack.includes("frankfurt") || haystack.includes("🇩🇪")) return "germany";
   return "default";
 }
 
