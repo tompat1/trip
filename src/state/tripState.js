@@ -19,7 +19,24 @@ import {
 } from "./helpers.js";
 
 export const tripStateMixin = {
-  // ── D1 trip loading ────────────────────────────────────────────────────────
+  // ── D1 trip loading & cleanup ─────────────────────────────────────────────
+
+  clearUserOwnedTrips() {
+    const defaultIds = new Set(["paris", "crete"]);
+    Object.keys(tripsData).forEach((id) => {
+      if (!defaultIds.has(id)) {
+        delete tripsData[id];
+        delete this.checklists?.[id];
+        delete this.tourismDiscoveryStatus?.[id];
+        delete this.eventDiscoveryStatus?.[id];
+        delete this.tripIntelligenceStatus?.[id];
+      }
+    });
+    if (!tripsData[this.activeTripId]) {
+      this.activeTripId = "paris";
+    }
+    this.notify();
+  },
 
   async loadD1Trips() {
     try {
@@ -33,6 +50,7 @@ export const tripStateMixin = {
           if (!tripsData[t.id]) {
             tripsData[t.id] = {
               id: t.id,
+              userId: t.user_id || t.userId || "",
               destination: t.destination || "Trip",
               flag: resolvedFlag,
               dates: t.dates || "Upcoming",
