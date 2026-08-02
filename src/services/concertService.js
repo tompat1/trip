@@ -124,6 +124,77 @@ export const CONCERTS_DATABASE = [
     ticketUrl: "https://eplus.jp",
     isPopularTour: true
   }
+  // London Concerts
+  {
+    id: "cnc-london-1",
+    artist: "Adele",
+    tour: "Weekends Live in London",
+    title: "Adele Live at Hyde Park",
+    venue: "Hyde Park",
+    city: "London",
+    country: "United Kingdom",
+    lat: 51.5074,
+    lng: -0.1657,
+    dates: "Tonight • 19:30",
+    genre: "Pop / Soul",
+    icon: "🎤",
+    image: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&w=600&q=80",
+    ticketUrl: "https://www.ticketmaster.co.uk",
+    isPopularTour: true
+  },
+  {
+    id: "cnc-london-2",
+    artist: "London Symphony Orchestra",
+    tour: "Classical Masterworks",
+    title: "LSO Symphony Evening",
+    venue: "Barbican Centre",
+    city: "London",
+    country: "United Kingdom",
+    lat: 51.5200,
+    lng: -0.0938,
+    dates: "Tomorrow • 19:30",
+    genre: "Classical",
+    icon: "🎻",
+    image: "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=600&q=80",
+    ticketUrl: "https://www.barbican.org.uk",
+    isPopularTour: true
+  },
+  // New York Concerts
+  {
+    id: "cnc-nyc-1",
+    artist: "Billy Joel",
+    tour: "Madison Square Garden Residency",
+    title: "Billy Joel Live at The Garden",
+    venue: "Madison Square Garden",
+    city: "New York",
+    country: "United States",
+    lat: 40.7505,
+    lng: -73.9934,
+    dates: "Oct 8 • 20:00",
+    genre: "Rock / Pop",
+    icon: "🎹",
+    image: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=600&q=80",
+    ticketUrl: "https://www.ticketmaster.com",
+    isPopularTour: true
+  },
+  // Stockholm Concerts
+  {
+    id: "cnc-stockholm-1",
+    artist: "Royal Stockholm Philharmonic",
+    tour: "Nordic Classics",
+    title: "Philharmonic Sunset Concert",
+    venue: "Stockholm Concert Hall (Konserthuset)",
+    city: "Stockholm",
+    country: "Sweden",
+    lat: 59.3346,
+    lng: 18.0628,
+    dates: "Fri • 19:00",
+    genre: "Classical / Orchestral",
+    icon: "🎼",
+    image: "https://images.unsplash.com/photo-1465847899084-d164df4dedc6?auto=format&fit=crop&w=600&q=80",
+    ticketUrl: "https://www.konserthuset.se",
+    isPopularTour: true
+  }
 ];
 
 // Query Ticketmaster API for real-time live concerts
@@ -257,7 +328,62 @@ export async function fetchConcertsForTrip(destination = "Paris", coords = [48.8
     destLower.includes(c.city.toLowerCase())
   );
 
-  return matched.length ? matched : CONCERTS_DATABASE.slice(0, 4);
+  if (matched.length > 0) return matched;
+
+  const cleanCity = destination.includes(",") ? destination.split(",")[0].trim() : destination.trim() || "Local";
+  return [
+    {
+      id: `cnc-gen-1`,
+      artist: `${cleanCity} Live Music Festival`,
+      tour: "Summer Concert Series",
+      title: `${cleanCity} Open Air Live Night`,
+      venue: `${cleanCity} Central Park Pavilion`,
+      city: cleanCity,
+      country: "",
+      lat: coords[0],
+      lng: coords[1],
+      dates: "This Weekend • 20:00",
+      genre: "Indie / Jazz",
+      icon: "🎸",
+      image: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&w=600&q=80",
+      ticketUrl: "https://www.ticketmaster.com",
+      isPopularTour: true
+    },
+    {
+      id: `cnc-gen-2`,
+      artist: `${cleanCity} Symphony Ensemble`,
+      tour: "Classical Evenings",
+      title: `${cleanCity} Philharmonic Hall Special`,
+      venue: `${cleanCity} Concert Hall`,
+      city: cleanCity,
+      country: "",
+      lat: coords[0],
+      lng: coords[1],
+      dates: "Tomorrow • 19:30",
+      genre: "Classical / Orchestral",
+      icon: "🎻",
+      image: "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=600&q=80",
+      ticketUrl: "https://www.ticketmaster.com",
+      isPopularTour: true
+    },
+    {
+      id: `cnc-gen-3`,
+      artist: `${cleanCity} Underground Sessions`,
+      tour: "Electronic Night",
+      title: `${cleanCity} DJ Set & Light Show`,
+      venue: `${cleanCity} Warehouse Club`,
+      city: cleanCity,
+      country: "",
+      lat: coords[0],
+      lng: coords[1],
+      dates: "Fri • 22:00",
+      genre: "Electronic",
+      icon: "🎧",
+      image: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=600&q=80",
+      ticketUrl: "https://www.ticketmaster.com",
+      isPopularTour: true
+    }
+  ];
 }
 
 function normalizeBandsintownEvent(event = {}, artist = "", options = {}) {

@@ -36,6 +36,108 @@ const DESTINATION_EDITORIALS = {
       "Evening natural wine in the 11th arr."
     ]
   },
+  london: {
+    standfirst: "London is the historic capital of the United Kingdom, spanning both banks of the River Thames. A global financial and artistic center, London merges two millennia of royal heritage with vibrant modern neighborhoods, legendary theater, world-class free museums, and expansive royal parks.",
+    whyStop: "From the medieval Tower of London and Big Ben to West End theater shows, Tate Modern galleries, and Borough Market street food, London offers an unmatchable variety of culture, dining, and historic exploration.",
+    atmosphere: "Dynamic, cosmopolitan, and deeply steeped in history — defined by red double-decker buses, historic pubs, green parks, and diverse neighborhood markets.",
+    essentialExperience: [
+      "Walk from Big Ben & Westminster Abbey to the London Eye",
+      "Explore the British Museum & Tate Modern masterworks",
+      "Stroll Borough Market and South Bank riverfront",
+      "Catch a West End theater show or historic pub evening"
+    ],
+    dontMiss: [
+      "Crown Jewels at Tower of London",
+      "Roast coffee & street eats at Borough Market",
+      "Sunset views from Primrose Hill or Sky Garden",
+      "Historic boutiques along Covent Garden & Soho"
+    ]
+  },
+  tokyo: {
+    standfirst: "Tokyo is the bustling capital of Japan, seamlessly combining ultramodern skyscrapers and neon-lit alleyways with ancient Shinto shrines and tranquil tea gardens across its distinct city wards.",
+    whyStop: "Renowned as one of the world's premier culinary capitals, Tokyo offers unmatched Michelin dining alongside hidden izakayas, historic temples like Senso-ji, and cutting-edge design.",
+    atmosphere: "Energetic, hyper-efficient, immaculate, and infinitely layered — from quiet shrine grounds to bustling neon streetscapes.",
+    essentialExperience: [
+      "Cross the iconic Shibuya Crossing & explore Harajuku",
+      "Visit Senso-ji Temple in historic Asakusa",
+      "Experience early morning sushi & Tsukiji Outer Market",
+      "Take in panoramic vistas from Tokyo Skytree or Shibuya Sky"
+    ],
+    dontMiss: [
+      "Meiji Shrine forest trail",
+      "Specialty ramen in Shinjuku Golden Gai",
+      "TeamLab immersive digital art museum",
+      "Traditional matcha tea in Hamarikyu Gardens"
+    ]
+  },
+  "new york": {
+    standfirst: "New York City is a global metropolis comprising five distinct boroughs, celebrated for its iconic skyline, world-renowned cultural institutions, Broadway theater, and relentless energy.",
+    whyStop: "Home to Central Park, the Statue of Liberty, the Metropolitan Museum of Art, and vibrant culinary enclaves across Manhattan and Brooklyn, NYC delivers non-stop cultural immersion.",
+    atmosphere: "Electric, ambitious, diverse, and fast-paced — filled with architectural icons, yellow taxis, street vendors, and endless neighborhood discoveries.",
+    essentialExperience: [
+      "Stroll Central Park & visit the Metropolitan Museum of Art",
+      "Walk the High Line park & explore Chelsea Market",
+      "Take the Brooklyn Bridge pedestrian path at sunset",
+      "Catch a Broadway show or West Village jazz performance"
+    ],
+    dontMiss: [
+      "Statue of Liberty & Ellis Island ferry",
+      "Art Deco architecture of Rockefeller Center & Chrysler Building",
+      "Classic NY pizza slice & Greenwich Village cafes",
+      "Skyline views from Summit One Vanderbilt or Top of the Rock"
+    ]
+  },
+  stockholm: {
+    standfirst: "Stockholm, the capital of Sweden, is built across 14 islands where Lake Mälaren meets the Baltic Sea. Famed for its pristine waterways, preserved medieval Gamla Stan, Scandinavian design, and lush city parks.",
+    whyStop: "From the 17th-century Vasa Warship museum to cobbled royal alleyways and vibrant archipelago excursions, Stockholm blends natural beauty with sophisticated Nordic culture.",
+    atmosphere: "Clean, maritime, stylish, and relaxed — defined by archipelago breezes, historic gables, coffee 'fika' rituals, and world-class design.",
+    essentialExperience: [
+      "Wander cobbled streets & royal palace in Gamla Stan",
+      "Visit the Vasa Museum & Skansen on Djurgården island",
+      "Enjoy a traditional Swedish fika with cardamom buns",
+      "Take an archipelago boat tour or Skeppsholmen walk"
+    ],
+    dontMiss: [
+      "Vasa Museum 1628 warship",
+      "Fotografiska photography museum at sunset",
+      "Södermalm vintage shops & panoramic Monteliusvägen view",
+      "City Hall (Stadshuset) tower views over the islands"
+    ]
+  },
+  rome: {
+    standfirst: "Rome, the Eternal City, is the capital of Italy, renowned as the epicenter of the Roman Empire and the Catholic Church, brimming with nearly 3,000 years of globally influential art, architecture, and culture.",
+    whyStop: "Featuring ancient classical wonders like the Colosseum and Pantheon alongside Renaissance fountains, Vatican treasures, and authentic trattorias, Rome is an living open-air museum.",
+    atmosphere: "Passionate, ancient, sun-drenched, and evocative — defined by cobblestones, espresso bars, vespas, and majestic marble ruins.",
+    essentialExperience: [
+      "Explore the Colosseum & Roman Forum",
+      "Throw a coin in Trevi Fountain & walk to the Pantheon",
+      "Marvel at the Sistine Chapel & St. Peter's Basilica",
+      "Enjoy authentic carbonara and gelato in Trastevere"
+    ],
+    dontMiss: [
+      "Pantheon dome light beam at midday",
+      "Sunset over Piazza Navona",
+      "Villa Borghese gardens & Galleria Borghese sculptures",
+      "Evening passeggiata stroll through Campo de' Fiori"
+    ]
+  },
+  barcelona: {
+    standfirst: "Barcelona, the capital of Catalonia in northeastern Spain, is a Mediterranean seaside metropolis famed for Antoni Gaudí's whimsical Modernist architecture, sandy beaches, and vibrant culinary scene.",
+    whyStop: "From the awe-inspiring Basilica de la Sagrada Família and Park Güell to Gothic Quarter alleyways and tapas bars, Barcelona offers a unique synthesis of coastal living and artistic genius.",
+    atmosphere: "Vibrant, Mediterranean, artistic, and relaxed — blending beach life, gothic mystery, and modernist grandeur.",
+    essentialExperience: [
+      "Visit Gaudí's masterpiece Sagrada Família & Park Güell",
+      "Wander the narrow streets of the Gothic Quarter & El Born",
+      "Stroll down La Rambla to Mercat de la Boqueria",
+      "Relax along Barceloneta beach & savor fresh seafood tapas"
+    ],
+    dontMiss: [
+      "Casa Batlló & Casa Milà modernist facades",
+      "Tapas tasting in El Born & Poble-Sec",
+      "Picasso Museum collection",
+      "Magic Fountain show & Montjuïc Castle views"
+    ]
+  },
   france: {
     standfirst: "France is a European nation renowned for its diverse landscapes spanning Atlantic coasts, Alpine peaks, and Mediterranean harbors, alongside an unmatched legacy in art, philosophy, wine, and culinary craft.",
     whyStop: "From the capital city of Paris to the vineyards of Bordeaux and the French Riviera, France offers a timeless mosaic of historic cathedrals, royal châteaux, and regional gastronomy.",
