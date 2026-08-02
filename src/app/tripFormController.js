@@ -138,7 +138,14 @@ export async function handleTripCreateSubmit(form, { showToast = () => {}, withP
     flightType,
   }), { delay: 0 });
 
-  showToast(`${destination} trip created.`);
+  // Check if the trip was persisted or needs the user to sign in first.
+  const createdTrip = state.activeTrip;
+  if (createdTrip?.syncStatus === "needs-auth") {
+    showToast(`${destination} trip created — sign in to keep it across sessions.`);
+    setTimeout(() => state.showAuthExit("login"), 1800);
+  } else {
+    showToast(`${destination} trip created.`);
+  }
   return true;
 }
 

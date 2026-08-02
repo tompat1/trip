@@ -8,7 +8,7 @@ import ribbonRemember from "../assets/trip_badge_clean_ribbon_rmbr.webp";
 
 export function renderHeader() {
   const isLanding = state.activeView === "landing";
-  const isSignedIn = ["admin", "traveler"].includes(state.userSession?.role);
+  const isSignedIn = state.isAuthenticated;
 
   if (isLanding) {
     return `

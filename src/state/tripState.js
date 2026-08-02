@@ -202,9 +202,15 @@ export const tripStateMixin = {
         destinationLabel: newTrip.flightRoute.destinationLabel,
         flightType: newTrip.flightRoute.flightType,
       });
+      newTrip.syncStatus = "synced";
     } catch (e) {
+      // 401 means the user is not signed in — trip exists in-memory but won't survive a reload.
+      // Mark it so the UI can prompt the user to sign in and save.
+      const isAuthError = e?.message?.includes("-401") || e?.status === 401;
+      newTrip.syncStatus = isAuthError ? "needs-auth" : "sync-error";
       console.warn("D1 trip sync fallback:", e);
     }
+    this.notify();
   },
 
   // ── Trip updates ───────────────────────────────────────────────────────────

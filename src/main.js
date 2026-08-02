@@ -129,13 +129,15 @@ async function logOutAndShowExit() {
   try {
     await enrichmentService.logoutAdmin();
   } catch {}
+  // Clear any D1-owned trips from memory so next visitor can't see them.
+  state.clearUserOwnedTrips();
   await state.refreshUserSession();
   state.showAuthExit();
   showToast("Signed out.");
 }
 
 function hasAppSession() {
-  return ["admin", "traveler"].includes(state.userSession?.role);
+  return state.isAuthenticated;
 }
 
 function requireAppSession(mode = "login", message = "Sign in to continue.") {
