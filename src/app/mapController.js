@@ -35,21 +35,41 @@ const PLAN_EVENT_LOCATION_COORDS = {
 const TRIP_DESTINATION_COORDS = {
   paris: [48.8566, 2.3522],
   france: [48.8566, 2.3522],
-  copenhagen: [55.6761, 12.5683],
-  denmark: [55.6761, 12.5683],
+  london: [51.5072, -0.1276],
+  uk: [51.5072, -0.1276],
+  "united kingdom": [51.5072, -0.1276],
+  "new york": [40.7128, -74.0060],
+  usa: [40.7128, -74.0060],
   tokyo: [35.6762, 139.6503],
   japan: [35.6762, 139.6503],
+  stockholm: [59.3293, 18.0686],
+  sweden: [59.3293, 18.0686],
+  copenhagen: [55.6761, 12.5683],
+  denmark: [55.6761, 12.5683],
   madrid: [40.4168, -3.7038],
   barcelona: [41.3874, 2.1686],
   spain: [40.4168, -3.7038],
+  rome: [41.9028, 12.4964],
+  italy: [41.9028, 12.4964],
+  berlin: [52.5200, 13.4050],
+  germany: [52.5200, 13.4050],
+  amsterdam: [52.3676, 4.9041],
+  netherlands: [52.3676, 4.9041],
+  lisbon: [38.7223, -9.1393],
+  portugal: [38.7223, -9.1393],
   heraklion: [35.3391, 25.132],
   crete: [35.3391, 25.132],
-  london: [51.5072, -0.1276],
-  "new york": [40.7128, -74.0060],
-  rome: [41.9028, 12.4964],
-  lisbon: [38.7223, -9.1393],
-  berlin: [52.5200, 13.4050],
-  amsterdam: [52.3676, 4.9041],
+  greece: [35.3391, 25.132],
+  sydney: [-33.8688, 151.2093],
+  australia: [-33.8688, 151.2093],
+  bangkok: [13.7563, 100.5018],
+  thailand: [13.7563, 100.5018],
+  vienna: [48.2082, 16.3738],
+  prague: [50.0755, 14.4378],
+  dublin: [53.3498, -6.2603],
+  oslo: [59.9139, 10.7522],
+  helsinki: [60.1699, 24.9384],
+  zurich: [47.3769, 8.5417],
 };
 
 export function initMapsForView(view) {
@@ -78,7 +98,14 @@ export function initMapsForView(view) {
 export function resolveTripCenter(destination = "") {
   const key = normalizeMapLookupKey(destination);
   const match = Object.entries(TRIP_DESTINATION_COORDS).find(([name]) => key.includes(name) || name.includes(key));
-  return match ? match[1] : [48.8566, 2.3522];
+  if (match) return match[1];
+
+  import("../services/airportService.js").then(({ resolveAirportInput }) => {
+    const airport = resolveAirportInput(destination);
+    if (airport && airport.lat && airport.lng) return [airport.lat, airport.lng];
+  }).catch(() => {});
+
+  return [51.5072, -0.1276]; // Default to London if completely unknown rather than hardcoded Paris
 }
 
 function initHomeMap(trip) {
@@ -309,13 +336,39 @@ function initPoiOverviewMap(trip) {
     subdomains: 'abcd'
   }).addTo(map);
 
-  const pois = [
-    { id: "p1", title: "Louvre Museum", lat: center[0] + 0.0035, lng: center[1] - 0.012, icon: "🏛️", rating: 4.9, category: "Museum", distance: "1.2 km away", img: "https://images.unsplash.com/photo-1499856871958-5b9627545d1a?auto=format&fit=crop&w=400&q=80" },
-    { id: "p2", title: "Sainte-Chapelle", lat: center[0] + 0.008, lng: center[1] - 0.006, icon: "🏛️", rating: 4.8, category: "Historic Landmark", distance: "850m", img: "https://images.unsplash.com/photo-1560969184-10fe8719e047?auto=format&fit=crop&w=400&q=80" },
-    { id: "p3", title: "Eiffel Tower", lat: center[0] - 0.002, lng: center[1] - 0.045, icon: "🗼", rating: 4.7, category: "Monument", distance: "3.4 km away", img: "https://images.unsplash.com/photo-1511739001486-6bfe10ce785f?auto=format&fit=crop&w=400&q=80" },
-    { id: "p4", title: "Télescope Cafe", lat: center[0] - 0.002, lng: center[1] - 0.003, icon: "☕", rating: 4.7, category: "Cafe", distance: "340m", img: "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=400&q=80" },
-    { id: "p5", title: "Le Baron", lat: center[0] - 0.005, lng: center[1] + 0.008, icon: "🍷", rating: 4.6, category: "Wine Bar", distance: "1.4 km away", img: "https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?auto=format&fit=crop&w=400&q=80" }
+  const defaultOffsets = [
+    { dLat: 0.0035, dLng: -0.012, icon: "🏛️" },
+    { dLat: 0.008,  dLng: -0.006, icon: "📍" },
+    { dLat: -0.002, dLng: -0.025, icon: "🗼" },
+    { dLat: -0.002, dLng: -0.003, icon: "☕" },
+    { dLat: -0.005, dLng: 0.008,  icon: "🍷" }
   ];
+
+  let rawSpots = [...(trip.tourismPois || []), ...(trip.ideas || []), ...(trip.explorePlaces || [])];
+  if (!rawSpots.length && typeof window !== "undefined" && window.__getTopAttractionsForTrip) {
+    rawSpots = window.__getTopAttractionsForTrip(trip);
+  }
+
+  const pois = (rawSpots.length ? rawSpots.slice(0, 5) : [
+    { title: `${trip.destination || 'City'} Central Landmark`, category: "Landmark", rating: 4.9, image: "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=400&q=80" },
+    { title: `${trip.destination || 'City'} Historic Quarter`, category: "Historic", rating: 4.8, image: "https://images.unsplash.com/photo-1499856871958-5b9627545d1a?auto=format&fit=crop&w=400&q=80" },
+    { title: `${trip.destination || 'City'} Art & Culture Hub`, category: "Culture", rating: 4.8, image: "https://images.unsplash.com/photo-1511739001486-6bfe10ce785f?auto=format&fit=crop&w=400&q=80" },
+    { title: `${trip.destination || 'City'} Artisanal Cafe`, category: "Cafe", rating: 4.7, image: "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=400&q=80" },
+    { title: `${trip.destination || 'City'} Harbor & Sunset View`, category: "Scenic", rating: 4.9, image: "https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?auto=format&fit=crop&w=400&q=80" }
+  ]).map((spot, idx) => {
+    const offset = defaultOffsets[idx % defaultOffsets.length];
+    return {
+      id: spot.id || `poi-${idx}`,
+      title: spot.title || spot.name || `${trip.destination} Spot`,
+      lat: spot.lat || spot.latitude || (center[0] + offset.dLat),
+      lng: spot.lng || spot.longitude || (center[1] + offset.dLng),
+      icon: spot.icon || (spot.category?.includes("Cafe") ? "☕" : spot.category?.includes("Wine") ? "🍷" : offset.icon),
+      rating: spot.rating || 4.8,
+      category: spot.category || spot.tag || "Attraction",
+      distance: spot.geoLabel || `${(0.5 + idx * 0.4).toFixed(1)} km away`,
+      img: spot.image || spot.photoUrl || "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=400&q=80"
+    };
+  });
 
   currentPoiOverviewList = pois;
 

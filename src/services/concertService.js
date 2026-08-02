@@ -123,7 +123,7 @@ export const CONCERTS_DATABASE = [
     image: "https://images.unsplash.com/photo-1465847899084-d164df4dedc6?auto=format&fit=crop&w=600&q=80",
     ticketUrl: "https://eplus.jp",
     isPopularTour: true
-  }
+  },
   // London Concerts
   {
     id: "cnc-london-1",

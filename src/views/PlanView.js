@@ -697,24 +697,158 @@ function renderVerticalTimeline(trip) {
   `;
 }
 
+function getNeighborhoodsForDestination(destinationName = "") {
+  const lower = destinationName.toLowerCase();
+  
+  if (lower.includes("london")) {
+    return [
+      { name: "Soho & Covent Garden", desc: "Vibrant theater district, historic pedestrian squares, boutique shopping, espresso bars & dim sum.", tag: "Culture & Dining" },
+      { name: "Shoreditch & Hoxton", desc: "East London creative hub known for street art murals, vintage markets, craft breweries & independent coffee.", tag: "Arts & Nightlife" },
+      { name: "Kensington & Chelsea", desc: "Elegant Victorian terraces, world-class museums (V&A, Natural History), high fashion & peaceful garden squares.", tag: "Museums & Elegance" },
+      { name: "Camden Town", desc: "Alternative music heritage, iconic canal market, punk rock roots, eclectic street food & vintage clothing.", tag: "Markets & Music" },
+      { name: "South Bank & Borough", desc: "Thames riverwalk, Tate Modern art, Globe Theatre, and London's premier food market at Borough.", tag: "Riverside & Food" }
+    ];
+  }
+
+  if (lower.includes("tokyo")) {
+    return [
+      { name: "Shibuya & Harajuku", desc: "Youth fashion capital, neon-lit shopping avenues, Takeshita Street, and the famous Scramble crossing.", tag: "Fashion & Energy" },
+      { name: "Shinjuku & Golden Gai", desc: "Skyscraper towers, sprawling transit hub, serene Gyoen national garden, and atmospheric tiny izakaya bars.", tag: "Nightlife & Skyscrapers" },
+      { name: "Ginza & Tsukiji", desc: "Luxury department stores, high-end sushi bars, Kabuki theater, and fresh seafood street stalls.", tag: "Luxury & Gastronomy" },
+      { name: "Asakusa & Ueno", desc: "Edo-period charm, Senso-ji temple, Nakamise shopping street, traditional craft shops & spacious park museums.", tag: "Historic & Shrines" },
+      { name: "Roppongi & Akasaka", desc: "Art triangle museums (Mori, Suntory, National Art Center), international dining & cocktail lounges.", tag: "Modern Art & Dining" }
+    ];
+  }
+
+  if (lower.includes("new york") || lower.includes("nyc")) {
+    return [
+      { name: "SoHo & Greenwich Village", desc: "Cobblestone streets, cast-iron architecture, historic jazz clubs, comedy cellars & bohemian cafes.", tag: "Chic & Music" },
+      { name: "Williamsburg, Brooklyn", desc: "Indie boutiques, waterfront skyline views of Manhattan, rooftop bars, flea markets & artisanal dining.", tag: "Hip & River Vistas" },
+      { name: "Upper East Side", desc: "Museum Mile (The Met, Guggenheim), grand pre-war avenues, Central Park access & quiet luxury.", tag: "Art & Parkside" },
+      { name: "DUMBO & Brooklyn Heights", desc: "Dramatic East River views under Manhattan & Brooklyn bridges, paved cobblestones & waterfront parks.", tag: "Skyline Views" },
+      { name: "Chelsea & Meatpacking", desc: "Elevated High Line park, contemporary art galleries, Hudson River Park & Whitney Museum.", tag: "Galleries & High Line" }
+    ];
+  }
+
+  if (lower.includes("stockholm")) {
+    return [
+      { name: "Gamla Stan", desc: "Preserved 13th-century medieval island, narrow mustard alleyways, Royal Palace & cozy subterranean cafes.", tag: "Medieval Heart" },
+      { name: "Södermalm", desc: "Creative hilltop district (SoFo), panoramic views along Monteliusvägen, indie shops & Nordic dining.", tag: "Design & Vistas" },
+      { name: "Östermalm", desc: "Grand boulevard avenues, historic Saluhall food hall, high fashion boutiques & waterfront walks.", tag: "Gastronomy & Chic" },
+      { name: "Vasastan", desc: "Charming residential quarter, cozy neighborhood bistros, antique shops & Vasaparken green lawns.", tag: "Local Life & Cafes" },
+      { name: "Djurgården", desc: "Lush royal island home to Vasa Museum, Skansen open-air museum, ABBA Museum & waterfront trails.", tag: "Parks & Museums" }
+    ];
+  }
+
+  if (lower.includes("rome")) {
+    return [
+      { name: "Trastevere", desc: "Picturesque cobblestone alleyways, ivy-draped piazzas, lively tavernas, and authentic Roman carbonara.", tag: "Dining & Night Vibe" },
+      { name: "Monti", desc: "Bohemian quarter near the Colosseum, vintage clothing boutiques, artisan workshops & cozy wine bars.", tag: "Artisan & Hip" },
+      { name: "Centro Storico", desc: "Renaissance heart around Piazza Navona, Pantheon, and Campo de' Fiori morning market.", tag: "Monuments & Squares" },
+      { name: "Testaccio", desc: "Traditional food lover's district, local covered market, historic trattorias & culinary heritage.", tag: "Authentic Food" },
+      { name: "Prati & Borgo", desc: "Elegant Art Nouveau avenues bordering Vatican City, wide shopping streets & quiet gelaterias.", tag: "Vatican & Shopping" }
+    ];
+  }
+
+  if (lower.includes("barcelona")) {
+    return [
+      { name: "Barri Gòtic", desc: "Gothic Cathedral square, Roman wall remnants, secret courtyards & atmospheric tapas bars.", tag: "Historic Quarter" },
+      { name: "El Born", desc: "Trendy artistic neighborhood, Santa Maria del Mar church, Picasso Museum & trendy cocktail bars.", tag: "Arts & Tapas" },
+      { name: "Gràcia", desc: "Village-feel squares, independent cinema, Park Güell hillside access & local festival charm.", tag: "Bohemian Squares" },
+      { name: "Eixample", desc: "Grid-lined modernist avenues, Gaudí's Sagrada Família & Casa Batlló, upscale boutiques.", tag: "Modernist Architecture" },
+      { name: "Poble-Sec & Montjuïc", desc: "Blai street pincho bars, Montjuïc castle gardens, Joan Miró museum & sunset views.", tag: "Pinchos & Gardens" }
+    ];
+  }
+
+  if (lower.includes("paris")) {
+    return [
+      { name: "Le Marais", desc: "Trendy boutiques, historic mansions, cobblestone streets, vibrant specialty coffee & falafel spots.", tag: "Shopping & Cafes" },
+      { name: "Saint-Germain-des-Prés", desc: "Classic literary cafes, art galleries, high fashion, and elegant Haussmannian avenues.", tag: "Historic & Chic" },
+      { name: "Montmartre", desc: "Bohemian hill crowned by Sacré-Cœur, winding alleys, painters' square, and romantic vistas.", tag: "Artistic & Views" },
+      { name: "Latin Quarter", desc: "Sorbonne University vibe, historic bookshops like Shakespeare & Co, and lively bistro terraces.", tag: "Culture & Dining" },
+      { name: "Île de la Cité", desc: "Historic heart of Paris, home to Sainte-Chapelle stained glass and Notre-Dame Cathedral.", tag: "Landmarks & Origin" }
+    ];
+  }
+
+  const cleanCity = destinationName.includes(",") ? destinationName.split(",")[0].trim() : destinationName.trim() || "City";
+
+  return [
+    { name: `${cleanCity} Historic Center`, desc: `The cultural and historical heart of ${cleanCity}, featuring main landmarks, ancient squares, and traditional architecture.`, tag: "Culture & Origin" },
+    { name: `${cleanCity} Arts & Shopping District`, desc: `Vibrant commercial center filled with boutique stores, artisan workshops, cafes, and contemporary art spaces.`, tag: "Shopping & Cafes" },
+    { name: `${cleanCity} Waterfront & Promenade`, desc: `Scenic riverfront or harbor district offering panoramic vistas, walking paths, and seaside dining.`, tag: "Scenic Views" },
+    { name: `${cleanCity} Parkside & Garden Quarter`, desc: `Peaceful green enclave ideal for relaxing walks, local coffee stops, and outdoor recreation.`, tag: "Parks & Leisure" }
+  ];
+}
+
 function getTopAttractionsForTrip(trip) {
-  const custom = (trip.explorePlaces || []).filter(p => p.image || p.photoUrl);
-  if (custom.length >= 6) return custom.slice(0, 10);
+  const custom = (trip.explorePlaces || trip.tourismPois || []).filter(p => p.image || p.photoUrl);
+  if (custom.length >= 5) return custom.slice(0, 10);
 
   const destLower = (trip.destination || "").toLowerCase();
+
+  if (destLower.includes("london")) {
+    return [
+      { id: "l1", title: "Big Ben & Palace of Westminster", category: "Historic Landmark", rating: 4.9, image: "https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?auto=format&fit=crop&w=400&q=80", geoLabel: "Westminster" },
+      { id: "l2", title: "Tower Bridge & Tower of London", category: "Castle & Bridge", rating: 4.8, image: "https://images.unsplash.com/photo-1505761671935-60b3a7427bad?auto=format&fit=crop&w=400&q=80", geoLabel: "Tower Hill" },
+      { id: "l3", title: "British Museum", category: "World Museum", rating: 4.9, image: "https://images.unsplash.com/photo-1565008447742-97f6f38c985c?auto=format&fit=crop&w=400&q=80", geoLabel: "Bloomsbury" },
+      { id: "l4", title: "Tate Modern & Millennium Bridge", category: "Modern Art", rating: 4.8, image: "https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?auto=format&fit=crop&w=400&q=80", geoLabel: "Bankside" },
+      { id: "l5", title: "Borough Market", category: "Food Market", rating: 4.8, image: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=400&q=80", geoLabel: "Southwark" },
+      { id: "l6", title: "Hyde Park & Kensington Gardens", category: "Royal Park", rating: 4.7, image: "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=400&q=80", geoLabel: "Mayfair" }
+    ];
+  }
+
+  if (destLower.includes("tokyo")) {
+    return [
+      { id: "t1", title: "Shibuya Crossing & Hachiko", category: "Iconic Intersection", rating: 4.9, image: "https://images.unsplash.com/photo-1503899036084-c55cdd92da26?auto=format&fit=crop&w=400&q=80", geoLabel: "Shibuya" },
+      { id: "t2", title: "Senso-ji Temple", category: "Buddhist Shrine", rating: 4.8, image: "https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?auto=format&fit=crop&w=400&q=80", geoLabel: "Asakusa" },
+      { id: "t3", title: "Tokyo Skytree", category: "Observation Tower", rating: 4.8, image: "https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?auto=format&fit=crop&w=400&q=80", geoLabel: "Sumida" },
+      { id: "t4", title: "Meiji Shrine & Yoyogi Park", category: "Shinto Shrine", rating: 4.9, image: "https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?auto=format&fit=crop&w=400&q=80", geoLabel: "Harajuku" },
+      { id: "t5", title: "Tsukiji Outer Market", category: "Seafood Market", rating: 4.7, image: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=400&q=80", geoLabel: "Chuo" }
+    ];
+  }
+
+  if (destLower.includes("new york") || destLower.includes("nyc")) {
+    return [
+      { id: "ny1", title: "Central Park", category: "Urban Park", rating: 4.9, image: "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=400&q=80", geoLabel: "Manhattan" },
+      { id: "ny2", title: "Statue of Liberty & Ellis Island", category: "National Monument", rating: 4.8, image: "https://images.unsplash.com/photo-1500673922987-e212871fec22?auto=format&fit=crop&w=400&q=80", geoLabel: "NY Harbor" },
+      { id: "ny3", title: "Metropolitan Museum of Art", category: "Art Museum", rating: 4.9, image: "https://images.unsplash.com/photo-1565008447742-97f6f38c985c?auto=format&fit=crop&w=400&q=80", geoLabel: "Upper East Side" },
+      { id: "ny4", title: "Brooklyn Bridge Walk", category: "Historic Bridge", rating: 4.8, image: "https://images.unsplash.com/photo-1505761671935-60b3a7427bad?auto=format&fit=crop&w=400&q=80", geoLabel: "DUMBO" },
+      { id: "ny5", title: "The High Line & Chelsea Market", category: "Elevated Park", rating: 4.8, image: "https://images.unsplash.com/photo-1518391846015-55a9cc003b25?auto=format&fit=crop&w=400&q=80", geoLabel: "Meatpacking" }
+    ];
+  }
+
+  if (destLower.includes("stockholm")) {
+    return [
+      { id: "s1", title: "Gamla Stan (Old Town)", category: "Historic Quarter", rating: 4.9, image: "https://images.unsplash.com/photo-1509299349698-dd22323b5963?auto=format&fit=crop&w=400&q=80", geoLabel: "Gamla Stan" },
+      { id: "s2", title: "Vasa Museum", category: "Maritime Warship", rating: 4.9, image: "https://images.unsplash.com/photo-1565008447742-97f6f38c985c?auto=format&fit=crop&w=400&q=80", geoLabel: "Djurgården" },
+      { id: "s3", title: "Stockholm Palace & Royal Armory", category: "Royal Residence", rating: 4.8, image: "https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?auto=format&fit=crop&w=400&q=80", geoLabel: "Gamla Stan" },
+      { id: "s4", title: "Fotografiska Museum", category: "Photography Center", rating: 4.8, image: "https://images.unsplash.com/photo-1597910037310-7dd8ddb93e24?auto=format&fit=crop&w=400&q=80", geoLabel: "Södermalm" }
+    ];
+  }
+
+  if (destLower.includes("rome")) {
+    return [
+      { id: "r1", title: "Colosseum & Roman Forum", category: "Ancient Amphitheater", rating: 4.9, image: "https://images.unsplash.com/photo-1552832230-c0197dd311b5?auto=format&fit=crop&w=400&q=80", geoLabel: "Piazza del Colosseo" },
+      { id: "r2", title: "Pantheon", category: "Roman Temple", rating: 4.9, image: "https://images.unsplash.com/photo-1515542622106-78bda8ba0e5b?auto=format&fit=crop&w=400&q=80", geoLabel: "Piazza della Rotonda" },
+      { id: "r3", title: "Trevi Fountain", category: "Baroque Fountain", rating: 4.8, image: "https://images.unsplash.com/photo-1531572753322-ad063cecc140?auto=format&fit=crop&w=400&q=80", geoLabel: "Trevi District" },
+      { id: "r4", title: "Vatican Museums & Sistine Chapel", category: "Papal Art", rating: 4.9, image: "https://images.unsplash.com/photo-1565008447742-97f6f38c985c?auto=format&fit=crop&w=400&q=80", geoLabel: "Vatican City" }
+    ];
+  }
+
+  if (destLower.includes("barcelona")) {
+    return [
+      { id: "b1", title: "Sagrada Família", category: "Gaudí Basilica", rating: 4.9, image: "https://images.unsplash.com/photo-1583778176476-4a8b02a64c01?auto=format&fit=crop&w=400&q=80", geoLabel: "Eixample" },
+      { id: "b2", title: "Park Güell", category: "Modernist Park", rating: 4.8, image: "https://images.unsplash.com/photo-1539037116277-4db20889f2d4?auto=format&fit=crop&w=400&q=80", geoLabel: "Gràcia" },
+      { id: "b3", title: "Gothic Quarter & Cathedral", category: "Historic District", rating: 4.8, image: "https://images.unsplash.com/photo-1509299349698-dd22323b5963?auto=format&fit=crop&w=400&q=80", geoLabel: "Barri Gòtic" }
+    ];
+  }
 
   if (destLower.includes("paris")) {
     return [
       { id: "p1", title: "Louvre Museum", category: "Museum", rating: 4.8, image: "https://images.unsplash.com/photo-1499856871958-5b9627545d1a?auto=format&fit=crop&w=400&q=80", geoLabel: "1st Arrondissement" },
       { id: "p2", title: "Sainte-Chapelle", category: "Historic Landmark", rating: 4.9, image: "https://images.unsplash.com/photo-1560969184-10fe8719e047?auto=format&fit=crop&w=400&q=80", geoLabel: "Île de la Cité" },
       { id: "p3", title: "Eiffel Tower", category: "Monument", rating: 4.7, image: "https://images.unsplash.com/photo-1511739001486-6bfe10ce785f?auto=format&fit=crop&w=400&q=80", geoLabel: "7th Arrondissement" },
-      { id: "p4", title: "Musée d'Orsay", category: "Art Gallery", rating: 4.8, image: "https://images.unsplash.com/photo-1597910037310-7dd8ddb93e24?auto=format&fit=crop&w=400&q=80", geoLabel: "7th Arrondissement" },
-      { id: "p5", title: "Notre-Dame Cathedral", category: "Gothic Church", rating: 4.8, image: "https://images.unsplash.com/photo-1478358161113-b0e119846c6a?auto=format&fit=crop&w=400&q=80", geoLabel: "4th Arrondissement" },
-      { id: "p6", title: "Jardin des Tuileries", category: "Royal Park", rating: 4.7, image: "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=400&q=80", geoLabel: "1st Arrondissement" },
-      { id: "p7", title: "Montmartre & Sacré-Cœur", category: "Historic Hill", rating: 4.8, image: "https://images.unsplash.com/photo-1509299349698-dd22323b5963?auto=format&fit=crop&w=400&q=80", geoLabel: "18th Arrondissement" },
-      { id: "p8", title: "Pont Neuf & Seine Cruise", category: "Scenic River", rating: 4.7, image: "https://images.unsplash.com/photo-1499856871958-5b9627545d1a?auto=format&fit=crop&w=400&q=80", geoLabel: "Seine Riverfront" },
-      { id: "p9", title: "Place des Vosges", category: "Historic Square", rating: 4.8, image: "https://images.unsplash.com/photo-1522093007474-d86e9bf7ba6f?auto=format&fit=crop&w=400&q=80", geoLabel: "Le Marais" },
-      { id: "p10", title: "Centre Pompidou", category: "Modern Art", rating: 4.6, image: "https://images.unsplash.com/photo-1549144511-f099e773c147?auto=format&fit=crop&w=400&q=80", geoLabel: "4th Arrondissement" }
+      { id: "p4", title: "Musée d'Orsay", category: "Art Gallery", rating: 4.8, image: "https://images.unsplash.com/photo-1597910037310-7dd8ddb93e24?auto=format&fit=crop&w=400&q=80", geoLabel: "7th Arrondissement" }
     ];
   }
 
@@ -722,18 +856,22 @@ function getTopAttractionsForTrip(trip) {
     return [
       { id: "c1", title: "Palace of Knossos", category: "Minoan Palace", rating: 4.8, image: "https://images.unsplash.com/photo-1570077188670-e3a8d69ac5ff?auto=format&fit=crop&w=400&q=80", geoLabel: "Heraklion" },
       { id: "c2", title: "Chania Venetian Harbor", category: "Historic Port", rating: 4.9, image: "https://images.unsplash.com/photo-1533105079780-92b9be482077?auto=format&fit=crop&w=400&q=80", geoLabel: "Chania" },
-      { id: "c3", title: "Samaria Gorge", category: "National Park", rating: 4.9, image: "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=400&q=80", geoLabel: "White Mountains" },
-      { id: "c4", title: "Elafonisi Pink Beach", category: "Coastal Lagoon", rating: 4.8, image: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=400&q=80", geoLabel: "Chania Region" },
-      { id: "c5", title: "Heraklion Archaeological Museum", category: "Museum", rating: 4.8, image: "https://images.unsplash.com/photo-1565008447742-97f6f38c985c?auto=format&fit=crop&w=400&q=80", geoLabel: "Heraklion" }
+      { id: "c3", title: "Samaria Gorge", category: "National Park", rating: 4.9, image: "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=400&q=80", geoLabel: "White Mountains" }
     ];
   }
 
+  const cleanCity = trip.destination ? trip.destination.split(",")[0].trim() : "City";
+
   return [
-    { id: "g1", title: `${trip.destination} Old Town`, category: "Historic Quarter", rating: 4.8, image: "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=400&q=80", geoLabel: "City Center" },
-    { id: "g2", title: `${trip.destination} Central Market`, category: "Local Gastronomy", rating: 4.7, image: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=400&q=80", geoLabel: "Market Square" },
-    { id: "g3", title: `${trip.destination} National Museum`, category: "Culture & Art", rating: 4.8, image: "https://images.unsplash.com/photo-1499856871958-5b9627545d1a?auto=format&fit=crop&w=400&q=80", geoLabel: "Museum District" },
-    { id: "g4", title: `${trip.destination} Waterfront Promenade`, category: "Scenic View", rating: 4.9, image: "https://images.unsplash.com/photo-1511739001486-6bfe10ce785f?auto=format&fit=crop&w=400&q=80", geoLabel: "Harbor" }
+    { id: "g1", title: `${cleanCity} Old Town & Historic Center`, category: "Historic Quarter", rating: 4.8, image: "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=400&q=80", geoLabel: `${cleanCity} Center` },
+    { id: "g2", title: `${cleanCity} Central Market & Gastronomy`, category: "Local Gastronomy", rating: 4.7, image: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=400&q=80", geoLabel: "Market Square" },
+    { id: "g3", title: `${cleanCity} National Museum & Art Gallery`, category: "Culture & Art", rating: 4.8, image: "https://images.unsplash.com/photo-1499856871958-5b9627545d1a?auto=format&fit=crop&w=400&q=80", geoLabel: "Museum District" },
+    { id: "g4", title: `${cleanCity} Waterfront & Promenade`, category: "Scenic View", rating: 4.9, image: "https://images.unsplash.com/photo-1511739001486-6bfe10ce785f?auto=format&fit=crop&w=400&q=80", geoLabel: "Harbor Front" }
   ];
+}
+
+if (typeof window !== "undefined") {
+  window.__getTopAttractionsForTrip = getTopAttractionsForTrip;
 }
 
 function isPoiAddedToCalendar(events, spotTitle) {
@@ -747,15 +885,15 @@ function isPoiAddedToCalendar(events, spotTitle) {
 }
 
 function renderPoiMapCanvas(trip, topPOIs) {
-  const destination = trip.destination || "Paris, France";
+  const destination = trip.destination || "Destination";
   const area = destination.split(",")[0].trim();
   const events = trip.calendarEvents || [];
   const activeSpot = topPOIs[0] || {
-    title: "Louvre Museum & Tuileries",
+    title: `${area} Central Landmark`,
     rating: 4.9,
-    category: "Museum",
+    category: "Landmark",
     geoLabel: "1.2 km away",
-    image: "https://images.unsplash.com/photo-1499856871958-5b9627545d1a?auto=format&fit=crop&w=400&q=80"
+    image: "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=400&q=80"
   };
   const isLouvreAdded = isPoiAddedToCalendar(events, activeSpot.title);
 
@@ -856,7 +994,17 @@ function renderOverviewTabBody(trip, activeFilter, cachedBrief, editorial, topPO
   }
 
   if (activeFilter === "events") {
-    const concertList = CONCERTS_DATABASE[destination] || CONCERTS_DATABASE["Paris"] || [];
+    const matchedConcerts = CONCERTS_DATABASE.filter(c => 
+      c.city.toLowerCase().includes(area.toLowerCase()) || 
+      c.country.toLowerCase().includes(area.toLowerCase()) ||
+      area.toLowerCase().includes(c.city.toLowerCase())
+    );
+    const concertList = matchedConcerts.length ? matchedConcerts : [
+      { artist: `${area} Live Music & Jazz Night`, date: "Every Summer Weekend", venue: `${area} Cultural Pavilion`, category: "Festival" },
+      { artist: `${area} Arts & Heritage Exhibition`, date: "First Friday of Month", venue: `${area} City Museum`, category: "Exhibition" },
+      { artist: `${area} Sunset Philharmonic Concert`, date: "Wednesdays 19:00", venue: `${area} Waterfront Stage`, category: "Concert" }
+    ];
+
     return `
       <div style="padding: 20px;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
@@ -864,22 +1012,18 @@ function renderOverviewTabBody(trip, activeFilter, cachedBrief, editorial, topPO
             <h3 class="voice-serif" style="font-size: 1.3rem; font-weight: 700; margin: 0; color: var(--ink);">Upcoming Events & Culture</h3>
             <p style="font-size: 0.82rem; color: var(--ink-muted); margin: 2px 0 0 0;">Concerts, festivals, and special events in ${escapeHtml(area)}</p>
           </div>
-          <span class="badge badge--info voice-mono" style="font-weight: 700;">${concertList.length || 3} Live Events</span>
+          <span class="badge badge--info voice-mono" style="font-weight: 700;">${concertList.length} Live Events</span>
         </div>
 
         <div style="display: flex; flex-direction: column; gap: 12px;">
-          ${(concertList.length ? concertList : [
-            { artist: "Paris Jazz Festival", date: "Every Summer Weekend", venue: "Parc Floral de Paris", category: "Festival" },
-            { artist: "Louvre Nocturne Night", date: "First Friday of Month", venue: "Musée du Louvre", category: "Exhibition" },
-            { artist: "Seine Sunset Classical", date: "Wednesdays 19:00", venue: "Pont des Arts", category: "Concert" }
-          ]).map(evt => `
+          ${concertList.map(evt => `
             <div style="display: flex; justify-content: space-between; align-items: center; background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius-md); padding: 14px 16px; box-shadow: var(--shadow-sm);">
               <div>
                 <span class="voice-mono" style="font-size: 0.7rem; font-weight: 700; color: var(--orange); text-transform: uppercase;">${escapeHtml(evt.category || 'Event')}</span>
-                <h4 style="font-size: 1rem; font-weight: 700; color: var(--ink); margin: 2px 0;">${escapeHtml(evt.artist || evt.name)}</h4>
-                <div style="font-size: 0.78rem; color: var(--ink-muted);">📅 ${escapeHtml(evt.date)} · 📍 ${escapeHtml(evt.venue)}</div>
+                <h4 style="font-size: 1rem; font-weight: 700; color: var(--ink); margin: 2px 0;">${escapeHtml(evt.artist || evt.title || evt.name)}</h4>
+                <div style="font-size: 0.78rem; color: var(--ink-muted);">📅 ${escapeHtml(evt.dates || evt.date)} · 📍 ${escapeHtml(evt.venue)}</div>
               </div>
-              <button class="btn btn--outline btn--sm" data-action="add-poi-event" data-spot-name="${escapeHtml(evt.artist || evt.name)}" style="font-size: 0.78rem;">
+              <button class="btn btn--outline btn--sm" data-action="add-poi-event" data-spot-name="${escapeHtml(evt.artist || evt.title || evt.name)}" style="font-size: 0.78rem;">
                 + Add Event
               </button>
             </div>
@@ -890,20 +1034,14 @@ function renderOverviewTabBody(trip, activeFilter, cachedBrief, editorial, topPO
   }
 
   if (activeFilter === "neighborhoods") {
-    const neighborhoods = [
-      { name: "Le Marais", desc: "Trendy boutiques, historic mansions, cobblestone streets, vibrant specialty coffee & falafel spots.", tag: "Shopping & Cafes" },
-      { name: "Saint-Germain-des-Prés", desc: "Classic literary cafes, art galleries, high fashion, and elegant Haussmannian avenues.", tag: "Historic & Chic" },
-      { name: "Montmartre", desc: "Bohemian hill crowned by Sacré-Cœur, winding alleys, painters' square, and romantic vistas.", tag: "Artistic & Views" },
-      { name: "Latin Quarter", desc: "Sorbonne University vibe, historic bookshops like Shakespeare & Co, and lively bistro terraces.", tag: "Culture & Dining" },
-      { name: "Île de la Cité", desc: "Historic heart of Paris, home to Sainte-Chapelle stained glass and Notre-Dame Cathedral.", tag: "Landmarks & Origin" }
-    ];
+    const neighborhoods = getNeighborhoodsForDestination(destination);
 
     return `
       <div style="padding: 20px;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
           <div>
             <h3 class="voice-serif" style="font-size: 1.3rem; font-weight: 700; margin: 0; color: var(--ink);">Neighborhoods & Quarters</h3>
-            <p style="font-size: 0.82rem; color: var(--ink-muted); margin: 2px 0 0 0;">Explore distinct districts and neighborhood personalities</p>
+            <p style="font-size: 0.82rem; color: var(--ink-muted); margin: 2px 0 0 0;">Explore distinct districts and neighborhood personalities in ${escapeHtml(area)}</p>
           </div>
         </div>
 
@@ -934,17 +1072,20 @@ function renderOverviewTabBody(trip, activeFilter, cachedBrief, editorial, topPO
               🚇 Public Transport & Navigation
             </h4>
             <p style="font-size: 0.86rem; color: var(--ink-muted); margin: 0; line-height: 1.5;">
-              ${escapeHtml(transitGuide.overview || `${area} is easily navigable via public transport. Navigo Easy passes or contact-less cards work seamlessly for Metro, RER, and bus networks.`)}
+              ${escapeHtml(transitGuide.summary || `${area} is easily navigable via public transport. Contactless card payments and city transit passes work across local networks.`)}
             </p>
           </div>
 
           <div style="background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius-md); padding: 16px;">
             <h4 style="font-size: 0.95rem; font-weight: 700; color: var(--ink); margin: 0 0 8px 0; display: flex; align-items: center; gap: 8px;">
-              ✈️ Airport Routes
+              ✈️ Airport Routes & Station Transit (${escapeHtml(transitGuide.airport || area)})
             </h4>
-            <div style="font-size: 0.84rem; color: var(--ink-muted); line-height: 1.5;">
-              <strong>Paris Charles de Gaulle (CDG):</strong> RER B train direct to Gare du Nord / Châtelet (approx. 35 mins).<br/>
-              <strong>Paris Orly (ORY):</strong> Orlyval to Antony RER B or Metro Line 14 direct connection.
+            <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 8px;">
+              ${(transitGuide.arrivalOptions || []).map(opt => `
+                <div style="font-size: 0.84rem; color: var(--ink-muted); line-height: 1.45;">
+                  <strong style="color: var(--ink);">${opt.icon || '🚌'} ${escapeHtml(opt.mode)}:</strong> ${escapeHtml(opt.description)} <span class="voice-mono" style="font-size: 0.72rem; color: var(--orange); font-weight: 700;">(${escapeHtml(opt.cost)} · ${escapeHtml(opt.duration)})</span>
+                </div>
+              `).join('')}
             </div>
           </div>
 
@@ -1087,7 +1228,6 @@ function renderOverviewTabBody(trip, activeFilter, cachedBrief, editorial, topPO
 function renderLocationEditorialIntroCard(trip) {
   const destination = trip.destination || "Destination";
   const area = trip.destination ? trip.destination.split(",")[0] : destination;
-  const countryName = trip.destination && trip.destination.includes(",") ? trip.destination.split(",").slice(1).join(",").trim() : "France";
   
   const facts = createVerifiedFactBundle({
     title: destination,
@@ -1116,14 +1256,18 @@ function renderLocationEditorialIntroCard(trip) {
     });
   }
 
+  const countryName = trip.destination && trip.destination.includes(",")
+    ? trip.destination.split(",").slice(1).join(",").trim()
+    : (cachedBrief?.quickFacts?.country || "International");
+
   const quickFacts = cachedBrief?.quickFacts || {
-    population: "2.1 million",
-    area: "105 km²",
-    country: `${countryName} 🇫🇷`,
-    language: "French",
+    population: "1.2 million",
+    area: "250 km²",
+    country: countryName,
+    language: "Local / English",
     currency: "EUR (€)",
     timezone: "GMT+2",
-    bestTime: "Apr–Jun, Sep–Oct"
+    bestTime: "Apr–Oct"
   };
 
   const imageUrl = cachedBrief?.heroImage || cachedBrief?.thumbnail || trip.heroImage || "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=1200&q=80";
@@ -1138,6 +1282,8 @@ function renderLocationEditorialIntroCard(trip) {
     { id: "practical", label: "Practical info" },
     { id: "stories", label: "Stories" },
   ];
+
+  const destinationDesc = cachedBrief?.description || (cachedBrief?.standfirst ? cachedBrief.standfirst.slice(0, 110) + "..." : (editorial?.standfirst ? editorial.standfirst.slice(0, 110) + "..." : `Explore ${area} — landmark culture, gastronomy, and local sights.`));
 
   return `
     <!-- Mockup 08 — Auto-Generated Location Overview Shell -->
@@ -1160,7 +1306,7 @@ function renderLocationEditorialIntroCard(trip) {
         <!-- Destination Title & Subtitle Overlay -->
         <div style="position: absolute; bottom: 64px; left: 20px; right: 20px; color: #ffffff; z-index: 2;">
           <h2 class="voice-serif" style="font-size: 1.85rem; font-weight: 800; margin: 0; color: #ffffff; text-shadow: 0 2px 8px rgba(0,0,0,0.6);">${escapeHtml(area)}</h2>
-          <p style="font-size: 0.88rem; color: rgba(255,255,255,0.85); margin: 2px 0 0 0; font-weight: 500;">${escapeHtml(countryName)} · Capital of France, known for art, fashion, gastronomy and culture.</p>
+          <p style="font-size: 0.88rem; color: rgba(255,255,255,0.85); margin: 2px 0 0 0; font-weight: 500;">${escapeHtml(countryName)} · ${escapeHtml(destinationDesc)}</p>
         </div>
 
         <!-- Glass Bottom Quick Info Overlay Strip -->
