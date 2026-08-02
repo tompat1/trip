@@ -146,7 +146,6 @@ function renderJournalGallerySection(mediaGroups, mediaCount) {
         <div class="journal-section-actions">
           <button class="journal-icon-action" data-action="search-journal-media" type="button" aria-label="${escapeHtml(queryLabel)}" title="${escapeHtml(queryLabel)}">${renderIcon("search")}</button>
           <button class="btn btn--outline btn--sm" data-action="cycle-journal-media-filter" type="button">${renderIcon("filter")} ${escapeHtml(filterLabel)}</button>
-          <button class="btn btn--outline btn--sm" data-action="toggle-ai-concierge" type="button" style="border-color: var(--orange); color: var(--orange);">${renderIcon("sparkles")} AI Concierge</button>
           <button class="btn btn--primary btn--sm" data-action="open-quick-capture" type="button">${renderIcon("plus")} New moment</button>
         </div>
       </div>

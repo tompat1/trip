@@ -61,6 +61,8 @@ export function renderHomeView() {
 
         ${renderTripIntelligenceCard(trip)}
 
+        ${renderHomeAiConciergeCard(trip)}
+
         ${isLiveMode ? renderLiveJourneyModules(trip) : renderPlanningModules(trip, checklist)}
 
         <!-- Common Section: Ideas for your trip -->
@@ -551,4 +553,49 @@ function sanitizeHref(value = "") {
   } catch {
     return "";
   }
+}
+
+function renderHomeAiConciergeCard(trip) {
+  const cityName = (trip.destination || "Destination").split(",")[0].trim();
+  const weatherStr = trip.weather?.condition ? `${trip.weather.condition} • ${trip.weather.temp || ""}` : "";
+  const poiCount = [...(trip.tourismPois || []), ...(trip.hiddenGems || []), ...(trip.osmPlaces || [])].length;
+
+  return `
+    <section class="home-section home-ai-concierge-card mb-lg" style="background: linear-gradient(135deg, rgba(217, 74, 58, 0.08) 0%, rgba(56, 92, 115, 0.12) 100%); border: 1px solid rgba(217, 74, 58, 0.22); border-radius: 16px; padding: 20px; margin-bottom: 24px; position: relative; overflow: hidden; box-shadow: 0 4px 16px rgba(0,0,0,0.03);">
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span class="ai-badge voice-mono" style="background: var(--journey-red); color: white; padding: 4px 9px; border-radius: 6px; font-size: 0.72rem; font-weight: 700; display: inline-flex; align-items: center; gap: 4px; letter-spacing: 0.5px;">
+            ${renderIcon("sparkles")} TRIP CONCIERGE
+          </span>
+          <span style="font-size: 0.78rem; color: var(--ink-muted); font-weight: 500;">
+            ${poiCount > 0 ? `${poiCount} local spots indexed` : "Live destination intelligence"}
+          </span>
+        </div>
+        <button class="btn btn--outline btn--xs" data-action="toggle-ai-concierge" type="button" style="border-color: var(--journey-red); color: var(--journey-red); font-weight: 600; font-size: 0.78rem; padding: 4px 10px; border-radius: 14px;">
+          Open Drawer ${renderIcon("arrowRight")}
+        </button>
+      </div>
+
+      <h3 class="voice-serif" style="font-size: 1.3rem; font-weight: 700; color: var(--ink); margin: 0 0 6px 0;">
+        Ask anything about ${escapeHtml(cityName)}
+      </h3>
+      <p style="font-size: 0.84rem; color: var(--ink-muted); margin: 0 0 16px 0; line-height: 1.45;">
+        Get instant, location-aware answers powered by Cloudflare Workers AI and live local data${weatherStr ? ` • ${escapeHtml(weatherStr)}` : ""}.
+      </p>
+
+      <form class="home-concierge-quick-form" data-action="submit-home-concierge-form" onsubmit="return false;" style="display: flex; gap: 8px; margin-bottom: 14px;">
+        <input type="text" id="home-concierge-input" placeholder="e.g. Best coffee, rainy day plan, hidden gems in ${escapeHtml(cityName)}..." style="flex: 1; border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; font-size: 0.88rem; background: var(--paper); color: var(--ink);" required />
+        <button class="btn btn--primary btn--sm" type="submit" style="white-space: nowrap; font-weight: 600; padding: 10px 16px; border-radius: 10px;">
+          Ask AI ${renderIcon("sparkles")}
+        </button>
+      </form>
+
+      <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+        <button class="ai-chip" data-action="send-ai-chip" data-prompt="Best specialty coffee spots in ${escapeHtml(cityName)}">☕ Coffee in ${escapeHtml(cityName)}</button>
+        <button class="ai-chip" data-action="send-ai-chip" data-prompt="What should I do on a rainy day in ${escapeHtml(cityName)}?">☔ Rainy day plan</button>
+        <button class="ai-chip" data-action="send-ai-chip" data-prompt="Hidden local gems in ${escapeHtml(cityName)} away from crowds">🌿 Hidden gems</button>
+        <button class="ai-chip" data-action="send-ai-chip" data-prompt="Top evening dining & wine bars in ${escapeHtml(cityName)}">🍷 Dining & Wine</button>
+      </div>
+    </section>
+  `;
 }

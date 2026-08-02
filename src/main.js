@@ -1037,6 +1037,18 @@ function updateSearchResultsInPlace(input) {
 }
 
 document.addEventListener("submit", async (e) => {
+  if (e.target.classList?.contains("home-concierge-quick-form") || e.target.dataset?.action === "submit-home-concierge-form") {
+    e.preventDefault();
+    const input = e.target.querySelector("#home-concierge-input") || document.getElementById("home-concierge-input");
+    if (input && input.value.trim()) {
+      const query = input.value.trim();
+      input.value = "";
+      state.toggleAiConcierge(true);
+      state.askAiConcierge(query);
+    }
+    return;
+  }
+
   if (e.target.id === "auth-exit-login-form") {
     e.preventDefault();
     const form = e.target;

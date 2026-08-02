@@ -62,6 +62,10 @@ export function renderHeader() {
 
           ${renderMobileThemeSwitch()}
 
+          <button class="btn btn--primary btn--xs header-ai-concierge-btn" data-action="toggle-ai-concierge" type="button" style="display: inline-flex; align-items: center; gap: 4px; padding: 5px 10px; font-size: 0.76rem; font-weight: 600; background: linear-gradient(135deg, var(--journey-red) 0%, #B83A2C 100%); color: white; border: none; border-radius: 20px; box-shadow: 0 2px 8px rgba(217, 74, 58, 0.25);" aria-label="Open TRIP Travel Concierge" title="TRIP AI Concierge">
+            ${renderIcon("sparkles")} <span>Concierge</span>
+          </button>
+
           <button class="btn btn--icon btn--ghost" data-action="view-notifications" aria-label="Notifications" title="Notifications">
             ${renderIcon("bell")}
           </button>
