@@ -372,10 +372,10 @@ document.addEventListener("click", async (e) => {
       state.clearAiConcierge();
     }
     else if (action === "send-ai-chip") {
-      const promptText = target.dataset.prompt || "";
+      const promptText = target.dataset.prompt || target.closest("[data-prompt]")?.dataset.prompt || "";
       if (promptText) state.askAiConcierge(promptText);
     }
-    else if (action === "submit-ai-concierge") {
+    else if (action === "submit-ai-concierge" || target.closest(".ai-concierge-form")) {
       const input = document.getElementById("ai-concierge-input");
       if (input && input.value.trim()) {
         const query = input.value.trim();
@@ -1517,6 +1517,23 @@ export function showToast(message) {
     setTimeout(() => toast.remove(), 300);
   }, 2500);
 }
+
+// Global Form Submit Handler for AI Concierge and inputs
+document.addEventListener("submit", (e) => {
+  const form = e.target.closest("form");
+  if (!form) return;
+
+  const action = form.dataset.action || form.id;
+  if (action === "submit-ai-concierge" || form.classList.contains("ai-concierge-form")) {
+    e.preventDefault();
+    const input = document.getElementById("ai-concierge-input");
+    if (input && input.value.trim()) {
+      const query = input.value.trim();
+      input.value = "";
+      state.askAiConcierge(query);
+    }
+  }
+});
 
 // Global File Change Handler for Profile Avatar Uploads
 document.addEventListener("change", (e) => {

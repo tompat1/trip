@@ -4967,181 +4967,199 @@ Guidelines:
 - Do NOT mention cities other than ${destination} unless explicitly asked.`;
 
   // 1. Google Gemini Provider
-  if ((requestedProvider === "gemini" || (requestedProvider === "auto" && geminiKey)) && geminiKey) {
-    try {
-      const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`;
-      const geminiRes = await fetch(geminiUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [
-            { role: "user", parts: [{ text: `${systemPrompt}\n\nUser Question: ${prompt}` }] }
-          ]
-        })
-      });
-      if (geminiRes.ok) {
-        const data = await geminiRes.json();
-        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (text) {
-          return json({ success: true, answer: text, aiModel: "gemini-1.5-flash" });
+  if (requestedProvider === "gemini") {
+    if (geminiKey) {
+      try {
+        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`;
+        const geminiRes = await fetch(geminiUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ role: "user", parts: [{ text: `${systemPrompt}\n\nUser Question: ${prompt}` }] }]
+          })
+        });
+        if (geminiRes.ok) {
+          const data = await geminiRes.json();
+          const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (text) return json({ success: true, answer: text, aiModel: "gemini-1.5-flash" });
         }
+      } catch (e) {
+        console.warn("Gemini provider error:", e);
       }
-    } catch (e) {
-      console.warn("Gemini provider error:", e);
+    } else {
+      return json({
+        success: true,
+        answer: "🔑 **Google Gemini Key Required**\n\nPlease enter your free Google Gemini API key in **AI Settings** (⚙️ top right button) to query Gemini 1.5 Flash!",
+        aiModel: "gemini-key-missing"
+      });
     }
   }
 
   // 2. OpenAI ChatGPT Provider
-  if ((requestedProvider === "openai" || (requestedProvider === "auto" && openAiKey)) && openAiKey) {
-    try {
-      const openAiRes = await fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${openAiKey}`
-        },
-        body: JSON.stringify({
-          model: "gpt-4o-mini",
-          messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: prompt }
-          ]
-        })
-      });
-      if (openAiRes.ok) {
-        const data = await openAiRes.json();
-        const text = data.choices?.[0]?.message?.content;
-        if (text) {
-          return json({ success: true, answer: text, aiModel: "gpt-4o-mini" });
+  if (requestedProvider === "openai") {
+    if (openAiKey) {
+      try {
+        const openAiRes = await fetch("https://api.openai.com/v1/chat/completions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${openAiKey}` },
+          body: JSON.stringify({
+            model: "gpt-4o-mini",
+            messages: [{ role: "system", content: systemPrompt }, { role: "user", content: prompt }]
+          })
+        });
+        if (openAiRes.ok) {
+          const data = await openAiRes.json();
+          const text = data.choices?.[0]?.message?.content;
+          if (text) return json({ success: true, answer: text, aiModel: "gpt-4o-mini" });
         }
+      } catch (e) {
+        console.warn("OpenAI provider error:", e);
       }
-    } catch (e) {
-      console.warn("OpenAI provider error:", e);
+    } else {
+      return json({
+        success: true,
+        answer: "🔑 **OpenAI Key Required**\n\nPlease enter your OpenAI API key in **AI Settings** (⚙️ top right button) to use ChatGPT (GPT-4o)!",
+        aiModel: "openai-key-missing"
+      });
     }
   }
 
   // 3. Anthropic Claude Provider
-  if ((requestedProvider === "claude" || (requestedProvider === "auto" && claudeKey)) && claudeKey) {
-    try {
-      const claudeRes = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-api-key": claudeKey,
-          "anthropic-version": "2023-06-01"
-        },
-        body: JSON.stringify({
-          model: "claude-3-haiku-20240307",
-          max_tokens: 1024,
-          system: systemPrompt,
-          messages: [{ role: "user", content: prompt }]
-        })
-      });
-      if (claudeRes.ok) {
-        const data = await claudeRes.json();
-        const text = data.content?.[0]?.text;
-        if (text) {
-          return json({ success: true, answer: text, aiModel: "claude-3-haiku" });
+  if (requestedProvider === "claude") {
+    if (claudeKey) {
+      try {
+        const claudeRes = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-api-key": claudeKey,
+            "anthropic-version": "2023-06-01"
+          },
+          body: JSON.stringify({
+            model: "claude-3-haiku-20240307",
+            max_tokens: 1024,
+            system: systemPrompt,
+            messages: [{ role: "user", content: prompt }]
+          })
+        });
+        if (claudeRes.ok) {
+          const data = await claudeRes.json();
+          const text = data.content?.[0]?.text;
+          if (text) return json({ success: true, answer: text, aiModel: "claude-3-haiku" });
         }
+      } catch (e) {
+        console.warn("Claude provider error:", e);
       }
-    } catch (e) {
-      console.warn("Claude provider error:", e);
+    } else {
+      return json({
+        success: true,
+        answer: "🔑 **Anthropic Claude Key Required**\n\nPlease enter your Anthropic Claude API key in **AI Settings** (⚙️ top right button) to query Claude 3.5!",
+        aiModel: "claude-key-missing"
+      });
     }
   }
 
   // 4. xAI Grok Provider
-  if ((requestedProvider === "grok" || (requestedProvider === "auto" && grokKey)) && grokKey) {
-    try {
-      const grokRes = await fetch("https://api.x.ai/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${grokKey}`
-        },
-        body: JSON.stringify({
-          model: "grok-2-latest",
-          messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: prompt }
-          ]
-        })
-      });
-      if (grokRes.ok) {
-        const data = await grokRes.json();
-        const text = data.choices?.[0]?.message?.content;
-        if (text) {
-          return json({ success: true, answer: text, aiModel: "grok-2" });
+  if (requestedProvider === "grok") {
+    if (grokKey) {
+      try {
+        const grokRes = await fetch("https://api.x.ai/v1/chat/completions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${grokKey}` },
+          body: JSON.stringify({
+            model: "grok-2-latest",
+            messages: [{ role: "system", content: systemPrompt }, { role: "user", content: prompt }]
+          })
+        });
+        if (grokRes.ok) {
+          const data = await grokRes.json();
+          const text = data.choices?.[0]?.message?.content;
+          if (text) return json({ success: true, answer: text, aiModel: "grok-2" });
         }
+      } catch (e) {
+        console.warn("Grok provider error:", e);
       }
-    } catch (e) {
-      console.warn("Grok provider error:", e);
+    } else {
+      return json({
+        success: true,
+        answer: "🔑 **xAI Grok Key Required**\n\nPlease enter your Grok API key in **AI Settings** (⚙️ top right button) to use Grok 2!",
+        aiModel: "grok-key-missing"
+      });
     }
   }
 
-  // 5. OpenRouter Free Models (DeepSeek R1 / Llama 3.3 Free)
-  if (requestedProvider === "deepseek-free" || requestedProvider === "openrouter-free" || (requestedProvider === "auto" && openRouterKey)) {
-    try {
-      const modelName = requestedProvider === "deepseek-free" ? "deepseek/deepseek-r1:free" : "meta-llama/llama-3.3-70b-instruct:free";
-      const headers = {
-        "Content-Type": "application/json",
-        "HTTP-Referer": "https://trip.rynell.org",
-        "X-Title": "TRIP Travel Planner"
-      };
-      if (openRouterKey) headers["Authorization"] = `Bearer ${openRouterKey}`;
-
-      const openRouterRes = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-        method: "POST",
-        headers,
-        body: JSON.stringify({
-          model: modelName,
-          messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: prompt }
-          ]
-        })
-      });
-      if (openRouterRes.ok) {
-        const data = await openRouterRes.json();
-        const text = data.choices?.[0]?.message?.content;
-        if (text) {
-          return json({ success: true, answer: text, aiModel: requestedProvider === "deepseek-free" ? "deepseek-r1-free" : "llama-3.3-free" });
+  // 5. Groq Ultra-Fast Speed Engine
+  if (requestedProvider === "groq-free") {
+    if (groqKey) {
+      try {
+        const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${groqKey}` },
+          body: JSON.stringify({
+            model: "llama-3.3-70b-versatile",
+            messages: [{ role: "system", content: systemPrompt }, { role: "user", content: prompt }]
+          })
+        });
+        if (groqRes.ok) {
+          const data = await groqRes.json();
+          const text = data.choices?.[0]?.message?.content;
+          if (text) return json({ success: true, answer: text, aiModel: "groq-llama3.3-speed" });
         }
+      } catch (e) {
+        console.warn("Groq provider error:", e);
       }
-    } catch (e) {
-      console.warn("OpenRouter provider error:", e);
+    } else {
+      return json({
+        success: true,
+        answer: "🔑 **Groq Speed Key Required**\n\nPlease enter your free Groq API key in **AI Settings** (⚙️ top right button) for ultra-fast 500 tok/sec inference!",
+        aiModel: "groq-key-missing"
+      });
     }
   }
 
-  // 6. Groq Ultra-Fast Free Tier Engine
-  if ((requestedProvider === "groq-free" || (requestedProvider === "auto" && groqKey)) && groqKey) {
-    try {
-      const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${groqKey}`
-        },
-        body: JSON.stringify({
-          model: "llama-3.3-70b-versatile",
-          messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: prompt }
-          ]
-        })
-      });
-      if (groqRes.ok) {
-        const data = await groqRes.json();
-        const text = data.choices?.[0]?.message?.content;
-        if (text) {
-          return json({ success: true, answer: text, aiModel: "groq-llama3.3-speed" });
+  // 6. DeepSeek R1 Free Model (Native Cloudflare Edge or OpenRouter)
+  if (requestedProvider === "deepseek-free") {
+    if (context.env.AI) {
+      try {
+        const historyMessages = Array.isArray(tripContext.history)
+          ? tripContext.history.filter(m => m.text).map(m => ({ role: m.role === "assistant" ? "assistant" : "user", content: m.text }))
+          : [];
+        const messages = [{ role: "system", content: systemPrompt }, ...historyMessages.slice(-4), { role: "user", content: prompt }];
+        const aiRes = await context.env.AI.run("@cf/deepseek-ai/deepseek-r1-distill-qwen-32b", { messages }).catch(() => null);
+        if (aiRes?.response) {
+          return json({ success: true, answer: aiRes.response, aiModel: "deepseek-r1-free" });
         }
+      } catch (err) {
+        console.warn("Workers AI DeepSeek R1 fallback:", err);
       }
-    } catch (e) {
-      console.warn("Groq provider error:", e);
+    }
+
+    if (openRouterKey) {
+      try {
+        const openRouterRes = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "HTTP-Referer": "https://trip.rynell.org",
+            "Authorization": `Bearer ${openRouterKey}`
+          },
+          body: JSON.stringify({
+            model: "deepseek/deepseek-r1:free",
+            messages: [{ role: "system", content: systemPrompt }, { role: "user", content: prompt }]
+          })
+        });
+        if (openRouterRes.ok) {
+          const data = await openRouterRes.json();
+          const text = data.choices?.[0]?.message?.content;
+          if (text) return json({ success: true, answer: text, aiModel: "deepseek-r1-free" });
+        }
+      } catch (e) {
+        console.warn("OpenRouter DeepSeek error:", e);
+      }
     }
   }
 
-  // 7. Cloudflare Workers AI (Default Edge Provider)
+  // 7. Cloudflare Workers AI (Default Edge Llama 3.3 Provider)
   if (context.env.AI) {
     try {
       const historyMessages = Array.isArray(tripContext.history)
@@ -5165,7 +5183,7 @@ Guidelines:
         return json({
           success: true,
           answer: aiRes.response,
-          aiModel: "workers-ai-llama3.3"
+          aiModel: requestedProvider === "openrouter-free" ? "llama-3.3-free" : "workers-ai-llama3.3"
         });
       }
     } catch (err) {
