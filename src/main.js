@@ -480,6 +480,14 @@ document.addEventListener("click", async (e) => {
       state.closePhotoEditor();
       showToast("Photo removed.");
     }
+    else if (action === "set-ai-provider") {
+      const provider = target.dataset.provider || "auto";
+      state.setAiConciergeProvider(provider);
+      showToast(`AI engine set to ${provider}.`);
+    }
+    else if (action === "toggle-ai-keys-settings") {
+      state.toggleAiSettings();
+    }
     else if (action === "open-profile-section") {
       state.setProfileSection(target.dataset.profileSection || "profile");
     }
@@ -1493,6 +1501,12 @@ export function showToast(message) {
 
 // Global File Change Handler for Profile Avatar Uploads
 document.addEventListener("change", (e) => {
+  if (e.target.matches("[data-key-field]")) {
+    const keyField = e.target.dataset.keyField;
+    state.setAiProviderKey(keyField, e.target.value);
+    showToast("🔑 AI provider key saved locally.");
+  }
+
   if (e.target.matches("[data-profile-field]")) {
     const field = e.target.dataset.profileField;
     const group = e.target.dataset.profileGroup;

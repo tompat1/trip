@@ -11537,6 +11537,133 @@ textarea {
   gap: 8px;
 }
 
+/* ── Multi-Model AI Concierge Superpowers Styles ────────────────────────── */
+.ai-header-pill-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.ai-keys-toggle-btn {
+  font-size: 0.68rem;
+  font-weight: 700;
+  border-radius: var(--radius-pill);
+}
+
+.ai-model-selector-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: rgba(0, 0, 0, 0.03);
+  border-bottom: 1px solid var(--line, rgba(0, 0, 0, 0.06));
+}
+
+.ai-model-selector-label {
+  font-size: 0.68rem;
+  font-weight: 800;
+  color: var(--ink-muted, #666);
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+
+.ai-model-pills-scroll {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 2px;
+}
+
+.ai-model-pills-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.ai-model-pill {
+  padding: 4px 10px;
+  border-radius: 12px;
+  border: 1px solid var(--line, rgba(0, 0, 0, 0.12));
+  background: var(--paper, #F4F0E7);
+  color: var(--ink-muted, #666);
+  font-size: 0.74rem;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.ai-model-pill:hover {
+  background: #FFFFFF;
+  color: var(--ink, #171817);
+}
+
+.ai-model-pill.active {
+  background: var(--ink, #171817);
+  color: var(--paper, #F4F0E7);
+  border-color: var(--ink, #171817);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+.ai-keys-config-panel {
+  margin: 10px 16px 0;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: rgba(217, 74, 58, 0.06);
+  border: 1px solid rgba(217, 74, 58, 0.2);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ai-keys-config-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.82rem;
+}
+
+.ai-keys-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.ai-key-input-field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ai-key-input-field label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--ink-muted, #666);
+}
+
+.ai-key-input-field input {
+  width: 100%;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--line, rgba(0, 0, 0, 0.15));
+  background: #FFFFFF;
+  color: var(--ink, #171817);
+  font-size: 0.76rem;
+  font-family: monospace;
+}
+
+.ai-bubble-model-badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--orange, #D94A3A);
+  margin-top: 4px;
+  opacity: 0.85;
+}
+
+
 .photo-editor-save-btn {
   min-height: 40px;
   padding: 0 18px;

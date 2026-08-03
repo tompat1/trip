@@ -134,6 +134,19 @@ export class AppState {
     this.aiConciergeOpen = false;
     this.aiConciergeHistory = [];
     this.aiConciergeLoading = false;
+    let storedAiKeys = {};
+    try {
+      const stored = localStorage.getItem("trip_ai_provider_keys_v1");
+      if (stored) storedAiKeys = JSON.parse(stored);
+    } catch {}
+    this.aiConciergeProvider = "auto"; // "auto" | "workers-ai" | "gemini" | "openai" | "claude" | "grok"
+    this.aiProviderKeys = {
+      openAiKey: storedAiKeys.openAiKey || "",
+      geminiKey: storedAiKeys.geminiKey || "",
+      claudeKey: storedAiKeys.claudeKey || "",
+      grokKey: storedAiKeys.grokKey || "",
+    };
+    this.aiSettingsOpen = false;
     this.destinationSummaries = {};
     this.photoEditorOpen = false;
     this.photoEditorImageSrc = null;

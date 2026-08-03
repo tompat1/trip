@@ -57,12 +57,18 @@ export const aiService = {
     };
   },
 
-  async askConcierge({ prompt = "", trip = { destination: "Destination" }, personas = ["Food Explorer"], context = {} } = {}) {
+  async askConcierge({ prompt = "", trip = { destination: "Destination" }, personas = ["Food Explorer"], context = {}, provider = "auto", keys = {} } = {}) {
     try {
+      const headers = { "Content-Type": "application/json" };
+      if (keys.openAiKey) headers["X-OpenAI-Key"] = keys.openAiKey;
+      if (keys.geminiKey) headers["X-Gemini-Key"] = keys.geminiKey;
+      if (keys.claudeKey) headers["X-Anthropic-Key"] = keys.claudeKey;
+      if (keys.grokKey) headers["X-Grok-Key"] = keys.grokKey;
+
       const response = await fetch("/api/ai/concierge", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt, trip, personas, context }),
+        headers,
+        body: JSON.stringify({ prompt, trip, personas, context, provider }),
       });
       if (response.ok) {
         const data = await response.json();
@@ -75,7 +81,7 @@ export const aiService = {
     return {
       success: true,
       answer: generateDynamicConciergeFallback({ prompt, trip, personas, context }),
-      aiModel: "client-dynamic-fallback",
+      aiModel: provider !== "auto" ? `${provider}-client` : "trip-concierge-fallback",
     };
   },
 };

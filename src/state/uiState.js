@@ -254,6 +254,28 @@ export const uiStateMixin = {
     this.notify();
   },
 
+  setAiConciergeProvider(provider = "auto") {
+    this.aiConciergeProvider = provider;
+    this.notify();
+  },
+
+  setAiProviderKey(providerField, value) {
+    if (!providerField) return;
+    this.aiProviderKeys = {
+      ...this.aiProviderKeys,
+      [providerField]: String(value || "").trim(),
+    };
+    try {
+      localStorage.setItem("trip_ai_provider_keys_v1", JSON.stringify(this.aiProviderKeys));
+    } catch {}
+    this.notify();
+  },
+
+  toggleAiSettings(open) {
+    this.aiSettingsOpen = open !== undefined ? Boolean(open) : !this.aiSettingsOpen;
+    this.notify();
+  },
+
   clearAiConcierge() {
     this.aiConciergeHistory = [];
     this.notify();
@@ -297,17 +319,26 @@ export const uiStateMixin = {
         history: (this.aiConciergeHistory || []).slice(-6),
       };
 
-      const result = await aiService.askConcierge({ prompt: promptText, trip, personas, context });
+      const result = await aiService.askConcierge({
+        prompt: promptText,
+        trip,
+        personas,
+        context,
+        provider: this.aiConciergeProvider || "auto",
+        keys: this.aiProviderKeys || {},
+      });
 
       this.aiConciergeHistory.push({
         role: "assistant",
         text: result.answer || `Here are top recommendations for ${trip.destination}!`,
+        aiModel: result.aiModel || result.modelProvider || "trip-ai",
       });
     } catch (err) {
       console.warn("AI Concierge request error:", err);
       this.aiConciergeHistory.push({
         role: "assistant",
         text: "Sorry, I had trouble processing your query. Please try asking again!",
+        aiModel: "error-fallback",
       });
     } finally {
       this.aiConciergeLoading = false;

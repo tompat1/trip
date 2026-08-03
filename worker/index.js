@@ -4936,22 +4936,24 @@ async function aiConciergeHandler(context) {
   const trip = body.trip || { destination: "Destination" };
   const personas = body.personas || ["Food Explorer"];
   const tripContext = body.context || {};
+  const requestedProvider = body.provider || "auto";
   const destination = trip.destination || tripContext.destination || "Destination";
   const weather = trip.weather || tripContext.weather || {};
   const weatherStr = weather.condition ? `${weather.condition}, ${weather.temp || ""}` : "";
   const pois = tripContext.pois || [];
 
-  if (context.env.AI) {
-    try {
-      const poiSummary = pois.length > 0
-        ? pois.map((p) => `- ${p.name} (${p.category || "spot"}${p.address ? `, ${p.address}` : ""})`).join("\n")
-        : "";
+  // API Key extraction from request headers or environment variables
+  const reqHeaders = context.request.headers;
+  const openAiKey = reqHeaders.get("X-OpenAI-Key") || context.env.OPENAI_API_KEY || "";
+  const geminiKey = reqHeaders.get("X-Gemini-Key") || context.env.GEMINI_API_KEY || "";
+  const claudeKey = reqHeaders.get("X-Anthropic-Key") || context.env.ANTHROPIC_API_KEY || "";
+  const grokKey = reqHeaders.get("X-Grok-Key") || context.env.GROK_API_KEY || "";
 
-      const historyMessages = Array.isArray(tripContext.history)
-        ? tripContext.history.filter(m => m.text).map(m => ({ role: m.role === "assistant" ? "assistant" : "user", content: m.text }))
-        : [];
+  const poiSummary = pois.length > 0
+    ? pois.map((p) => `- ${p.name} (${p.category || "spot"}${p.address ? `, ${p.address}` : ""})`).join("\n")
+    : "";
 
-      const systemPrompt = `You are TRIP AI, an expert, charming, and highly localized travel concierge for ${destination}.
+  const systemPrompt = `You are TRIP AI, an expert, charming, and highly localized travel concierge for ${destination}.
 Traveler preferences & personas: ${personas.join(", ")}.
 ${weatherStr ? `Current destination weather: ${weatherStr}.` : ""}
 ${poiSummary ? `Verified local places & POIs in ${destination}:\n${poiSummary}` : ""}
@@ -4962,6 +4964,125 @@ Guidelines:
 - Keep response concise, friendly, elegant, structured with markdown bolding and bullet points with emojis.
 - Do NOT mention cities other than ${destination} unless explicitly asked.`;
 
+  // 1. Google Gemini Provider
+  if ((requestedProvider === "gemini" || (requestedProvider === "auto" && geminiKey)) && geminiKey) {
+    try {
+      const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`;
+      const geminiRes = await fetch(geminiUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [
+            { role: "user", parts: [{ text: `${systemPrompt}\n\nUser Question: ${prompt}` }] }
+          ]
+        })
+      });
+      if (geminiRes.ok) {
+        const data = await geminiRes.json();
+        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (text) {
+          return json({ success: true, answer: text, aiModel: "gemini-1.5-flash" });
+        }
+      }
+    } catch (e) {
+      console.warn("Gemini provider error:", e);
+    }
+  }
+
+  // 2. OpenAI ChatGPT Provider
+  if ((requestedProvider === "openai" || (requestedProvider === "auto" && openAiKey)) && openAiKey) {
+    try {
+      const openAiRes = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${openAiKey}`
+        },
+        body: JSON.stringify({
+          model: "gpt-4o-mini",
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: prompt }
+          ]
+        })
+      });
+      if (openAiRes.ok) {
+        const data = await openAiRes.json();
+        const text = data.choices?.[0]?.message?.content;
+        if (text) {
+          return json({ success: true, answer: text, aiModel: "gpt-4o-mini" });
+        }
+      }
+    } catch (e) {
+      console.warn("OpenAI provider error:", e);
+    }
+  }
+
+  // 3. Anthropic Claude Provider
+  if ((requestedProvider === "claude" || (requestedProvider === "auto" && claudeKey)) && claudeKey) {
+    try {
+      const claudeRes = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": claudeKey,
+          "anthropic-version": "2023-06-01"
+        },
+        body: JSON.stringify({
+          model: "claude-3-haiku-20240307",
+          max_tokens: 1024,
+          system: systemPrompt,
+          messages: [{ role: "user", content: prompt }]
+        })
+      });
+      if (claudeRes.ok) {
+        const data = await claudeRes.json();
+        const text = data.content?.[0]?.text;
+        if (text) {
+          return json({ success: true, answer: text, aiModel: "claude-3-haiku" });
+        }
+      }
+    } catch (e) {
+      console.warn("Claude provider error:", e);
+    }
+  }
+
+  // 4. xAI Grok Provider
+  if ((requestedProvider === "grok" || (requestedProvider === "auto" && grokKey)) && grokKey) {
+    try {
+      const grokRes = await fetch("https://api.x.ai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${grokKey}`
+        },
+        body: JSON.stringify({
+          model: "grok-2-latest",
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: prompt }
+          ]
+        })
+      });
+      if (grokRes.ok) {
+        const data = await grokRes.json();
+        const text = data.choices?.[0]?.message?.content;
+        if (text) {
+          return json({ success: true, answer: text, aiModel: "grok-2" });
+        }
+      }
+    } catch (e) {
+      console.warn("Grok provider error:", e);
+    }
+  }
+
+  // 5. Cloudflare Workers AI (Default Edge Provider)
+  if (context.env.AI) {
+    try {
+      const historyMessages = Array.isArray(tripContext.history)
+        ? tripContext.history.filter(m => m.text).map(m => ({ role: m.role === "assistant" ? "assistant" : "user", content: m.text }))
+        : [];
+
       const messages = [
         { role: "system", content: systemPrompt },
         ...historyMessages.slice(-4),
@@ -4970,16 +5091,16 @@ Guidelines:
 
       let aiRes = null;
       try {
-        aiRes = await context.env.AI.run("@cf/meta/llama-3.1-8b-instruct", { messages });
-      } catch {
         aiRes = await context.env.AI.run("@cf/meta/llama-3.3-70b-instruct", { messages });
+      } catch {
+        aiRes = await context.env.AI.run("@cf/meta/llama-3.1-8b-instruct", { messages });
       }
 
       if (aiRes?.response) {
         return json({
           success: true,
           answer: aiRes.response,
-          aiModel: "workers-ai"
+          aiModel: "workers-ai-llama3.3"
         });
       }
     } catch (err) {
