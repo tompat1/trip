@@ -3,7 +3,7 @@ import { renderIcon } from "../utils/icons.js";
 
 const AI_PROVIDERS = [
   { id: "auto", label: "⚡ Workers AI (Free)", desc: "Cloudflare Edge Llama 3.3 (Built-in Free)" },
-  { id: "deepseek-free", label: "🧠 DeepSeek R1 (Free)", desc: "OpenRouter DeepSeek R1 Reasoning ($0)" },
+  { id: "deepseek-free", label: "🧠 DeepSeek R1 (Free)", desc: "DeepSeek R1 Edge Reasoning ($0)" },
   { id: "openrouter-free", label: "🦙 Llama 3.3 (Free)", desc: "OpenRouter Llama 3.3 70B ($0)" },
   { id: "groq-free", label: "🚀 Groq Speed (Free Key)", desc: "Groq Llama 3.3 70B @ 500 tok/sec ($0)" },
   { id: "gemini", label: "✨ Gemini 1.5 (Free Key)", desc: "Google Gemini (1,500 Free RPD Key)" },
@@ -23,7 +23,7 @@ export function renderAiConciergeDrawer() {
   const history = (state.aiConciergeHistory && state.aiConciergeHistory.length) ? state.aiConciergeHistory : [
     {
       role: "assistant",
-      text: `Hello! I'm your multi-LLM TRIP AI Concierge for **${trip.destination}**. Ask me for personalized spots, hidden gems, or itinerary plans using free or custom AI models!`,
+      text: `Hello! I'm your multi-LLM TRIP AI Concierge for **${trip.destination}**. Ask me for personalized spots, hidden gems, or itinerary plans!`,
       aiModel: currentProvider === "auto" ? "workers-ai-llama3.3" : `${currentProvider}`,
     },
   ];
@@ -77,11 +77,11 @@ export function renderAiConciergeDrawer() {
               <strong>🔑 Free AI Keys & BYOK Setup</strong>
               <span style="font-size: 0.72rem; color: var(--ink-muted);">Saved locally in browser</span>
             </div>
-            <div class="ai-free-links-hint" style="font-size: 0.74rem; color: var(--ink); background: rgba(255,255,255,0.7); padding: 8px 10px; border-radius: 8px; margin-bottom: 8px;">
+            <div class="ai-free-links-hint">
               💡 <strong>Get 100% Free AI Keys:</strong>
-              <a href="https://aistudio.google.com/" target="_blank" rel="noopener" style="color: var(--orange); text-decoration: underline; margin-left: 4px;">Google AI Studio (1500/day free)</a> · 
-              <a href="https://openrouter.ai/" target="_blank" rel="noopener" style="color: var(--orange); text-decoration: underline;">OpenRouter Free</a> · 
-              <a href="https://console.groq.com/" target="_blank" rel="noopener" style="color: var(--orange); text-decoration: underline;">Groq Speed Free</a>
+              <a href="https://aistudio.google.com/" target="_blank" rel="noopener">Google AI Studio (1500/day free)</a> · 
+              <a href="https://openrouter.ai/" target="_blank" rel="noopener">OpenRouter Free</a> · 
+              <a href="https://console.groq.com/" target="_blank" rel="noopener">Groq Speed Free</a>
             </div>
             <div class="ai-keys-form-grid">
               <div class="ai-key-input-field">
@@ -125,7 +125,7 @@ export function renderAiConciergeDrawer() {
           ${history.map((msg) => `
             <div class="ai-chat-bubble ai-chat-bubble--${msg.role}">
               <div class="ai-bubble-content">
-                ${msg.text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br/>')}
+                ${formatConciergeMessageHTML(msg.text, msg.role === "assistant")}
               </div>
               ${msg.role === "assistant" && msg.aiModel ? `
                 <div class="ai-bubble-model-badge voice-mono">
@@ -145,15 +145,55 @@ export function renderAiConciergeDrawer() {
         </div>
 
         <!-- Input Form -->
-        <form class="ai-concierge-form" data-action="submit-ai-concierge" onsubmit="return false;">
+        <form class="ai-concierge-form" id="ai-concierge-form" data-action="submit-ai-concierge" onsubmit="return false;">
           <input type="text" id="ai-concierge-input" placeholder="Ask ${formatAiProviderName(currentProvider)} about ${trip.destination}..." required ${isAsking ? "disabled" : ""} />
-          <button type="submit" class="btn btn--primary btn--icon" ${isAsking ? "disabled" : ""} aria-label="Send query">
+          <button type="submit" class="btn btn--primary btn--icon" data-action="submit-ai-concierge" ${isAsking ? "disabled" : ""} aria-label="Send query">
             ${renderIcon("arrowRight")}
           </button>
         </form>
       </div>
     </div>
   `;
+}
+
+function formatConciergeMessageHTML(text = "", isAssistant = false) {
+  let html = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br/>');
+
+  if (!isAssistant) return html;
+
+  // Extract bolded spot names (e.g. <strong>Ten Belles</strong>)
+  const spotRegex = /<strong>(.*?)<\/strong>/g;
+  const matches = Array.from(text.matchAll(spotRegex));
+
+  if (matches.length > 0) {
+    const spots = Array.from(new Set(matches.map(m => m[1].trim()))).filter(s => s.length > 2 && !s.includes("Concierge") && !s.includes("Paris") && !s.includes("France") && !s.includes("Google") && !s.includes("Key"));
+    if (spots.length > 0) {
+      const actionsHTML = `
+        <div class="ai-spot-actions-toolbar">
+          <span style="font-size: 0.68rem; font-weight: 800; color: var(--ink-muted); width: 100%; margin-bottom: 2px;">INTERACTIVE SPOTS:</span>
+          ${spots.slice(0, 5).map(spotName => `
+            <div class="ai-spot-item-card">
+              <span class="ai-spot-item-title">${escapeHtml(spotName)}</span>
+              <div class="ai-spot-item-btns">
+                <button class="ai-spot-action-btn" data-action="add-poi-event" data-spot-name="${escapeHtml(spotName)}" type="button">
+                  ➕ Add to Day 1
+                </button>
+                <button class="ai-spot-action-btn" data-action="toggle-bookmark" data-place-id="${escapeHtml('spot-' + spotName.toLowerCase().replace(/\s+/g, '-'))}" type="button">
+                  🔖 Bookmark
+                </button>
+                <button class="ai-spot-action-btn" data-action="select-top-poi" data-spot-name="${escapeHtml(spotName)}" type="button">
+                  🗺️ Map
+                </button>
+              </div>
+            </div>
+          `).join("")}
+        </div>
+      `;
+      html += actionsHTML;
+    }
+  }
+
+  return html;
 }
 
 function formatAiProviderName(provider = "auto") {

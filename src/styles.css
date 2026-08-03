@@ -11943,6 +11943,57 @@ textarea {
   gap: 8px;
 }
 
+/* ── Interactive Concierge Spot Cards ───────────────────────────────────── */
+.ai-spot-actions-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+
+.ai-spot-item-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: var(--paper-card);
+  border: 1px solid var(--line);
+}
+
+.ai-spot-item-title {
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: var(--ink);
+}
+
+.ai-spot-item-btns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.ai-spot-action-btn {
+  padding: 4px 10px;
+  border-radius: var(--radius-pill, 9999px);
+  border: 1px solid var(--line);
+  background: var(--paper-subtle);
+  color: var(--ink);
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.ai-spot-action-btn:hover {
+  background: var(--orange);
+  color: #FFFFFF;
+  border-color: var(--orange);
+  transform: translateY(-1px);
+}
+
 
 .photo-editor-save-btn {
   min-height: 40px;
