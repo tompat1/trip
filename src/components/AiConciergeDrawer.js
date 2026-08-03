@@ -161,36 +161,54 @@ function formatConciergeMessageHTML(text = "", isAssistant = false) {
 
   if (!isAssistant) return html;
 
-  // Extract bolded spot names (e.g. <strong>Ten Belles</strong>)
-  const spotRegex = /<strong>(.*?)<\/strong>/g;
-  const matches = Array.from(text.matchAll(spotRegex));
+  const foundNames = [];
 
-  if (matches.length > 0) {
-    const spots = Array.from(new Set(matches.map(m => m[1].trim()))).filter(s => s.length > 2 && !s.includes("Concierge") && !s.includes("Paris") && !s.includes("France") && !s.includes("Google") && !s.includes("Key"));
-    if (spots.length > 0) {
-      const actionsHTML = `
-        <div class="ai-spot-actions-toolbar">
-          <span style="font-size: 0.68rem; font-weight: 800; color: var(--ink-muted); width: 100%; margin-bottom: 2px;">INTERACTIVE SPOTS:</span>
-          ${spots.slice(0, 5).map(spotName => `
-            <div class="ai-spot-item-card">
-              <span class="ai-spot-item-title">${escapeHtml(spotName)}</span>
-              <div class="ai-spot-item-btns">
-                <button class="ai-spot-action-btn" data-action="add-poi-event" data-spot-name="${escapeHtml(spotName)}" type="button">
-                  ➕ Add to Day 1
-                </button>
-                <button class="ai-spot-action-btn" data-action="toggle-bookmark" data-place-id="${escapeHtml('spot-' + spotName.toLowerCase().replace(/\s+/g, '-'))}" type="button">
-                  🔖 Bookmark
-                </button>
-                <button class="ai-spot-action-btn" data-action="select-top-poi" data-spot-name="${escapeHtml(spotName)}" type="button">
-                  🗺️ Map
-                </button>
-              </div>
+  // 1. Bold tags (e.g. <strong>Ten Belles</strong>)
+  const boldRegex = /<strong>(.*?)<\/strong>/g;
+  for (const match of text.matchAll(boldRegex)) {
+    if (match[1]) foundNames.push(match[1].trim());
+  }
+
+  // 2. Numbered lists (e.g. 1. Cafékothèque de Paris or 1. <strong>Ten Belles</strong>)
+  const numListRegex = /(?:^|<br\s*\/?>|\n)\s*\d+[\.\)]\s*(?:<strong>)?([A-Z\u00C0-\u024F0-9\s'’\-]+?)(?:<\/strong>)?(?=\s*(?:—|-|:|\(|\n|<br>|$))/g;
+  for (const match of html.matchAll(numListRegex)) {
+    if (match[1]) foundNames.push(match[1].replace(/<[^>]+>/g, "").trim());
+  }
+
+  // 3. Emoji headers & bullets (e.g. ☕ Ten Belles)
+  const emojiRegex = /(?:☕|📍|☔|🌿|🍷|🍽️|•)\s*(?:<strong>)?([A-Z\u00C0-\u024F0-9\s'’\-]+?)(?:<\/strong>)?(?=\s*(?:—|-|:|\(|\n|<br>|$))/g;
+  for (const match of html.matchAll(emojiRegex)) {
+    if (match[1]) foundNames.push(match[1].replace(/<[^>]+>/g, "").trim());
+  }
+
+  const IGNORE_WORDS = ["concierge", "paris", "france", "google", "key", "specialty coffee", "here are", "top choice", "partly cloudy", "recommendations", "option", "choice", "view on map"];
+  const spots = Array.from(new Set(foundNames))
+    .map(s => s.replace(/^\d+[\.\)]\s*/, "").trim())
+    .filter(s => s.length >= 3 && s.length <= 40 && !IGNORE_WORDS.some(w => s.toLowerCase().includes(w)));
+
+  if (spots.length > 0) {
+    const actionsHTML = `
+      <div class="ai-spot-actions-toolbar">
+        <span style="font-size: 0.68rem; font-weight: 800; color: var(--ink-muted); width: 100%; margin-bottom: 2px;">INTERACTIVE SPOTS:</span>
+        ${spots.slice(0, 5).map(spotName => `
+          <div class="ai-spot-item-card">
+            <span class="ai-spot-item-title">${escapeHtml(spotName)}</span>
+            <div class="ai-spot-item-btns">
+              <button class="ai-spot-action-btn" data-action="add-poi-event" data-spot-name="${escapeHtml(spotName)}" type="button">
+                ➕ Add to Day 1
+              </button>
+              <button class="ai-spot-action-btn" data-action="toggle-bookmark" data-place-id="${escapeHtml('spot-' + spotName.toLowerCase().replace(/\s+/g, '-'))}" type="button">
+                🔖 Bookmark
+              </button>
+              <button class="ai-spot-action-btn" data-action="select-top-poi" data-spot-name="${escapeHtml(spotName)}" type="button">
+                🗺️ Map
+              </button>
             </div>
-          `).join("")}
-        </div>
-      `;
-      html += actionsHTML;
-    }
+          </div>
+        `).join("")}
+      </div>
+    `;
+    html += actionsHTML;
   }
 
   return html;

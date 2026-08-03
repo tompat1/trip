@@ -375,8 +375,9 @@ document.addEventListener("click", async (e) => {
       const promptText = target.dataset.prompt || target.closest("[data-prompt]")?.dataset.prompt || "";
       if (promptText) state.askAiConcierge(promptText);
     }
-    else if (action === "submit-ai-concierge" || target.closest(".ai-concierge-form")) {
-      const input = document.getElementById("ai-concierge-input");
+    else if (action === "submit-ai-concierge" || action === "submit-quick-capture-concierge" || target.closest(".ai-concierge-form, .quick-capture-concierge-form")) {
+      const form = target.closest("form");
+      const input = form ? form.querySelector("input[type='text']") : (document.getElementById("ai-concierge-input") || document.getElementById("quick-capture-concierge-input"));
       if (input && input.value.trim()) {
         const query = input.value.trim();
         input.value = "";
@@ -1524,9 +1525,9 @@ document.addEventListener("submit", (e) => {
   if (!form) return;
 
   const action = form.dataset.action || form.id;
-  if (action === "submit-ai-concierge" || form.classList.contains("ai-concierge-form")) {
+  if (action === "submit-ai-concierge" || action === "submit-quick-capture-concierge" || form.classList.contains("ai-concierge-form") || form.classList.contains("quick-capture-concierge-form")) {
     e.preventDefault();
-    const input = document.getElementById("ai-concierge-input");
+    const input = form.querySelector("input[type='text']") || document.getElementById("ai-concierge-input") || document.getElementById("quick-capture-concierge-input");
     if (input && input.value.trim()) {
       const query = input.value.trim();
       input.value = "";

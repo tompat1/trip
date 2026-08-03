@@ -5124,10 +5124,19 @@ Guidelines:
         const historyMessages = Array.isArray(tripContext.history)
           ? tripContext.history.filter(m => m.text).map(m => ({ role: m.role === "assistant" ? "assistant" : "user", content: m.text }))
           : [];
-        const messages = [{ role: "system", content: systemPrompt }, ...historyMessages.slice(-4), { role: "user", content: prompt }];
-        const aiRes = await context.env.AI.run("@cf/deepseek-ai/deepseek-r1-distill-qwen-32b", { messages }).catch(() => null);
+        const messages = [
+          { role: "system", content: systemPrompt + "\nIMPORTANT: Provide 3-5 specific local spots with exact names in bold (e.g. **Ten Belles**), address, and short description. Do not output internal thinking or reasoning paragraphs." },
+          ...historyMessages.slice(-4),
+          { role: "user", content: prompt }
+        ];
+        const aiRes = await context.env.AI.run("@cf/deepseek-ai/deepseek-r1-distill-qwen-32b", { messages, max_tokens: 1500 }).catch(() => null);
         if (aiRes?.response) {
-          return json({ success: true, answer: aiRes.response, aiModel: "deepseek-r1-free" });
+          let cleanAnswer = aiRes.response.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
+          if (cleanAnswer.includes("Here are") || cleanAnswer.includes("1.") || cleanAnswer.includes("☕")) {
+            const idx = cleanAnswer.search(/Here are|1\.|☕|📍|☔|🌿|🍷/);
+            if (idx > 0) cleanAnswer = cleanAnswer.substring(idx).trim();
+          }
+          return json({ success: true, answer: cleanAnswer, aiModel: "deepseek-r1-free" });
         }
       } catch (err) {
         console.warn("Workers AI DeepSeek R1 fallback:", err);
@@ -5150,8 +5159,11 @@ Guidelines:
         });
         if (openRouterRes.ok) {
           const data = await openRouterRes.json();
-          const text = data.choices?.[0]?.message?.content;
-          if (text) return json({ success: true, answer: text, aiModel: "deepseek-r1-free" });
+          let text = data.choices?.[0]?.message?.content;
+          if (text) {
+            text = text.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
+            return json({ success: true, answer: text, aiModel: "deepseek-r1-free" });
+          }
         }
       } catch (e) {
         console.warn("OpenRouter DeepSeek error:", e);
@@ -5190,6 +5202,75 @@ Guidelines:
       console.warn("Workers AI concierge fallback:", err);
     }
   }
+
+  return json({
+    success: true,
+    answer: generateWorkerDynamicConciergeFallback({ prompt, trip: tripContext, context: tripContext }),
+    aiModel: "trip-concierge-fallback"
+  });
+}
+
+const WORKER_CITY_RECOMMENDATIONS = {
+  paris: {
+    coffee: [
+      { name: "Ten Belles", address: "10 Rue de la Grange aux Belles", desc: "Iconic Canal Saint-Martin specialty coffee pioneer with exquisite espresso & sourdough bakery items." },
+      { name: "Telescope Coffee", address: "5 Rue Villedo", desc: "Cozy Palais Royal minimalist cafe famous for precision filter coffee, flat whites & house bakes." },
+      { name: "KB Coffee Roasters", address: "53 Avenue Trudaine", desc: "Vibrant South Pigalle roastery with a sunny terrace overlooking Sacré-Cœur." },
+      { name: "Coutume Café", address: "47 Rue de Babylone", desc: "Elegant Left Bank roastery serving single-origin coffees & gourmet Parisian brunch." },
+      { name: "Café Lomi", address: "3D Rue Stephenson", desc: "Renowned 18th-arrondissement specialty roaster with spacious industrial-chic vibes." }
+    ],
+    rain: [
+      { name: "Musée d'Orsay", address: "1 Rue de la Légion d'Honneur", desc: "Breathtaking Impressionist art collection housed inside a grand converted Belle Époque railway station." },
+      { name: "Galerie Vivienne", address: "4 Rue de la Banque", desc: "Elegant 1823 covered passage featuring mosaic tile floors, antiquarian bookshops & tea salons." },
+      { name: "Fondation Louis Vuitton", address: "8 Avenue du Mahatma Gandhi", desc: "Frank Gehry architectural masterpiece with contemporary art exhibitions in Bois de Boulogne." }
+    ],
+    hidden: [
+      { name: "Musée de la Vie Romantique", address: "16 Rue Chaptal", desc: "Secret garden cafe and Romantic-era museum hidden at the foot of Montmartre." },
+      { name: "Coulée Verte René-Dumont", address: "1 12th Arrondissement", desc: "Elevated tree-lined park built along an abandoned 19th-century railway viaduct." },
+      { name: "Square René Viviani", address: "2 Rue du Fouarre", desc: "Quiet Left Bank garden housing Paris's oldest tree (planted in 1601) with Notre-Dame views." }
+    ],
+    dining: [
+      { name: "Le Baron Rouge", address: "1 Rue Théophile Roussel", desc: "Beloved Aligre neighborhood wine bar serving natural wines from oak barrels with oysters on weekends." },
+      { name: "Le Comptoir du Relais", address: "9 Carrefour de l'Odéon", desc: "Legendary Saint-Germain gastro-bistro by Chef Yves Camdeborde." },
+      { name: "Septime La Cave", address: "3 Rue Basfroi", desc: "Intimate natural wine bar with inventive small tapas plates in Charonne." }
+    ]
+  }
+};
+
+function generateWorkerDynamicConciergeFallback({ prompt = "", trip = {}, context = {} }) {
+  const destination = trip.destination || context.destination || "Destination";
+  const lowerDest = destination.toLowerCase();
+  const cityName = destination.split(",")[0].trim();
+  const weather = trip.weather || context.weather || {};
+  const weatherStr = weather.condition ? `${weather.condition}, ${weather.temp || ""}` : "";
+  const lowerPrompt = prompt.toLowerCase();
+
+  let category = "general";
+  if (lowerPrompt.includes("coffee") || lowerPrompt.includes("espresso") || lowerPrompt.includes("cafe")) category = "coffee";
+  else if (lowerPrompt.includes("rain") || lowerPrompt.includes("indoor")) category = "rain";
+  else if (lowerPrompt.includes("hidden") || lowerPrompt.includes("secret")) category = "hidden";
+  else if (lowerPrompt.includes("food") || lowerPrompt.includes("dinner") || lowerPrompt.includes("wine")) category = "dining";
+
+  let answer = `Here are Concierge recommendations for **${destination}**`;
+  if (weatherStr) answer += ` (${weatherStr})`;
+  answer += `:\n\n`;
+
+  if (lowerDest.includes("paris") && WORKER_CITY_RECOMMENDATIONS.paris[category]) {
+    const spots = WORKER_CITY_RECOMMENDATIONS.paris[category];
+    const emoji = category === "coffee" ? "☕" : category === "rain" ? "☔" : category === "hidden" ? "🌿" : "🍷";
+    answer += spots.map(s => `${emoji} **${s.name}** (${s.address}) — ${s.desc}`).join("\n\n");
+    return answer;
+  }
+
+  const pois = context.pois || [];
+  if (pois.length > 0) {
+    answer += pois.slice(0, 4).map(p => `📍 **${p.name}** (${p.address || cityName}) — Recommended spot in ${cityName}.`).join("\n\n");
+  } else {
+    answer += `☕ **Artisanal Coffee & Roasters** (${cityName}) — Independent specialty coffee bars in the central quarter.\n\n📍 **Historic District & Promenade** (${cityName}) — Scenic streets, local markets, and architecture.`;
+  }
+
+  return answer;
+}
 
   const fallbackAnswer = generateWorkerDynamicConciergeFallback({ prompt, destination, weatherStr, personas, pois });
   return json({

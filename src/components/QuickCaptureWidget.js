@@ -90,9 +90,9 @@ function renderConciergeTabContent({ trip, cityName, history, isAsking }) {
       </div>
 
       <!-- Input Form -->
-      <form class="ai-concierge-form" data-action="submit-ai-concierge" onsubmit="return false;" style="display: flex; gap: 8px;">
-        <input type="text" id="ai-concierge-input" placeholder="Ask anything about ${escapeHtml(cityName)}..." required ${isAsking ? "disabled" : ""} style="flex: 1; padding: 10px 14px; border: 1px solid var(--line); border-radius: var(--radius-md); font-size: 0.88rem; background: var(--paper); color: var(--ink);" />
-        <button type="submit" class="btn btn--primary btn--icon" ${isAsking ? "disabled" : ""} aria-label="Send query" style="padding: 10px 14px;">
+      <form class="quick-capture-concierge-form" data-action="submit-quick-capture-concierge" onsubmit="return false;" style="display: flex; gap: 8px;">
+        <input type="text" id="quick-capture-concierge-input" placeholder="Ask anything about ${escapeHtml(cityName)}..." required ${isAsking ? "disabled" : ""} style="flex: 1; padding: 10px 14px; border: 1px solid var(--line); border-radius: var(--radius-md); font-size: 0.88rem; background: var(--paper); color: var(--ink);" />
+        <button type="submit" class="btn btn--primary btn--icon" data-action="submit-quick-capture-concierge" ${isAsking ? "disabled" : ""} aria-label="Send query" style="padding: 10px 14px;">
           ${renderIcon("arrowRight")}
         </button>
       </form>
