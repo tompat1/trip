@@ -12018,5 +12018,100 @@ textarea {
   }
 }
 
+/* ── Signed-Out Welcome Hero & Guest Draft Banner ───────────────────────── */
+.signed-out-welcome-hero {
+  padding: 40px 24px;
+  background: var(--paper-card);
+  border-radius: var(--radius-xl, 24px);
+  border: 1px solid var(--line);
+  text-align: center;
+  margin: 20px 0;
+  box-shadow: var(--shadow-md);
+}
+
+.signed-out-welcome-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--orange) 10%, var(--paper-card));
+  color: var(--orange);
+  font-size: 0.75rem;
+  font-weight: 800;
+  margin-bottom: 16px;
+}
+
+.signed-out-welcome-title {
+  font-size: 2.2rem;
+  font-weight: 800;
+  color: var(--ink);
+  line-height: 1.25;
+  margin: 0 0 12px 0;
+}
+
+.signed-out-welcome-subhead {
+  font-size: 1rem;
+  color: var(--ink-muted);
+  max-width: 580px;
+  margin: 0 auto 24px auto;
+  line-height: 1.5;
+}
+
+.signed-out-welcome-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 36px;
+}
+
+.signed-out-features-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  text-align: left;
+}
+
+.signed-out-feature-card {
+  padding: 18px;
+  background: var(--paper-subtle);
+  border-radius: var(--radius-lg, 16px);
+  border: 1px solid var(--line);
+}
+
+.signed-out-feature-icon {
+  font-size: 1.6rem;
+  margin-bottom: 8px;
+}
+
+.signed-out-feature-card strong {
+  display: block;
+  font-size: 0.9rem;
+  color: var(--ink);
+  margin-bottom: 4px;
+}
+
+.signed-out-feature-card p {
+  font-size: 0.8rem;
+  color: var(--ink-muted);
+  margin: 0;
+}
+
+.guest-draft-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 16px;
+  background: linear-gradient(135deg, rgba(217, 74, 58, 0.1) 0%, rgba(233, 199, 107, 0.15) 100%);
+  border: 1px solid var(--orange);
+  border-radius: var(--radius-md, 12px);
+  font-size: 0.82rem;
+  color: var(--ink);
+  margin-bottom: 16px;
+}
+
 
 

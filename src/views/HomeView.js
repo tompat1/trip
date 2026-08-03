@@ -6,6 +6,11 @@ import { getTripDateStatus } from "../utils/tripDates.js";
 
 export function renderHomeView() {
   const trip = state.activeTrip;
+
+  if (!trip) {
+    return renderSignedOutWelcomeHero();
+  }
+
   const isLiveMode = state.tripMode;
   const checklist = state.checklists ? (state.checklists[trip.id] || trip.checklist) : (trip.checklist || []);
   const liveTimeStr = formatLiveTimeString();
@@ -682,5 +687,53 @@ function renderHomeAiConciergeCard(trip) {
         <button class="ai-chip" data-action="send-ai-chip" data-prompt="Top evening dining & wine bars in ${escapeHtml(cityName)}">🍷 Dining & Wine</button>
       </div>
     </section>
+  `;
+}
+
+function renderSignedOutWelcomeHero() {
+  return `
+    <div class="home-page">
+      ${renderHeader()}
+
+      <div class="home-page__content">
+        <section class="signed-out-welcome-hero animate-scale-up">
+          <div class="signed-out-welcome-badge voice-mono">
+            ${renderIcon("sparkles")} TRIP TRAVEL CONCIERGE & MEMORY JOURNAL
+          </div>
+          <h1 class="signed-out-welcome-title voice-serif">
+            Plan and remember your journeys.
+          </h1>
+          <p class="signed-out-welcome-subhead">
+            Build interactive itineraries, discover local specialty coffee & hidden gems, track live route maps, and capture travel moments in one place.
+          </p>
+          <div class="signed-out-welcome-actions">
+            <button class="btn btn--primary btn--lg" data-action="open-trip-create" type="button">
+              ✨ Create Guest Draft Trip
+            </button>
+            <button class="btn btn--outline btn--lg" data-action="show-auth-exit" data-auth-mode="signup" type="button">
+              🔑 Sign Up / Sign In
+            </button>
+          </div>
+          
+          <div class="signed-out-features-grid">
+            <div class="signed-out-feature-card">
+              <div class="signed-out-feature-icon">🗺️</div>
+              <strong>Live Route & Maps</strong>
+              <p>Explore city maps, airports, and local discovery spots.</p>
+            </div>
+            <div class="signed-out-feature-card">
+              <div class="signed-out-feature-icon">⚡</div>
+              <strong>Multi-LLM AI Concierge</strong>
+              <p>Query Workers AI, DeepSeek R1, Gemini, ChatGPT & Grok.</p>
+            </div>
+            <div class="signed-out-feature-card">
+              <div class="signed-out-feature-icon">📸</div>
+              <strong>Moments & Journal</strong>
+              <p>Capture photos, notes, and auto-generate AI stories.</p>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
   `;
 }

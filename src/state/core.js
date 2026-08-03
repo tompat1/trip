@@ -9,6 +9,7 @@ import {
   getInviteFromLocation,
   isFutureTrip,
   readStoredCalendarEvents,
+  readStoredGuestDraftTrips,
   readStoredTheme,
   readStoredTourismDiscovery,
   readStoredTripCompanions,
@@ -18,9 +19,13 @@ import {
 
 export class AppState {
   constructor() {
+    // Populate any stored local guest draft trips
+    const guestDrafts = readStoredGuestDraftTrips();
+    Object.assign(tripsData, guestDrafts);
+
     // ── View & navigation ────────────────────────────────────────────────────
     this.activeView = "landing"; // "landing" | "home" | "live" | "plan" | "search"
-    this.activeTripId = "paris";
+    this.activeTripId = Object.keys(tripsData)[0] || null;
     this.tripMode = false;
 
     // ── Plan view ────────────────────────────────────────────────────────────
@@ -195,7 +200,7 @@ export class AppState {
   // ── Getters ────────────────────────────────────────────────────────────────
 
   get activeTrip() {
-    return tripsData[this.activeTripId] || tripsData.paris;
+    return tripsData[this.activeTripId] || Object.values(tripsData)[0] || null;
   }
 
   get isAdmin() {

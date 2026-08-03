@@ -46,8 +46,12 @@ function render() {
           async (croppedDataUrl) => {
             if (state.photoEditorMode === "avatar") {
               state.updateUserAvatar(croppedDataUrl);
+              const isSignup = Boolean(state.photoEditorContext?.isSignup);
               state.closePhotoEditor();
               showToast("📸 Profile photo updated!");
+              if (isSignup) {
+                state.openOnboarding();
+              }
             } else if (state.photoEditorMode === "journal" && state.photoEditorTargetMomentId) {
               await state.updateMoment(state.photoEditorTargetMomentId, { media_url: croppedDataUrl });
               state.closePhotoEditor();
@@ -61,8 +65,12 @@ function render() {
               showToast("📸 Stamped photo saved to Journal!");
             } else {
               state.updateUserAvatar(croppedDataUrl);
+              const isSignup = Boolean(state.photoEditorContext?.isSignup);
               state.closePhotoEditor();
               showToast("Photo saved!");
+              if (isSignup) {
+                state.openOnboarding();
+              }
             }
           },
           showToast
@@ -437,7 +445,11 @@ document.addEventListener("click", async (e) => {
       state.openPhotoEditor();
     }
     else if (action === "close-photo-editor") {
+      const isSignup = Boolean(state.photoEditorContext?.isSignup);
       state.closePhotoEditor();
+      if (isSignup) {
+        state.openOnboarding();
+      }
     }
     else if (action === "set-photo-editor-tab") {
       state.setPhotoEditorTab(target.dataset.tab);

@@ -378,3 +378,22 @@ export function getOpenTripMapStatus(results = []) {
   if (statuses.some((status) => status.status === "error")) return "error";
   return "ready";
 }
+
+// ─── Guest Draft Trips Storage ───────────────────────────────────────────────
+
+export function readStoredGuestDraftTrips() {
+  try {
+    const raw = localStorage.getItem("trip_guest_draft_trips");
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+export function writeStoredGuestDraftTrips(trips = {}) {
+  try {
+    localStorage.setItem("trip_guest_draft_trips", JSON.stringify(trips));
+  } catch {}
+}

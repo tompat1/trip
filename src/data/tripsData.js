@@ -1,4 +1,6 @@
-export const tripsData = {
+export const tripsData = {};
+
+export const DEMO_SAMPLE_TRIPS = {
   paris: {
     id: "paris",
     destination: "Paris, France",
