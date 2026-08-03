@@ -83,10 +83,12 @@ export class AppState {
     ];
 
     // ── Checklists ───────────────────────────────────────────────────────────
-    this.checklists = {
-      paris: [...tripsData.paris.checklist],
-      crete: [...tripsData.crete.checklist],
-    };
+    this.checklists = {};
+    Object.keys(tripsData).forEach((tripId) => {
+      if (tripsData[tripId]?.checklist) {
+        this.checklists[tripId] = [...tripsData[tripId].checklist];
+      }
+    });
 
     // ── Bootstrap trip data from localStorage ────────────────────────────────
     Object.keys(tripsData).forEach((tripId) => {
