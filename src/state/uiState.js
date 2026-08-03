@@ -321,8 +321,27 @@ export const uiStateMixin = {
     this.photoEditorImageSrc = imageSrc || this.userAvatar || "";
     this.photoEditorOpen = true;
     this.photoEditorIsSignup = Boolean(options.isSignup);
-    this._photoEditorTab = "upload";
+    this.photoEditorMode = options.mode || "avatar";
+    this.photoEditorTargetMomentId = options.momentId || "";
+    this.photoEditorPendingMomentData = options.momentData || null;
+    this.photoEditorAspect = options.mode === "avatar" ? "circle" : (options.aspect || "1:1");
+    this.photoEditorSticker = options.mode === "avatar" ? "none" : (options.sticker || "postcard_stamp");
+    this.photoEditorFilter = options.filter || "none";
+    this.photoEditorCaption = options.caption || (options.momentData?.placeTitle || options.momentData?.geoLabel || "");
+    this._photoEditorTab = options.mode === "avatar" ? "upload" : "stickers";
     this.notify();
+  },
+
+  openJournalPhotoEditor(imageSrc, options = {}) {
+    this.openPhotoEditor(imageSrc, {
+      mode: options.mode || "journal",
+      momentId: options.momentId || "",
+      momentData: options.momentData || null,
+      aspect: options.aspect || "1:1",
+      sticker: options.sticker || "postcard_stamp",
+      filter: options.filter || "none",
+      caption: options.caption || "",
+    });
   },
 
   closePhotoEditor() {
@@ -330,6 +349,9 @@ export const uiStateMixin = {
     this.photoEditorOpen = false;
     this.photoEditorImageSrc = null;
     this.photoEditorIsSignup = false;
+    this.photoEditorMode = "avatar";
+    this.photoEditorTargetMomentId = "";
+    this.photoEditorPendingMomentData = null;
     if (wasSignup) {
       this.openOnboarding();
     }
@@ -337,7 +359,27 @@ export const uiStateMixin = {
   },
 
   setPhotoEditorTab(tab = "upload") {
-    this._photoEditorTab = tab === "presets" ? "presets" : "upload";
+    this._photoEditorTab = tab;
+    this.notify();
+  },
+
+  setPhotoEditorSticker(sticker = "none") {
+    this.photoEditorSticker = sticker;
+    this.notify();
+  },
+
+  setPhotoEditorFilter(filter = "none") {
+    this.photoEditorFilter = filter;
+    this.notify();
+  },
+
+  setPhotoEditorAspect(aspect = "1:1") {
+    this.photoEditorAspect = aspect;
+    this.notify();
+  },
+
+  setPhotoEditorCaption(caption = "") {
+    this.photoEditorCaption = caption;
     this.notify();
   },
 };

@@ -11418,6 +11418,119 @@ textarea {
   background: rgba(0, 0, 0, 0.02);
 }
 
+/* ── Photo & Travel Graphics Editor Additional Styles ────────────────────────── */
+.photo-editor-section-panel {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.photo-editor-section-label {
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: var(--ink-muted, #666);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.photo-stickers-selector-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.photo-sticker-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--line, rgba(0, 0, 0, 0.12));
+  background: var(--paper, #F4F0E7);
+  color: var(--ink, #171817);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.16s ease;
+}
+
+.photo-sticker-pill svg {
+  width: 16px;
+  height: 16px;
+  color: var(--orange, #D94A3A);
+}
+
+.photo-sticker-pill:hover {
+  background: #FFFFFF;
+  border-color: var(--orange, #D94A3A);
+}
+
+.photo-sticker-pill.active {
+  background: #FFFFFF;
+  border-color: var(--orange, #D94A3A);
+  box-shadow: 0 3px 10px rgba(217, 74, 58, 0.2);
+}
+
+.photo-filters-selector-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.photo-filter-pill {
+  padding: 10px 8px;
+  border-radius: 10px;
+  border: 1px solid var(--line, rgba(0, 0, 0, 0.12));
+  background: var(--paper, #F4F0E7);
+  color: var(--ink, #171817);
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.16s ease;
+}
+
+.photo-filter-pill:hover {
+  background: #FFFFFF;
+}
+
+.photo-filter-pill.active {
+  background: var(--orange, #D94A3A);
+  color: #FFFFFF;
+  border-color: var(--orange, #D94A3A);
+  box-shadow: 0 3px 10px rgba(217, 74, 58, 0.3);
+}
+
+.photo-aspect-selector {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+}
+
+.photo-aspect-btn {
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--line, rgba(0, 0, 0, 0.12));
+  background: transparent;
+  color: var(--ink-muted, #666);
+  font-size: 0.76rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.photo-aspect-btn:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.photo-aspect-btn.active {
+  background: var(--ink, #171817);
+  color: var(--paper, #F4F0E7);
+  border-color: var(--ink, #171817);
+}
+
+
 .photo-editor-footer-right {
   display: flex;
   align-items: center;

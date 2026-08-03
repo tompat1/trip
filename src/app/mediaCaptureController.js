@@ -80,7 +80,7 @@ export async function handleQuickCaptureFiles(fileList, { showToast = () => {} }
         ? await enrichCapturedMediaFile(file, receiverTrip).catch(() => ({ tags: ["Needs place tag"], geoSource: "manual-needed" }))
         : { tags: ["Video"], geoSource: "video" };
 
-      const savedMoment = await state.addMoment({
+      const momentPayload = {
         tripId: receiverTripId,
         groupId: group.groupId,
         groupTitle: group.groupTitle,
@@ -91,7 +91,20 @@ export async function handleQuickCaptureFiles(fileList, { showToast = () => {} }
         type: selectedType,
         media_url: dataUrl,
         ...enrichment,
-      });
+      };
+
+      if (selectedType === "photo" && index === 0) {
+        state.setQuickCaptureUpload({ status: "idle", progress: 100, fileName: "", type: "" });
+        state.openJournalPhotoEditor(dataUrl, {
+          mode: "quick_capture",
+          momentData: momentPayload,
+          caption: enrichment.placeTitle || enrichment.geoLabel || "",
+        });
+        showToast("📸 Photo ready! Add travel stamps & graphics below.");
+        return true;
+      }
+
+      const savedMoment = await state.addMoment(momentPayload);
       savedMoments.push(savedMoment);
     } catch {
       state.setQuickCaptureUpload({

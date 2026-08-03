@@ -138,7 +138,14 @@ export class AppState {
     this.photoEditorOpen = false;
     this.photoEditorImageSrc = null;
     this.photoEditorIsSignup = false;
-    this._photoEditorTab = "upload"; // "upload" | "presets"
+    this.photoEditorMode = "avatar"; // "avatar" | "journal" | "quick_capture"
+    this.photoEditorTargetMomentId = "";
+    this.photoEditorAspect = "1:1"; // "circle" | "1:1" | "4:5" | "16:9"
+    this.photoEditorSticker = "postcard_stamp"; // "none" | "postcard_stamp" | "passport_seal" | "location_badge" | "wanderlust"
+    this.photoEditorFilter = "none"; // "none" | "vintage" | "sunny" | "noir" | "vivid"
+    this.photoEditorCaption = "";
+    this.photoEditorPendingMomentData = null;
+    this._photoEditorTab = "upload"; // "upload" | "crop" | "stickers" | "filters" | "presets"
 
     // ── Pub/sub ──────────────────────────────────────────────────────────────
     this.listeners = new Set();

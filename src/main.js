@@ -43,10 +43,27 @@ function render() {
       if (canvasEl) {
         activePhotoEditorController = new PhotoEditorController(
           state,
-          (croppedDataUrl) => {
-            state.updateUserAvatar(croppedDataUrl);
-            state.closePhotoEditor();
-            showToast("📸 Profile photo updated!");
+          async (croppedDataUrl) => {
+            if (state.photoEditorMode === "avatar") {
+              state.updateUserAvatar(croppedDataUrl);
+              state.closePhotoEditor();
+              showToast("📸 Profile photo updated!");
+            } else if (state.photoEditorMode === "journal" && state.photoEditorTargetMomentId) {
+              await state.updateMoment(state.photoEditorTargetMomentId, { media_url: croppedDataUrl });
+              state.closePhotoEditor();
+              showToast("✨ Journal photo & travel graphics saved!");
+            } else if (state.photoEditorMode === "quick_capture" && state.photoEditorPendingMomentData) {
+              await state.addMoment({
+                ...state.photoEditorPendingMomentData,
+                media_url: croppedDataUrl,
+              });
+              state.closePhotoEditor();
+              showToast("📸 Stamped photo saved to Journal!");
+            } else {
+              state.updateUserAvatar(croppedDataUrl);
+              state.closePhotoEditor();
+              showToast("Photo saved!");
+            }
           },
           showToast
         );
@@ -435,10 +452,33 @@ document.addEventListener("click", async (e) => {
         }
       }
     }
+    else if (action === "select-photo-sticker") {
+      const sticker = target.dataset.sticker || target.closest("[data-sticker]")?.dataset.sticker;
+      if (sticker) {
+        state.setPhotoEditorSticker(sticker);
+        activePhotoEditorController?.render();
+      }
+    }
+    else if (action === "select-photo-filter") {
+      const filter = target.dataset.filter || target.closest("[data-filter]")?.dataset.filter;
+      if (filter) {
+        state.setPhotoEditorFilter(filter);
+        activePhotoEditorController?.render();
+      }
+    }
+    else if (action === "set-photo-editor-aspect") {
+      const aspect = target.dataset.aspect || target.closest("[data-aspect]")?.dataset.aspect;
+      if (aspect) {
+        state.setPhotoEditorAspect(aspect);
+        activePhotoEditorController?.render();
+      }
+    }
     else if (action === "remove-photo-avatar") {
-      state.updateUserAvatar("");
+      if (state.photoEditorMode === "avatar") {
+        state.updateUserAvatar("");
+      }
       state.closePhotoEditor();
-      showToast("Profile photo removed.");
+      showToast("Photo removed.");
     }
     else if (action === "open-profile-section") {
       state.setProfileSection(target.dataset.profileSection || "profile");
@@ -936,20 +976,17 @@ document.addEventListener("click", async (e) => {
       const momentId = target.dataset.momentId;
       const moment = (state.moments || []).find((m) => m.id === momentId);
       if (!moment) return;
-      const title = prompt("Media title:", moment.title || "");
-      if (title === null) return;
-      const placeTitle = prompt("Place / restaurant / coffee shop:", moment.placeTitle || "");
-      if (placeTitle === null) return;
-      const placeCategory = prompt("Category:", moment.placeCategory || "Place");
-      if (placeCategory === null) return;
-      state.updateMoment(momentId, {
-        title: title.trim() || moment.title,
-        placeTitle: placeTitle.trim(),
-        placeCategory: placeCategory.trim() || "Place",
-        tags: [placeCategory.trim() || "Place"].filter(Boolean),
-        geoSource: moment.geoSource || "manual",
+      const imageSrc = moment.media_url || moment.mediaUrl || "";
+      if (!imageSrc) {
+        showToast("Image data not available to edit on this device.");
+        return;
+      }
+      state.openJournalPhotoEditor(imageSrc, {
+        mode: "journal",
+        momentId: moment.id,
+        momentData: moment,
+        caption: moment.placeTitle || moment.title || "",
       });
-      showToast("Media tags updated.");
     }
     else if (action === "close-lightbox") {
       state.closeLightbox();
