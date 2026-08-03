@@ -16,6 +16,7 @@ import { renderPremiumSupportSheet } from "../components/PremiumSupportSheet.js"
 import { renderPoiDetailSheet } from "../components/PoiDetailSheet.js";
 import { renderLegalModals } from "../components/LegalModals.js";
 import { renderAiConciergeDrawer } from "../components/AiConciergeDrawer.js";
+import { renderProfilePhotoEditorModal } from "../components/ProfilePhotoEditorModal.js";
 import { renderIcon } from "../utils/icons.js";
 
 export function renderAppShell(view = state.activeView, { isRouteChange = false } = {}) {
@@ -36,6 +37,7 @@ export function renderAppShell(view = state.activeView, { isRouteChange = false 
       ${renderPremiumSupportSheet()}
       ${renderPoiDetailSheet()}
       ${renderLegalModals()}
+      ${renderProfilePhotoEditorModal(state)}
       ${isLanding ? "" : renderTemplateMomentPicker(state.activeTrip)}
     </div>
   `;

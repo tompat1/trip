@@ -314,4 +314,30 @@ export const uiStateMixin = {
       this.notify();
     }
   },
+
+  // ── Photo Editor Modal ───────────────────────────────────────────────────
+
+  openPhotoEditor(imageSrc, options = {}) {
+    this.photoEditorImageSrc = imageSrc || this.userAvatar || "";
+    this.photoEditorOpen = true;
+    this.photoEditorIsSignup = Boolean(options.isSignup);
+    this._photoEditorTab = "upload";
+    this.notify();
+  },
+
+  closePhotoEditor() {
+    const wasSignup = this.photoEditorIsSignup;
+    this.photoEditorOpen = false;
+    this.photoEditorImageSrc = null;
+    this.photoEditorIsSignup = false;
+    if (wasSignup) {
+      this.openOnboarding();
+    }
+    this.notify();
+  },
+
+  setPhotoEditorTab(tab = "upload") {
+    this._photoEditorTab = tab === "presets" ? "presets" : "upload";
+    this.notify();
+  },
 };

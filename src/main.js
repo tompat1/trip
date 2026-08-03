@@ -12,9 +12,11 @@ import { handleQuickCaptureFiles } from "./app/mediaCaptureController.js";
 import { handleDockNavigation, handleRouteAction } from "./app/navigationController.js";
 import { renderAppShell } from "./app/renderController.js";
 import { closeAirportAutocompleteMenus, handleTransitFlightRouteSubmit, handleTripCreateSubmit, updateAirportAutocomplete, updateTripCreateRoutePreview } from "./app/tripFormController.js";
+import { PhotoEditorController } from "./components/ProfilePhotoEditorModal.js";
 import "./styles.css";
 
 let lastRenderedView = "";
+let activePhotoEditorController = null;
 
 function render() {
   const appEl = document.getElementById("app");
@@ -33,6 +35,27 @@ function render() {
   lastRenderedView = view;
 
   appEl.innerHTML = renderAppShell(view, { isRouteChange });
+
+  // Initialize photo editor controller if open
+  if (state.photoEditorOpen) {
+    requestAnimationFrame(() => {
+      const canvasEl = document.getElementById("photo-editor-canvas");
+      if (canvasEl) {
+        activePhotoEditorController = new PhotoEditorController(
+          state,
+          (croppedDataUrl) => {
+            state.updateUserAvatar(croppedDataUrl);
+            state.closePhotoEditor();
+            showToast("📸 Profile photo updated!");
+          },
+          showToast
+        );
+        activePhotoEditorController.init(state.photoEditorImageSrc);
+      }
+    });
+  } else {
+    activePhotoEditorController = null;
+  }
 
   // Initialize maps after DOM update
   requestAnimationFrame(() => {
@@ -389,16 +412,33 @@ document.addEventListener("click", async (e) => {
         showToast("Sign in to update your profile photo.");
         return;
       }
-      const fileInput = document.getElementById("avatar-file-input");
-      if (fileInput) {
-        fileInput.click();
-      } else {
-        const newUrl = prompt("Enter profile picture image URL:", state.userAvatar);
-        if (newUrl && newUrl.trim()) {
-          state.updateUserAvatar(newUrl.trim());
-          showToast("📸 Profile photo updated!");
+      state.openPhotoEditor();
+    }
+    else if (action === "close-photo-editor") {
+      state.closePhotoEditor();
+    }
+    else if (action === "set-photo-editor-tab") {
+      state.setPhotoEditorTab(target.dataset.tab);
+    }
+    else if (action === "trigger-photo-file-upload") {
+      const fileInput = document.getElementById("photo-editor-file-input") || document.getElementById("avatar-file-input");
+      if (fileInput) fileInput.click();
+    }
+    else if (action === "select-photo-preset") {
+      const presetUrl = target.dataset.presetUrl || target.closest("[data-preset-url]")?.dataset.presetUrl;
+      if (presetUrl) {
+        state.photoEditorImageSrc = presetUrl;
+        if (activePhotoEditorController) {
+          activePhotoEditorController.setImage(presetUrl);
+        } else {
+          state.notify();
         }
       }
+    }
+    else if (action === "remove-photo-avatar") {
+      state.updateUserAvatar("");
+      state.closePhotoEditor();
+      showToast("Profile photo removed.");
     }
     else if (action === "open-profile-section") {
       state.setProfileSection(target.dataset.profileSection || "profile");
@@ -1105,8 +1145,8 @@ document.addEventListener("submit", async (e) => {
         await state.loadD1Trips();
       }, { delay: 0 });
       state.closeAuthExit({ view: "home" });
-      state.openOnboarding();
-      showToast("Account created. Welcome to TRIP.");
+      state.openPhotoEditor(null, { isSignup: true });
+      showToast("Account created! Let's set up your profile photo.");
     } catch (error) {
       showToast(error?.status === 409 ? "An account already exists. Sign in instead." : "Could not create account right now.");
       if (error?.status === 409) state.setAuthMode("login");
@@ -1217,8 +1257,8 @@ document.addEventListener("submit", async (e) => {
         await state.refreshUserSession();
       }, { delay: 0 });
       state.acceptTripInvite({ mode: "account" });
-      state.openOnboarding();
-      showToast("Account created. Trip added to your planner.");
+      state.openPhotoEditor(null, { isSignup: true });
+      showToast("Account created! Let's set up your profile photo.");
     } catch (error) {
       showToast(error?.status === 409 ? "An account already exists. Sign in instead." : "Could not create account right now.");
     } finally {
@@ -1428,18 +1468,21 @@ document.addEventListener("change", (e) => {
     showToast("Profile setting autosaved.");
   }
 
-  if (e.target && e.target.id === "avatar-file-input" && e.target.files && e.target.files[0]) {
+  if (e.target && (e.target.id === "avatar-file-input" || e.target.id === "photo-editor-file-input") && e.target.files && e.target.files[0]) {
     const file = e.target.files[0];
-    saveAvatarFile(file).catch(() => {
-      const reader = new FileReader();
-      reader.onload = function(evt) {
-        if (evt.target && evt.target.result) {
-          state.updateUserAvatar(evt.target.result);
-          showToast("Profile photo autosaved.");
+    const reader = new FileReader();
+    reader.onload = function(evt) {
+      if (evt.target && evt.target.result) {
+        const dataUrl = evt.target.result;
+        state.photoEditorImageSrc = dataUrl;
+        if (state.photoEditorOpen && activePhotoEditorController) {
+          activePhotoEditorController.setImage(dataUrl);
+        } else {
+          state.openPhotoEditor(dataUrl);
         }
-      };
-      reader.readAsDataURL(file);
-    });
+      }
+    };
+    reader.readAsDataURL(file);
   }
 });
 

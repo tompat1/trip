@@ -135,6 +135,10 @@ export class AppState {
     this.aiConciergeHistory = [];
     this.aiConciergeLoading = false;
     this.destinationSummaries = {};
+    this.photoEditorOpen = false;
+    this.photoEditorImageSrc = null;
+    this.photoEditorIsSignup = false;
+    this._photoEditorTab = "upload"; // "upload" | "presets"
 
     // ── Pub/sub ──────────────────────────────────────────────────────────────
     this.listeners = new Set();
