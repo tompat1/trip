@@ -149,6 +149,7 @@ export class AppState {
       groqKey: storedAiKeys.groqKey || "",
     };
     this.aiSettingsOpen = false;
+    this.aiSettingsModalOpen = false;
     this.destinationSummaries = {};
     this.photoEditorOpen = false;
     this.photoEditorImageSrc = null;

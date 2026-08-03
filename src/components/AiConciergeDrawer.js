@@ -46,6 +46,9 @@ export function renderAiConciergeDrawer() {
             <p style="font-size: 0.78rem; color: var(--ink-muted); margin: 2px 0 0 0;">Grounded travel AI for ${trip.destination}</p>
           </div>
           <div style="display: flex; align-items: center; gap: 4px;">
+            <button class="btn btn--icon btn--ghost" data-action="open-ai-settings-modal" title="AI Settings & Provider Keys" aria-label="AI Settings">
+              ${renderIcon("settings")}
+            </button>
             ${(state.aiConciergeHistory && state.aiConciergeHistory.length) ? `
               <button class="btn btn--ghost btn--xs" data-action="clear-ai-concierge" style="font-size: 0.72rem; color: var(--ink-muted);" title="Clear chat history">Clear</button>
             ` : ""}

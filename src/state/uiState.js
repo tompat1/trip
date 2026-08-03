@@ -2,6 +2,7 @@
  * uiState mixin — modals, overlays, panels, onboarding, auth dialogs, theme.
  */
 import { markOnboardingSeen, writeStoredTheme } from "./helpers.js";
+import { aiService } from "../services/AiService.js";
 
 export const uiStateMixin = {
   // ── Theme ──────────────────────────────────────────────────────────────────
@@ -276,6 +277,31 @@ export const uiStateMixin = {
     this.notify();
   },
 
+  openAiSettingsModal() {
+    this.aiSettingsModalOpen = true;
+    this.notify();
+  },
+
+  closeAiSettingsModal() {
+    this.aiSettingsModalOpen = false;
+    this.notify();
+  },
+
+  clearAllAiKeys() {
+    this.aiProviderKeys = {
+      openAiKey: "",
+      geminiKey: "",
+      claudeKey: "",
+      grokKey: "",
+      openRouterKey: "",
+      groqKey: "",
+    };
+    try {
+      localStorage.removeItem("trip_ai_provider_keys_v1");
+    } catch {}
+    this.notify();
+  },
+
   clearAiConcierge() {
     this.aiConciergeHistory = [];
     this.notify();
@@ -289,7 +315,6 @@ export const uiStateMixin = {
     this.notify();
 
     try {
-      const { aiService } = await import("../services/AiService.js");
       const trip = this.activeTrip || { destination: "Destination" };
       const personas = Array.from(this.userPreferences || this.userProfile?.personas || ["Food Explorer"]);
 

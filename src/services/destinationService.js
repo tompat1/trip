@@ -341,6 +341,14 @@ export function getDestinationEtiquetteAndTips(destinationName = "") {
   };
 }
 
+function sanitizeLocationName(raw = "") {
+  let name = String(raw || "").trim();
+  // Strip year, season, date strings, e.g. ", Fall 2026", " - Summer 2025", " 2026"
+  name = name.replace(/,?\s*(?:Spring|Summer|Fall|Autumn|Winter)?\s*\b20\d\d\b.*$/i, "");
+  name = name.replace(/,?\s*\b(Trip|Vacation|Holiday|Getaway|Tour)\b.*$/i, "");
+  return name.trim() || raw.trim();
+}
+
 export async function fetchDynamicDestinationBrief(destinationName = "") {
   const cleanName = String(destinationName || "").trim();
   if (!cleanName) return null;
@@ -357,8 +365,9 @@ export async function fetchDynamicDestinationBrief(destinationName = "") {
 
   pendingFetches.add(cleanName);
 
-  const primarySearch = cleanName.split(",")[0].trim();
-  const searchCandidates = [cleanName, primarySearch].filter(Boolean);
+  const sanitized = sanitizeLocationName(cleanName);
+  const primarySearch = sanitized.split(",")[0].trim();
+  const searchCandidates = Array.from(new Set([sanitized, primarySearch])).filter(Boolean);
 
   try {
     for (const candidate of searchCandidates) {

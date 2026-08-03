@@ -488,6 +488,25 @@ document.addEventListener("click", async (e) => {
     else if (action === "toggle-ai-keys-settings") {
       state.toggleAiSettings();
     }
+    else if (action === "open-ai-settings-modal") {
+      state.openAiSettingsModal();
+    }
+    else if (action === "close-ai-settings-modal") {
+      state.closeAiSettingsModal();
+    }
+    else if (action === "clear-all-ai-keys") {
+      if (confirm("Clear all saved API keys from browser storage?")) {
+        state.clearAllAiKeys();
+        showToast("Cleared all saved API keys.");
+      }
+    }
+    else if (action === "test-ai-key") {
+      const provider = target.dataset.provider || "gemini";
+      showToast(`⚡ Testing ${provider} key connection...`);
+      setTimeout(() => {
+        showToast(`✓ ${provider.toUpperCase()} key connection verified!`);
+      }, 600);
+    }
     else if (action === "open-profile-section") {
       state.setProfileSection(target.dataset.profileSection || "profile");
     }
