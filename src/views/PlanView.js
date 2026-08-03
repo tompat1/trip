@@ -42,7 +42,7 @@ const VIEW_MODES = [
 const DAYS_HEADER = ["Sat 3 Oct", "Sun 4 Oct", "Mon 5 Oct", "Tue 6 Oct", "Wed 7 Oct", "Thu 8 Oct", "Fri 9 Oct"];
 
 export function renderPlanView() {
-  const trip = state.activeTrip;
+  const trip = state.activeTrip || { id: "guest", destination: "Plan Your Trip", flag: "🗺️", checklist: [] };
   const activeSubTab = state.planSubTab === "story" ? "journal" : (state.planSubTab === "explore" ? "overview" : state.planSubTab);
   const isJournalMode = activeSubTab === "journal";
   const activeJournalSection = state.journalSection || "gallery";
@@ -111,7 +111,8 @@ function renderSubtabContent(trip) {
 }
 
 function renderJournalSubTab() {
-  const moments = getMomentsForTrip(state.activeTrip.id);
+  const trip = state.activeTrip || { id: "guest", destination: "Travel Moments & Media" };
+  const moments = getMomentsForTrip(trip.id);
   const allMediaMoments = moments.filter(hasUsableMediaMoment);
   const mediaMoments = filterJournalMediaMoments(allMediaMoments);
   const noteMoments = moments.filter(isWrittenNoteMoment);

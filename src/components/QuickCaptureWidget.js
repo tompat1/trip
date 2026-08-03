@@ -4,9 +4,13 @@ import { renderIcon } from "../utils/icons.js";
 export function renderQuickCaptureWidget() {
   const isOpen = state.quickCaptureOpen;
   const activeTab = state.quickCaptureTab || "concierge";
-  const trips = state.getAllTrips ? state.getAllTrips() : [state.activeTrip];
+  const trips = state.getAllTrips ? state.getAllTrips() : (state.activeTrip ? [state.activeTrip] : []);
   const selectedTripId = state.quickCaptureTripId || state.activeTripId;
-  const trip = trips.find((item) => item.id === selectedTripId) || state.activeTrip;
+  const trip = trips.find((item) => item.id === selectedTripId) || state.activeTrip || {
+    id: "guest",
+    destination: "TRIP Travel Planner",
+    dates: "Plan your trip",
+  };
   const cityName = (trip.destination || "Destination").split(",")[0].trim();
   const upload = state.quickCaptureUpload || { status: "idle", progress: 0 };
   const isUploading = upload.status === "reading" || upload.status === "saving";

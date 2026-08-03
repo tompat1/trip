@@ -4,7 +4,7 @@ import { renderIcon } from "../utils/icons.js";
 import { TRIP_STAMP_SVG } from "../components/BrandAssets.js";
 
 export function renderLiveView() {
-  const trip = state.activeTrip;
+  const trip = state.activeTrip || { id: "guest", destination: "Live Mode", flag: "🗺️", center: [48.8566, 2.3522] };
   const events = trip.calendarEvents || [];
   const activeDayEvents = events.filter(e => Number(e.dayIndex) === (state.activeDayIndex || 0));
   const destinationContext = getTripDestinationContext(trip);
