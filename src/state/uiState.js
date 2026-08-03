@@ -4,6 +4,25 @@
 import { markOnboardingSeen, writeStoredTheme } from "./helpers.js";
 import { aiService } from "../services/AiService.js";
 
+export function cleanAiResponseText(text = "") {
+  if (!text) return "";
+  let clean = text;
+
+  // 1. Remove XML reasoning tags <think>...</think>
+  clean = clean.replace(/<think>[\s\S]*?<\/think>/gi, "");
+
+  // 2. Remove markdown reasoning blocks or preambles like "Thinking Process:", "Analysis:"
+  clean = clean.replace(/^(?:Thinking Process|Analysis|Reasoning|Internal thoughts):[\s\S]*?(?=\n\n|\n[#\*1-9]|Here are|☕|📍|☔|🌿|🍷|🍽️)/gi, "");
+
+  // 3. If preamble reasoning text exists (e.g. "Looking at the POIs...", "The user is asking..."), strip up to recommendations
+  const recommendationStart = clean.search(/(?:Here are|1\.|☕|📍|☔|🌿|🍷|🍽️|\*\*)/i);
+  if (recommendationStart > 0 && (clean.substring(0, recommendationStart).toLowerCase().includes("user is asking") || clean.substring(0, recommendationStart).toLowerCase().includes("looking at") || clean.substring(0, recommendationStart).toLowerCase().includes("cozy spots makes sense"))) {
+    clean = clean.substring(recommendationStart);
+  }
+
+  return clean.trim();
+}
+
 export const uiStateMixin = {
   // ── Theme ──────────────────────────────────────────────────────────────────
 
@@ -353,9 +372,11 @@ export const uiStateMixin = {
         keys: this.aiProviderKeys || {},
       });
 
+      const cleanText = cleanAiResponseText(result.answer || `Here are top recommendations for ${trip.destination}!`);
+
       this.aiConciergeHistory.push({
         role: "assistant",
-        text: result.answer || `Here are top recommendations for ${trip.destination}!`,
+        text: cleanText,
         aiModel: result.aiModel || result.modelProvider || "trip-ai",
       });
     } catch (err) {

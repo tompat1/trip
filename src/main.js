@@ -363,6 +363,7 @@ document.addEventListener("click", async (e) => {
     }
     else if (action === "toggle-ai-concierge") {
       state.toggleAiConcierge();
+      scrollAiChatToBottom();
     }
     else if (action === "close-ai-concierge") {
       if (target.classList.contains("ai-concierge-overlay") && e.target !== target) return;
@@ -373,7 +374,10 @@ document.addEventListener("click", async (e) => {
     }
     else if (action === "send-ai-chip") {
       const promptText = target.dataset.prompt || target.closest("[data-prompt]")?.dataset.prompt || "";
-      if (promptText) state.askAiConcierge(promptText);
+      if (promptText) {
+        state.askAiConcierge(promptText);
+        scrollAiChatToBottom();
+      }
     }
     else if (action === "submit-ai-concierge" || action === "submit-quick-capture-concierge" || target.closest(".ai-concierge-form, .quick-capture-concierge-form")) {
       const form = target.closest("form");
@@ -1519,6 +1523,13 @@ export function showToast(message) {
   }, 2500);
 }
 
+function scrollAiChatToBottom() {
+  setTimeout(() => {
+    const feeds = document.querySelectorAll(".ai-concierge-chat-feed");
+    feeds.forEach(feed => { feed.scrollTop = feed.scrollHeight; });
+  }, 100);
+}
+
 // Global Form Submit Handler for AI Concierge and inputs
 document.addEventListener("submit", (e) => {
   const form = e.target.closest("form");
@@ -1532,6 +1543,7 @@ document.addEventListener("submit", (e) => {
       const query = input.value.trim();
       input.value = "";
       state.askAiConcierge(query);
+      scrollAiChatToBottom();
     }
   }
 });

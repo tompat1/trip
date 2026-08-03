@@ -12001,5 +12001,22 @@ textarea {
   font-weight: 700;
 }
 
+/* ── Mobile AI Concierge Drawer & Header Fixes ───────────────────────────── */
+@media (max-width: 640px) {
+  .header-ai-concierge-btn {
+    display: none !important;
+  }
+
+  .ai-concierge-overlay {
+    z-index: 100050 !important;
+  }
+
+  .ai-concierge-drawer {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    border-radius: 0 !important;
+  }
+}
+
 
 
