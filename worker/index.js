@@ -565,7 +565,9 @@ async function openTripMapPlaceDetailsHandler(context) {
 }
 
 async function foursquarePlacesHandler(context) {
-  if (!context.env.FSQ_API_KEY) {
+  const rawKey = context.env.FSQ_API_KEY;
+  const fsqKey = String(rawKey || "").trim().replace(/^["']|["']$/g, "");
+  if (!fsqKey) {
     return json({
       status: "not-configured",
       places: [],
@@ -602,20 +604,27 @@ async function foursquarePlacesHandler(context) {
     fsqUrl.searchParams.set("categories", categories);
     fsqUrl.searchParams.set("fields", "fsq_id,name,categories,location,geocodes,rating,price,hours,website,photos");
     fsqUrl.searchParams.set("sort", "RELEVANCE");
-    fsqUrl.searchParams.set("open_now", "false");
 
     const startedAt = Date.now();
     const response = await fetch(fsqUrl.href, {
       headers: {
-        Authorization: context.env.FSQ_API_KEY,
+        Authorization: fsqKey,
         Accept: "application/json",
       },
     });
     const latencyMs = Date.now() - startedAt;
 
-    if (!response.ok) throw new Error(`foursquare-http-${response.status}`);
-    const data = await response.json();
+    if (!response.ok) {
+      const errText = await response.text().catch(() => "");
+      console.warn(`Foursquare API error (${response.status}):`, errText);
+      return json({
+        status: "error",
+        places: [],
+        providerStatus: [{ provider: "foursquare", status: "error", error: `foursquare-http-${response.status}`, details: errText.slice(0, 200) }],
+      });
+    }
 
+    const data = await response.json();
     const places = (data.results || []).map((result) => normalizeFoursquarePlace(result, coordinates));
     return json({
       status: "ok",
@@ -627,7 +636,7 @@ async function foursquarePlacesHandler(context) {
       status: "error",
       places: [],
       providerStatus: [{ provider: "foursquare", status: "error", error: error?.message || "foursquare-failed" }],
-    }, 200); // 200 so client handles gracefully
+    });
   }
 }
 
@@ -5143,7 +5152,7 @@ Guidelines:
       }
     }
 
-    if (openRouterKey) {
+    if (openRouterKey && !isOpenRouterDisabled) {
       try {
         const openRouterRes = await fetch("https://openrouter.ai/api/v1/chat/completions", {
           method: "POST",
@@ -5157,7 +5166,9 @@ Guidelines:
             messages: [{ role: "system", content: systemPrompt }, { role: "user", content: prompt }]
           })
         });
-        if (openRouterRes.ok) {
+        if (openRouterRes.status === 401 || openRouterRes.status === 403) {
+          isOpenRouterDisabled = true;
+        } else if (openRouterRes.ok) {
           const data = await openRouterRes.json();
           let text = data.choices?.[0]?.message?.content;
           if (text) {
