@@ -34,7 +34,15 @@ export function renderHeader() {
     `;
   }
 
-  const trip = state.activeTrip;
+  const trip = state.activeTrip || {
+    id: "",
+    destination: "No active trip",
+    flag: "🗺️",
+    dates: "No dates set",
+    startDate: null,
+    daysCount: 0,
+    weather: { temp: "--°C", condition: "Fair", icon: "☀️" },
+  };
   const profile = state.userProfile || {};
   const allTrips = state.getAllTrips();
   const liveDayTime = getLiveDayTimeFormatted();

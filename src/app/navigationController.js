@@ -30,7 +30,6 @@ export function handleDockNavigation(target, { requireAppSession, flashPageLoade
 
 export function handleRouteAction(action, target, { requireAppSession, flashPageLoader } = {}) {
   if (action === "go-app" || action === "go-home") {
-    if (!requireAppSession?.("login", "Sign in to open your trip board.")) return true;
     flashPageLoader?.("Opening home");
     state.setView("home");
     return true;

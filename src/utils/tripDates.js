@@ -7,8 +7,9 @@ export function addDaysToDate(startDate, daysCount = 1) {
 }
 
 export function getTripDateStatus(trip = {}, now = new Date()) {
-  const start = parseLocalDate(trip.startDate);
-  const end = addDaysToDate(trip.startDate, trip.daysCount);
+  const safeTrip = trip || {};
+  const start = parseLocalDate(safeTrip.startDate);
+  const end = addDaysToDate(safeTrip.startDate, safeTrip.daysCount);
   if (!start || !end) {
     return { state: "unknown", start: null, end: null, daysUntil: 0, daysSinceEnd: 0 };
   }
