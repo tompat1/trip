@@ -575,6 +575,21 @@ async function foursquarePlacesHandler(context) {
     });
   }
 
+  const isV3Key = fsqKey.startsWith("fsq3");
+  if (!isV3Key) {
+    return json({
+      status: "error",
+      places: [],
+      providerStatus: [{
+        provider: "foursquare",
+        status: "error",
+        error: "fsq-v2-key-unsupported",
+        keyPrefix: `${fsqKey.slice(0, 6)}...`,
+        message: "Foursquare Places API v3 requires a key starting with 'fsq3'. Get a v3 Service Key from location.foursquare.com/developer",
+      }],
+    });
+  }
+
   const url = new URL(context.request.url);
   const coordinates = normalizeCoordinates([url.searchParams.get("lat"), url.searchParams.get("lng")]);
   if (!coordinates) return jsonError("invalid_coordinates", "Provide lat and lng query parameters.", 400);
@@ -606,22 +621,12 @@ async function foursquarePlacesHandler(context) {
     fsqUrl.searchParams.set("sort", "RELEVANCE");
 
     const startedAt = Date.now();
-    let response = await fetch(fsqUrl.href, {
+    const response = await fetch(fsqUrl.href, {
       headers: {
         Authorization: fsqKey,
         Accept: "application/json",
       },
     });
-
-    if (response.status === 401 && !fsqKey.toLowerCase().startsWith("bearer ")) {
-      response = await fetch(fsqUrl.href, {
-        headers: {
-          Authorization: `Bearer ${fsqKey}`,
-          Accept: "application/json",
-        },
-      });
-    }
-
     const latencyMs = Date.now() - startedAt;
 
     if (!response.ok) {
@@ -630,7 +635,13 @@ async function foursquarePlacesHandler(context) {
       return json({
         status: "error",
         places: [],
-        providerStatus: [{ provider: "foursquare", status: "error", error: `foursquare-http-${response.status}`, details: errText.slice(0, 200) }],
+        providerStatus: [{
+          provider: "foursquare",
+          status: "error",
+          error: `foursquare-http-${response.status}`,
+          keyPrefix: `${fsqKey.slice(0, 6)}...`,
+          details: errText.slice(0, 200),
+        }],
       });
     }
 
@@ -639,7 +650,7 @@ async function foursquarePlacesHandler(context) {
     return json({
       status: "ok",
       places,
-      providerStatus: [{ provider: "foursquare", status: "ok", count: places.length, latencyMs }],
+      providerStatus: [{ provider: "foursquare", status: "ok", count: places.length, latencyMs, keyPrefix: `${fsqKey.slice(0, 6)}...` }],
     });
   } catch (error) {
     return json({
