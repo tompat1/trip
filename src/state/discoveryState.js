@@ -61,6 +61,7 @@ export const discoveryStateMixin = {
 
   async refreshWeather() {
     const trip = this.activeTrip;
+    if (!trip) return;
     const [lat, lng] = trip.center || [48.8566, 2.3522];
     const liveWeather = await fetchOpenMeteoWeather(lat, lng);
     if (liveWeather) {

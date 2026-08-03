@@ -13,10 +13,12 @@ export function scheduleBackgroundEnrichmentScan(delayMs = 200) {
 
 export async function runBackgroundEnrichmentScan() {
   if (scanTriggered) return;
-  scanTriggered = true;
 
   try {
     const trip = state.activeTrip;
+    if (!trip || !Array.isArray(trip.center)) return;
+    scanTriggered = true;
+
     const coords = trip.center || [48.8566, 2.3522];
 
     fetchOpenMeteoWeather(coords[0], coords[1]).then((weatherData) => {
