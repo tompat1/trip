@@ -2,11 +2,14 @@ import { state } from "../state.js";
 import { renderIcon } from "../utils/icons.js";
 
 const AI_PROVIDERS = [
-  { id: "auto", label: "⚡ Workers AI", desc: "Edge Llama 3.3 (Default)" },
-  { id: "gemini", label: "✨ Gemini 1.5", desc: "Google Flash Search Grounded" },
+  { id: "auto", label: "⚡ Workers AI (Free)", desc: "Cloudflare Edge Llama 3.3 (Built-in Free)" },
+  { id: "deepseek-free", label: "🧠 DeepSeek R1 (Free)", desc: "OpenRouter DeepSeek R1 Reasoning ($0)" },
+  { id: "openrouter-free", label: "🦙 Llama 3.3 (Free)", desc: "OpenRouter Llama 3.3 70B ($0)" },
+  { id: "groq-free", label: "🚀 Groq Speed (Free Key)", desc: "Groq Llama 3.3 70B @ 500 tok/sec ($0)" },
+  { id: "gemini", label: "✨ Gemini 1.5 (Free Key)", desc: "Google Gemini (1,500 Free RPD Key)" },
   { id: "openai", label: "🤖 ChatGPT (4o)", desc: "OpenAI GPT-4o Mini" },
-  { id: "claude", label: "🎭 Claude 3.5", desc: "Anthropic Claude Haiku/Sonnet" },
-  { id: "grok", label: "🚀 Grok 2", desc: "xAI Real-time Insights" },
+  { id: "claude", label: "🎭 Claude 3.5", desc: "Anthropic Claude 3.5" },
+  { id: "grok", label: "🔥 Grok 2", desc: "xAI Grok 2 Real-time" },
 ];
 
 export function renderAiConciergeDrawer() {
@@ -20,7 +23,7 @@ export function renderAiConciergeDrawer() {
   const history = (state.aiConciergeHistory && state.aiConciergeHistory.length) ? state.aiConciergeHistory : [
     {
       role: "assistant",
-      text: `Hello! I'm your multi-LLM TRIP AI Concierge for **${trip.destination}**. Ask me for personalized spots, hidden gems, or itinerary plans!`,
+      text: `Hello! I'm your multi-LLM TRIP AI Concierge for **${trip.destination}**. Ask me for personalized spots, hidden gems, or itinerary plans using free or custom AI models!`,
       aiModel: currentProvider === "auto" ? "workers-ai-llama3.3" : `${currentProvider}`,
     },
   ];
@@ -36,7 +39,7 @@ export function renderAiConciergeDrawer() {
             <div class="ai-header-pill-row">
               <span class="ai-badge voice-mono">${renderIcon("sparkles")} MULTI-LLM CONCIERGE</span>
               <button class="btn btn--xs btn--outline ai-keys-toggle-btn" data-action="toggle-ai-keys-settings" type="button">
-                ${renderIcon("key")} ${isSettingsOpen ? "Close Keys" : "AI Keys"}
+                ${renderIcon("key")} ${isSettingsOpen ? "Close Keys" : "Free Keys & BYOK"}
               </button>
             </div>
             <h3>TRIP Travel Concierge</h3>
@@ -68,24 +71,38 @@ export function renderAiConciergeDrawer() {
         ${isSettingsOpen ? `
           <div class="ai-keys-config-panel animate-scale-up">
             <div class="ai-keys-config-header">
-              <strong>🔑 Bring Your Own AI Key (BYOK)</strong>
-              <span style="font-size: 0.72rem; color: var(--ink-muted);">Keys stored locally in browser</span>
+              <strong>🔑 Free AI Keys & BYOK Setup</strong>
+              <span style="font-size: 0.72rem; color: var(--ink-muted);">Saved locally in browser</span>
+            </div>
+            <div class="ai-free-links-hint" style="font-size: 0.74rem; color: var(--ink); background: rgba(255,255,255,0.7); padding: 8px 10px; border-radius: 8px; margin-bottom: 8px;">
+              💡 <strong>Get 100% Free AI Keys:</strong>
+              <a href="https://aistudio.google.com/" target="_blank" rel="noopener" style="color: var(--orange); text-decoration: underline; margin-left: 4px;">Google AI Studio (1500/day free)</a> · 
+              <a href="https://openrouter.ai/" target="_blank" rel="noopener" style="color: var(--orange); text-decoration: underline;">OpenRouter Free</a> · 
+              <a href="https://console.groq.com/" target="_blank" rel="noopener" style="color: var(--orange); text-decoration: underline;">Groq Speed Free</a>
             </div>
             <div class="ai-keys-form-grid">
               <div class="ai-key-input-field">
-                <label for="key-gemini">Google Gemini API Key:</label>
+                <label for="key-gemini">Google Gemini API Key (Free):</label>
                 <input type="password" id="key-gemini" data-key-field="geminiKey" value="${escapeHtml(keys.geminiKey || "")}" placeholder="AIzaSy..." />
+              </div>
+              <div class="ai-key-input-field">
+                <label for="key-openrouter">OpenRouter Free Key:</label>
+                <input type="password" id="key-openrouter" data-key-field="openRouterKey" value="${escapeHtml(keys.openRouterKey || "")}" placeholder="sk-or-v1-..." />
+              </div>
+              <div class="ai-key-input-field">
+                <label for="key-groq">Groq Free Speed Key:</label>
+                <input type="password" id="key-groq" data-key-field="groqKey" value="${escapeHtml(keys.groqKey || "")}" placeholder="gsk_..." />
               </div>
               <div class="ai-key-input-field">
                 <label for="key-openai">OpenAI API Key (ChatGPT):</label>
                 <input type="password" id="key-openai" data-key-field="openAiKey" value="${escapeHtml(keys.openAiKey || "")}" placeholder="sk-..." />
               </div>
               <div class="ai-key-input-field">
-                <label for="key-claude">Anthropic Claude API Key:</label>
+                <label for="key-claude">Anthropic Claude Key:</label>
                 <input type="password" id="key-claude" data-key-field="claudeKey" value="${escapeHtml(keys.claudeKey || "")}" placeholder="sk-ant-..." />
               </div>
               <div class="ai-key-input-field">
-                <label for="key-grok">xAI Grok API Key:</label>
+                <label for="key-grok">xAI Grok Key:</label>
                 <input type="password" id="key-grok" data-key-field="grokKey" value="${escapeHtml(keys.grokKey || "")}" placeholder="xai-..." />
               </div>
             </div>
@@ -137,19 +154,25 @@ export function renderAiConciergeDrawer() {
 }
 
 function formatAiProviderName(provider = "auto") {
+  if (provider === "deepseek-free") return "DeepSeek R1 (Free)";
+  if (provider === "openrouter-free") return "Llama 3.3 (Free)";
+  if (provider === "groq-free") return "Groq Speed (Free)";
   if (provider === "gemini") return "Gemini 1.5";
   if (provider === "openai") return "ChatGPT";
   if (provider === "claude") return "Claude 3.5";
   if (provider === "grok") return "Grok 2";
-  return "Workers AI";
+  return "Workers AI (Free)";
 }
 
 function formatAiModelLabel(model = "") {
-  if (model.includes("gemini")) return "✨ Gemini 1.5 Flash";
+  if (model.includes("deepseek")) return "🧠 DeepSeek R1 (Free)";
+  if (model.includes("llama-3.3-free")) return "🦙 Llama 3.3 70B (Free)";
+  if (model.includes("groq")) return "🚀 Groq Speed (Free Key)";
+  if (model.includes("gemini")) return "✨ Gemini 1.5 Flash (Free Tier)";
   if (model.includes("gpt-4o")) return "🤖 GPT-4o Mini";
   if (model.includes("claude")) return "🎭 Claude 3 Haiku";
-  if (model.includes("grok")) return "🚀 Grok 2";
-  if (model.includes("llama")) return "⚡ Llama 3.3 (Workers AI)";
+  if (model.includes("grok")) return "🔥 Grok 2";
+  if (model.includes("llama")) return "⚡ Llama 3.3 (Workers AI Free)";
   return "⚡ TRIP AI";
 }
 

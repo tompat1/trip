@@ -4948,6 +4948,8 @@ async function aiConciergeHandler(context) {
   const geminiKey = reqHeaders.get("X-Gemini-Key") || context.env.GEMINI_API_KEY || "";
   const claudeKey = reqHeaders.get("X-Anthropic-Key") || context.env.ANTHROPIC_API_KEY || "";
   const grokKey = reqHeaders.get("X-Grok-Key") || context.env.GROK_API_KEY || "";
+  const openRouterKey = reqHeaders.get("X-OpenRouter-Key") || context.env.OPENROUTER_API_KEY || "";
+  const groqKey = reqHeaders.get("X-Groq-Key") || context.env.GROQ_API_KEY || "";
 
   const poiSummary = pois.length > 0
     ? pois.map((p) => `- ${p.name} (${p.category || "spot"}${p.address ? `, ${p.address}` : ""})`).join("\n")
@@ -5076,7 +5078,70 @@ Guidelines:
     }
   }
 
-  // 5. Cloudflare Workers AI (Default Edge Provider)
+  // 5. OpenRouter Free Models (DeepSeek R1 / Llama 3.3 Free)
+  if (requestedProvider === "deepseek-free" || requestedProvider === "openrouter-free" || (requestedProvider === "auto" && openRouterKey)) {
+    try {
+      const modelName = requestedProvider === "deepseek-free" ? "deepseek/deepseek-r1:free" : "meta-llama/llama-3.3-70b-instruct:free";
+      const headers = {
+        "Content-Type": "application/json",
+        "HTTP-Referer": "https://trip.rynell.org",
+        "X-Title": "TRIP Travel Planner"
+      };
+      if (openRouterKey) headers["Authorization"] = `Bearer ${openRouterKey}`;
+
+      const openRouterRes = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          model: modelName,
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: prompt }
+          ]
+        })
+      });
+      if (openRouterRes.ok) {
+        const data = await openRouterRes.json();
+        const text = data.choices?.[0]?.message?.content;
+        if (text) {
+          return json({ success: true, answer: text, aiModel: requestedProvider === "deepseek-free" ? "deepseek-r1-free" : "llama-3.3-free" });
+        }
+      }
+    } catch (e) {
+      console.warn("OpenRouter provider error:", e);
+    }
+  }
+
+  // 6. Groq Ultra-Fast Free Tier Engine
+  if ((requestedProvider === "groq-free" || (requestedProvider === "auto" && groqKey)) && groqKey) {
+    try {
+      const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${groqKey}`
+        },
+        body: JSON.stringify({
+          model: "llama-3.3-70b-versatile",
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: prompt }
+          ]
+        })
+      });
+      if (groqRes.ok) {
+        const data = await groqRes.json();
+        const text = data.choices?.[0]?.message?.content;
+        if (text) {
+          return json({ success: true, answer: text, aiModel: "groq-llama3.3-speed" });
+        }
+      }
+    } catch (e) {
+      console.warn("Groq provider error:", e);
+    }
+  }
+
+  // 7. Cloudflare Workers AI (Default Edge Provider)
   if (context.env.AI) {
     try {
       const historyMessages = Array.isArray(tripContext.history)

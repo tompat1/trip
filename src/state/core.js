@@ -139,12 +139,14 @@ export class AppState {
       const stored = localStorage.getItem("trip_ai_provider_keys_v1");
       if (stored) storedAiKeys = JSON.parse(stored);
     } catch {}
-    this.aiConciergeProvider = "auto"; // "auto" | "workers-ai" | "gemini" | "openai" | "claude" | "grok"
+    this.aiConciergeProvider = "auto"; // "auto" | "workers-ai" | "deepseek-free" | "openrouter-free" | "groq-free" | "gemini" | "openai" | "claude" | "grok"
     this.aiProviderKeys = {
       openAiKey: storedAiKeys.openAiKey || "",
       geminiKey: storedAiKeys.geminiKey || "",
       claudeKey: storedAiKeys.claudeKey || "",
       grokKey: storedAiKeys.grokKey || "",
+      openRouterKey: storedAiKeys.openRouterKey || "",
+      groqKey: storedAiKeys.groqKey || "",
     };
     this.aiSettingsOpen = false;
     this.destinationSummaries = {};

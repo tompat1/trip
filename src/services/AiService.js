@@ -64,6 +64,8 @@ export const aiService = {
       if (keys.geminiKey) headers["X-Gemini-Key"] = keys.geminiKey;
       if (keys.claudeKey) headers["X-Anthropic-Key"] = keys.claudeKey;
       if (keys.grokKey) headers["X-Grok-Key"] = keys.grokKey;
+      if (keys.openRouterKey) headers["X-OpenRouter-Key"] = keys.openRouterKey;
+      if (keys.groqKey) headers["X-Groq-Key"] = keys.groqKey;
 
       const response = await fetch("/api/ai/concierge", {
         method: "POST",
