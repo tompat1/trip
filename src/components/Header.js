@@ -53,6 +53,14 @@ export function renderHeader() {
   const tripStage = getTripStage(dateStatus);
   const ribbon = getTripRibbon(tripStage);
 
+  const userWeather = state.userLocationWeather || (trip && trip.weather?.temp && trip.weather.temp !== "--°C" ? trip.weather : null) || {
+    temp: "--°C",
+    condition: "Fair",
+    icon: "☀️",
+    cityName: "",
+  };
+  const weatherCity = userWeather.cityName || "";
+
   return `
     <header class="app-header">
       <div class="app-header__top">
@@ -60,8 +68,8 @@ export function renderHeader() {
           ${TRIP_LOGO_SVG("", 40)}
         </div>
         <div class="app-header__user">
-          <div class="header-live-time-pill" title="Live Open-Meteo weather in ${escapeHtml(trip.destination.split(',')[0])} & time">
-            <span class="header-weather-badge">${trip.weather?.icon || '☀️'} ${trip.weather?.temp || '20°C'}</span>
+          <div class="header-live-time-pill" title="Live Open-Meteo weather ${escapeHtml(weatherCity ? `in ${weatherCity}` : 'for current location')} & time">
+            <span class="header-weather-badge">${userWeather.icon || '☀️'} ${userWeather.temp || '20°C'}</span>
             <span class="header-time-divider">•</span>
             <span class="live-time-marquee" aria-label="${escapeHtml(liveDayTime)}">
               <span class="live-time-text">${escapeHtml(liveDayTime)}</span>

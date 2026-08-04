@@ -35,6 +35,8 @@ let startupPreloadStatus = [
   { id: "routes", label: "Route visuals", status: "queued", visible: false },
 ];
 
+import { state } from "../state.js";
+
 export function isAppBooted() {
   return booted;
 }
@@ -51,6 +53,10 @@ export async function bootApp(onRender) {
   booted = true;
   stopStartupIllustrationRotation();
   renderApp();
+  state.refreshWeather?.();
+  if (navigator.geolocation) {
+    state.requestCurrentLocation?.();
+  }
   warmRemainingImages();
 }
 

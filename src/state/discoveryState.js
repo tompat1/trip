@@ -60,14 +60,31 @@ export const discoveryStateMixin = {
   // ── Weather ────────────────────────────────────────────────────────────────
 
   async refreshWeather() {
-    const trip = this.activeTrip;
-    if (!trip) return;
-    const [lat, lng] = trip.center || [48.8566, 2.3522];
-    const liveWeather = await fetchOpenMeteoWeather(lat, lng);
-    if (liveWeather) {
-      trip.weather = { ...trip.weather, ...liveWeather };
-      this.notify();
+    // 1. Fetch live weather for user's current location (for Header badge)
+    let userLat = 48.8566;
+    let userLng = 2.3522;
+    if (Array.isArray(this.userLocation) && this.userLocation.length === 2) {
+      [userLat, userLng] = this.userLocation;
     }
+    const userLiveWeather = await fetchOpenMeteoWeather(userLat, userLng);
+    if (userLiveWeather) {
+      this.userLocationWeather = {
+        ...userLiveWeather,
+        cityName: this.locationResolved?.cityName || (this.locationResolved?.formattedAddress ? this.locationResolved.formattedAddress.split(",")[0] : ""),
+      };
+    }
+
+    // 2. Fetch live weather for active trip destination (for in-page trip cards)
+    const trip = this.activeTrip;
+    if (trip && Array.isArray(trip.center)) {
+      const [tripLat, tripLng] = trip.center;
+      const tripLiveWeather = await fetchOpenMeteoWeather(tripLat, tripLng);
+      if (tripLiveWeather) {
+        trip.weather = { ...trip.weather, ...tripLiveWeather };
+      }
+    }
+
+    this.notify();
   },
 
   // ── Tourism discovery ──────────────────────────────────────────────────────
@@ -381,6 +398,8 @@ export const discoveryStateMixin = {
         } catch (e) {
           console.warn("Location resolve warning:", e);
         }
+
+        await this.refreshWeather();
 
         try {
           const scan = await enrichmentService.discoverNearby({
