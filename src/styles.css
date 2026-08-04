@@ -12359,6 +12359,32 @@ a:active .ph-icon,
   margin: 0;
 }
 
+@media (max-width: 540px) {
+  .signed-out-features-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    text-align: center;
+  }
+
+  .signed-out-feature-card {
+    padding: 12px 8px;
+  }
+
+  .signed-out-feature-icon {
+    display: inline-flex;
+    margin-bottom: 6px;
+  }
+
+  .signed-out-feature-card strong {
+    font-size: 0.72rem;
+    line-height: 1.2;
+  }
+
+  .signed-out-feature-card p {
+    display: none;
+  }
+}
+
 .guest-draft-banner {
   display: flex;
   align-items: center;
@@ -12372,6 +12398,5 @@ a:active .ph-icon,
   color: var(--ink);
   margin-bottom: 16px;
 }
-
 
 
