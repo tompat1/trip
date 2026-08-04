@@ -23,6 +23,9 @@ export function renderTripCreateModal() {
 
   const today = new Date().toISOString().split("T")[0];
   const routeDisplay = getFlightRouteDisplay();
+  const allTrips = state.getAllTrips ? state.getAllTrips() : [];
+  const hasTrip = Boolean((state.activeTrip && state.activeTrip.id) || (Array.isArray(allTrips) && allTrips.length > 0));
+  const isGuestDraft = !state.isAuthenticated && !hasTrip;
 
   return `
     <div class="trip-create-overlay">
@@ -33,9 +36,9 @@ export function renderTripCreateModal() {
 
         <div class="trip-create-header">
           <div>
-            <span class="trip-create-kicker voice-mono">New journey</span>
-            <h2 class="trip-create-title" id="trip-create-title">Create a trip</h2>
-            <p class="trip-create-subtitle">Start with the route, dates, and flight style. The planning board comes next.</p>
+            <span class="trip-create-kicker voice-mono">${isGuestDraft ? "✨ Guest draft journey" : "New journey"}</span>
+            <h2 class="trip-create-title" id="trip-create-title">${isGuestDraft ? "Create guest draft trip" : "Create a trip"}</h2>
+            <p class="trip-create-subtitle">${isGuestDraft ? "Start with the route, dates, and flight style. Your draft trip will be created instantly without signing in." : "Start with the route, dates, and flight style. The planning board comes next."}</p>
           </div>
           <button class="btn btn--icon btn--ghost" data-action="close-trip-create" aria-label="Close">
             ${renderIcon("x")}
@@ -131,7 +134,7 @@ export function renderTripCreateModal() {
           <div class="trip-create-actions">
             <button type="button" class="btn btn--outline" data-action="close-trip-create">Cancel</button>
             <button type="submit" class="btn btn--primary trip-create-submit">
-              ${renderIcon("sparkles")} Create trip
+              ${renderIcon("sparkles")} ${isGuestDraft ? "Create guest draft trip" : "Create trip"}
             </button>
           </div>
         </form>

@@ -836,9 +836,20 @@ document.addEventListener("click", async (e) => {
       }));
       showToast("Trip details updated. Refreshing local ideas and events.");
     }
-    else if (action === "create-trip") {
-      if (!requireAppSession("signup", "Create an account or sign in before creating trips.")) return;
-      state.openTripCreate();
+    else if (action === "create-trip" || action === "open-trip-create") {
+      const allTrips = state.getAllTrips ? state.getAllTrips() : [];
+      const hasTrip = Boolean((state.activeTrip && state.activeTrip.id) || (Array.isArray(allTrips) && allTrips.length > 0));
+      const isSignedIn = state.isAuthenticated;
+
+      if (!isSignedIn && !hasTrip) {
+        // When not logged in and no trip exists, both CTA buttons open the Guest Draft Trip modal instantly
+        state.openTripCreate();
+      } else if (!isSignedIn && action === "create-trip") {
+        if (!requireAppSession("signup", "Create an account or sign in before creating additional trips.")) return;
+        state.openTripCreate();
+      } else {
+        state.openTripCreate();
+      }
     }
     else if (action === "close-trip-create") {
       state.closeTripCreate();
