@@ -621,31 +621,12 @@ async function foursquarePlacesHandler(context) {
     fsqUrl.searchParams.set("sort", "RELEVANCE");
 
     const startedAt = Date.now();
-    let response = await fetch(fsqUrl.href, {
+    const response = await fetch(fsqUrl.href, {
       headers: {
         Authorization: fsqKey,
         Accept: "application/json",
       },
     });
-
-    if (!response.ok && (response.status === 410 || response.status === 401) && !fsqKey.toLowerCase().startsWith("bearer ")) {
-      response = await fetch(fsqUrl.href, {
-        headers: {
-          Authorization: `Bearer ${fsqKey}`,
-          Accept: "application/json",
-        },
-      });
-    }
-
-    if (!response.ok && (response.status === 410 || response.status === 401)) {
-      response = await fetch(fsqUrl.href, {
-        headers: {
-          "X-Fsq-Api-Key": fsqKey,
-          Accept: "application/json",
-        },
-      });
-    }
-
     const latencyMs = Date.now() - startedAt;
 
     if (!response.ok) {
@@ -659,7 +640,10 @@ async function foursquarePlacesHandler(context) {
           status: "error",
           error: `foursquare-http-${response.status}`,
           keyPrefix: `${fsqKey.slice(0, 6)}...`,
-          details: errText.slice(0, 200),
+          details: errText.slice(0, 200) || `HTTP ${response.status}`,
+          troubleshooting: response.status === 401
+            ? "Invalid Request Token: Enable Places API under Project Services at location.foursquare.com/developer."
+            : undefined,
         }],
       });
     }
