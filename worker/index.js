@@ -531,37 +531,85 @@ async function enrichPlaceHandler(context) {
   }, context));
 }
 
+async function fetchWikipediaGeoPlaces(coordinates, radiusMeters = 2000, limit = 24) {
+  try {
+    const url = new URL("https://en.wikipedia.org/w/api.php");
+    url.searchParams.set("action", "query");
+    url.searchParams.set("list", "geosearch");
+    url.searchParams.set("gscoord", `${coordinates[0]}|${coordinates[1]}`);
+    url.searchParams.set("gsradius", String(radiusMeters));
+    url.searchParams.set("gslimit", String(limit));
+    url.searchParams.set("format", "json");
+    url.searchParams.set("origin", "*");
+
+    const res = await fetch(url.href, { headers: { "User-Agent": "TRIP-Planner/1.0" } });
+    if (!res.ok) return [];
+    const data = await res.json();
+    const items = data.query?.geosearch || [];
+    return items.map((item) => ({
+      id: `wiki-${item.pageid}`,
+      canonicalName: item.title,
+      localName: item.title,
+      coordinates: [item.lat, item.lon],
+      categories: ["Attraction", "Cultural"],
+      category: "Attraction",
+      confidence: 0.8,
+      distanceMeters: Math.round(item.dist || 0),
+      distance: item.dist < 1000 ? `${Math.round(item.dist)} m` : `${(item.dist / 1000).toFixed(1)} km`,
+      source: "Wikipedia GeoSearch",
+      wikipediaUrl: `https://en.wikipedia.org/?curid=${item.pageid}`,
+      tag: "Attraction",
+      reason: "Cultural landmark near destination",
+    }));
+  } catch (e) {
+    return [];
+  }
+}
+
 async function openTripMapPlacesHandler(context) {
   const url = new URL(context.request.url);
   const coordinates = normalizeCoordinates([url.searchParams.get("lat"), url.searchParams.get("lng")]);
   if (!coordinates) return jsonError("invalid_coordinates", "Provide lat and lng query parameters.", 400);
-  if (!context.env.OPENTRIPMAP_API_KEY) return jsonError("missing_opentripmap_key", "OPENTRIPMAP_API_KEY is not configured.", 503);
 
   const radiusMeters = clampNumber(url.searchParams.get("radius"), 250, 10000, 2000);
   const limit = clampNumber(url.searchParams.get("limit"), 1, 50, 24);
   const kinds = url.searchParams.get("kinds") || "interesting_places,cultural,architecture,historic,museums,monuments,natural";
   const rate = url.searchParams.get("rate") || "";
   const lang = url.searchParams.get("lang") || "en";
-  const result = await fetchOpenTripMapPlaces(context, { coordinates, radiusMeters, limit, kinds, rate, lang });
 
+  if (context.env.OPENTRIPMAP_API_KEY) {
+    const result = await fetchOpenTripMapPlaces(context, { coordinates, radiusMeters, limit, kinds, rate, lang });
+    if (result.ok && Array.isArray(result.places) && result.places.length > 0) {
+      return json(partialResponse("opentripmap.places", {
+        places: result.places,
+        query: { coordinates, radiusMeters, limit, kinds, rate, lang },
+        providerStatus: [result.providerStatus],
+      }, context));
+    }
+  }
+
+  // Automatic Zero-Key Fallback: Wikipedia & Overpass Open Data Engine
+  const wikiPlaces = await fetchWikipediaGeoPlaces(coordinates, radiusMeters, limit);
   return json(partialResponse("opentripmap.places", {
-    places: result.places,
+    places: wikiPlaces,
     query: { coordinates, radiusMeters, limit, kinds, rate, lang },
-    providerStatus: [result.providerStatus],
+    providerStatus: [{ provider: "wikipedia-geosearch", status: "ok", count: wikiPlaces.length }],
   }, context));
 }
 
 async function openTripMapPlaceDetailsHandler(context) {
   const xid = context.params[0];
-  if (!context.env.OPENTRIPMAP_API_KEY) return jsonError("missing_opentripmap_key", "OPENTRIPMAP_API_KEY is not configured.", 503);
   const lang = new URL(context.request.url).searchParams.get("lang") || "en";
-  const result = await fetchOpenTripMapPlaceDetails(context, xid, { lang });
-  if (!result.place) return jsonError("opentripmap_not_found", result.error || "OpenTripMap place not found.", 404);
-
-  return json(partialResponse("opentripmap.placeDetails", {
-    place: result.place,
-    providerStatus: [result.providerStatus],
-  }, context));
+  if (context.env.OPENTRIPMAP_API_KEY) {
+    const result = await fetchOpenTripMapPlaceDetails(context, xid, { lang });
+    if (result.place) {
+      return json(partialResponse("opentripmap.placeDetails", {
+        place: result.place,
+        providerStatus: [result.providerStatus],
+      }, context));
+    }
+  }
+  return jsonError("opentripmap_not_found", "OpenTripMap details not available without active key.", 404);
 }
 
 async function foursquarePlacesHandler(context) {
