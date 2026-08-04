@@ -237,12 +237,28 @@ export function renderLandingView() {
           </div>
 
           <div class="persona-chips-showcase">
-            ${personas.map(([key, data]) => `
-              <div class="persona-showcase-chip">
-                <span class="persona-chip-title">${escapeHtml(key)}</span>
-                <p class="persona-chip-desc">Prioritizes ${(data?.keywords || []).slice(0, 3).join(", ")} and curated ${(data?.label || key).toLowerCase()} spots.</p>
-              </div>
-            `).join("")}
+            ${personas.map(([key, data]) => {
+              const personaLabel = data?.label || key.replace(/^[\p{Emoji}\s]+/u, "");
+              const iconKey = personaLabel.includes("Architect") ? "buildings"
+                : personaLabel.includes("Route") ? "compass"
+                : personaLabel.includes("Coffee") ? "coffee"
+                : personaLabel.includes("Food") ? "forkKnife"
+                : personaLabel.includes("Wine") ? "wine"
+                : personaLabel.includes("Memory") ? "camera"
+                : "sparkles";
+
+              return `
+                <div class="persona-showcase-chip">
+                  <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+                    <span class="persona-icon-badge" style="display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 50%; background: rgba(56, 92, 115, 0.08); color: var(--atlas-blue, #385C73); font-size: 1.15rem; flex-shrink: 0;">
+                      ${renderIcon(iconKey)}
+                    </span>
+                    <span class="persona-chip-title" style="margin: 0; font-size: 0.95rem; font-weight: 700;">${escapeHtml(personaLabel)}</span>
+                  </div>
+                  <p class="persona-chip-desc">Prioritizes ${(data?.keywords || []).slice(0, 3).join(", ")} and curated ${escapeHtml(personaLabel.toLowerCase())} spots.</p>
+                </div>
+              `;
+            }).join("")}
           </div>
         </div>
       </section>
