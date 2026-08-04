@@ -33,7 +33,40 @@ export const tripStateMixin = {
     this.notify();
   },
 
+  async syncGuestDraftTripsToAccount() {
+    if (!this.isAuthenticated) return;
+    const allTrips = Object.values(tripsData);
+    const guestDraftTrips = allTrips.filter((t) => t.syncStatus === "needs-auth" || (!t.userId && t.syncStatus !== "synced"));
+
+    if (guestDraftTrips.length === 0) return;
+
+    for (const trip of guestDraftTrips) {
+      try {
+        await enrichmentService.createTrip({
+          id: trip.id,
+          destination: trip.destination,
+          flag: trip.flag,
+          dates: trip.dates,
+          daysCount: trip.daysCount,
+          startDate: trip.startDate,
+          latitude: trip.center ? trip.center[0] : 40.4168,
+          longitude: trip.center ? trip.center[1] : -3.7038,
+          originIata: trip.flightRoute?.originIata,
+          destinationIata: trip.flightRoute?.destinationIata,
+          originLabel: trip.flightRoute?.originLabel,
+          destinationLabel: trip.flightRoute?.destinationLabel,
+          flightType: trip.flightRoute?.flightType,
+        });
+        trip.syncStatus = "synced";
+        trip.userId = this.userSession?.userId || "";
+      } catch (e) {
+        console.warn("Guest draft sync warning:", e);
+      }
+    }
+  },
+
   async loadD1Trips() {
+    await this.syncGuestDraftTripsToAccount();
     try {
       const res = await enrichmentService.fetchTrips();
       if (res && res.trips && Array.isArray(res.trips)) {

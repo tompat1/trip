@@ -20,11 +20,32 @@ import { renderAiSettingsModal } from "../components/AiSettingsModal.js";
 import { renderProfilePhotoEditorModal } from "../components/ProfilePhotoEditorModal.js";
 import { renderIcon } from "../utils/icons.js";
 
+export function renderGuestDraftBanner() {
+  if (state.isAuthenticated) return "";
+  const trip = state.activeTrip;
+  if (!trip || !trip.id || trip.id === "guest") return "";
+
+  return `
+    <div class="guest-draft-banner voice-mono" role="region" aria-label="Guest Draft Warning">
+      <div class="guest-draft-banner__content">
+        <span class="guest-draft-banner__icon">⚠️</span>
+        <span class="guest-draft-banner__text">
+          <strong>Guest Draft (${escapeHtml(trip.destination)})</strong>: Create a free account to save your trip, otherwise it will disappear when you close this browser.
+        </span>
+      </div>
+      <button class="btn btn--primary btn--xs guest-draft-banner__btn" data-action="open-auth-panel" data-auth-mode="signup" type="button">
+        🔑 Create Account to Save
+      </button>
+    </div>
+  `;
+}
+
 export function renderAppShell(view = state.activeView, { isRouteChange = false } = {}) {
   const isLanding = view === "landing";
 
   return `
     <div class="app-view app-view--${escapeHtml(view)} ${isRouteChange ? "app-view--route-enter" : ""}">
+      ${isLanding ? "" : renderGuestDraftBanner()}
       ${renderActiveView(view)}
       ${(isLanding || !state.canShowConciergeAndAssistant) ? "" : renderBottomNav()}
       ${(isLanding || !state.canShowConciergeAndAssistant) ? "" : renderQuickCaptureWidget()}
