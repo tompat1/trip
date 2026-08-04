@@ -83,6 +83,7 @@ function matchRoute(method, pathname) {
     ["GET", /^\/api\/opentripmap\/places$/, openTripMapPlacesHandler],
     ["GET", /^\/api\/opentripmap\/places\/([^/]+)$/, openTripMapPlaceDetailsHandler],
     ["GET", /^\/api\/foursquare\/places$/, foursquarePlacesHandler],
+    ["GET", /^\/api\/rapidapi\/places$/, rapidApiPlacesHandler],
     ["POST", /^\/api\/places\/([^/]+)\/media\/refresh$/, mediaRefreshHandler],
     ["POST", /^\/api\/media\/light$/, lightMediaPutHandler],
     ["GET", /^\/api\/media\/light\/([^/]+)$/, lightMediaGetHandler],
@@ -722,6 +723,92 @@ async function foursquarePlacesHandler(context) {
       status: "error",
       places: [],
       providerStatus: [{ provider: "foursquare", status: "error", error: error?.message || "foursquare-failed" }],
+    });
+  }
+}
+
+async function rapidApiPlacesHandler(context) {
+  const rawKey = context.env.RAPIDAPI_KEY || "6b5335ae77mshefba991ec0afe3bp102cd8jsn27109510dc44";
+  const apiKey = String(rawKey || "").trim().replace(/^["']|["']$/g, "");
+  if (!apiKey) {
+    return json({
+      status: "not-configured",
+      places: [],
+      providerStatus: [{ provider: "rapidapi", status: "not-configured", error: "missing-rapidapi-key" }],
+    });
+  }
+
+  const url = new URL(context.request.url);
+  const coordinates = normalizeCoordinates([url.searchParams.get("lat"), url.searchParams.get("lng")]);
+  if (!coordinates) return jsonError("invalid_coordinates", "Provide lat and lng query parameters.", 400);
+
+  const query = url.searchParams.get("query") || url.searchParams.get("intent") || "restaurants and cafes";
+  const limit = clampNumber(url.searchParams.get("limit"), 1, 50, 20);
+
+  try {
+    const startedAt = Date.now();
+    const rapidUrl = new URL("https://local-business-data.p.rapidapi.com/search-in-area");
+    rapidUrl.searchParams.set("query", query);
+    rapidUrl.searchParams.set("lat", String(coordinates[0]));
+    rapidUrl.searchParams.set("lng", String(coordinates[1]));
+    rapidUrl.searchParams.set("limit", String(limit));
+    rapidUrl.searchParams.set("zoom", "13");
+
+    const response = await fetch(rapidUrl.href, {
+      headers: {
+        "x-rapidapi-host": "local-business-data.p.rapidapi.com",
+        "x-rapidapi-key": apiKey,
+        "Accept": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      const errText = await response.text().catch(() => "");
+      return json({
+        status: "error",
+        places: [],
+        providerStatus: [{ provider: "rapidapi", status: "error", error: `rapidapi-http-${response.status}`, details: errText.slice(0, 200) }],
+      });
+    }
+
+    const data = await response.json();
+    const rawPlaces = data.data || data.results || [];
+    const places = rawPlaces.map((b) => {
+      const samplePhoto = Array.isArray(b.photos_sample) && b.photos_sample[0] ? b.photos_sample[0] : null;
+      const photoUrl = samplePhoto ? (samplePhoto.photo_url_large || samplePhoto.photo_url || "") : "";
+      return {
+        id: `rapid-${b.place_id || b.business_id || Math.random().toString(36).substr(2, 6)}`,
+        canonicalName: b.name || b.title || "Local Place",
+        localName: b.name || b.title || "Local Place",
+        coordinates: [b.latitude || coordinates[0], b.longitude || coordinates[1]],
+        categories: b.type ? [b.type, ...(b.subtypes || [])] : ["Local Business"],
+        category: b.type || "Local Business",
+        rating: b.rating || null,
+        reviewCount: b.review_count || null,
+        address: b.full_address || b.address || "",
+        phone: b.phone_number || "",
+        website: b.website || b.place_link || "",
+        photoUrl,
+        heroImageUrl: photoUrl,
+        googleMapsUrl: b.place_link || "",
+        reviewsUrl: b.reviews_link || "",
+        verified: Boolean(b.verified),
+        businessStatus: b.business_status || "OPEN",
+        source: "RapidAPI Local Business Data",
+        reason: b.rating ? `★ ${b.rating} (${b.review_count || 0} reviews)` : "Verified local place",
+      };
+    });
+
+    return json({
+      status: "ok",
+      places,
+      providerStatus: [{ provider: "rapidapi", status: "ok", count: places.length, latencyMs: Date.now() - startedAt }],
+    });
+  } catch (error) {
+    return json({
+      status: "error",
+      places: [],
+      providerStatus: [{ provider: "rapidapi", status: "error", error: error?.message || "rapidapi-failed" }],
     });
   }
 }
