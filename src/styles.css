@@ -911,6 +911,108 @@ textarea {
   flex-shrink: 0;
   vertical-align: -0.125em;
   display: inline-block;
+  transition: transform 0.24s cubic-bezier(0.34, 1.56, 0.64, 1), fill 0.2s ease, opacity 0.2s ease;
+  will-change: transform;
+}
+
+.no-active-trip-icon,
+.country-fallback-icon {
+  font-size: 1.1em;
+  color: var(--journey-red, #D94A3A);
+  margin-left: 6px;
+  vertical-align: -0.125em;
+}
+
+button:hover .ph-icon,
+a:hover .ph-icon,
+.btn:hover .ph-icon {
+  transform: scale(1.08) translateY(-1px);
+}
+
+button:active .ph-icon,
+a:active .ph-icon,
+.btn:active .ph-icon,
+[data-action]:active .ph-icon {
+  transform: scale(0.92);
+}
+
+@media (max-width: 768px) {
+  .ph-icon {
+    transform-origin: center center;
+  }
+
+  .ph-sparkles,
+  .signed-out-feature-icon .ph-icon,
+  .persona-icon-badge .ph-icon,
+  .pillar-icon-box .ph-icon,
+  .hero-btn-main .ph-icon,
+  .dock-fab .ph-icon {
+    animation: ph-pulse 3.2s ease-in-out infinite;
+  }
+
+  .ph-compass,
+  .ph-map,
+  .ph-mappin,
+  .ph-navigation,
+  .ph-buildings {
+    animation: ph-subtle-float 3.8s ease-in-out infinite;
+  }
+
+  .ph-arrowright,
+  .btn .ph-arrowright,
+  a .ph-arrowright {
+    animation: ph-nudge-right 2.4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  .ph-arrowleft,
+  .btn .ph-arrowleft,
+  a .ph-arrowleft {
+    animation: ph-nudge-left 2.4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  .btn:active .ph-icon,
+  button:active .ph-icon,
+  a:active .ph-icon,
+  .dock-item:active .ph-icon,
+  .chip:active .ph-icon {
+    transform: scale(0.84) rotate(-3deg);
+  }
+}
+
+@keyframes ph-pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.18);
+  }
+}
+
+@keyframes ph-subtle-float {
+  0%, 100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-3px) rotate(4deg);
+  }
+}
+
+@keyframes ph-nudge-right {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  50% {
+    transform: translateX(6px);
+  }
+}
+
+@keyframes ph-nudge-left {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  50% {
+    transform: translateX(-6px);
+  }
 }
 
 .guest-draft-banner {
@@ -10966,6 +11068,19 @@ textarea {
   box-shadow: var(--shadow-sm);
 }
 
+.persona-icon-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(217, 74, 58, 0.12);
+  color: var(--journey-red, #D94A3A);
+  font-size: 1.18rem;
+  flex-shrink: 0;
+}
+
 .persona-chip-title {
   font-weight: 700;
   font-size: 1rem;
@@ -11130,8 +11245,28 @@ textarea {
   border-top: 1px solid var(--line-light);
   display: flex;
   justify-content: space-between;
+  align-items: center;
   font-size: 0.78rem;
   color: var(--ink-muted);
+}
+
+@media (max-width: 768px) {
+  .footer-bottom {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    justify-content: space-between;
+    white-space: nowrap;
+    overflow: hidden;
+    font-size: 0.68rem;
+    gap: 6px;
+  }
+
+  .footer-bottom span {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
 }
 
 /* ── Mockup 08 — Auto-Generated Location Overview ──────────────────────── */
@@ -12154,6 +12289,17 @@ textarea {
   font-size: 0.75rem;
   font-weight: 800;
   margin-bottom: 16px;
+}
+
+@media (max-width: 768px) {
+  .signed-out-welcome-badge {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 0.68rem;
+    padding: 5px 12px;
+    max-width: 100%;
+  }
 }
 
 .signed-out-welcome-title {

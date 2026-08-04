@@ -250,7 +250,7 @@ export function renderLandingView() {
               return `
                 <div class="persona-showcase-chip">
                   <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
-                    <span class="persona-icon-badge" style="display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 50%; background: rgba(56, 92, 115, 0.08); color: var(--atlas-blue, #385C73); font-size: 1.15rem; flex-shrink: 0;">
+                    <span class="persona-icon-badge">
                       ${renderIcon(iconKey)}
                     </span>
                     <span class="persona-chip-title" style="margin: 0; font-size: 0.95rem; font-weight: 700;">${escapeHtml(personaLabel)}</span>
@@ -327,7 +327,7 @@ export function renderLandingView() {
 
         <div class="footer-bottom">
           <span>© 2026 TRIP • trip.rynell.org</span>
-          <span class="voice-mono">Powered by Cloudflare Pages & Workers</span>
+          <span class="voice-mono">Cloudflare Pages & Workers</span>
         </div>
       </footer>
     </div>

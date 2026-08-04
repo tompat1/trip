@@ -109,12 +109,13 @@ const ALIASES = {
   qrCode: "QrCode"
 };
 
-function formatPhosphorSvg(svgRaw, customClass = "") {
+function formatPhosphorSvg(svgRaw, customClass = "", iconName = "") {
   if (!svgRaw) return "";
-  const combinedClass = ("ph-icon lucide-icon " + customClass).trim();
+  const iconClass = iconName ? `ph-${iconName.toLowerCase()}` : "";
+  const combinedClass = `ph-icon ${iconClass} ${customClass}`.trim();
   return svgRaw.replace(
     /<svg\s+/,
-    '<svg width="1em" height="1em" class="' + combinedClass + '" style="vertical-align: -0.125em; display: inline-block;" '
+    `<svg width="1em" height="1em" class="${combinedClass}" style="vertical-align: -0.125em; display: inline-block;" `
   );
 }
 
@@ -136,5 +137,5 @@ export function renderIcon(name, customClass = "") {
   }
 
   const rawSvg = PHOSPHOR_SVG_MAP[key] || PHOSPHOR_SVG_MAP.Sparkles;
-  return formatPhosphorSvg(rawSvg, customClass);
+  return formatPhosphorSvg(rawSvg, customClass, key || name);
 }

@@ -701,7 +701,7 @@ function renderSignedOutWelcomeHero() {
       <div class="home-page__content">
         <section class="signed-out-welcome-hero animate-scale-up">
           <div class="signed-out-welcome-badge voice-mono">
-            ${renderIcon("sparkles")} TRIP TRAVEL CONCIERGE & MEMORY JOURNAL
+            ${renderIcon("sparkles")} TRIP TRAVEL CONCIERGE & JOURNAL
           </div>
           <h1 class="signed-out-welcome-title voice-serif">
             Plan and remember your journeys.

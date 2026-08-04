@@ -52,11 +52,15 @@ const COUNTRY_FLAG_MAP = {
   seoul: "🇰🇷"
 };
 
+import { renderIcon } from "./icons.js";
+
+const DEFAULT_MAP_ICON = renderIcon("map", "country-fallback-icon");
+
 /**
  * Automatically infers country flag emoji based on destination string or country name
  */
 export function getCountryFlagEmoji(destinationStr = "") {
-  if (!destinationStr) return "🗺️";
+  if (!destinationStr) return DEFAULT_MAP_ICON;
   const normalized = destinationStr.toLowerCase().trim();
 
   // Check direct keywords
@@ -73,7 +77,7 @@ export function getCountryFlagEmoji(destinationStr = "") {
     return isoToEmoji(lastPart.toUpperCase());
   }
 
-  return "🗺️";
+  return DEFAULT_MAP_ICON;
 }
 
 function isoToEmoji(code) {

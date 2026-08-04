@@ -37,7 +37,7 @@ export function renderHeader() {
   const trip = state.activeTrip || {
     id: "",
     destination: "No active trip",
-    flag: "🗺️",
+    flag: renderIcon("map", "no-active-trip-icon"),
     dates: "No dates set",
     startDate: null,
     daysCount: 0,
@@ -134,7 +134,7 @@ export function renderHeader() {
 
           <div class="trip-context-card__title-row">
             <div class="editable-trip-title ${noTrip ? 'editable-trip-title--disabled' : ''}" ${noTrip ? '' : 'data-action="edit-trip-title" title="Edit destination, dates, and trip location"'}>
-              <h1 class="trip-title">${escapeHtml(trip.destination)} ${trip.flag}</h1>
+              <h1 class="trip-title">${escapeHtml(trip.destination)} ${String(trip.flag || "").startsWith("<svg") ? trip.flag : escapeHtml(trip.flag)}</h1>
               <p class="trip-dates">${escapeHtml(trip.dates)}${isDoneTrip ? ` • Completed ${dateStatus.daysSinceEnd} ${dateStatus.daysSinceEnd === 1 ? "day" : "days"} ago` : ""}</p>
               ${noTrip ? "" : `
                 <button class="btn btn--icon btn--ghost edit-pencil-btn" aria-label="Edit trip details">
