@@ -1017,7 +1017,7 @@ async function airportsSearchHandler(context) {
       source: "amadeus-airport-city-search",
       airports: [],
       providerStatus: [{ provider: "amadeus-airports", status: "not-configured", error: "missing-amadeus-secrets", count: 0 }],
-    }, 503);
+    });
   }
 
   const startedAt = Date.now();
@@ -1092,7 +1092,7 @@ async function flightsSearchHandler(context) {
       source: "amadeus",
       offers: [],
       providerStatus: [{ provider: "amadeus", status: "not-configured", error: "missing-amadeus-secrets", count: 0 }],
-    }, 503);
+    });
   }
 
   const startedAt = Date.now();

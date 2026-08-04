@@ -199,29 +199,32 @@ export const tripStateMixin = {
       this.notify();
     });
 
-    try {
-      await enrichmentService.createTrip({
-        id,
-        destination: newTrip.destination,
-        flag: newTrip.flag,
-        dates: newTrip.dates,
-        daysCount: newTrip.daysCount,
-        startDate: newTrip.startDate,
-        latitude: newTrip.center[0],
-        longitude: newTrip.center[1],
-        originIata: newTrip.flightRoute.originIata,
-        destinationIata: newTrip.flightRoute.destinationIata,
-        originLabel: newTrip.flightRoute.originLabel,
-        destinationLabel: newTrip.flightRoute.destinationLabel,
-        flightType: newTrip.flightRoute.flightType,
-      });
-      newTrip.syncStatus = "synced";
-    } catch (e) {
-      // 401 means the user is not signed in — trip exists in-memory but won't survive a reload.
-      // Mark it so the UI can prompt the user to sign in and save.
-      const isAuthError = e?.message?.includes("-401") || e?.status === 401;
-      newTrip.syncStatus = isAuthError ? "needs-auth" : "sync-error";
-      console.warn("D1 trip sync fallback:", e);
+    if (this.isAuthenticated) {
+      try {
+        await enrichmentService.createTrip({
+          id,
+          destination: newTrip.destination,
+          flag: newTrip.flag,
+          dates: newTrip.dates,
+          daysCount: newTrip.daysCount,
+          startDate: newTrip.startDate,
+          latitude: newTrip.center[0],
+          longitude: newTrip.center[1],
+          originIata: newTrip.flightRoute.originIata,
+          destinationIata: newTrip.flightRoute.destinationIata,
+          originLabel: newTrip.flightRoute.originLabel,
+          destinationLabel: newTrip.flightRoute.destinationLabel,
+          flightType: newTrip.flightRoute.flightType,
+        });
+        newTrip.syncStatus = "synced";
+      } catch (e) {
+        // 401 means the user is not signed in — trip exists in-memory/localStorage but won't survive across devices.
+        const isAuthError = e?.message?.includes("-401") || e?.status === 401;
+        newTrip.syncStatus = isAuthError ? "needs-auth" : "sync-error";
+        if (!isAuthError) console.warn("D1 trip sync fallback:", e);
+      }
+    } else {
+      newTrip.syncStatus = "needs-auth";
     }
     this.notify();
   },
