@@ -26,11 +26,6 @@ export function renderLandingView() {
       <section class="desktop-landing-hero">
         <div class="hero-container">
           <div class="hero-copy">
-            <div class="hero-badge voice-mono">
-              <span class="pulse-dot"></span>
-              <span>TRIP MVP 1 — PLAN & REMEMBER</span>
-            </div>
-            
             <h1 class="hero-heading voice-serif">
               Every place becomes an <span class="highlight-text">unforgettable story</span>.
             </h1>
