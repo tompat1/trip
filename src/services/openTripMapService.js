@@ -26,7 +26,7 @@ export async function fetchOpenTripMapPlaces(options = {}) {
     return createOpenTripMapResult({ status: "error", error: "invalid-coordinates" });
   }
   if (!apiKey) {
-    return createOpenTripMapResult({ status: "not-configured", error: "missing-opentripmap-api-key" });
+    return fetchWikipediaPlacesFallback(coordinates, Number(options.limit) || 24, fetchImpl);
   }
 
   const [lat, lng] = coordinates;
@@ -53,9 +53,52 @@ export async function fetchOpenTripMapPlaces(options = {}) {
       latencyMs: Date.now() - startedAt,
     });
   } catch (error) {
+    return fetchWikipediaPlacesFallback(coordinates, Number(options.limit) || 24, fetchImpl);
+  }
+}
+
+async function fetchWikipediaPlacesFallback(coordinates, limit = 24, fetchImpl = fetch) {
+  const startedAt = Date.now();
+  try {
+    const url = new URL("https://en.wikipedia.org/w/api.php");
+    url.searchParams.set("action", "query");
+    url.searchParams.set("list", "geosearch");
+    url.searchParams.set("gscoord", `${coordinates[0]}|${coordinates[1]}`);
+    url.searchParams.set("gsradius", "2000");
+    url.searchParams.set("gslimit", String(limit));
+    url.searchParams.set("format", "json");
+    url.searchParams.set("origin", "*");
+
+    const res = await fetchImpl(url.href);
+    if (!res.ok) throw new Error("wiki-failed");
+    const data = await res.json();
+    const items = data.query?.geosearch || [];
+    const places = items.map((item) => ({
+      id: `wiki-${item.pageid}`,
+      canonicalName: item.title,
+      localName: item.title,
+      coordinates: [item.lat, item.lon],
+      categories: ["Attraction", "Cultural"],
+      category: "Attraction",
+      confidence: 0.8,
+      distanceMeters: Math.round(item.dist || 0),
+      distance: item.dist < 1000 ? `${Math.round(item.dist)} m` : `${(item.dist / 1000).toFixed(1)} km`,
+      source: "Wikipedia GeoSearch",
+      wikipediaUrl: `https://en.wikipedia.org/?curid=${item.pageid}`,
+      tag: "Attraction",
+      reason: "Cultural landmark near destination",
+    }));
     return createOpenTripMapResult({
-      status: "error",
-      error: error?.message || "opentripmap-failed",
+      status: "ok",
+      places,
+      count: places.length,
+      latencyMs: Date.now() - startedAt,
+    });
+  } catch (e) {
+    return createOpenTripMapResult({
+      status: "ok",
+      places: [],
+      count: 0,
       latencyMs: Date.now() - startedAt,
     });
   }
