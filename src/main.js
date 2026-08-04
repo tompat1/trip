@@ -836,6 +836,9 @@ document.addEventListener("click", async (e) => {
       }));
       showToast("Trip details updated. Refreshing local ideas and events.");
     }
+    else if (action === "start-guest-draft") {
+      state.setView("home");
+    }
     else if (action === "create-trip" || action === "open-trip-create") {
       const allTrips = state.getAllTrips ? state.getAllTrips() : [];
       const hasTrip = Boolean((state.activeTrip && state.activeTrip.id) || (Array.isArray(allTrips) && allTrips.length > 0));

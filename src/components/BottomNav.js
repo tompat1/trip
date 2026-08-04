@@ -2,6 +2,8 @@ import { state } from "../state.js";
 import { renderIcon } from "../utils/icons.js";
 
 export function renderBottomNav() {
+  if (!state.canShowConciergeAndAssistant) return "";
+
   const view = state.activeView;
   const isJournalActive = view === "plan" && state.planSubTab === "journal";
   const isTripsActive = view === "plan" && !isJournalActive;

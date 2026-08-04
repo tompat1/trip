@@ -26,7 +26,7 @@ export function renderAppShell(view = state.activeView, { isRouteChange = false 
   return `
     <div class="app-view app-view--${escapeHtml(view)} ${isRouteChange ? "app-view--route-enter" : ""}">
       ${renderActiveView(view)}
-      ${isLanding ? "" : renderBottomNav()}
+      ${(isLanding || !state.canShowConciergeAndAssistant) ? "" : renderBottomNav()}
       ${(isLanding || !state.canShowConciergeAndAssistant) ? "" : renderQuickCaptureWidget()}
       ${renderLightbox()}
       ${renderEventDrawer()}

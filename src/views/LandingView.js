@@ -46,7 +46,7 @@ export function renderLandingView() {
                   ${renderIcon("arrowRight")}
                 </button>
               ` : `
-                <button class="btn btn--primary btn--lg hero-btn-main" data-action="open-auth-panel" data-auth-mode="signup">
+                <button class="btn btn--primary btn--lg hero-btn-main" data-action="start-guest-draft">
                   <span>Get Started — Free</span>
                   ${renderIcon("arrowRight")}
                 </button>
@@ -277,7 +277,7 @@ export function renderLandingView() {
                 ${renderIcon("arrowRight")}
               </button>
             ` : `
-              <button class="btn btn--primary btn--lg" data-action="open-auth-panel" data-auth-mode="signup">
+              <button class="btn btn--primary btn--lg" data-action="start-guest-draft">
                 <span>Get Started — Free</span>
                 ${renderIcon("arrowRight")}
               </button>
