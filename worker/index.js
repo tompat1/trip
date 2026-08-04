@@ -612,7 +612,7 @@ async function foursquarePlacesHandler(context) {
   const categories = CATEGORY_MAP[intent] || CATEGORY_MAP.food;
 
   try {
-    const fsqUrl = new URL("https://api.foursquare.com/v3/places/search");
+    const fsqUrl = new URL("https://places-api.foursquare.com/places/search");
     fsqUrl.searchParams.set("ll", `${coordinates[0]},${coordinates[1]}`);
     fsqUrl.searchParams.set("radius", String(radius));
     fsqUrl.searchParams.set("limit", String(limit));
@@ -629,12 +629,14 @@ async function foursquarePlacesHandler(context) {
       },
     });
 
-    if (response.status === 410 || response.status === 400) {
-      response = await fetch(fsqUrl.href, {
+    if (response.status === 410 || response.status === 404) {
+      const fallbackUrl = new URL("https://api.foursquare.com/v3/places/search");
+      fallbackUrl.search = fsqUrl.search;
+      response = await fetch(fallbackUrl.href, {
         headers: {
           Authorization: fsqKey,
           Accept: "application/json",
-          "X-Places-Api-Version": "2024-01-01",
+          "X-Places-Api-Version": "2025-06-17",
         },
       });
     }
