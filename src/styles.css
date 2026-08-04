@@ -788,6 +788,7 @@ textarea {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
+  gap: 12px;
   min-height: 54px;
   margin-bottom: 12px;
 }
@@ -850,6 +851,9 @@ textarea {
   align-items: center;
   gap: 8px;
   flex-wrap: nowrap;
+  min-width: 0;
+  flex: 1 1 auto;
+  justify-content: flex-end;
 }
 
 .mobile-theme-toggle {
@@ -892,7 +896,9 @@ textarea {
   color: var(--ink);
   box-shadow: var(--shadow-sm);
   white-space: nowrap;
-  flex-shrink: 1;
+  min-width: 0;
+  max-width: 440px;
+  flex: 1 1 240px;
 }
 
 .header-weather-badge {
@@ -8652,6 +8658,15 @@ a:active .ph-icon,
     padding-inline: 24px !important;
   }
 
+  .home-page__content {
+    padding-inline: 24px !important;
+  }
+
+  .signed-out-welcome-hero {
+    margin-inline: 0 !important;
+    width: 100% !important;
+  }
+
   .top-nav--landing {
     padding-inline: 24px !important;
     padding-block: 24px 8px !important;
@@ -12398,5 +12413,3 @@ a:active .ph-icon,
   color: var(--ink);
   margin-bottom: 16px;
 }
-
-
