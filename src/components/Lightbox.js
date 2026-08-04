@@ -1,5 +1,6 @@
 import { state } from "../state.js";
 import { getOptimizedImageUrl, getResponsiveSrcset } from "../utils/responsiveImages.js";
+import { renderIcon } from "../utils/icons.js";
 
 export function renderLightbox() {
   const media = state.activeLightboxMedia;
@@ -14,7 +15,7 @@ export function renderLightbox() {
     <div class="lightbox-overlay" data-action="close-lightbox">
       <div class="lightbox-container">
         <button class="btn btn--icon btn--ghost lightbox-close-btn" data-action="close-lightbox" aria-label="Close">
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide-icon"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>
+          ${renderIcon("x")}
         </button>
         
         <div class="lightbox-media-wrapper">

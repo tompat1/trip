@@ -22,11 +22,11 @@ const REMINDER_OPTIONS = [
 const DAYS_OPTIONS = ["Sat 3", "Sun 4", "Mon 5", "Tue 6", "Wed 7", "Thu 8", "Fri 9"];
 
 export function renderEventDrawer() {
-  const drawer = state.activeEventDrawer;
-  if (!drawer) return "";
+  const evt = state.activeEventDrawerData || {};
+  const isOpen = state.eventDrawerOpen;
+  if (!isOpen) return "";
 
-  const isEdit = drawer.mode === "edit";
-  const evt = drawer.event || {};
+  const isEdit = Boolean(evt.id);
 
   return `
     <div class="drawer-overlay" data-action="close-event-drawer">
@@ -40,7 +40,7 @@ export function renderEventDrawer() {
             <span class="drawer-subtitle">${isEdit ? 'Update time, color & details' : 'Add to your trip itinerary'}</span>
           </div>
           <button class="btn btn--icon btn--ghost" data-action="close-event-drawer" aria-label="Close">
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide-icon"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>
+            ${renderIcon("x")}
           </button>
         </div>
 

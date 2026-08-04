@@ -904,6 +904,15 @@ textarea {
   white-space: nowrap;
 }
 
+.ph-icon {
+  width: 1.15em;
+  height: 1.15em;
+  fill: currentColor;
+  flex-shrink: 0;
+  vertical-align: -0.125em;
+  display: inline-block;
+}
+
 .guest-draft-banner {
   position: sticky;
   top: 0;
@@ -3364,12 +3373,14 @@ textarea {
   font-size: 0.75rem;
   line-height: 1.35;
   display: -webkit-box;
+  line-clamp: 2;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
 
 .trip-heads-up[open] .trip-heads-up__body span {
+  line-clamp: unset;
   -webkit-line-clamp: unset;
 }
 
@@ -3663,12 +3674,14 @@ textarea {
   font-size: 0.75rem;
   line-height: 1.35;
   display: -webkit-box;
+  line-clamp: 2;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
 
 .live-intel-row[open] .live-intel-row__body span {
+  line-clamp: unset;
   -webkit-line-clamp: unset;
 }
 
@@ -10862,6 +10875,13 @@ textarea {
   display: flex;
   align-items: center;
   justify-content: center;
+  font-size: 1.5rem;
+}
+
+.pillar-icon-box .ph-icon,
+.pillar-icon-box svg {
+  width: 1.4em;
+  height: 1.4em;
 }
 
 .pillar-icon-box.blue { background: rgba(56, 92, 115, 0.12); color: var(--blue); }
@@ -10917,7 +10937,8 @@ textarea {
 
 .persona-showcase-section {
   background: var(--paper-card);
-  border-y: 1px solid var(--line);
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
   padding: 70px 24px;
 }
 
@@ -10965,7 +10986,8 @@ textarea {
 .landing-cta-banner {
   padding: 80px 24px;
   background: color-mix(in srgb, var(--paper-card) 95%, var(--paper));
-  border-y: 1px solid var(--line);
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
   color: var(--ink);
   text-align: center;
 }

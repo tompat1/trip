@@ -711,26 +711,26 @@ function renderSignedOutWelcomeHero() {
           </p>
           <div class="signed-out-welcome-actions">
             <button class="btn btn--primary btn--lg" data-action="open-trip-create" type="button">
-              ✨ Create Guest Draft Trip
+              ${renderIcon("sparkles")} Create Guest Draft Trip
             </button>
             <button class="btn btn--outline btn--lg" data-action="show-auth-exit" data-auth-mode="signup" type="button">
-              🔑 Sign Up / Sign In
+              ${renderIcon("userPlus")} Sign Up / Sign In
             </button>
           </div>
           
           <div class="signed-out-features-grid">
             <div class="signed-out-feature-card">
-              <div class="signed-out-feature-icon">🗺️</div>
+              <div class="signed-out-feature-icon">${renderIcon("map")}</div>
               <strong>Live Route & Maps</strong>
               <p>Explore city maps, airports, and local discovery spots.</p>
             </div>
             <div class="signed-out-feature-card">
-              <div class="signed-out-feature-icon">⚡</div>
+              <div class="signed-out-feature-icon">${renderIcon("sparkles")}</div>
               <strong>Multi-LLM AI Concierge</strong>
               <p>Query Workers AI, DeepSeek R1, Gemini, ChatGPT & Grok.</p>
             </div>
             <div class="signed-out-feature-card">
-              <div class="signed-out-feature-icon">📸</div>
+              <div class="signed-out-feature-icon">${renderIcon("camera")}</div>
               <strong>Moments & Journal</strong>
               <p>Capture photos, notes, and auto-generate AI stories.</p>
             </div>

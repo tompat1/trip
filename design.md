@@ -109,7 +109,7 @@ Rules:
 
 Icon style:
 - Thin-line icons with rounded caps and simple geometry.
-- Lucide is acceptable for the current product icon system.
+- Phosphor Icons (@phosphor-icons/core) is the primary product icon system.
 
 Icon categories from guide:
 - Navigation: home, calendar, compass, search, menu.

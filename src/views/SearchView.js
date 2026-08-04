@@ -53,12 +53,12 @@ export function renderSearchView() {
           <!-- Main Search Input -->
           <div class="search-input-card" style="box-shadow: var(--shadow-sm); border: 1px solid var(--line-light);">
             <div class="search-input-wrapper">
-              <svg class="search-input-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              ${renderIcon("search", "search-input-icon")}
               <input type="text" class="search-input-field" value="${escapeHtml(query)}" placeholder="Search cafes, concerts, sights in ${escapeHtml(currentTrip.destination)}..." data-action="update-search-query" />
               ${query ? '<button class="search-clear-btn" data-action="clear-search-query" title="Clear query">✕</button>' : ''}
             </div>
             <button class="btn btn--icon search-filter-btn" aria-label="Filters" data-action="toggle-filters" title="Filter results">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+              ${renderIcon("filter")}
             </button>
           </div>
 
@@ -98,11 +98,11 @@ export function renderSearchView() {
         <div class="search-map-card">
           <div id="search-map-container" class="search-map"></div>
           <button class="btn btn--light search-area-btn" data-action="search-this-area">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12h8"/></svg>
+            ${renderIcon("plus")}
             <span>Search this area</span>
           </button>
           <button class="btn btn--icon search-location-btn" aria-label="Locate me" data-action="locate-user">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>
+            ${renderIcon("navigation")}
           </button>
         </div>
 
@@ -113,7 +113,7 @@ export function renderSearchView() {
         <!-- Floating Sticky "View on map" button -->
         <div class="sticky-map-fab-wrap">
           <button class="btn btn--dark btn--pill floating-map-btn" data-action="toggle-full-map">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l-6 3V6l6-3 6 3 6-3v15l-6 3-6-3z"/><path d="M9 3v15"/><path d="M15 6v15"/></svg>
+            ${renderIcon("map")}
             <span>View on map</span>
           </button>
         </div>
