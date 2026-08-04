@@ -4,6 +4,7 @@ import { renderHeader } from "../components/Header.js";
 import { searchConcerts } from "../services/concertService.js";
 import { renderIcon } from "../utils/icons.js";
 import { getPersonaQuickIntentChips, getPersonaSignals, getPersonaSummary, rankItemsByPersonas } from "../utils/personaSignals.js";
+import { getOptimizedImageUrl } from "../utils/responsiveImages.js";
 
 const PRIMARY_CATEGORIES = ["All", "Places", "Concerts", "Events", "Guides", "Stories"];
 const QUICK_INTENT_CHIPS = [
@@ -266,7 +267,7 @@ function renderSearchPlaceCard(place) {
   const isOpenTripMap = place.source === "OpenTripMap";
   const isOpenStreetMap = String(place.source || "").startsWith("OpenStreetMap") || place.sourceRole === "osm";
   const providerLabel = isOpenStreetMap ? "OpenStreetMap" : "OpenTripMap";
-  const image = place.image || "https://images.unsplash.com/photo-1488646953014-85cb44e25828?auto=format&fit=crop&w=700&q=80";
+  const image = getOptimizedImageUrl(place.image || "https://images.unsplash.com/photo-1488646953014-85cb44e25828?auto=format&fit=crop&w=700&q=80", { width: 500, quality: 75 });
   return `
     <div class="search-place-card" style="transition: transform 0.15s ease, box-shadow 0.2s ease;">
       <div class="search-place-card__thumb" style="background-image: url('${image}')">
@@ -309,10 +310,11 @@ function renderSearchPlaceCard(place) {
 function renderConcertCard(concert) {
   const isSaved = state.savedPlaceIds && state.savedPlaceIds.has(concert.id);
   const personaMatches = Array.isArray(concert.__personaMatches) ? concert.__personaMatches.slice(0, 2) : [];
+  const concertImg = getOptimizedImageUrl(concert.image, { width: 500, quality: 75 });
 
   return `
     <div class="search-place-card concert-card" style="border-left: 3px solid var(--orange);">
-      <div class="search-place-card__thumb" style="background-image: url('${concert.image}'); display: flex; align-items: flex-start; justify-content: space-between; padding: 8px;">
+      <div class="search-place-card__thumb" style="background-image: url('${concertImg}'); display: flex; align-items: flex-start; justify-content: space-between; padding: 8px;">
         <span style="background: rgba(23,24,23,0.85); color: #fff; font-size: 0.7rem; font-weight: 700; padding: 2px 8px; border-radius: 10px;">${concert.icon} ${escapeHtml(concert.genre)}</span>
         <button class="btn-bookmark ${isSaved ? 'is-saved' : ''}" data-action="toggle-bookmark" data-place-id="${concert.id}" style="background: rgba(255,255,255,0.92); border-radius: 50%; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border: none; box-shadow: var(--shadow-sm); cursor: pointer;" aria-label="Bookmark event" title="${isSaved ? 'Saved to planning bucket' : 'Bookmark event'}">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="${isSaved ? 'var(--orange)' : 'none'}" stroke="${isSaved ? 'var(--orange)' : 'currentColor'}" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>

@@ -1,4 +1,5 @@
 import { state } from "../state.js";
+import { getOptimizedImageUrl, getResponsiveSrcset } from "../utils/responsiveImages.js";
 
 export function renderLightbox() {
   const media = state.activeLightboxMedia;
@@ -6,6 +7,8 @@ export function renderLightbox() {
 
   const mediaUrl = media.media_url || media.mediaUrl || "";
   const isVideo = media.type === "video" || mediaUrl.includes("data:video");
+  const optMediaUrl = getOptimizedImageUrl(mediaUrl, { width: 1200, quality: 82 });
+  const srcset = getResponsiveSrcset(mediaUrl, [600, 1200, 1800], 82);
 
   return `
     <div class="lightbox-overlay" data-action="close-lightbox">
@@ -18,7 +21,7 @@ export function renderLightbox() {
           ${
             isVideo
               ? `<video src="${mediaUrl}" controls autoplay class="lightbox-video"></video>`
-              : `<img src="${mediaUrl}" alt="${escapeHtml(media.title || 'Trip Photo')}" class="lightbox-img" />`
+              : `<img src="${optMediaUrl}" ${srcset ? `srcset="${srcset}" sizes="90vw"` : ""} alt="${escapeHtml(media.title || 'Trip Photo')}" class="lightbox-img" decoding="async" />`
           }
         </div>
 

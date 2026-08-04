@@ -3,6 +3,7 @@ import { renderHeader } from "../components/Header.js";
 import { renderIcon } from "../utils/icons.js";
 import { TRIP_ROUTE_LINE_SVG } from "../components/BrandAssets.js";
 import { getTripDateStatus } from "../utils/tripDates.js";
+import { getOptimizedImageUrl } from "../utils/responsiveImages.js";
 
 export function renderHomeView() {
   const trip = state.activeTrip;
@@ -88,7 +89,7 @@ export function renderHomeView() {
               const providerLabel = isOpenStreetMap ? "OpenStreetMap" : "OpenTripMap";
               return `
               <div class="idea-card">
-                <div class="idea-card__image" style="background-image: url('${idea.image}')">
+                <div class="idea-card__image" style="background-image: url('${getOptimizedImageUrl(idea.image, { width: 480, quality: 75 })}')">
                   <button class="btn-bookmark ${state.savedPlaceIds.has(idea.id) ? 'is-saved' : ''}" data-action="toggle-bookmark" data-place-id="${idea.id}" aria-label="Bookmark">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="${state.savedPlaceIds.has(idea.id) ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
                   </button>

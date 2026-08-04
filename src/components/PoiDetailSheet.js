@@ -1,5 +1,6 @@
 import { state } from "../state.js";
 import { renderIcon } from "../utils/icons.js";
+import { getOptimizedImageUrl } from "../utils/responsiveImages.js";
 
 export function renderPoiDetailSheet() {
   const poi = state.activePoiDetail;
@@ -8,13 +9,14 @@ export function renderPoiDetailSheet() {
   const isSaved = state.savedPlaceIds.has(poi.id);
   const events = state.activeTrip?.calendarEvents || [];
   const isAdded = events.some((e) => e.title === poi.title);
+  const coverImg = getOptimizedImageUrl(poi.image || 'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=700&q=80', { width: 800, quality: 75 });
 
   return `
     <div class="drawer-overlay" data-action="close-poi-detail">
       <div class="drawer-sheet" style="max-height: 85vh; overflow-y: auto;">
         <div class="drawer-drag-handle" data-action="close-poi-detail"></div>
 
-        <div style="position: relative; margin: -16px -16px 16px -16px; height: 200px; background-image: url('${poi.image || 'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=700&q=80'}'); background-size: cover; background-position: center;">
+        <div style="position: relative; margin: -16px -16px 16px -16px; height: 200px; background-image: url('${coverImg}'); background-size: cover; background-position: center;">
           <button class="btn btn--icon btn--ghost" data-action="close-poi-detail" style="position: absolute; top: 12px; right: 12px; background: rgba(255,255,255,0.85); border-radius: 50%;" aria-label="Close">
             ${renderIcon("x")}
           </button>

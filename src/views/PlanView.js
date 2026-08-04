@@ -9,6 +9,7 @@ import { getDestinationEtiquetteAndTips } from "../services/destinationService.j
 import { FLIGHT_TYPE_OPTIONS, getFlightRouteForTrip } from "../services/flightService.js";
 import { CONCERTS_DATABASE } from "../services/concertService.js";
 import { composeEditorialProfile, createVerifiedFactBundle } from "../enrichment/editorialComposer.js";
+import { getOptimizedImageUrl } from "../utils/responsiveImages.js";
 
 const SUB_TABS = [
   { id: "overview", label: "Overview", icon: renderIcon("compass") },
@@ -1233,7 +1234,7 @@ function renderLocationEditorialIntroCard(trip) {
     <div class="auto-location-overview-card" style="background: var(--paper-card); border: 1px solid var(--line); border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow-sm); margin-bottom: 20px;">
       
       <!-- 1. Rich Hero Destination Cover Banner with Glass Info Overlay Strip -->
-      <div class="auto-location-hero" style="height: 240px; width: 100%; position: relative; background-size: cover; background-position: center; background-image: url('${escapeHtml(imageUrl)}');">
+      <div class="auto-location-hero" style="height: 240px; width: 100%; position: relative; background-size: cover; background-position: center; background-image: url('${escapeHtml(getOptimizedImageUrl(imageUrl, { width: 900, quality: 78 }))}');">
         <div style="position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,0.3) 0%, rgba(15, 27, 43, 0.85) 100%);"></div>
         
         <!-- Top Action Bar -->
