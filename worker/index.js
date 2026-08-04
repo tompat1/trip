@@ -621,12 +621,24 @@ async function foursquarePlacesHandler(context) {
     fsqUrl.searchParams.set("sort", "RELEVANCE");
 
     const startedAt = Date.now();
-    const response = await fetch(fsqUrl.href, {
+    let response = await fetch(fsqUrl.href, {
       headers: {
         Authorization: fsqKey,
         Accept: "application/json",
+        "X-Places-Api-Version": "2025-06-17",
       },
     });
+
+    if (response.status === 410 || response.status === 400) {
+      response = await fetch(fsqUrl.href, {
+        headers: {
+          Authorization: fsqKey,
+          Accept: "application/json",
+          "X-Places-Api-Version": "2024-01-01",
+        },
+      });
+    }
+
     const latencyMs = Date.now() - startedAt;
 
     if (!response.ok) {
