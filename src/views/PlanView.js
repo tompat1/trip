@@ -1873,6 +1873,8 @@ function renderFlightOffers(offers = []) {
 }
 
 function renderPlanAiConciergeCard(trip) {
+  if (!state.canShowConciergeAndAssistant) return "";
+
   const cityName = (trip.destination || "Destination").split(",")[0].trim();
 
   return `

@@ -646,6 +646,8 @@ function sanitizeHref(value = "") {
 }
 
 function renderHomeAiConciergeCard(trip) {
+  if (!state.canShowConciergeAndAssistant) return "";
+
   const cityName = (trip.destination || "Destination").split(",")[0].trim();
   const weatherStr = trip.weather?.condition ? `${trip.weather.condition} • ${trip.weather.temp || ""}` : "";
   const poiCount = [...(trip.tourismPois || []), ...(trip.hiddenGems || []), ...(trip.osmPlaces || [])].length;

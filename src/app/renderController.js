@@ -27,7 +27,7 @@ export function renderAppShell(view = state.activeView, { isRouteChange = false 
     <div class="app-view app-view--${escapeHtml(view)} ${isRouteChange ? "app-view--route-enter" : ""}">
       ${renderActiveView(view)}
       ${isLanding ? "" : renderBottomNav()}
-      ${isLanding ? "" : renderQuickCaptureWidget()}
+      ${(isLanding || !state.canShowConciergeAndAssistant) ? "" : renderQuickCaptureWidget()}
       ${renderLightbox()}
       ${renderEventDrawer()}
       ${renderTripCreateModal()}
@@ -40,7 +40,7 @@ export function renderAppShell(view = state.activeView, { isRouteChange = false 
       ${renderLegalModals()}
       ${renderProfilePhotoEditorModal(state)}
       ${renderAiSettingsModal(state)}
-      ${renderAiConciergeDrawer()}
+      ${!state.canShowConciergeAndAssistant ? "" : renderAiConciergeDrawer()}
       ${isLanding ? "" : renderTemplateMomentPicker(state.activeTrip)}
     </div>
   `;

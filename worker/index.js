@@ -580,6 +580,10 @@ async function openTripMapPlacesHandler(context) {
   const rate = url.searchParams.get("rate") || "";
   const lang = url.searchParams.get("lang") || "en";
 
+  if (!context.env.OPENTRIPMAP_API_KEY && url.searchParams.get("fallback") !== "1") {
+    return jsonError("missing_opentripmap_key", "OPENTRIPMAP_API_KEY is not configured.", 503);
+  }
+
   if (context.env.OPENTRIPMAP_API_KEY) {
     const result = await fetchOpenTripMapPlaces(context, { coordinates, radiusMeters, limit, kinds, rate, lang });
     if (result.ok && Array.isArray(result.places) && result.places.length > 0) {

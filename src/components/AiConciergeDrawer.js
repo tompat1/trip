@@ -13,6 +13,8 @@ const AI_PROVIDERS = [
 ];
 
 export function renderAiConciergeDrawer() {
+  if (!state.canShowConciergeAndAssistant) return "";
+
   const isOpen = Boolean(state.aiConciergeOpen);
   const trip = state.activeTrip || { destination: "Destination" };
   const cityName = (trip.destination || "Destination").split(",")[0].trim();

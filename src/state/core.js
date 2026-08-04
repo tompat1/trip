@@ -214,6 +214,13 @@ export class AppState {
     return type === "traveler-session" || type === "admin-session";
   }
 
+  get canShowConciergeAndAssistant() {
+    const isSignedIn = this.isAuthenticated;
+    const trips = this.getAllTrips();
+    const hasTrip = Boolean((this.activeTrip && this.activeTrip.id) || (trips && trips.length > 0));
+    return isSignedIn && hasTrip;
+  }
+
   // ── Trip navigation ────────────────────────────────────────────────────────
 
   getAllTrips() {

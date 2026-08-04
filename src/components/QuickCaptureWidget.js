@@ -2,6 +2,8 @@ import { state } from "../state.js";
 import { renderIcon } from "../utils/icons.js";
 
 export function renderQuickCaptureWidget() {
+  if (!state.canShowConciergeAndAssistant) return "";
+
   const isOpen = state.quickCaptureOpen;
   const activeTab = state.quickCaptureTab || "concierge";
   const trips = state.getAllTrips ? state.getAllTrips() : (state.activeTrip ? [state.activeTrip] : []);
