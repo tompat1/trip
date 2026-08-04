@@ -84,6 +84,8 @@ function matchRoute(method, pathname) {
     ["GET", /^\/api\/opentripmap\/places\/([^/]+)$/, openTripMapPlaceDetailsHandler],
     ["GET", /^\/api\/foursquare\/places$/, foursquarePlacesHandler],
     ["GET", /^\/api\/rapidapi\/places$/, rapidApiPlacesHandler],
+    ["GET", /^\/api\/tripadvisor\/places$/, tripadvisorPlacesHandler],
+    ["GET", /^\/api\/cruises\/deals$/, cruiseDealsHandler],
     ["POST", /^\/api\/places\/([^/]+)\/media\/refresh$/, mediaRefreshHandler],
     ["POST", /^\/api\/media\/light$/, lightMediaPutHandler],
     ["GET", /^\/api\/media\/light\/([^/]+)$/, lightMediaGetHandler],
@@ -811,6 +813,104 @@ async function rapidApiPlacesHandler(context) {
       providerStatus: [{ provider: "rapidapi", status: "error", error: error?.message || "rapidapi-failed" }],
     });
   }
+}
+
+async function tripadvisorPlacesHandler(context) {
+  const rawKey = context.env.RAPIDAPI_KEY || "6b5335ae77mshefba991ec0afe3bp102cd8jsn27109510dc44";
+  const apiKey = String(rawKey || "").trim().replace(/^["']|["']$/g, "");
+  const url = new URL(context.request.url);
+  const query = url.searchParams.get("query") || url.searchParams.get("location") || "Paris";
+  const startedAt = Date.now();
+
+  try {
+    const taUrl = new URL("https://tripadvisor-scraper.p.rapidapi.com/search");
+    taUrl.searchParams.set("query", query);
+
+    const response = await fetch(taUrl.href, {
+      headers: {
+        "x-rapidapi-host": "tripadvisor-scraper.p.rapidapi.com",
+        "x-rapidapi-key": apiKey,
+        "Accept": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      return json({
+        status: "ok",
+        provider: "tripadvisor",
+        places: [],
+        providerStatus: [{ provider: "tripadvisor", status: "fallback", error: `http-${response.status}` }],
+      });
+    }
+
+    const data = await response.json();
+    return json({
+      status: "ok",
+      provider: "tripadvisor",
+      data,
+      providerStatus: [{ provider: "tripadvisor", status: "ok", latencyMs: Date.now() - startedAt }],
+    });
+  } catch (error) {
+    return json({
+      status: "ok",
+      provider: "tripadvisor",
+      places: [],
+      providerStatus: [{ provider: "tripadvisor", status: "error", error: error?.message || "tripadvisor-failed" }],
+    });
+  }
+}
+
+async function cruiseDealsHandler(context) {
+  return json({
+    status: "ok",
+    sailingId: 2037438,
+    currency: "USD",
+    minPrice: 4806,
+    maxPrice: 4929,
+    vendorCount: 5,
+    vendors: [
+      {
+        id: 216,
+        name: "PanacheCruises",
+        price: 4806,
+        formattedPrice: "$4,806",
+        isBestDeal: true,
+        dealLink: "https://www.panachecruises.com",
+      },
+      {
+        id: 228,
+        name: "Seabourn",
+        price: 4929,
+        formattedPrice: "$4,929",
+        isBestDeal: false,
+        dealLink: "https://www.seabourn.com",
+      },
+      {
+        id: 232,
+        name: "Avoya Travel Luxury",
+        price: 4929,
+        formattedPrice: "$4,929",
+        isBestDeal: false,
+        dealLink: "https://www.avoyatravel.com",
+      },
+      {
+        id: 31,
+        name: "Cruises.com",
+        price: 4929,
+        formattedPrice: "$4,929",
+        isBestDeal: false,
+        dealLink: "https://www.cruises.com",
+      },
+      {
+        id: 80,
+        name: "CruisesOnly.com",
+        price: 4929,
+        formattedPrice: "$4,929",
+        isBestDeal: false,
+        dealLink: "https://www.cruisesonly.com",
+      },
+    ],
+  });
 }
 
 function normalizeFoursquarePlace(result = {}, origin = null) {
