@@ -1896,7 +1896,7 @@ function renderPlanAiConciergeCard(trip) {
         <h4 style="font-size: 1.05rem; font-weight: 700; color: var(--ink); margin: 0 0 2px 0;">Need local advice for ${escapeHtml(cityName)}?</h4>
         <p style="font-size: 0.82rem; color: var(--ink-muted); margin: 0; line-height: 1.4;">Ask about specialty coffee, rainy day plans, dining, or hidden local gems.</p>
       </div>
-      <button class="btn btn--primary btn--sm" data-action="toggle-ai-concierge" type="button" style="white-space: nowrap; font-weight: 600; padding: 8px 16px; border-radius: 20px; box-shadow: 0 2px 10px rgba(217, 74, 58, 0.25);">
+      <button class="btn btn--primary btn--sm" data-action="open-ai-concierge" type="button" style="white-space: nowrap; font-weight: 600; padding: 8px 16px; border-radius: 20px; box-shadow: 0 2px 10px rgba(217, 74, 58, 0.25);">
         Ask Concierge ${renderIcon("sparkles")}
       </button>
     </div>

@@ -669,7 +669,7 @@ function renderHomeAiConciergeCard(trip) {
             ${poiCount > 0 ? `${poiCount} local spots indexed` : "Live destination intelligence"}
           </span>
         </div>
-        <button class="btn btn--outline btn--xs" data-action="toggle-ai-concierge" type="button" style="border-color: var(--journey-red); color: var(--journey-red); font-weight: 600; font-size: 0.78rem; padding: 4px 10px; border-radius: 14px;">
+        <button class="btn btn--outline btn--xs" data-action="open-ai-concierge" type="button" style="border-color: var(--journey-red); color: var(--journey-red); font-weight: 600; font-size: 0.78rem; padding: 4px 10px; border-radius: 14px;">
           Open Drawer ${renderIcon("arrowRight")}
         </button>
       </div>

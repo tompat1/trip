@@ -5,6 +5,7 @@ import { formatTripDateRangeFromParts } from "./utils/tripDates.js";
 import { enrichmentService } from "./enrichment/enrichmentService.js";
 import { scheduleBackgroundEnrichmentScan } from "./app/backgroundEnrichmentController.js";
 import { registerCalendarDragController } from "./app/calendarDragController.js";
+import { shouldOpenConciergeDrawerForElement, submitConciergeForm, submitConciergePrompt } from "./app/conciergeController.js";
 import { buildJournalTemplateStory, getRecommendedTemplateMomentIds } from "./app/journalController.js";
 import { bootApp, flashPageLoader, isAppBooted, renderTripLoadingPage, withPageLoader } from "./app/loadingController.js";
 import { initMapsForView, resolveTripCenter, selectPoiOnOverviewMap } from "./app/mapController.js";
@@ -356,7 +357,7 @@ document.addEventListener("click", async (e) => {
     else if (action === "open-quick-capture") {
       if (state.activeTemplatePicker) state.closeTemplatePicker();
       state.setQuickCaptureTrip(state.activeTripId);
-      state.toggleQuickCapture(true);
+      state.toggleQuickCapture(true, "capture");
     }
     else if (action === "delete-journal-moment") {
       e.stopPropagation();
@@ -382,6 +383,10 @@ document.addEventListener("click", async (e) => {
       if (target.classList.contains("quick-capture-overlay") && e.target !== target) return;
       state.toggleQuickCapture(false);
     }
+    else if (action === "open-ai-concierge") {
+      state.toggleAiConcierge(true);
+      scrollAiChatToBottom();
+    }
     else if (action === "toggle-ai-concierge") {
       state.toggleAiConcierge();
       scrollAiChatToBottom();
@@ -395,18 +400,8 @@ document.addEventListener("click", async (e) => {
     }
     else if (action === "send-ai-chip") {
       const promptText = target.dataset.prompt || target.closest("[data-prompt]")?.dataset.prompt || "";
-      if (promptText) {
-        state.askAiConcierge(promptText);
+      if (submitConciergePrompt(state, promptText, { openDrawer: shouldOpenConciergeDrawerForElement(target) })) {
         scrollAiChatToBottom();
-      }
-    }
-    else if (action === "submit-ai-concierge" || action === "submit-quick-capture-concierge" || target.closest(".ai-concierge-form, .quick-capture-concierge-form")) {
-      const form = target.closest("form");
-      const input = form ? form.querySelector("input[type='text']") : (document.getElementById("ai-concierge-input") || document.getElementById("quick-capture-concierge-input"));
-      if (input && input.value.trim()) {
-        const query = input.value.trim();
-        input.value = "";
-        state.askAiConcierge(query);
       }
     }
     else if (action === "auto-describe-moment") {
@@ -1193,18 +1188,6 @@ function updateSearchResultsInPlace(input) {
 }
 
 document.addEventListener("submit", async (e) => {
-  if (e.target.classList?.contains("home-concierge-quick-form") || e.target.dataset?.action === "submit-home-concierge-form") {
-    e.preventDefault();
-    const input = e.target.querySelector("#home-concierge-input") || document.getElementById("home-concierge-input");
-    if (input && input.value.trim()) {
-      const query = input.value.trim();
-      input.value = "";
-      state.toggleAiConcierge(true);
-      state.askAiConcierge(query);
-    }
-    return;
-  }
-
   if (e.target.id === "auth-exit-login-form") {
     e.preventDefault();
     const form = e.target;
@@ -1575,16 +1558,9 @@ document.addEventListener("submit", (e) => {
   const form = e.target.closest("form");
   if (!form) return;
 
-  const action = form.dataset.action || form.id;
-  if (action === "submit-ai-concierge" || action === "submit-quick-capture-concierge" || form.classList.contains("ai-concierge-form") || form.classList.contains("quick-capture-concierge-form")) {
+  if (submitConciergeForm(state, form)) {
     e.preventDefault();
-    const input = form.querySelector("input[type='text']") || document.getElementById("ai-concierge-input") || document.getElementById("quick-capture-concierge-input");
-    if (input && input.value.trim()) {
-      const query = input.value.trim();
-      input.value = "";
-      state.askAiConcierge(query);
-      scrollAiChatToBottom();
-    }
+    scrollAiChatToBottom();
   }
 });
 

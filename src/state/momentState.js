@@ -114,9 +114,14 @@ export const momentStateMixin = {
 
   // ── Quick capture widget ───────────────────────────────────────────────────
 
-  toggleQuickCapture(open) {
-    this.quickCaptureOpen = open !== undefined ? open : !this.quickCaptureOpen;
-    if (this.quickCaptureOpen) this.quickCaptureTripId = this.activeTripId;
+  toggleQuickCapture(open, tab) {
+    this.quickCaptureOpen = open !== undefined ? Boolean(open) : !this.quickCaptureOpen;
+    if (tab) this.quickCaptureTab = tab;
+    if (!this.quickCaptureTab) this.quickCaptureTab = "capture";
+    if (this.quickCaptureOpen) {
+      this.quickCaptureTripId = this.activeTripId;
+      this.aiConciergeOpen = false;
+    }
     if (!this.quickCaptureOpen) {
       this.quickCaptureUpload = { status: "idle", progress: 0, fileName: "", type: "" };
     }

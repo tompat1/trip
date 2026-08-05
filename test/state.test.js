@@ -7,6 +7,7 @@ import { inferStartDateFromText } from "../src/utils/tripDates.js";
 import { getHomeEmptyStateMode } from "../src/views/homeViewMode.js";
 import { state } from "../src/state.js";
 import { filterTripScopedItems } from "../src/state/helpers.js";
+import { submitConciergePrompt } from "../src/app/conciergeController.js";
 
 test("custom traveler personas are admin-only", () => {
   const originalSession = { ...state.userSession };
@@ -100,6 +101,45 @@ test("authenticated empty home uses the account empty state", () => {
   assert.equal(getHomeEmptyStateMode({ activeTrip: null, isAuthenticated: true }), "account-empty");
   assert.equal(getHomeEmptyStateMode({ activeTrip: null, isAuthenticated: false }), "signed-out");
   assert.equal(getHomeEmptyStateMode({ activeTrip: { id: "paris" }, isAuthenticated: true }), "trip");
+});
+
+test("concierge CTAs share one submit path and one open drawer surface", () => {
+  const calls = [];
+  const fakeState = {
+    askAiConcierge(prompt) {
+      calls.push(prompt);
+    },
+    toggleAiConcierge(open) {
+      calls.push(`open:${open}`);
+    },
+  };
+
+  assert.equal(submitConciergePrompt(fakeState, "  coffee near me  ", { openDrawer: true }), true);
+  assert.deepEqual(calls, ["open:true", "coffee near me"]);
+
+  const originalQuickCaptureOpen = state.quickCaptureOpen;
+  const originalAiConciergeOpen = state.aiConciergeOpen;
+  const originalQuickCaptureTab = state.quickCaptureTab;
+  const originalNotify = state.notify;
+
+  try {
+    state.notify = () => {};
+    state.quickCaptureOpen = true;
+    state.aiConciergeOpen = false;
+    state.toggleAiConcierge(true);
+    assert.equal(state.aiConciergeOpen, true);
+    assert.equal(state.quickCaptureOpen, false);
+
+    state.toggleQuickCapture(true, "capture");
+    assert.equal(state.quickCaptureOpen, true);
+    assert.equal(state.aiConciergeOpen, false);
+    assert.equal(state.quickCaptureTab, "capture");
+  } finally {
+    state.quickCaptureOpen = originalQuickCaptureOpen;
+    state.aiConciergeOpen = originalAiConciergeOpen;
+    state.quickCaptureTab = originalQuickCaptureTab;
+    state.notify = originalNotify;
+  }
 });
 
 test("trip date text parser handles fall and Sep-Oct ranges", () => {

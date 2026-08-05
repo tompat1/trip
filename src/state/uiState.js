@@ -256,16 +256,19 @@ export const uiStateMixin = {
   },
 
   toggleAiConcierge(open) {
-    this.quickCaptureTab = "concierge";
-    this.quickCaptureOpen = open !== undefined ? open : !this.quickCaptureOpen;
-    this.aiConciergeOpen = this.quickCaptureOpen;
+    this.aiConciergeOpen = open !== undefined ? Boolean(open) : !this.aiConciergeOpen;
+    if (this.aiConciergeOpen) {
+      this.quickCaptureOpen = false;
+    }
     this.notify();
   },
 
   toggleQuickCapture(open, tab = "capture") {
     this.quickCaptureTab = tab;
-    this.quickCaptureOpen = open !== undefined ? open : !this.quickCaptureOpen;
-    this.aiConciergeOpen = this.quickCaptureOpen;
+    this.quickCaptureOpen = open !== undefined ? Boolean(open) : !this.quickCaptureOpen;
+    if (this.quickCaptureOpen) {
+      this.aiConciergeOpen = false;
+    }
     this.notify();
   },
 
@@ -327,9 +330,10 @@ export const uiStateMixin = {
   },
 
   async askAiConcierge(promptText = "") {
-    if (!promptText.trim()) return;
+    const prompt = String(promptText || "").trim();
+    if (!prompt || this.aiConciergeLoading) return false;
     this.aiConciergeHistory = this.aiConciergeHistory || [];
-    this.aiConciergeHistory.push({ role: "user", text: promptText });
+    this.aiConciergeHistory.push({ role: "user", text: prompt });
     this.aiConciergeLoading = true;
     this.notify();
 
@@ -364,7 +368,7 @@ export const uiStateMixin = {
       };
 
       const result = await aiService.askConcierge({
-        prompt: promptText,
+        prompt,
         trip,
         personas,
         context,
@@ -390,6 +394,7 @@ export const uiStateMixin = {
       this.aiConciergeLoading = false;
       this.notify();
     }
+    return true;
   },
 
   // ── Photo Editor Modal ───────────────────────────────────────────────────

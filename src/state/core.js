@@ -130,6 +130,7 @@ export class AppState {
     // ── UI modal / overlay state ─────────────────────────────────────────────
     this.generatedStories = {};
     this.quickCaptureOpen = false;
+    this.quickCaptureTab = "capture";
     this.quickCaptureTripId = this.activeTripId;
     this.quickCaptureUpload = { status: "idle", progress: 0, fileName: "", type: "" };
     this.activeLightboxMedia = null;
