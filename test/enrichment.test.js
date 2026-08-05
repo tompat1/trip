@@ -100,6 +100,54 @@ test("Worker auth registration creates traveler session", async () => {
   assert.equal(sessionPayload.principal.userId, "alex@example.com");
 });
 
+test("Worker admin trip listing includes legacy rows while travelers stay scoped", async () => {
+  const db = createTripsListDb([
+    { id: "legacy-crete", user_id: "anonymous", destination: "Crete", created_at: "2026-07-01T00:00:00Z" },
+    { id: "alex-paris", user_id: "alex@example.com", destination: "Paris", created_at: "2026-07-02T00:00:00Z" },
+    { id: "sam-rome", user_id: "sam@example.com", destination: "Rome", created_at: "2026-07-03T00:00:00Z" },
+  ]);
+
+  const adminResponse = await worker.fetch(new Request("https://trip.test/api/trips", {
+    headers: { Authorization: "Bearer secret" },
+  }), { TRIP_DB: db, TRIP_ADMIN_TOKEN: "secret" }, {});
+  assert.equal(adminResponse.status, 200);
+  const adminPayload = await adminResponse.json();
+  assert.deepEqual(adminPayload.trips.map((trip) => trip.id), ["sam-rome", "alex-paris", "legacy-crete"]);
+
+  const travelerResponse = await worker.fetch(new Request("https://trip.test/api/trips", {
+    headers: { "X-Trip-User-Id": "alex@example.com" },
+  }), { TRIP_DB: db, TRIP_ADMIN_TOKEN: "secret" }, {});
+  assert.equal(travelerResponse.status, 200);
+  const travelerPayload = await travelerResponse.json();
+  assert.deepEqual(travelerPayload.trips.map((trip) => trip.id), ["alex-paris"]);
+});
+
+function createTripsListDb(rows = []) {
+  const orderedRows = () => [...rows].sort((a, b) => String(b.created_at || "").localeCompare(String(a.created_at || "")));
+  return {
+    prepare(sql) {
+      return {
+        async all() {
+          if (/SELECT \* FROM user_trips ORDER BY created_at DESC/.test(sql)) {
+            return { results: orderedRows() };
+          }
+          throw new Error(`Unexpected all SQL: ${sql}`);
+        },
+        bind(...args) {
+          return {
+            async all() {
+              if (/SELECT \* FROM user_trips WHERE user_id = \? ORDER BY created_at DESC/.test(sql)) {
+                return { results: orderedRows().filter((row) => row.user_id === args[0]) };
+              }
+              throw new Error(`Unexpected bound all SQL: ${sql}`);
+            },
+          };
+        },
+      };
+    },
+  };
+}
+
 test("Worker force media refresh requires admin", async () => {
   const response = await worker.fetch(new Request("https://trip.test/api/places/lions-square/media/refresh?refresh=1", {
     method: "POST",

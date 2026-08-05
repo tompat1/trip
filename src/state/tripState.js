@@ -66,6 +66,8 @@ export const tripStateMixin = {
   },
 
   async loadD1Trips() {
+    this.tripSyncStatus = { status: "loading", error: "", updatedAt: "" };
+    this.notify();
     await this.syncGuestDraftTripsToAccount();
     try {
       const res = await enrichmentService.fetchTrips();
@@ -147,8 +149,16 @@ export const tripStateMixin = {
         this.refreshEventDiscovery(this.activeTripId);
         this.refreshTripIntelligence(this.activeTripId, { notify: false });
       }
+      this.tripSyncStatus = { status: "ready", error: "", updatedAt: new Date().toISOString() };
+      this.notify();
     } catch (e) {
+      this.tripSyncStatus = {
+        status: "error",
+        error: e?.message || "trips-load-failed",
+        updatedAt: new Date().toISOString(),
+      };
       console.warn("D1 trips load fallback:", e);
+      this.notify();
     }
   },
 

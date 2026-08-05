@@ -4774,6 +4774,13 @@ async function tripsListHandler(context) {
     return json({ ok: true, trips: [] });
   }
   try {
+    if (principal?.role === ROLE.admin) {
+      const { results } = await env.TRIP_DB.prepare(
+        "SELECT * FROM user_trips ORDER BY created_at DESC"
+      ).all();
+      return json({ ok: true, trips: results || [] });
+    }
+
     const { results } = await env.TRIP_DB.prepare(
       "SELECT * FROM user_trips WHERE user_id = ? ORDER BY created_at DESC"
     ).bind(userId).all();
@@ -4824,6 +4831,7 @@ async function tripsUpdateHandler(context) {
   if (!userId || principal?.role === "anonymous") {
     return jsonError("unauthenticated", "Sign in to update trips.", 401);
   }
+  const isAdmin = principal?.role === ROLE.admin;
   const body = await request.json().catch(() => ({}));
   const destination = body.destination;
   const flag = body.flag;
@@ -4839,8 +4847,7 @@ async function tripsUpdateHandler(context) {
   const flightType = body.flightType || body.flight_type ? normalizeFlightType(body.flightType || body.flight_type) : null;
 
   try {
-    await env.TRIP_DB.prepare(
-      `UPDATE user_trips
+    const updateSql = `UPDATE user_trips
        SET destination = COALESCE(?, destination),
            flag = COALESCE(?, flag),
            dates = COALESCE(?, dates),
@@ -4854,8 +4861,25 @@ async function tripsUpdateHandler(context) {
            destination_label = COALESCE(?, destination_label),
            flight_type = COALESCE(?, flight_type),
            updated_at = CURRENT_TIMESTAMP
-       WHERE id = ? AND user_id = ?`
-    ).bind(destination || null, flag || null, dates || null, daysCount, startDate, Number.isFinite(lat) ? lat : null, Number.isFinite(lng) ? lng : null, originIata, destinationIata, originLabel, destinationLabel, flightType, tripId, userId).run();
+       WHERE id = ?${isAdmin ? "" : " AND user_id = ?"}`;
+    const updateArgs = [
+      destination || null,
+      flag || null,
+      dates || null,
+      daysCount,
+      startDate,
+      Number.isFinite(lat) ? lat : null,
+      Number.isFinite(lng) ? lng : null,
+      originIata,
+      destinationIata,
+      originLabel,
+      destinationLabel,
+      flightType,
+      tripId,
+    ];
+    if (!isAdmin) updateArgs.push(userId);
+
+    await env.TRIP_DB.prepare(updateSql).bind(...updateArgs).run();
     return json({ ok: true, tripId, destination, flag, dates, daysCount, startDate });
   } catch (e) {
     return jsonError("db_error", e.message, 500);
@@ -5559,4 +5583,3 @@ function generateWorkerDynamicConciergeFallback({ prompt = "", trip = {}, contex
 
   return answer;
 }
-

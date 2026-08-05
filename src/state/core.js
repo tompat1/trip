@@ -69,6 +69,7 @@ export class AppState {
     this.tourismDiscoveryStatus = {};
     this.eventDiscoveryStatus = {};
     this.tripIntelligenceStatus = {};
+    this.tripSyncStatus = { status: "idle", error: "", updatedAt: "" };
 
     // ── Moments ──────────────────────────────────────────────────────────────
     this.moments = [
@@ -175,8 +176,7 @@ export class AppState {
 
     // ── Kick off async bootstrapping (methods from mixins) ───────────────────
     this.checkBackendHealth();
-    this.refreshUserSession();
-    this.loadD1Trips();
+    this.bootstrapAccountData();
     this.loadPersistedMoments();
     this.refreshWeather();
     this.refreshTourismDiscovery();

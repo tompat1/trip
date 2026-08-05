@@ -24,6 +24,18 @@ import {
 export const profileStateMixin = {
   // ── User session ───────────────────────────────────────────────────────────
 
+  async bootstrapAccountData() {
+    await this.refreshUserSession();
+    if (!this.isAuthenticated) return this.userSession;
+
+    await this.loadD1Trips();
+    if (this.activeView === "landing") {
+      this.activeView = "home";
+      this.notify();
+    }
+    return this.userSession;
+  },
+
   async refreshUserSession() {
     try {
       const session = await enrichmentService.getSession();
@@ -285,5 +297,4 @@ export const profileStateMixin = {
     this.notify();
   },
 };
-
 

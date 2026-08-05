@@ -279,6 +279,11 @@ document.addEventListener("click", async (e) => {
       const health = state.backendHealth || {};
       showToast(health.status === "connected" ? "Production service status refreshed." : "Production health unavailable. Showing local status.");
     }
+    else if (action === "refresh-d1-trips") {
+      await withPageLoader("Loading trips", () => state.loadD1Trips(), { delay: 0 });
+      const tripCount = state.getAllTrips ? state.getAllTrips().length : 0;
+      showToast(tripCount ? `Loaded ${tripCount} ${tripCount === 1 ? "trip" : "trips"}.` : "No cloud trips returned for this account.");
+    }
     else if (action === "search-trip-flights") {
       showToast("Searching flights for this route...");
       await withPageLoader("Searching flights", () => state.searchFlightsForActiveTrip());
@@ -302,6 +307,14 @@ document.addEventListener("click", async (e) => {
       state.closeHelp();
     }
     else if (action === "open-auth-panel") {
+      if (hasAppSession()) {
+        flashPageLoader("Opening home");
+        state.setView("home");
+      } else {
+        state.showAuthExit(target.dataset.authMode || "login");
+      }
+    }
+    else if (action === "show-auth-exit") {
       if (hasAppSession()) {
         flashPageLoader("Opening home");
         state.setView("home");
@@ -983,8 +996,12 @@ document.addEventListener("click", async (e) => {
         if (password) {
           enrichmentService.loginAccount({ email, password, inviteTripId: state.activeInvite?.tripId || "" })
             .then(async () => {
-              await withPageLoader("Signing in", () => state.refreshUserSession());
+              await withPageLoader("Signing in", async () => {
+                await state.refreshUserSession();
+                await state.loadD1Trips();
+              });
               if (state.activeInvite?.tripId) state.acceptTripInvite({ mode: "user" });
+              state.setView("home");
               showToast("Signed in.");
             })
             .catch((err) => alert(`Authentication note: ${err.message}`));

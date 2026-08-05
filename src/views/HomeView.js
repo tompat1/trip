@@ -4,11 +4,16 @@ import { renderIcon } from "../utils/icons.js";
 import { TRIP_ROUTE_LINE_SVG } from "../components/BrandAssets.js";
 import { getTripDateStatus } from "../utils/tripDates.js";
 import { getOptimizedImageUrl } from "../utils/responsiveImages.js";
+import { getHomeEmptyStateMode } from "./homeViewMode.js";
 
 export function renderHomeView() {
   const trip = state.activeTrip;
 
-  if (!trip) {
+  const emptyStateMode = getHomeEmptyStateMode(state);
+  if (emptyStateMode === "account-empty") {
+    return renderAuthenticatedNoTripsHome();
+  }
+  if (emptyStateMode === "signed-out") {
     return renderSignedOutWelcomeHero();
   }
 
@@ -734,6 +739,44 @@ function renderSignedOutWelcomeHero() {
               <strong>Moments & Journal</strong>
               <p>Capture photos, notes, and auto-generate AI stories.</p>
             </div>
+          </div>
+        </section>
+      </div>
+    </div>
+  `;
+}
+
+function renderAuthenticatedNoTripsHome() {
+  const status = state.tripSyncStatus || { status: "idle" };
+  const isLoading = status.status === "loading";
+  const isAdmin = state.userSession?.role === "admin";
+  const title = isLoading ? "Loading your trips" : "No trips loaded";
+  const subtitle = isAdmin
+    ? "Admin access is active. Refresh the cloud trip library or create a new trip."
+    : "Your account is active. Refresh your cloud trips or create a new trip.";
+
+  return `
+    <div class="home-page">
+      ${renderHeader()}
+
+      <div class="home-page__content">
+        <section class="signed-out-welcome-hero signed-out-welcome-hero--account animate-scale-up" aria-live="polite">
+          <div class="signed-out-welcome-badge voice-mono">
+            ${renderIcon(isAdmin ? "shieldCheck" : "user")} ${isAdmin ? "ADMIN SESSION" : "ACCOUNT SESSION"}
+          </div>
+          <h1 class="signed-out-welcome-title voice-serif">
+            ${escapeHtml(title)}
+          </h1>
+          <p class="signed-out-welcome-subhead">
+            ${escapeHtml(subtitle)}
+          </p>
+          <div class="signed-out-welcome-actions">
+            <button class="btn btn--primary btn--lg" data-action="refresh-d1-trips" type="button">
+              ${renderIcon("refresh")} Refresh trips
+            </button>
+            <button class="btn btn--outline btn--lg" data-action="create-trip" type="button">
+              ${renderIcon("plus")} New trip
+            </button>
           </div>
         </section>
       </div>

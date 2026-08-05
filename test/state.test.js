@@ -3,6 +3,7 @@ import test from "node:test";
 
 import { enrichmentService } from "../src/enrichment/enrichmentService.js";
 import { tripsData } from "../src/data/tripsData.js";
+import { getHomeEmptyStateMode } from "../src/views/homeViewMode.js";
 import { state } from "../src/state.js";
 
 test("custom traveler personas are admin-only", () => {
@@ -91,4 +92,10 @@ test("D1 trip loader accepts the fetchTrips array response shape", async () => {
     enrichmentService.fetchTrips = originalFetchTrips;
     enrichmentService.fetchTripEvents = originalFetchTripEvents;
   }
+});
+
+test("authenticated empty home uses the account empty state", () => {
+  assert.equal(getHomeEmptyStateMode({ activeTrip: null, isAuthenticated: true }), "account-empty");
+  assert.equal(getHomeEmptyStateMode({ activeTrip: null, isAuthenticated: false }), "signed-out");
+  assert.equal(getHomeEmptyStateMode({ activeTrip: { id: "paris" }, isAuthenticated: true }), "trip");
 });
