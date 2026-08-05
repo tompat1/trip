@@ -69,8 +69,9 @@ export const tripStateMixin = {
     await this.syncGuestDraftTripsToAccount();
     try {
       const res = await enrichmentService.fetchTrips();
-      if (res && res.trips && Array.isArray(res.trips)) {
-        res.trips.forEach((t) => {
+      const remoteTrips = Array.isArray(res) ? res : (Array.isArray(res?.trips) ? res.trips : []);
+      if (remoteTrips.length) {
+        remoteTrips.forEach((t) => {
           const resolvedFlag =
             t.flag && t.flag.length <= 4 && !t.flag.match(/^[a-zA-Z]/)
               ? t.flag
@@ -119,8 +120,12 @@ export const tripStateMixin = {
           }
         });
 
+        if (!this.activeTripId || !tripsData[this.activeTripId]) {
+          this.activeTripId = remoteTrips[0]?.id || null;
+        }
+
         await Promise.all(
-          res.trips.map(async (t) => {
+          remoteTrips.map(async (t) => {
             const trip = tripsData[t.id];
             if (!trip) return;
             try {
