@@ -117,18 +117,6 @@ export function renderHeader() {
           </span>
         `}
         <div class="trip-context-card__header">
-          ${noTrip ? "" : `
-            <div class="card-eyebrow-row">
-              <div class="trip-selector-wrap">
-                <select class="trip-select-dropdown" data-action="select-trip-dropdown" aria-label="Select trip. Current trip: ${escapeHtml(trip.destination)}" title="${escapeHtml(`${trip.flag || ""} ${trip.destination || "Trip"}`.trim())}">
-                  ${allTrips.map(t => {
-                    return `<option value="${t.id}" ${t.id === trip.id ? 'selected' : ''} label="${escapeHtml(t.flag || "•")}">${escapeHtml(t.flag || "•")}</option>`;
-                  }).join('')}
-                </select>
-              </div>
-            </div>
-          `}
-
           <div class="trip-context-card__title-row">
             <div class="editable-trip-title ${noTrip ? 'editable-trip-title--disabled' : ''}" ${noTrip ? '' : 'data-action="edit-trip-title" title="Edit destination, dates, and trip location"'}>
               <h1 class="trip-title">${escapeHtml(trip.destination)} ${String(trip.flag || "").startsWith("<svg") ? trip.flag : escapeHtml(trip.flag)}</h1>
@@ -141,6 +129,13 @@ export function renderHeader() {
             </div>
             <div class="trip-actions-row">
               ${noTrip ? "" : `
+                <div class="trip-selector-wrap">
+                  <select class="trip-select-dropdown" data-action="select-trip-dropdown" aria-label="Select trip. Current trip: ${escapeHtml(trip.destination)}" title="${escapeHtml(`${trip.flag || ""} ${trip.destination || "Trip"}`.trim())}">
+                    ${allTrips.map(t => {
+                      return `<option value="${t.id}" ${t.id === trip.id ? 'selected' : ''} label="${escapeHtml(t.flag || "•")}">${escapeHtml(t.flag || "•")}</option>`;
+                    }).join('')}
+                  </select>
+                </div>
                 <button class="btn btn--outline btn--icon" data-action="toggle-map-view" title="Toggle Map">
                   ${renderIcon("map")}
                 </button>
