@@ -187,9 +187,9 @@ function getTripStageLabel(stage) {
 }
 
 function getTripStageIcon(stage) {
-  if (stage === "remember") return "bookOpen";
-  if (stage === "live") return "radio";
-  return "calendar";
+  if (stage === "remember") return "heart";
+  if (stage === "live") return "compassRose";
+  return "mapPin";
 }
 
 function getLiveDayTimeFormatted() {

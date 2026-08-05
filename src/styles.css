@@ -1861,14 +1861,14 @@ a:active .ph-icon,
 
 .trip-lifecycle-pill {
   position: absolute;
-  top: 14px;
-  right: 14px;
+  top: -16px;
+  right: 20px;
   z-index: 6;
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  min-height: 30px;
-  padding: 5px 11px;
+  min-height: 32px;
+  padding: 6px 12px;
   border: 1px solid var(--line);
   border-radius: var(--radius-pill);
   background: color-mix(in srgb, var(--paper-card) 88%, transparent);
@@ -1886,8 +1886,8 @@ a:active .ph-icon,
 }
 
 .trip-lifecycle-pill svg {
-  width: 1em;
-  height: 1em;
+  width: 1.05em;
+  height: 1.05em;
   color: currentColor;
 }
 
@@ -1902,14 +1902,14 @@ a:active .ph-icon,
 }
 
 .trip-lifecycle-pill--remember {
-  color: var(--field-green);
-  border-color: rgba(101, 112, 91, 0.38);
+  color: var(--ink);
+  border-color: rgba(15, 27, 43, 0.28);
 }
 
 @media (max-width: 540px) {
   .trip-lifecycle-pill {
-    top: 10px;
-    right: 10px;
+    top: -14px;
+    right: 12px;
     font-size: 0.62rem;
     padding: 5px 9px;
   }
@@ -2022,6 +2022,14 @@ a:active .ph-icon,
 
 .trip-context-card {
   overflow: visible !important;
+}
+
+.trip-context-card > .trip-lifecycle-pill {
+  position: absolute;
+  top: 0;
+  right: 20px;
+  transform: translateY(-50%);
+  z-index: 6;
 }
 
 .card-eyebrow-row {
