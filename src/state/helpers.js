@@ -222,31 +222,77 @@ export function writeStoredCalendarEvents(tripId, events) {
   } catch {}
 }
 
+export function removeStoredCalendarEvents(tripId) {
+  if (typeof localStorage === "undefined") return;
+  try {
+    localStorage.removeItem(`${CALENDAR_EVENTS_STORAGE_PREFIX}${tripId}`);
+  } catch {}
+}
+
 // ─── Tourism discovery storage ────────────────────────────────────────────────
 
-export function readStoredTourismDiscovery(tripId) {
+export function readStoredTourismDiscovery(tripId, trip = null) {
   if (typeof localStorage === "undefined") return null;
   try {
     const stored = localStorage.getItem(`${TOURISM_DISCOVERY_STORAGE_PREFIX}${tripId}`);
     if (!stored) return null;
     const discovery = JSON.parse(stored);
     if (!discovery || typeof discovery !== "object") return null;
+    if (trip && !isStoredDiscoveryInScope(discovery, trip)) return null;
     return {
       tourismPois: Array.isArray(discovery.tourismPois) ? discovery.tourismPois : [],
       hiddenGems: Array.isArray(discovery.hiddenGems) ? discovery.hiddenGems : [],
       osmPlaces: Array.isArray(discovery.osmPlaces) ? discovery.osmPlaces : [],
       updatedAt: discovery.updatedAt || "",
       personaKey: discovery.personaKey || "",
+      destination: discovery.destination || "",
+      center: discovery.center || null,
     };
   } catch {
     return null;
   }
 }
 
+function isStoredDiscoveryInScope(discovery = {}, trip = {}) {
+  if (!discovery.destination || !Array.isArray(discovery.center)) return false;
+  const storedDestination = normalizeScopeText(discovery.destination);
+  const tripDestination = normalizeScopeText(trip.destination);
+  const sameDestination = storedDestination && tripDestination && storedDestination === tripDestination;
+  const storedLat = Number(discovery.center[0]);
+  const storedLng = Number(discovery.center[1]);
+  const tripLat = Number(trip.center?.[0]);
+  const tripLng = Number(trip.center?.[1]);
+  const sameCenter =
+    Number.isFinite(storedLat) &&
+    Number.isFinite(storedLng) &&
+    Number.isFinite(tripLat) &&
+    Number.isFinite(tripLng) &&
+    Math.abs(storedLat - tripLat) < 0.2 &&
+    Math.abs(storedLng - tripLng) < 0.2;
+  return sameDestination && sameCenter;
+}
+
+function normalizeScopeText(value = "") {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/\b(fall|autumn|spring|summer|winter|trip|vacation|holiday|getaway|20\d\d)\b/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
 export function writeStoredTourismDiscovery(tripId, discovery) {
   if (typeof localStorage === "undefined") return;
   try {
     localStorage.setItem(`${TOURISM_DISCOVERY_STORAGE_PREFIX}${tripId}`, JSON.stringify(discovery || {}));
+  } catch {}
+}
+
+export function removeStoredTourismDiscovery(tripId) {
+  if (typeof localStorage === "undefined") return;
+  try {
+    localStorage.removeItem(`${TOURISM_DISCOVERY_STORAGE_PREFIX}${tripId}`);
   } catch {}
 }
 
@@ -286,9 +332,104 @@ export function mergeCalendarEvents(baseEvents = [], savedEvents = []) {
   return merged;
 }
 
+export function filterTripScopedItems(items = [], trip = {}) {
+  if (!Array.isArray(items)) return [];
+  return items.filter((item) => isTripContentInScope(item, trip));
+}
+
+export function isTripContentInScope(item = {}, trip = {}) {
+  if (!item || typeof item !== "object") return true;
+  const text = [
+    item.title,
+    item.name,
+    item.canonicalName,
+    item.subtitle,
+    item.location,
+    item.neighborhood,
+    item.description,
+    item.address,
+    item.dates,
+  ].filter(Boolean).join(" ");
+  return isTripScopedText(text, trip);
+}
+
+export function isTripScopedText(text = "", trip = {}) {
+  const normalizedText = normalizeScopeText(text);
+  const normalizedDestination = normalizeScopeText([
+    trip.destination,
+    trip.countryCode,
+    trip.flightRoute?.destinationLabel,
+    trip.flightRoute?.destinationIata,
+  ].filter(Boolean).join(" "));
+  if (!normalizedText || !normalizedDestination) return true;
+  const destinationCityKeys = LOCATION_SCOPE_RULES
+    .filter((rule) => rule.cityTerms?.some((term) => normalizedDestination.includes(term)))
+    .map((rule) => rule.key);
+
+  return !LOCATION_SCOPE_RULES.some((rule) => {
+    if (!rule.terms.some((term) => normalizedText.includes(term))) return false;
+    if (destinationCityKeys.length && !destinationCityKeys.includes(rule.key)) return true;
+    return !rule.destinations.some((term) => normalizedDestination.includes(term));
+  });
+}
+
+const LOCATION_SCOPE_RULES = [
+  {
+    key: "paris",
+    cityTerms: ["paris"],
+    destinations: ["paris", "france", "cdg", "ory"],
+    terms: [
+      "paris",
+      "seine",
+      "louvre",
+      "eiffel",
+      "montmartre",
+      "marais",
+      "versailles",
+      "saint germain",
+      "latin quarter",
+      "olympics",
+      "olympic",
+      "arrondissement",
+      "garnier",
+    ],
+  },
+  {
+    key: "madrid",
+    cityTerms: ["madrid"],
+    destinations: ["madrid", "spain", "es", "mad"],
+    terms: ["madrid", "prado", "plaza mayor", "retiro", "la latina", "gran via", "atocha"],
+  },
+  {
+    key: "barcelona",
+    cityTerms: ["barcelona"],
+    destinations: ["barcelona", "spain", "es", "bcn"],
+    terms: ["barcelona", "sagrada familia", "guell", "barceloneta", "gaudi"],
+  },
+  {
+    key: "granada",
+    cityTerms: ["granada"],
+    destinations: ["granada", "spain", "es"],
+    terms: ["granada", "alhambra"],
+  },
+  {
+    key: "seville",
+    cityTerms: ["seville", "sevilla"],
+    destinations: ["seville", "sevilla", "spain", "es"],
+    terms: ["seville", "sevilla", "triana"],
+  },
+  {
+    key: "crete",
+    cityTerms: ["crete", "heraklion"],
+    destinations: ["crete", "heraklion", "greece", "gr", "her"],
+    terms: ["crete", "heraklion", "knossos", "koules", "ammoudara", "minoan"],
+  },
+];
+
 export function normalizeTourismIdea(place = {}, kind = "poi") {
   const title = place.title || place.canonicalName || place.name || "Interesting place";
   const category = place.category || (kind === "hidden" ? "Hidden gem" : "Place");
+  const coordinates = place.coordinates || null;
   const subtitle = place.distance
     ? `${place.distance} from trip center`
     : place.neighborhood || category;
@@ -309,7 +450,9 @@ export function normalizeTourismIdea(place = {}, kind = "poi") {
     source: place.source || (kind === "osm" ? "OpenStreetMap" : "OpenTripMap"),
     sourceRole: place.sourceRole || (kind === "osm" ? "osm" : "opentripmap"),
     sourceUrl: place.sourceUrl || place.officialWebsite || "",
-    coordinates: place.coordinates || null,
+    coordinates,
+    lat: place.lat ?? place.latitude ?? coordinates?.[0],
+    lng: place.lng ?? place.longitude ?? coordinates?.[1],
     distance: place.distance || "",
     distanceMeters: place.distanceMeters,
     openingHours: place.openingHours || "",

@@ -1,6 +1,7 @@
 import { state } from "../state.js";
+import { getTripDateStatus } from "../utils/tripDates.js";
 
-export function handleDockNavigation(target, { requireAppSession, flashPageLoader, confirmFn = window.confirm } = {}) {
+export function handleDockNavigation(target, { requireAppSession, flashPageLoader } = {}) {
   const nav = target?.dataset?.nav;
   if (!nav) return false;
 
@@ -13,12 +14,10 @@ export function handleDockNavigation(target, { requireAppSession, flashPageLoade
     return true;
   }
 
-  if (nav === "live" && !state.tripMode) {
-    const confirmActivate = confirmFn(`Live Journey Mode requires Trip Mode ON.\n\nWould you like to activate Trip Mode for ${state.activeTrip.destination}?`);
-    if (confirmActivate) {
-      state.toggleTripMode(true);
-      state.setView("live");
-    }
+  if (nav === "live" && getTripDateStatus(state.activeTrip).state !== "active") {
+    state.setPlanSubTab("overview");
+    flashPageLoader?.("Opening planning");
+    state.setView("plan");
     return true;
   }
 
@@ -61,8 +60,14 @@ export function handleRouteAction(action, target, { requireAppSession, flashPage
 
   if (action === "go-live") {
     if (!requireAppSession?.("login", "Sign in before using Live mode.")) return true;
-    flashPageLoader?.("Opening live");
-    state.setView("live");
+    if (getTripDateStatus(state.activeTrip).state !== "active") {
+      state.setPlanSubTab("overview");
+      flashPageLoader?.("Opening planning");
+      state.setView("plan");
+    } else {
+      flashPageLoader?.("Opening live");
+      state.setView("live");
+    }
     return true;
   }
 

@@ -8,7 +8,7 @@ import { fetchConcertsForTrip } from "../services/concertService.js";
 import { fetchTripIntelligence } from "../services/tripDataGateway.js";
 import { fetchOpenMeteoWeather } from "../services/weatherService.js";
 import { getPersonaDiscoveryContext, rankItemsByPersonas } from "../utils/personaSignals.js";
-import { getOpenTripMapStatus, normalizeTourismIdea, writeStoredTourismDiscovery } from "./helpers.js";
+import { filterTripScopedItems, getOpenTripMapStatus, normalizeTourismIdea, writeStoredTourismDiscovery } from "./helpers.js";
 
 // Personas that benefit from a dedicated food/drink Overpass pass
 const FOOD_PERSONAS = new Set([
@@ -142,15 +142,15 @@ export const discoveryStateMixin = {
       ]);
 
       let tourismPois = rankItemsByPersonas(
-        (topResult?.places || []).map((place) => normalizeTourismIdea(place, "poi")),
+        filterTripScopedItems((topResult?.places || []).map((place) => normalizeTourismIdea(place, "poi")), trip),
         personas
       );
       const hiddenGems = rankItemsByPersonas(
-        (hiddenResult?.places || []).map((place) => normalizeTourismIdea(place, "hidden")),
+        filterTripScopedItems((hiddenResult?.places || []).map((place) => normalizeTourismIdea(place, "hidden")), trip),
         personas
       );
       const osmPlaces = rankItemsByPersonas(
-        (osmResult?.places || []).map((place) => normalizeTourismIdea(place, "osm")),
+        filterTripScopedItems((osmResult?.places || []).map((place) => normalizeTourismIdea(place, "osm")), trip),
         personas
       );
 
@@ -165,7 +165,7 @@ export const discoveryStateMixin = {
           });
           if (cultureResult?.places?.length) {
             tourismPois = rankItemsByPersonas(
-              cultureResult.places.map((place) => normalizeTourismIdea(place, "osm")),
+              filterTripScopedItems(cultureResult.places.map((place) => normalizeTourismIdea(place, "osm")), trip),
               personas
             );
           }
@@ -196,7 +196,10 @@ export const discoveryStateMixin = {
             personas,
           });
           if (fsqResult?.places?.length) {
-            foodOsmPlaces = fsqResult.places.map((place) => normalizeTourismIdea(place, "foursquare"));
+            foodOsmPlaces = filterTripScopedItems(
+              fsqResult.places.map((place) => normalizeTourismIdea(place, "foursquare")),
+              trip
+            );
           } else {
             const foodResult = await enrichmentService.discoverNearby({
               coordinates: trip.center,
@@ -204,11 +207,14 @@ export const discoveryStateMixin = {
               intent: topFoodIntent,
               personas,
             });
-            foodOsmPlaces = (foodResult?.places || []).map((place) => ({
-              ...normalizeTourismIdea(place, "osm"),
-              sourceRole: "osm-food",
-              foodSource: topFoodIntent,
-            }));
+            foodOsmPlaces = filterTripScopedItems(
+              (foodResult?.places || []).map((place) => ({
+                ...normalizeTourismIdea(place, "osm"),
+                sourceRole: "osm-food",
+                foodSource: topFoodIntent,
+              })),
+              trip
+            );
           }
         } catch (e) {
           console.warn("Food discovery pass fallback:", e);
@@ -241,7 +247,15 @@ export const discoveryStateMixin = {
       };
 
       if (tourismPois.length || hiddenGems.length || osmPlaces.length) {
-        writeStoredTourismDiscovery(tripId, { tourismPois, hiddenGems, osmPlaces, updatedAt, personaKey });
+        writeStoredTourismDiscovery(tripId, {
+          tourismPois,
+          hiddenGems,
+          osmPlaces,
+          updatedAt,
+          personaKey,
+          destination: trip.destination,
+          center: trip.center,
+        });
       }
     } catch (error) {
       this.tourismDiscoveryStatus[tripId] = {
@@ -289,6 +303,11 @@ export const discoveryStateMixin = {
   async refreshEventDiscovery(tripId = this.activeTripId, options = {}) {
     const trip = tripsData[tripId];
     if (!trip || !Array.isArray(trip.center)) return { status: "error", error: "invalid-trip-center" };
+    const scopedExistingEvents = filterTripScopedItems(trip.events || [], trip);
+    if (scopedExistingEvents.length !== (trip.events || []).length) {
+      trip.events = scopedExistingEvents;
+      options.force = true;
+    }
     if (this.eventDiscoveryStatus[tripId]?.status === "loading" && !options.force)
       return this.eventDiscoveryStatus[tripId];
     if (
@@ -309,7 +328,7 @@ export const discoveryStateMixin = {
     try {
       const events = await fetchConcertsForTrip(trip.destination, trip.center);
       const existingTitles = new Set((trip.events || []).map((event) => event.title));
-      const liveEvents = (events || []).filter((event) => !existingTitles.has(event.title));
+      const liveEvents = filterTripScopedItems(events || [], trip).filter((event) => !existingTitles.has(event.title));
       trip.events = [...liveEvents, ...(trip.events || [])].slice(0, 24);
       this.eventDiscoveryStatus[tripId] = {
         status: liveEvents.length ? "ready" : "fallback",

@@ -28,7 +28,7 @@ export function renderQuickCaptureWidget() {
     <!-- Single Universal Floating Action Hub FAB -->
     <button class="quick-capture-fab ${isOpen ? 'is-active' : ''}" data-action="toggle-quick-capture" title="TRIP Concierge & Quick Capture">
       ${isOpen ? renderIcon("x") : `
-        <span class="quick-capture-fab__icons" style="display: inline-flex; align-items: center; gap: 3px;">
+        <span class="quick-capture-fab__icons">
           ${renderIcon("sparkles")}
           ${renderIcon("camera")}
         </span>
@@ -39,10 +39,10 @@ export function renderQuickCaptureWidget() {
     <div class="quick-capture-overlay ${isOpen ? 'is-open' : ''}" data-action="close-quick-capture">
       <div class="quick-capture-modal">
         <!-- Header & Segmented Tab Switcher -->
-        <div class="quick-capture-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+        <div class="quick-capture-header">
           <div>
-            <span class="voice-mono" style="font-size: 0.7rem; font-weight: 700; color: var(--red); text-transform: uppercase; letter-spacing: 0.5px;">UNIVERSAL ASSISTANT & CAPTURE</span>
-            <h3 style="font-size: 1.15rem; font-weight: 700; color: var(--ink); margin: 2px 0 0 0;">${escapeHtml(trip.destination)}</h3>
+            <span class="quick-capture-kicker voice-mono">UNIVERSAL ASSISTANT & CAPTURE</span>
+            <h3 class="quick-capture-title">${escapeHtml(trip.destination)}</h3>
           </div>
           <button class="btn btn--icon btn--ghost" data-action="close-quick-capture" aria-label="Close modal">
             ${renderIcon("x")}
@@ -50,11 +50,11 @@ export function renderQuickCaptureWidget() {
         </div>
 
         <!-- Segmented Tab Pills -->
-        <div class="quick-action-tab-bar mb-md" style="display: flex; background: var(--paper-subtle); padding: 4px; border-radius: 12px; gap: 4px; border: 1px solid var(--line-light); margin-bottom: 14px;">
-          <button class="quick-tab-btn ${activeTab === 'concierge' ? 'is-active' : ''}" data-action="switch-quick-capture-tab" data-tab="concierge" type="button" style="flex: 1; padding: 8px 12px; border: none; border-radius: 8px; font-size: 0.82rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; background: ${activeTab === 'concierge' ? 'var(--paper-card)' : 'transparent'}; color: ${activeTab === 'concierge' ? 'var(--ink)' : 'var(--ink-muted)'}; box-shadow: ${activeTab === 'concierge' ? 'var(--shadow-sm)' : 'none'};">
+        <div class="quick-action-tab-bar mb-md">
+          <button class="quick-tab-btn ${activeTab === 'concierge' ? 'is-active' : ''}" data-action="switch-quick-capture-tab" data-tab="concierge" type="button">
             ${renderIcon("sparkles")} AI Concierge
           </button>
-          <button class="quick-tab-btn ${activeTab === 'capture' ? 'is-active' : ''}" data-action="switch-quick-capture-tab" data-tab="capture" type="button" style="flex: 1; padding: 8px 12px; border: none; border-radius: 8px; font-size: 0.82rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; background: ${activeTab === 'capture' ? 'var(--paper-card)' : 'transparent'}; color: ${activeTab === 'capture' ? 'var(--ink)' : 'var(--ink-muted)'}; box-shadow: ${activeTab === 'capture' ? 'var(--shadow-sm)' : 'none'};">
+          <button class="quick-tab-btn ${activeTab === 'capture' ? 'is-active' : ''}" data-action="switch-quick-capture-tab" data-tab="capture" type="button">
             ${renderIcon("camera")} Quick Capture
           </button>
         </div>
@@ -69,7 +69,7 @@ function renderConciergeTabContent({ trip, cityName, history, isAsking }) {
   return `
     <div class="concierge-tab-content">
       <!-- Quick Prompt Chips -->
-      <div class="ai-concierge-chips-strip mb-sm" style="display: flex; gap: 6px; overflow-x: auto; padding-bottom: 6px; margin-bottom: 10px;">
+      <div class="ai-concierge-chips-strip mb-sm">
         <button class="ai-chip" data-action="send-ai-chip" data-prompt="Best specialty coffee spots in ${escapeHtml(cityName)}">☕ Coffee in ${escapeHtml(cityName)}</button>
         <button class="ai-chip" data-action="send-ai-chip" data-prompt="What should I do on a rainy day in ${escapeHtml(cityName)}?">☔ Rainy day plan</button>
         <button class="ai-chip" data-action="send-ai-chip" data-prompt="Hidden local gems in ${escapeHtml(cityName)} away from crowds">🌿 Hidden gems</button>
@@ -77,7 +77,7 @@ function renderConciergeTabContent({ trip, cityName, history, isAsking }) {
       </div>
 
       <!-- Chat Feed -->
-      <div class="ai-concierge-chat-feed mb-sm" style="max-height: 240px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding: 8px; background: var(--paper-card); border-radius: 12px; border: 1px solid var(--line-light); margin-bottom: 12px;">
+      <div class="ai-concierge-chat-feed mb-sm">
         ${history.map((msg) => `
           <div class="ai-chat-bubble ai-chat-bubble--${msg.role}">
             <div class="ai-bubble-content">
@@ -90,15 +90,15 @@ function renderConciergeTabContent({ trip, cityName, history, isAsking }) {
             <span class="ai-typing-dots">
               <span>.</span><span>.</span><span>.</span>
             </span>
-            <span style="font-size: 0.8rem; color: var(--ink-muted); margin-left: 6px;">Querying Workers AI...</span>
+            <span class="ai-typing-label">Querying Workers AI...</span>
           </div>
         ` : ""}
       </div>
 
       <!-- Input Form -->
-      <form class="quick-capture-concierge-form" data-action="submit-quick-capture-concierge" onsubmit="return false;" style="display: flex; gap: 8px;">
-        <input type="text" id="quick-capture-concierge-input" placeholder="Ask anything about ${escapeHtml(cityName)}..." required ${isAsking ? "disabled" : ""} style="flex: 1; padding: 10px 14px; border: 1px solid var(--line); border-radius: var(--radius-md); font-size: 0.88rem; background: var(--paper); color: var(--ink);" />
-        <button type="submit" class="btn btn--primary btn--icon" data-action="submit-quick-capture-concierge" ${isAsking ? "disabled" : ""} aria-label="Send query" style="padding: 10px 14px;">
+      <form class="quick-capture-concierge-form" data-action="submit-quick-capture-concierge" onsubmit="return false;">
+        <input type="text" id="quick-capture-concierge-input" placeholder="Ask anything about ${escapeHtml(cityName)}..." required ${isAsking ? "disabled" : ""} />
+        <button type="submit" class="btn btn--primary btn--icon" data-action="submit-quick-capture-concierge" ${isAsking ? "disabled" : ""} aria-label="Send query">
           ${renderIcon("arrowRight")}
         </button>
       </form>
@@ -110,18 +110,18 @@ function renderCaptureTabContent({ trip, trips, isUploading, upload }) {
   return `
     <div class="capture-tab-content">
       <!-- Receiver Badge -->
-      <div class="quick-capture-receiver mb-sm" style="display: flex; align-items: center; justify-content: space-between; gap: 8px; background: var(--paper-subtle); padding: 8px 12px; border-radius: 8px; margin-bottom: 12px;">
-        <label for="quick-capture-trip-select" class="voice-mono" style="font-size: 0.78rem; font-weight: 700; color: var(--ink-muted); display: flex; align-items: center; gap: 4px;">
+      <div class="quick-capture-receiver mb-sm">
+        <label for="quick-capture-trip-select" class="voice-mono">
           ${renderIcon("mapPin")} Send to
         </label>
-        <select id="quick-capture-trip-select" data-action="select-quick-capture-trip" ${isUploading ? "disabled" : ""} style="background: transparent; border: none; font-size: 0.85rem; font-weight: 600; color: var(--ink);">
+        <select id="quick-capture-trip-select" data-action="select-quick-capture-trip" ${isUploading ? "disabled" : ""}>
           ${trips.map((item) => `
             <option value="${escapeHtml(item.id)}" ${item.id === trip.id ? "selected" : ""}>
               ${item.flag || ""} ${escapeHtml(item.destination)}
             </option>
           `).join("")}
         </select>
-        <span class="voice-mono" style="font-size: 0.72rem; color: var(--ink-light);">${new Date().toISOString().split("T")[0]}</span>
+        <span class="voice-mono">${new Date().toISOString().split("T")[0]}</span>
       </div>
 
       <form id="quick-capture-form" onsubmit="return false;">
@@ -129,30 +129,30 @@ function renderCaptureTabContent({ trip, trips, isUploading, upload }) {
 
         <!-- Title Input -->
         <div class="form-group mb-sm">
-          <label for="capture-title" style="font-size: 0.78rem; font-weight: 700; color: var(--ink-muted); display: block; margin-bottom: 4px;">Moment Title</label>
-          <input type="text" id="capture-title" placeholder="e.g. Morning coffee in ${escapeHtml((trip.destination || '').split(',')[0])}" required style="width: 100%; padding: 10px 14px; border: 1px solid var(--line); border-radius: var(--radius-md); font-size: 0.9rem; background: var(--paper-card); color: var(--ink);" />
+          <label for="capture-title">Moment Title</label>
+          <input type="text" id="capture-title" placeholder="e.g. Morning coffee in ${escapeHtml((trip.destination || '').split(',')[0])}" required />
         </div>
 
         <!-- Note Textarea -->
         <div class="form-group mb-md">
-          <label for="capture-text" style="font-size: 0.78rem; font-weight: 700; color: var(--ink-muted); display: block; margin-bottom: 4px;">Description / Memories</label>
-          <textarea id="capture-text" rows="3" placeholder="Write your travel thoughts..." style="width: 100%; padding: 10px 14px; border: 1px solid var(--line); border-radius: var(--radius-md); font-size: 0.88rem; background: var(--paper-card); color: var(--ink); resize: none;"></textarea>
+          <label for="capture-text">Description / Memories</label>
+          <textarea id="capture-text" rows="3" placeholder="Write your travel thoughts..."></textarea>
         </div>
 
-        <div style="display: flex; gap: 8px; align-items: center; margin-top: 14px; flex-wrap: wrap;">
-          <button type="button" class="btn btn--outline btn--sm" data-action="trigger-file-upload" style="flex: 1; min-width: 110px;" ${isUploading ? "disabled" : ""}>
+        <div class="quick-capture-actions">
+          <button type="button" class="btn btn--outline btn--sm" data-action="trigger-file-upload" ${isUploading ? "disabled" : ""}>
             ${renderIcon("image")} Attach Media
           </button>
-          <button type="button" class="btn btn--outline btn--sm" data-action="auto-describe-moment" style="flex: 1; min-width: 130px; border-color: var(--orange); color: var(--orange);" ${isUploading ? "disabled" : ""}>
+          <button type="button" class="btn btn--outline btn--sm quick-capture-ai-btn" data-action="auto-describe-moment" ${isUploading ? "disabled" : ""}>
             ${renderIcon("sparkles")} AI Auto-Describe
           </button>
-          <button type="submit" class="btn btn--primary btn--sm" data-action="submit-quick-capture" style="flex: 1; min-width: 90px;" ${isUploading ? "disabled" : ""}>
+          <button type="submit" class="btn btn--primary btn--sm" data-action="submit-quick-capture" ${isUploading ? "disabled" : ""}>
             ${renderIcon("check")} Save
           </button>
         </div>
 
         ${upload.status !== "idle" ? `
-          <div class="quick-capture-progress" aria-live="polite" style="margin-top: 10px;">
+          <div class="quick-capture-progress" aria-live="polite">
             <div class="quick-capture-progress__orb"></div>
             <div class="quick-capture-progress__copy">
               <span class="voice-mono">${escapeHtml(getUploadStatusLabel(upload))}</span>

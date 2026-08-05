@@ -4,10 +4,13 @@
  * Domain methods are mixed in via Object.assign in index.js.
  */
 import { tripsData } from "../data/tripsData.js";
+import { getTripDateStatus } from "../utils/tripDates.js";
 import {
+  filterTripScopedItems,
   getDefaultPlanViewMode,
   getInviteFromLocation,
   isFutureTrip,
+  removeStoredCalendarEvents,
   readStoredCalendarEvents,
   readStoredGuestDraftTrips,
   readStoredTheme,
@@ -95,9 +98,15 @@ export class AppState {
     Object.keys(tripsData).forEach((tripId) => {
       const storedEvents = readStoredCalendarEvents(tripId);
       if (storedEvents) {
-        tripsData[tripId].calendarEvents = storedEvents;
+        const scopedEvents = filterTripScopedItems(storedEvents, tripsData[tripId]);
+        if (scopedEvents.length === storedEvents.length) {
+          tripsData[tripId].calendarEvents = scopedEvents;
+        } else {
+          tripsData[tripId].calendarEvents = scopedEvents;
+          removeStoredCalendarEvents(tripId);
+        }
       }
-      const storedDiscovery = readStoredTourismDiscovery(tripId);
+      const storedDiscovery = readStoredTourismDiscovery(tripId, tripsData[tripId]);
       if (storedDiscovery) {
         tripsData[tripId].tourismPois = storedDiscovery.tourismPois;
         tripsData[tripId].hiddenGems = storedDiscovery.hiddenGems;
@@ -230,6 +239,7 @@ export class AppState {
   setTrip(tripId) {
     if (tripsData[tripId] && this.activeTripId !== tripId) {
       this.activeTripId = tripId;
+      this.tripMode = getTripDateStatus(tripsData[tripId]).state === "active";
       this.locationResolved = null;
       this.liveNearbyPlaces = [];
       this.liveNearbyPlacesTripId = "";
@@ -254,6 +264,7 @@ export class AppState {
     const currentIndex = keys.indexOf(this.activeTripId);
     const nextIndex = (currentIndex + 1) % keys.length;
     this.activeTripId = keys[nextIndex];
+    this.tripMode = getTripDateStatus(tripsData[this.activeTripId]).state === "active";
     this.refreshTourismDiscovery(this.activeTripId);
     this.refreshEventDiscovery(this.activeTripId);
     this.refreshTripIntelligence(this.activeTripId);
@@ -278,8 +289,11 @@ export class AppState {
   }
 
   toggleTripMode(enabled) {
-    this.tripMode = enabled !== undefined ? enabled : !this.tripMode;
+    const wantsLiveMode = enabled !== undefined ? Boolean(enabled) : !this.tripMode;
+    const isLiveByDate = getTripDateStatus(this.activeTrip).state === "active";
+    this.tripMode = wantsLiveMode && isLiveByDate;
     this.notify();
+    return this.tripMode;
   }
 
   setPlanSubTab(tab) {

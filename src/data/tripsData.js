@@ -12,7 +12,7 @@ export const DEMO_SAMPLE_TRIPS = {
     startDate: "2026-10-03",
     status: "Upcoming",
     statusText: "17 days until your trip to Paris",
-    tripMode: true,
+    tripMode: false,
     center: [48.8566, 2.3522],
     zoom: 13,
     flightRoute: {
@@ -278,9 +278,9 @@ export const DEMO_SAMPLE_TRIPS = {
     dates: "17 Jul – 24 Jul 2026",
     daysCount: 8,
     startDate: "2026-07-17",
-    status: "Live",
-    statusText: "You are in Heraklion, Crete",
-    tripMode: true,
+    status: "Completed",
+    statusText: "Remember your Heraklion, Crete trip",
+    tripMode: false,
     center: [35.3391, 25.132],
     zoom: 13,
     flightRoute: {
@@ -409,7 +409,9 @@ export const DEMO_SAMPLE_TRIPS = {
   },
   spain: {
     id: "spain",
-    destination: "Spain, Fall 2026",
+    destination: "Madrid, Spain",
+    countryCode: "ES",
+    language: "es",
     flag: "🇪🇸",
     dates: "Sept-Oct 2026",
     daysCount: 14,
@@ -432,9 +434,9 @@ export const DEMO_SAMPLE_TRIPS = {
       ]
     },
     upcomingActivity: {
-      title: "Spain, Fall 2026",
+      title: "Madrid, Spain",
       subtitle: "Sept-Oct 2026",
-      image: "https://images.unsplash.com/photo-1543783207-ec64e4d95325?auto=format&fit=crop&w=600&q=80"
+      image: "https://images.unsplash.com/photo-1539037116277-4db20889f2d4?auto=format&fit=crop&w=600&q=80"
     },
     checklist: [
       { id: "stay", label: "Book stay in Madrid & Barcelona", completed: false },
@@ -514,6 +516,17 @@ export const DEMO_SAMPLE_TRIPS = {
     ]
   }
 };
+
+export function cloneDemoSampleTrips() {
+  const clone = typeof structuredClone === "function"
+    ? structuredClone(DEMO_SAMPLE_TRIPS)
+    : JSON.parse(JSON.stringify(DEMO_SAMPLE_TRIPS));
+  Object.values(clone).forEach((trip) => {
+    trip.isDemoTrip = true;
+    trip.syncStatus = "demo";
+  });
+  return clone;
+}
 
 export const searchPlacesData = [
   {

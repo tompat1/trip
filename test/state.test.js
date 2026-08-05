@@ -3,8 +3,10 @@ import test from "node:test";
 
 import { enrichmentService } from "../src/enrichment/enrichmentService.js";
 import { tripsData } from "../src/data/tripsData.js";
+import { inferStartDateFromText } from "../src/utils/tripDates.js";
 import { getHomeEmptyStateMode } from "../src/views/homeViewMode.js";
 import { state } from "../src/state.js";
+import { filterTripScopedItems } from "../src/state/helpers.js";
 
 test("custom traveler personas are admin-only", () => {
   const originalSession = { ...state.userSession };
@@ -98,4 +100,133 @@ test("authenticated empty home uses the account empty state", () => {
   assert.equal(getHomeEmptyStateMode({ activeTrip: null, isAuthenticated: true }), "account-empty");
   assert.equal(getHomeEmptyStateMode({ activeTrip: null, isAuthenticated: false }), "signed-out");
   assert.equal(getHomeEmptyStateMode({ activeTrip: { id: "paris" }, isAuthenticated: true }), "trip");
+});
+
+test("trip date text parser handles fall and Sep-Oct ranges", () => {
+  assert.equal(inferStartDateFromText("Spain, Fall 2026"), "2026-09-01");
+  assert.equal(inferStartDateFromText("Sept-Oct 2026"), "2026-09-01");
+});
+
+test("trip content scope keeps specific city trips from inheriting other locations", () => {
+  const scoped = filterTripScopedItems(
+    [
+      { id: "prado", title: "Prado Museum Art Walk", location: "Madrid" },
+      { id: "louvre", title: "Louvre Museum", location: "Paris" },
+      { id: "sagrada", title: "Sagrada Família", location: "Barcelona" },
+    ],
+    { destination: "Madrid, Spain", countryCode: "ES" }
+  );
+
+  assert.deepEqual(scoped.map((item) => item.id), ["prado"]);
+});
+
+test("future and remembered trips cannot be forced into live mode", () => {
+  const originalTrips = { ...tripsData };
+  const originalActiveTripId = state.activeTripId;
+  const originalTripMode = state.tripMode;
+
+  try {
+    Object.keys(tripsData).forEach((id) => delete tripsData[id]);
+    tripsData.future = { id: "future", destination: "Madrid, Spain", startDate: "2999-09-01", daysCount: 7 };
+    tripsData.done = { id: "done", destination: "Paris, France", startDate: "2000-01-01", daysCount: 3 };
+    const today = new Date().toISOString().split("T")[0];
+    tripsData.active = { id: "active", destination: "Current Trip", startDate: today, daysCount: 2 };
+
+    state.activeTripId = "future";
+    assert.equal(state.toggleTripMode(true), false);
+    assert.equal(state.tripMode, false);
+
+    state.activeTripId = "done";
+    assert.equal(state.toggleTripMode(true), false);
+    assert.equal(state.tripMode, false);
+
+    state.activeTripId = "active";
+    assert.equal(state.toggleTripMode(true), true);
+    assert.equal(state.tripMode, true);
+  } finally {
+    Object.keys(tripsData).forEach((id) => delete tripsData[id]);
+    Object.assign(tripsData, originalTrips);
+    state.activeTripId = originalActiveTripId;
+    state.tripMode = originalTripMode;
+  }
+});
+
+test("admin trip load restores demo trips and normalizes legacy Spain rows", async () => {
+  const originalTrips = { ...tripsData };
+  const originalSession = { ...state.userSession };
+  const originalActiveTripId = state.activeTripId;
+  const originalFetchTrips = enrichmentService.fetchTrips;
+  const originalFetchTripEvents = enrichmentService.fetchTripEvents;
+  const originalSyncGuestDraftTripsToAccount = state.syncGuestDraftTripsToAccount;
+  const originalRefreshTourismDiscovery = state.refreshTourismDiscovery;
+  const originalRefreshEventDiscovery = state.refreshEventDiscovery;
+  const originalRefreshTripIntelligence = state.refreshTripIntelligence;
+  const originalNotify = state.notify;
+
+  try {
+    Object.keys(tripsData).forEach((id) => delete tripsData[id]);
+    tripsData.spain = {
+      id: "spain",
+      destination: "Spain, Fall 2026",
+      dates: "Sept-Oct 2026",
+      center: [40.4168, -3.7038],
+      tourismPois: [{ id: "stale-paris", title: "Festival Paris Cinéma" }],
+      hiddenGems: [],
+      osmPlaces: [],
+      ideas: [
+        { id: "prado", title: "Prado Museum Art Walk", location: "Madrid" },
+        { id: "sagrada", title: "Sagrada Família", location: "Barcelona" },
+      ],
+      events: [{ id: "paris-event", title: "Festival Paris Cinéma" }],
+      calendarEvents: [{ id: "paris-calendar", title: "Louvre Museum", location: "Paris" }],
+      tripMode: true,
+    };
+    state.activeTripId = "spain";
+    state.userSession = { status: "ready", role: "admin", userId: "admin@test.local", authType: "admin-session" };
+    state.syncGuestDraftTripsToAccount = async () => {};
+    state.refreshTourismDiscovery = () => {};
+    state.refreshEventDiscovery = () => {};
+    state.refreshTripIntelligence = () => {};
+    state.notify = () => {};
+    enrichmentService.fetchTripEvents = async () => [
+      { id: "remote-paris-calendar", title: "Louvre Museum", location: "Paris" },
+    ];
+    enrichmentService.fetchTrips = async () => [
+      {
+        id: "spain",
+        user_id: "anonymous",
+        destination: "Spain, Fall 2026",
+        flag: "🇪🇸",
+        dates: "Sept-Oct 2026",
+        days_count: 14,
+        latitude: 40.4168,
+        longitude: -3.7038,
+      },
+    ];
+
+    await state.loadD1Trips();
+
+    assert.ok(tripsData.paris);
+    assert.ok(tripsData.crete);
+    assert.equal(tripsData.spain.destination, "Madrid, Spain");
+    assert.equal(tripsData.spain.language, "es");
+    assert.equal(tripsData.spain.startDate, "2026-09-01");
+    assert.equal(tripsData.spain.tripMode, false);
+    assert.deepEqual(tripsData.spain.tourismPois, []);
+    assert.deepEqual(tripsData.spain.events, []);
+    assert.deepEqual(tripsData.spain.calendarEvents, []);
+    assert.deepEqual(tripsData.spain.ideas.map((idea) => idea.id), ["prado"]);
+  } finally {
+    Object.keys(tripsData).forEach((id) => delete tripsData[id]);
+    Object.assign(tripsData, originalTrips);
+    state.userSession = originalSession;
+    state.activeTripId = originalActiveTripId;
+    state.syncGuestDraftTripsToAccount = originalSyncGuestDraftTripsToAccount;
+    state.refreshTourismDiscovery = originalRefreshTourismDiscovery;
+    state.refreshEventDiscovery = originalRefreshEventDiscovery;
+    state.refreshTripIntelligence = originalRefreshTripIntelligence;
+    state.notify = originalNotify;
+    enrichmentService.fetchTrips = originalFetchTrips;
+    enrichmentService.fetchTripEvents = originalFetchTripEvents;
+  }
 });

@@ -1418,9 +1418,6 @@ document.addEventListener("change", async (e) => {
   if (e.target.dataset.action === "select-trip-dropdown") {
     state.setTrip(e.target.value);
   }
-  if (e.target.dataset.action === "toggle-trip-mode") {
-    state.toggleTripMode(e.target.checked);
-  }
   if (e.target.dataset.action === "select-quick-capture-trip") {
     state.setQuickCaptureTrip(e.target.value);
   }

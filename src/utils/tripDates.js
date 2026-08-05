@@ -33,6 +33,31 @@ export function formatTripDateRangeFromParts(startDate, daysCount) {
   return `${formatter.format(start)} - ${formatter.format(end)}`;
 }
 
+export function inferStartDateFromText(value = "") {
+  const text = String(value || "");
+  const year = text.match(/\b(20\d\d)\b/)?.[1];
+  if (!year) return "";
+  const lower = text.toLowerCase();
+  const monthMap = [
+    ["sept", "09"],
+    ["sep", "09"],
+    ["jan", "01"],
+    ["feb", "02"],
+    ["mar", "03"],
+    ["apr", "04"],
+    ["may", "05"],
+    ["jun", "06"],
+    ["jul", "07"],
+    ["aug", "08"],
+    ["oct", "10"],
+    ["nov", "11"],
+    ["dec", "12"],
+  ];
+  const month = monthMap.find(([name]) => lower.includes(name))?.[1] ||
+    (/fall|autumn/.test(lower) ? "09" : /winter/.test(lower) ? "12" : /spring/.test(lower) ? "03" : /summer/.test(lower) ? "06" : "");
+  return month ? `${year}-${month}-01` : "";
+}
+
 function parseLocalDate(value = "") {
   if (!value) return null;
   const [year, month, day] = String(value).split("-").map(Number);

@@ -20,7 +20,6 @@
     "@phosphor-icons/core": "^2.1.1",
     "gsap": "^3.15.0",
     "leaflet": "^1.9.4",
-    "lucide": "^1.26.0",
     "motion": "^12.43.0",
     "vite": "latest"
   },

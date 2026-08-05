@@ -2,17 +2,22 @@
  * tripState mixin — trip CRUD, calendar events, flight routes, saved places,
  * checklists, and D1 sync.
  */
-import { tripsData } from "../data/tripsData.js";
+import { cloneDemoSampleTrips, tripsData } from "../data/tripsData.js";
 import { enrichmentService } from "../enrichment/enrichmentService.js";
 import { formatAirportLabel, getAirportByIata } from "../services/airportService.js";
 import { normalizeFlightType, searchFlightsForTrip } from "../services/flightService.js";
 import { fetchDynamicDestinationBrief } from "../services/destinationService.js";
 import { resolveTripCenter } from "../app/mapController.js";
 import { getCountryFlagEmoji } from "../utils/countryEmoji.js";
+import { formatTripDateRangeFromParts, getTripDateStatus, inferStartDateFromText } from "../utils/tripDates.js";
 import {
   buildTripFlightRoute,
+  filterTripScopedItems,
   getDefaultPlanViewMode,
+  isTripContentInScope,
   mergeCalendarEvents,
+  removeStoredCalendarEvents,
+  removeStoredTourismDiscovery,
   readStoredCalendarEvents,
   readStoredTripCompanions,
   writeStoredCalendarEvents,
@@ -33,10 +38,30 @@ export const tripStateMixin = {
     this.notify();
   },
 
+  restoreDemoTrips() {
+    const demoTrips = cloneDemoSampleTrips();
+    Object.entries(demoTrips).forEach(([id, trip]) => {
+      if (!tripsData[id]) {
+        tripsData[id] = trip;
+        if (trip.checklist) this.checklists[id] = [...trip.checklist];
+        this.tourismDiscoveryStatus[id] = this.tourismDiscoveryStatus[id] || { status: "idle", error: "", updatedAt: "" };
+        this.eventDiscoveryStatus[id] = this.eventDiscoveryStatus[id] || { status: "idle", error: "", updatedAt: "" };
+        this.tripIntelligenceStatus[id] = this.tripIntelligenceStatus[id] || { status: "idle", error: "", updatedAt: "" };
+      }
+    });
+    if (!this.activeTripId || !tripsData[this.activeTripId]) {
+      this.activeTripId = Object.keys(demoTrips)[0] || null;
+    }
+  },
+
   async syncGuestDraftTripsToAccount() {
     if (!this.isAuthenticated) return;
     const allTrips = Object.values(tripsData);
-    const guestDraftTrips = allTrips.filter((t) => t.syncStatus === "needs-auth" || (!t.userId && t.syncStatus !== "synced"));
+    const guestDraftTrips = allTrips.filter((t) =>
+      !t.isDemoTrip &&
+      t.syncStatus !== "demo" &&
+      (t.syncStatus === "needs-auth" || (!t.userId && t.syncStatus !== "synced"))
+    );
 
     if (guestDraftTrips.length === 0) return;
 
@@ -66,6 +91,7 @@ export const tripStateMixin = {
   },
 
   async loadD1Trips() {
+    if (this.isAdmin) this.restoreDemoTrips();
     this.tripSyncStatus = { status: "loading", error: "", updatedAt: "" };
     this.notify();
     await this.syncGuestDraftTripsToAccount();
@@ -74,57 +100,89 @@ export const tripStateMixin = {
       const remoteTrips = Array.isArray(res) ? res : (Array.isArray(res?.trips) ? res.trips : []);
       if (remoteTrips.length) {
         remoteTrips.forEach((t) => {
+          const existingTrip = tripsData[t.id] || {};
+          const center = getLoadedTripCenter(t, existingTrip);
+          const flightRoute = buildTripFlightRoute(t, existingTrip);
+          const destination = getLoadedTripDestination(t, existingTrip, flightRoute, center);
+          const daysCount = Number(t.days_count || t.daysCount) || existingTrip.daysCount || 7;
+          const startDate = getLoadedTripStartDate(t, existingTrip);
+          const dates = t.dates || existingTrip.dates || formatTripDateRangeFromParts(startDate, daysCount);
           const resolvedFlag =
             t.flag && t.flag.length <= 4 && !t.flag.match(/^[a-zA-Z]/)
               ? t.flag
-              : getCountryFlagEmoji(t.destination);
+              : getCountryFlagEmoji(destination);
           if (!tripsData[t.id]) {
             tripsData[t.id] = {
               id: t.id,
               userId: t.user_id || t.userId || "",
-              destination: t.destination || "Trip",
+              destination,
+              language: getTripLanguage(destination, t.language || existingTrip.language),
               flag: resolvedFlag,
-              dates: t.dates || "Upcoming",
-              daysCount: Number(t.days_count || t.daysCount) || 7,
-              startDate: t.start_date || t.startDate || new Date().toISOString().split("T")[0],
+              dates,
+              daysCount,
+              startDate,
               status: "Upcoming",
               statusText: "Trip loaded",
-              tripMode: false,
-              center: [t.latitude || 40.4168, t.longitude || -3.7038],
+              tripMode: isTripLiveWindow(startDate, daysCount),
+              center,
               zoom: 12,
-              flightRoute: buildTripFlightRoute(t),
-              flightPreference: normalizeFlightType(t.flight_type || "regular"),
+              flightRoute,
+              flightPreference: normalizeFlightType(t.flight_type || existingTrip.flightPreference || "regular"),
               flightSearch: { status: "idle", offers: [], updatedAt: "" },
-              weather: { temp: "22°C", condition: "Sunny", forecast: [] },
+              weather: existingTrip.weather || { temp: "22°C", condition: "Sunny", forecast: [] },
               upcomingActivity: {
-                title: t.destination,
-                subtitle: t.dates || "Upcoming",
-                image: "https://images.unsplash.com/photo-1543783207-ec64e4d95325?auto=format&fit=crop&w=600&q=80",
+                title: destination,
+                subtitle: dates || "Upcoming",
+                image: existingTrip.upcomingActivity?.image || getDestinationImage(destination),
               },
-              checklist: [{ id: "stay", label: "Book your stay", completed: false }],
+              checklist: existingTrip.checklist || [{ id: "stay", label: "Book your stay", completed: false }],
               calendarEvents: [],
-              ideas: [],
-              events: [],
+              ideas: existingTrip.ideas || [],
+              events: existingTrip.events || [],
               companions: readStoredTripCompanions(t.id),
               tourismPois: [],
               hiddenGems: [],
               osmPlaces: [],
+              syncStatus: "synced",
             };
           } else {
-            tripsData[t.id].flag = resolvedFlag;
-            tripsData[t.id].dates = t.dates || tripsData[t.id].dates;
-            tripsData[t.id].daysCount = Number(t.days_count || t.daysCount) || tripsData[t.id].daysCount;
-            tripsData[t.id].startDate = t.start_date || t.startDate || tripsData[t.id].startDate;
-            tripsData[t.id].flightRoute = buildTripFlightRoute(t, tripsData[t.id]);
+            const trip = tripsData[t.id];
+            const previousDestination = trip.destination;
+            const previousCenter = trip.center;
+            trip.userId = t.user_id || t.userId || trip.userId || "";
+            trip.flag = resolvedFlag;
+            trip.destination = destination;
+            trip.language = getTripLanguage(destination, t.language || trip.language);
+            trip.dates = dates || trip.dates;
+            trip.daysCount = daysCount || trip.daysCount;
+            trip.startDate = startDate || trip.startDate;
+            trip.tripMode = isTripLiveByDate(trip);
+            trip.center = center;
+            trip.flightRoute = flightRoute;
             tripsData[t.id].flightPreference = normalizeFlightType(
               t.flight_type || tripsData[t.id].flightPreference || "regular"
             );
+            if (trip.upcomingActivity) {
+              trip.upcomingActivity = {
+                ...trip.upcomingActivity,
+                title: destination,
+                subtitle: trip.dates,
+                image: trip.upcomingActivity.image || getDestinationImage(destination),
+              };
+            }
+            trip.syncStatus = "synced";
+            if (hasTripScopeChanged(previousDestination, previousCenter, trip)) {
+              clearTripDiscoveryForScope(this, trip.id, trip);
+            } else {
+              clearOutOfScopePlaces(this, trip.id, trip);
+            }
           }
         });
 
         if (!this.activeTripId || !tripsData[this.activeTripId]) {
           this.activeTripId = remoteTrips[0]?.id || null;
         }
+        this.tripMode = isTripLiveByDate(this.activeTrip);
 
         await Promise.all(
           remoteTrips.map(async (t) => {
@@ -132,14 +190,15 @@ export const tripStateMixin = {
             if (!trip) return;
             try {
               const remoteEvents = await enrichmentService.fetchTripEvents(t.id);
-              if (remoteEvents.length) {
-                trip.calendarEvents = mergeCalendarEvents(trip.calendarEvents || [], remoteEvents);
+              const scopedRemoteEvents = filterTripScopedItems(remoteEvents || [], trip);
+              if (scopedRemoteEvents.length) {
+                trip.calendarEvents = mergeCalendarEvents(trip.calendarEvents || [], scopedRemoteEvents);
               }
               const storedEvents = readStoredCalendarEvents(t.id);
-              if (storedEvents) trip.calendarEvents = storedEvents;
+              if (storedEvents) trip.calendarEvents = mergeScopedCalendarEvents(t.id, trip, storedEvents);
             } catch {
               const storedEvents = readStoredCalendarEvents(t.id);
-              if (storedEvents) trip.calendarEvents = storedEvents;
+              if (storedEvents) trip.calendarEvents = mergeScopedCalendarEvents(t.id, trip, storedEvents);
             }
           })
         );
@@ -181,7 +240,10 @@ export const tripStateMixin = {
       startDate: tripInput.startDate || new Date().toISOString().split("T")[0],
       status: "Upcoming",
       statusText: "Trip created",
-      tripMode: true,
+      tripMode: isTripLiveWindow(
+        tripInput.startDate || new Date().toISOString().split("T")[0],
+        Number(tripInput.daysCount) || 7
+      ),
       center: resolvedCenter,
       zoom: 13,
       flightRoute: {
@@ -283,10 +345,15 @@ export const tripStateMixin = {
     const trip = tripsData[tripId];
     if (!trip || !newDestination) return;
 
+    const previousDestination = trip.destination;
+    const previousCenter = trip.center;
     const flag = getCountryFlagEmoji(newDestination);
     trip.destination = newDestination;
     trip.flag = flag;
     if (trip.upcomingActivity) trip.upcomingActivity.title = newDestination;
+    if (hasTripScopeChanged(previousDestination, previousCenter, trip)) {
+      clearTripDiscoveryForScope(this, tripId, trip);
+    }
 
     this.notify();
 
@@ -300,6 +367,8 @@ export const tripStateMixin = {
   async updateTripDetails(tripId, updates = {}) {
     const trip = tripsData[tripId];
     if (!trip) return;
+    const previousDestination = trip.destination;
+    const previousCenter = trip.center;
     const destination = updates.destination || trip.destination;
     const flag = getCountryFlagEmoji(destination);
     const daysCount = Math.max(1, Number(updates.daysCount) || trip.daysCount || 7);
@@ -310,6 +379,7 @@ export const tripStateMixin = {
     trip.daysCount = daysCount;
     trip.dates = updates.dates || trip.dates;
     trip.center = updates.center || trip.center;
+    trip.tripMode = isTripLiveByDate(trip);
     trip.statusText = "Trip updated";
     trip.tourismPois = [];
     trip.hiddenGems = [];
@@ -337,6 +407,12 @@ export const tripStateMixin = {
       };
     } else if (trip.flightRoute) {
       trip.flightRoute.departureDate = trip.startDate;
+    }
+
+    if (hasTripScopeChanged(previousDestination, previousCenter, trip)) {
+      clearTripDiscoveryForScope(this, tripId, trip);
+    } else {
+      clearOutOfScopePlaces(this, tripId, trip);
     }
 
     this.notify();
@@ -449,6 +525,7 @@ export const tripStateMixin = {
     };
 
     trip.calendarEvents = trip.calendarEvents || [];
+    if (!isTripContentInScope(newEvt, trip)) return;
     trip.calendarEvents.push(newEvt);
     writeStoredCalendarEvents(tripId, trip.calendarEvents);
     this.notify();
@@ -549,3 +626,142 @@ export const tripStateMixin = {
     }
   },
 };
+
+function getLoadedTripCenter(row = {}, existingTrip = {}) {
+  const lat = Number(row.latitude ?? row.lat);
+  const lng = Number(row.longitude ?? row.lng);
+  if (Number.isFinite(lat) && Number.isFinite(lng) && (lat || lng)) return [lat, lng];
+  if (Array.isArray(existingTrip.center) && existingTrip.center.length === 2) return existingTrip.center;
+  return resolveTripCenter(row.destination || existingTrip.destination || "");
+}
+
+function getLoadedTripStartDate(row = {}, existingTrip = {}) {
+  const explicit = String(row.start_date || row.startDate || existingTrip.startDate || "").slice(0, 10);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(explicit)) return explicit;
+  return inferStartDateFromText([row.dates, row.destination, existingTrip.dates, existingTrip.destination].filter(Boolean).join(" ")) ||
+    new Date().toISOString().split("T")[0];
+}
+
+function isTripLiveWindow(startDate = "", daysCount = 1) {
+  return getTripDateStatus({ startDate, daysCount }).state === "active";
+}
+
+function isTripLiveByDate(trip = {}) {
+  return getTripDateStatus(trip).state === "active";
+}
+
+function mergeScopedCalendarEvents(tripId, trip, events = []) {
+  const scopedEvents = filterTripScopedItems(events, trip);
+  if (scopedEvents.length !== (events || []).length) {
+    removeStoredCalendarEvents(tripId);
+  }
+  return mergeCalendarEvents(trip.calendarEvents || [], scopedEvents);
+}
+
+function getLoadedTripDestination(row = {}, existingTrip = {}, flightRoute = {}, center = []) {
+  const rawDestination = String(row.destination || existingTrip.destination || "Trip").trim();
+  const destinationAirport = getAirportByIata(flightRoute.destinationIata);
+  const inferred = destinationAirport ? `${cleanAirportCity(destinationAirport.city)}, ${destinationAirport.country}` : inferDestinationFromCenter(center);
+
+  if (inferred && isCountryOrSeasonTripLabel(rawDestination)) return inferred;
+  return normalizeSeasonTripLabel(rawDestination) || inferred || rawDestination;
+}
+
+function normalizeSeasonTripLabel(value = "") {
+  const text = String(value || "").trim();
+  if (/^spain\b/i.test(text) && /fall|autumn|sept|sep|oct|20\d\d/i.test(text)) return "Madrid, Spain";
+  return text;
+}
+
+function isCountryOrSeasonTripLabel(value = "") {
+  const text = String(value || "").trim().toLowerCase();
+  return /^(spain|france|greece|italy|portugal|denmark|sweden|japan|united kingdom|uk|usa|united states)\b/.test(text) ||
+    /\b(fall|autumn|spring|summer|winter|20\d\d|sept?|oct)\b/.test(text);
+}
+
+function inferDestinationFromCenter(center = []) {
+  const lat = Number(center[0]);
+  const lng = Number(center[1]);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return "";
+  const known = [
+    { destination: "Madrid, Spain", center: [40.4168, -3.7038] },
+    { destination: "Barcelona, Spain", center: [41.3874, 2.1686] },
+    { destination: "Paris, France", center: [48.8566, 2.3522] },
+    { destination: "Heraklion, Crete", center: [35.3391, 25.132] },
+  ];
+  return known.find((item) => Math.abs(item.center[0] - lat) < 0.35 && Math.abs(item.center[1] - lng) < 0.35)?.destination || "";
+}
+
+function cleanAirportCity(city = "") {
+  return String(city || "").replace(/\s*\(.+?\)\s*/g, "").trim();
+}
+
+function getTripLanguage(destination = "", fallback = "") {
+  const lower = String(destination || "").toLowerCase();
+  if (lower.includes("spain") || lower.includes("madrid") || lower.includes("barcelona")) return "es";
+  if (lower.includes("france") || lower.includes("paris")) return "fr";
+  if (lower.includes("greece") || lower.includes("crete") || lower.includes("heraklion")) return "el";
+  return fallback || "en";
+}
+
+function getDestinationImage(destination = "") {
+  const lower = String(destination || "").toLowerCase();
+  if (lower.includes("madrid")) return "https://images.unsplash.com/photo-1539037116277-4db20889f2d4?auto=format&fit=crop&w=600&q=80";
+  if (lower.includes("barcelona")) return "https://images.unsplash.com/photo-1583422409516-2895a77efded?auto=format&fit=crop&w=600&q=80";
+  if (lower.includes("crete") || lower.includes("heraklion")) return "https://images.unsplash.com/photo-1570077188670-e3a8d69ac5ff?auto=format&fit=crop&w=600&q=80";
+  if (lower.includes("paris")) return "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=600&q=80";
+  return "https://images.unsplash.com/photo-1488646953014-85cb44e25828?auto=format&fit=crop&w=600&q=80";
+}
+
+function hasTripScopeChanged(previousDestination = "", previousCenter = [], trip = {}) {
+  const prev = String(previousDestination || "").toLowerCase();
+  const next = String(trip.destination || "").toLowerCase();
+  const centerChanged = Array.isArray(previousCenter) && Array.isArray(trip.center)
+    ? Math.abs(Number(previousCenter[0]) - Number(trip.center[0])) > 0.5 || Math.abs(Number(previousCenter[1]) - Number(trip.center[1])) > 0.5
+    : false;
+  return Boolean(prev && next && prev !== next) || centerChanged;
+}
+
+function clearTripDiscoveryForScope(appState, tripId, trip) {
+  trip.tourismPois = [];
+  trip.hiddenGems = [];
+  trip.osmPlaces = [];
+  trip.events = [];
+  trip.calendarEvents = [];
+  trip.ideas = filterTripScopedItems(trip.ideas || [], trip);
+  trip.mapPins = [];
+  trip.nearbyNow = [];
+  trip.liveInfo = [];
+  trip.transportOptions = [];
+  appState.tourismDiscoveryStatus[tripId] = { status: "idle", error: "", updatedAt: "" };
+  appState.eventDiscoveryStatus[tripId] = { status: "idle", error: "", updatedAt: "" };
+  removeStoredTourismDiscovery(tripId);
+  removeStoredCalendarEvents(tripId);
+}
+
+function clearOutOfScopePlaces(appState, tripId, trip) {
+  const scopedTourismPois = filterTripScopedItems(trip.tourismPois || [], trip);
+  const scopedHiddenGems = filterTripScopedItems(trip.hiddenGems || [], trip);
+  const scopedOsmPlaces = filterTripScopedItems(trip.osmPlaces || [], trip);
+  const scopedEvents = filterTripScopedItems(trip.events || [], trip);
+  const scopedCalendarEvents = filterTripScopedItems(trip.calendarEvents || [], trip);
+  const scopedIdeas = filterTripScopedItems(trip.ideas || [], trip);
+  const hasLeak =
+    scopedTourismPois.length !== (trip.tourismPois || []).length ||
+    scopedHiddenGems.length !== (trip.hiddenGems || []).length ||
+    scopedOsmPlaces.length !== (trip.osmPlaces || []).length ||
+    scopedEvents.length !== (trip.events || []).length ||
+    scopedCalendarEvents.length !== (trip.calendarEvents || []).length ||
+    scopedIdeas.length !== (trip.ideas || []).length;
+  if (!hasLeak) return;
+  trip.tourismPois = scopedTourismPois;
+  trip.hiddenGems = scopedHiddenGems;
+  trip.osmPlaces = scopedOsmPlaces;
+  trip.events = scopedEvents;
+  trip.calendarEvents = scopedCalendarEvents;
+  trip.ideas = scopedIdeas;
+  appState.tourismDiscoveryStatus[tripId] = { status: "idle", error: "", updatedAt: "" };
+  appState.eventDiscoveryStatus[tripId] = { status: "idle", error: "", updatedAt: "" };
+  removeStoredTourismDiscovery(tripId);
+  removeStoredCalendarEvents(tripId);
+}

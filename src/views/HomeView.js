@@ -17,7 +17,7 @@ export function renderHomeView() {
     return renderSignedOutWelcomeHero();
   }
 
-  const isLiveMode = state.tripMode;
+  const isLiveMode = getTripDateStatus(trip).state === "active";
   const checklist = state.checklists ? (state.checklists[trip.id] || trip.checklist) : (trip.checklist || []);
   const liveTimeStr = formatLiveTimeString();
   const statusText = getDynamicTripCountdown(trip);

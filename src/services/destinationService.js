@@ -192,12 +192,16 @@ export function getQuickFactsForDestination(destinationName = "") {
     currency = "THB (฿)";
     language = "Thai";
     timezone = "GMT+7";
+  } else if (countryLower.includes("spain") || lower.includes("spain") || lower.includes("madrid") || lower.includes("barcelona")) {
+    currency = "EUR (€)";
+    language = lower.includes("barcelona") ? "Spanish / Catalan" : "Spanish";
+    timezone = "GMT+2";
   }
 
   return {
     population: "1.2 million",
     area: "250 km²",
-    country: countryPart || "International",
+    country: lower.includes("spain") ? "Spain 🇪🇸" : (countryPart || "International"),
     language,
     currency,
     timezone,

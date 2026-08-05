@@ -352,10 +352,11 @@ function initPoiOverviewMap(trip) {
     { dLat: -0.005, dLng: 0.008,  icon: "🍷" }
   ];
 
-  let rawSpots = [...(trip.tourismPois || []), ...(trip.ideas || []), ...(trip.explorePlaces || [])];
-  if (!rawSpots.length && typeof window !== "undefined" && window.__getTopAttractionsForTrip) {
+  let rawSpots = [];
+  if (typeof window !== "undefined" && window.__getTopAttractionsForTrip) {
     rawSpots = window.__getTopAttractionsForTrip(trip);
   }
+  if (!rawSpots.length) rawSpots = [...(trip.ideas || []), ...(trip.explorePlaces || []), ...(trip.tourismPois || [])];
 
   const pois = (rawSpots.length ? rawSpots.slice(0, 5) : [
     { title: `${trip.destination || 'City'} Central Landmark`, category: "Landmark", rating: 4.9, image: "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=400&q=80" },
@@ -368,13 +369,13 @@ function initPoiOverviewMap(trip) {
     return {
       id: spot.id || `poi-${idx}`,
       title: spot.title || spot.name || `${trip.destination} Spot`,
-      lat: spot.lat || spot.latitude || (center[0] + offset.dLat),
-      lng: spot.lng || spot.longitude || (center[1] + offset.dLng),
+      lat: spot.lat || spot.latitude || spot.coordinates?.[0] || (center[0] + offset.dLat),
+      lng: spot.lng || spot.longitude || spot.coordinates?.[1] || (center[1] + offset.dLng),
       icon: spot.icon || (spot.category?.includes("Cafe") ? "☕" : spot.category?.includes("Wine") ? "🍷" : offset.icon),
       rating: spot.rating || 4.8,
       category: spot.category || spot.tag || "Attraction",
       distance: spot.geoLabel || `${(0.5 + idx * 0.4).toFixed(1)} km away`,
-      img: spot.image || spot.photoUrl || "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=400&q=80"
+      img: spot.image || spot.photoUrl || getMapFallbackImage(trip.destination)
     };
   });
 
@@ -451,4 +452,13 @@ function initPoiOverviewMap(trip) {
   });
 
   activeMaps.set("poi-overview", map);
+}
+
+function getMapFallbackImage(destination = "") {
+  const lower = String(destination || "").toLowerCase();
+  if (lower.includes("madrid")) return "https://images.unsplash.com/photo-1539037116277-4db20889f2d4?auto=format&fit=crop&w=400&q=80";
+  if (lower.includes("barcelona")) return "https://images.unsplash.com/photo-1583422409516-2895a77efded?auto=format&fit=crop&w=400&q=80";
+  if (lower.includes("crete") || lower.includes("heraklion")) return "https://images.unsplash.com/photo-1570077188670-e3a8d69ac5ff?auto=format&fit=crop&w=400&q=80";
+  if (lower.includes("paris")) return "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=400&q=80";
+  return "https://images.unsplash.com/photo-1488646953014-85cb44e25828?auto=format&fit=crop&w=400&q=80";
 }

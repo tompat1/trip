@@ -2,9 +2,6 @@ import { state } from "../state.js";
 import { renderIcon } from "../utils/icons.js";
 import { TRIP_LOGO_SVG } from "./BrandAssets.js";
 import { getTripDateStatus } from "../utils/tripDates.js";
-import ribbonLive from "../assets/trip_badge_clean_ribbon_live.webp";
-import ribbonPlan from "../assets/trip_badge_clean_ribbon_planning.webp";
-import ribbonRemember from "../assets/trip_badge_clean_ribbon_rmbr.webp";
 
 export function renderHeader() {
   const isLanding = state.activeView === "landing";
@@ -51,7 +48,7 @@ export function renderHeader() {
   const dateStatus = getTripDateStatus(trip);
   const isDoneTrip = dateStatus.state === "done";
   const tripStage = getTripStage(dateStatus);
-  const ribbon = getTripRibbon(tripStage);
+  const lifecycleLabel = getTripStageLabel(tripStage);
 
   const userWeather = state.userLocationWeather || (trip && trip.weather?.temp && trip.weather.temp !== "--°C" ? trip.weather : null) || {
     temp: "--°C",
@@ -114,10 +111,10 @@ export function renderHeader() {
 
       <div class="trip-context-card trip-context-card--${tripStage}">
         ${noTrip ? "" : `
-          <div class="trip-stage-ribbon trip-stage-ribbon--${tripStage}" aria-label="${escapeHtml(ribbon.label)}">
-            <img class="trip-stage-ribbon__image" src="${ribbon.src}" alt="" aria-hidden="true" />
-            <span class="trip-stage-ribbon__label">${escapeHtml(ribbon.label)}</span>
-          </div>
+          <span class="trip-lifecycle-pill trip-lifecycle-pill--${tripStage}" aria-label="${escapeHtml(lifecycleLabel)}">
+            ${renderIcon(getTripStageIcon(tripStage))}
+            <span>${escapeHtml(lifecycleLabel)}</span>
+          </span>
         `}
         <div class="trip-context-card__header">
           ${noTrip ? "" : `
@@ -155,15 +152,6 @@ export function renderHeader() {
               <button class="btn btn--primary btn--sm" data-action="create-trip" title="Create a new custom trip">
                 <span>+ New trip</span>
               </button>
-              ${noTrip ? "" : `
-                <label class="trip-mode-toggle" title="Toggle Trip Mode (Live vs Planning)">
-                  <span class="trip-mode-label">Trip Mode</span>
-                  <input type="checkbox" ${state.tripMode ? 'checked' : ''} data-action="toggle-trip-mode" />
-                  <span class="toggle-slider">
-                    <span class="toggle-knob">${state.tripMode ? 'ON' : 'OFF'}</span>
-                  </span>
-                </label>
-              `}
             </div>
           </div>
         </div>
@@ -192,10 +180,16 @@ function getTripStage(dateStatus) {
   return "plan";
 }
 
-function getTripRibbon(stage) {
-  if (stage === "remember") return { src: ribbonRemember, label: "Remember mode" };
-  if (stage === "live") return { src: ribbonLive, label: "Live mode" };
-  return { src: ribbonPlan, label: "Planning mode" };
+function getTripStageLabel(stage) {
+  if (stage === "remember") return "Remember mode";
+  if (stage === "live") return "Live mode";
+  return "Planning mode";
+}
+
+function getTripStageIcon(stage) {
+  if (stage === "remember") return "bookOpen";
+  if (stage === "live") return "radio";
+  return "calendar";
 }
 
 function getLiveDayTimeFormatted() {

@@ -5,7 +5,7 @@ import { renderIcon } from "../utils/icons.js";
 import { TRIP_STAMP_SVG } from "../components/BrandAssets.js";
 import { calculateFlightDistance, formatAirportLabel, getFlightRouteDisplay } from "../services/airportService.js";
 import { getDestinationTransitGuide } from "../services/transitService.js";
-import { getDestinationEtiquetteAndTips } from "../services/destinationService.js";
+import { getDestinationEtiquetteAndTips, getQuickFactsForDestination } from "../services/destinationService.js";
 import { FLIGHT_TYPE_OPTIONS, getFlightRouteForTrip } from "../services/flightService.js";
 import { CONCERTS_DATABASE } from "../services/concertService.js";
 import { composeEditorialProfile, createVerifiedFactBundle } from "../enrichment/editorialComposer.js";
@@ -784,11 +784,11 @@ function getNeighborhoodsForDestination(destinationName = "") {
 
 function getTopAttractionsForTrip(trip) {
   const livePlaces = [
+    ...(trip.ideas || []),
     ...(trip.explorePlaces || []),
     ...(trip.tourismPois || []),
     ...(trip.hiddenGems || []),
     ...(trip.osmPlaces || []),
-    ...(trip.ideas || [])
   ].filter((p, idx, arr) => p && (p.title || p.name) && arr.findIndex(x => (x.title || x.name) === (p.title || p.name)) === idx);
 
   if (livePlaces.length > 0) {
@@ -797,22 +797,36 @@ function getTopAttractionsForTrip(trip) {
       title: spot.title || spot.name,
       category: spot.category || spot.tag || spot.kind || "Attraction",
       rating: spot.rating || 4.8,
-      image: spot.image || spot.photoUrl || spot.heroImage || "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=400&q=80",
+      image: spot.image || spot.photoUrl || spot.heroImage || getDestinationFallbackImage(trip.destination, 400),
       geoLabel: spot.geoLabel || spot.subtitle || (spot.dist ? `${(spot.dist / 1000).toFixed(1)} km away` : (trip.destination || "Local")),
-      lat: spot.lat || spot.latitude,
-      lng: spot.lng || spot.longitude
+      lat: spot.lat || spot.latitude || spot.coordinates?.[0],
+      lng: spot.lng || spot.longitude || spot.coordinates?.[1]
     }));
   }
 
   const cleanCity = trip.destination ? trip.destination.split(",")[0].trim() : "Local";
 
   return [
-    { id: "g1", title: `${cleanCity} Central Landmark & Historic Center`, category: "Historic Landmark", rating: 4.9, image: "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=400&q=80", geoLabel: `${cleanCity} Center` },
+    { id: "g1", title: `${cleanCity} Central Landmark & Historic Center`, category: "Historic Landmark", rating: 4.9, image: getDestinationFallbackImage(trip.destination, 400), geoLabel: `${cleanCity} Center` },
     { id: "g2", title: `${cleanCity} Old Town Quarter & Architecture`, category: "Historic Quarter", rating: 4.8, image: "https://images.unsplash.com/photo-1499856871958-5b9627545d1a?auto=format&fit=crop&w=400&q=80", geoLabel: "Historic District" },
     { id: "g3", title: `${cleanCity} Central Food Market & Gastronomy`, category: "Local Gastronomy", rating: 4.7, image: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=400&q=80", geoLabel: "Market Square" },
     { id: "g4", title: `${cleanCity} Museum of Art & Culture`, category: "Culture & Art", rating: 4.8, image: "https://images.unsplash.com/photo-1565008447742-97f6f38c985c?auto=format&fit=crop&w=400&q=80", geoLabel: "Museum Quarter" },
     { id: "g5", title: `${cleanCity} Waterfront & Promenade Vistas`, category: "Scenic View", rating: 4.9, image: "https://images.unsplash.com/photo-1511739001486-6bfe10ce785f?auto=format&fit=crop&w=400&q=80", geoLabel: "Harbor Front" }
   ];
+}
+
+function getDestinationFallbackImage(destination = "", width = 600) {
+  const lower = String(destination || "").toLowerCase();
+  const image = lower.includes("madrid")
+    ? "https://images.unsplash.com/photo-1539037116277-4db20889f2d4"
+    : lower.includes("barcelona")
+      ? "https://images.unsplash.com/photo-1583422409516-2895a77efded"
+      : lower.includes("crete") || lower.includes("heraklion")
+        ? "https://images.unsplash.com/photo-1570077188670-e3a8d69ac5ff"
+        : lower.includes("paris")
+          ? "https://images.unsplash.com/photo-1502602898657-3e91760cbb34"
+          : "https://images.unsplash.com/photo-1488646953014-85cb44e25828";
+  return `${image}?auto=format&fit=crop&w=${width}&q=80`;
 }
 
 if (typeof window !== "undefined") {
@@ -838,7 +852,7 @@ function renderPoiMapCanvas(trip, topPOIs) {
     rating: 4.9,
     category: "Landmark",
     geoLabel: "1.2 km away",
-    image: "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=400&q=80"
+    image: getDestinationFallbackImage(trip.destination, 400)
   };
   const isLouvreAdded = isPoiAddedToCalendar(events, activeSpot.title);
 
@@ -1062,14 +1076,14 @@ function renderOverviewTabBody(trip, activeFilter, cachedBrief, editorial, topPO
         <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px;">
           <div style="background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius-md); overflow: hidden; padding: 14px;">
             <span class="voice-mono" style="font-size: 0.68rem; font-weight: 700; color: var(--orange);">STORY</span>
-            <h4 style="font-size: 0.95rem; font-weight: 700; color: var(--ink); margin: 4px 0;">Sunset Walk at Pont Neuf</h4>
-            <p style="font-size: 0.82rem; color: var(--ink-muted); margin: 0; line-height: 1.45;">"Golden hour light reflecting on the Seine riverbanks while street musicians play jazz."</p>
+            <h4 style="font-size: 0.95rem; font-weight: 700; color: var(--ink); margin: 4px 0;">Evening Walk in ${escapeHtml(area)}</h4>
+            <p style="font-size: 0.82rem; color: var(--ink-muted); margin: 0; line-height: 1.45;">"Golden hour wandering, local squares, and the small details worth saving to the journal."</p>
           </div>
 
           <div style="background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius-md); overflow: hidden; padding: 14px;">
             <span class="voice-mono" style="font-size: 0.68rem; font-weight: 700; color: var(--blue);">GUIDE</span>
-            <h4 style="font-size: 0.95rem; font-weight: 700; color: var(--ink); margin: 4px 0;">Le Marais Coffee & Pastry Crawl</h4>
-            <p style="font-size: 0.82rem; color: var(--ink-muted); margin: 0; line-height: 1.45;">"Starting at Poilâne bakery for fresh sourdough croissants then specialty brew at Boot Café."</p>
+            <h4 style="font-size: 0.95rem; font-weight: 700; color: var(--ink); margin: 4px 0;">${escapeHtml(area)} Food & Coffee Crawl</h4>
+            <p style="font-size: 0.82rem; color: var(--ink-muted); margin: 0; line-height: 1.45;">"A flexible route for specialty coffee, markets, tapas bars, and neighborhood stops."</p>
           </div>
         </div>
       </div>
@@ -1204,17 +1218,9 @@ function renderLocationEditorialIntroCard(trip) {
     ? trip.destination.split(",").slice(1).join(",").trim()
     : (cachedBrief?.quickFacts?.country || "International");
 
-  const quickFacts = cachedBrief?.quickFacts || {
-    population: "1.2 million",
-    area: "250 km²",
-    country: countryName,
-    language: "Local / English",
-    currency: "EUR (€)",
-    timezone: "GMT+2",
-    bestTime: "Apr–Oct"
-  };
+  const quickFacts = cachedBrief?.quickFacts || getQuickFactsForDestination(destination);
 
-  const imageUrl = cachedBrief?.heroImage || cachedBrief?.thumbnail || trip.heroImage || "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=1200&q=80";
+  const imageUrl = cachedBrief?.heroImage || cachedBrief?.thumbnail || trip.heroImage || trip.upcomingActivity?.image || getDestinationFallbackImage(destination, 1200);
   const activeOverviewFilter = state.overviewFilter || "overview";
   const topPOIs = getTopAttractionsForTrip(trip);
 

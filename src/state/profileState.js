@@ -28,6 +28,7 @@ export const profileStateMixin = {
     await this.refreshUserSession();
     if (!this.isAuthenticated) return this.userSession;
 
+    if (this.isAdmin) this.restoreDemoTrips?.();
     await this.loadD1Trips();
     if (this.activeView === "landing") {
       this.activeView = "home";
@@ -297,4 +298,3 @@ export const profileStateMixin = {
     this.notify();
   },
 };
-

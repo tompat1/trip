@@ -1,9 +1,6 @@
 import tripLogoUrl from "../assets/trip_logo.svg";
 import tripLogoWhiteUrl from "../assets/trip_logo_white.svg";
 import tripMapPatternUrl from "../assets/trip_MapPattern.svg";
-import ribbonLiveUrl from "../assets/trip_badge_clean_ribbon_live.webp";
-import ribbonPlanUrl from "../assets/trip_badge_clean_ribbon_planning.webp";
-import ribbonRememberUrl from "../assets/trip_badge_clean_ribbon_rmbr.webp";
 
 const LANDING_HERO_URL = "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1200&q=85";
 const STARTUP_PRELOAD_TIMEOUT_MS = 2400;
@@ -212,7 +209,7 @@ async function preloadStartupResources() {
   ].filter(Boolean);
 
   const groups = [
-    { id: "brand", tasks: [tripLogoUrl, tripLogoWhiteUrl, ribbonLiveUrl, ribbonPlanUrl, ribbonRememberUrl].filter(Boolean).map(preloadImage) },
+    { id: "brand", tasks: [tripLogoUrl, tripLogoWhiteUrl].filter(Boolean).map(preloadImage) },
     { id: "illustrations", tasks: illustrationBatch.map(preloadImage) },
     { id: "hero", tasks: [preloadImage(LANDING_HERO_URL)] },
     { id: "fonts", tasks: [document.fonts?.ready?.catch?.(() => undefined) || Promise.resolve()] },
