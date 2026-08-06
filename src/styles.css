@@ -871,12 +871,12 @@ textarea {
   transition: transform 0.2s var(--ease-out), background-color 0.2s var(--ease-out);
 }
 
-.header-logout-btn {
-  display: inline-flex;
+.header-account-btn {
+  display: none;
   flex-shrink: 0;
 }
 
-:root[data-theme="dark"] .header-logout-btn {
+:root[data-theme="dark"] .header-account-btn {
   background: var(--surface-overlay);
   border: 1px solid var(--line);
   color: var(--ink);
@@ -9176,7 +9176,7 @@ a:active .ph-icon,
     border-color: color-mix(in srgb, var(--line) 68%, rgba(255, 255, 255, 0.18)) !important;
   }
 
-  .header-logout-btn {
+  .header-account-btn {
     display: inline-flex !important;
   }
 

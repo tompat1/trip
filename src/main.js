@@ -900,10 +900,7 @@ document.addEventListener("click", async (e) => {
         }
       }
     }
-    else if (action === "admin-logout") {
-      await withPageLoader("Signing out", () => logOutAndShowExit(), { delay: 0 });
-    }
-    else if (action === "instant-logout") {
+    else if (action === "account-logout" || action === "admin-logout") {
       await withPageLoader("Signing out", () => logOutAndShowExit(), { delay: 0 });
     }
     else if (action === "continue-as-guest") {

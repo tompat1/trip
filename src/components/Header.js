@@ -92,8 +92,8 @@ export function renderHeader() {
           </button>
 
           ${isSignedIn ? `
-            <button class="btn btn--icon btn--ghost header-logout-btn" data-action="instant-logout" aria-label="Log out" title="Log out">
-              ${renderIcon("logOut")}
+            <button class="btn btn--icon btn--ghost header-account-btn" data-action="go-profile" aria-label="Open account" title="Account">
+              ${renderIcon("user")}
             </button>
           ` : ""}
 

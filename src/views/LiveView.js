@@ -788,7 +788,7 @@ function renderAccountAccessPanel(isAdmin) {
         <div class="profile-session-summary">
           <strong>${escapeHtml(state.userSession?.userId || roleLabel)}</strong>
           <span>${escapeHtml(state.userSession?.authType || "admin-session")}</span>
-          <button class="btn btn--outline btn--sm" data-action="admin-logout" type="button">${renderIcon("logOut")} Log out</button>
+          <button class="btn btn--outline btn--sm" data-action="account-logout" type="button">${renderIcon("logOut")} Log out</button>
         </div>
       ` : `
         <form class="profile-login-form" id="profile-login-form">
