@@ -13,6 +13,7 @@ import { handleQuickCaptureFiles } from "./app/mediaCaptureController.js";
 import { handleDockNavigation, handleRouteAction } from "./app/navigationController.js";
 import { renderAppShell } from "./app/renderController.js";
 import { closeAirportAutocompleteMenus, handleTransitFlightRouteSubmit, handleTripCreateSubmit, updateAirportAutocomplete, updateTripCreateRoutePreview } from "./app/tripFormController.js";
+import { handleTripManagementAction, handleTripManagementChange, handleTripManagementSubmit } from "./app/tripManagementController.js";
 import { PhotoEditorController } from "./components/ProfilePhotoEditorModal.js";
 import "./styles.css";
 
@@ -108,103 +109,6 @@ function escapeHtml(str) {
     .replaceAll("'", "&#039;");
 }
 
-function getCompanionById(companionId = "", tripId = state.profileCompanionTripId || state.activeTripId) {
-  const trip = state.getAllTrips().find((item) => item.id === tripId) || state.activeTrip;
-  return (trip?.companions || []).find((companion) => companion.id === companionId);
-}
-
-function getInviteText(companion = {}) {
-  if (companion.inviteText) return companion.inviteText;
-  const trip = state.getAllTrips().find((item) => item.id === companion.tripId) || state.activeTrip || {};
-  const tripTitle = companion.tripTitle || trip.title || trip.name || (trip.destination ? `Roadtrip ${trip.destination}` : "this trip");
-  return [
-    `${state.userProfile?.name || "Thomas"} invited you to join ${tripTitle}.`,
-    `${companion.destination || trip.destination || "Destination"} · ${companion.dates || trip.dates || "Dates TBD"}`,
-    `${companion.travelersCount || Math.max(1, (trip.companions || []).length + 1)} travelers`,
-    "",
-    companion.personalMessage || "Plan it. Live it. Remember it.",
-    companion.inviteUrl ? `Open invite: ${companion.inviteUrl}` : "",
-  ].filter((line, index, lines) => line || (lines[index - 1] && lines[index + 1])).join("\n");
-}
-
-async function copyInviteToClipboard(companion = {}) {
-  const text = companion.inviteUrl || getInviteText(companion);
-  try {
-    await navigator.clipboard.writeText(text);
-  } catch {
-    const textarea = document.createElement("textarea");
-    textarea.value = text;
-    textarea.setAttribute("readonly", "");
-    textarea.style.position = "fixed";
-    textarea.style.opacity = "0";
-    document.body.appendChild(textarea);
-    textarea.select();
-    document.execCommand("copy");
-    textarea.remove();
-  }
-}
-
-async function deliverCompanionInvite(companion = {}) {
-  const method = companion.inviteMethod || "email";
-  const text = getInviteText(companion);
-  if (method === "sms") {
-    window.location.href = `sms:?&body=${encodeURIComponent(text)}`;
-  } else if (method === "whatsapp") {
-    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank", "noopener");
-  } else if (method === "qr") {
-    state.toggleCompanionQr(companion.id);
-  } else if (method === "link") {
-    await copyInviteToClipboard(companion);
-  } else {
-    const trip = state.getAllTrips().find((item) => item.id === companion.tripId) || state.activeTrip;
-    const subject = `Trip invite: ${companion.tripTitle || trip?.destination || "our trip"}`;
-    window.location.href = `mailto:${encodeURIComponent(companion.email || "")}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(text)}`;
-  }
-}
-
-async function submitCompanionInviteForm(form) {
-  const button = form.querySelector("button[type='submit']");
-  if (button) button.disabled = true;
-  const formData = new FormData(form);
-  const tripId = formData.get("tripId") || state.profileCompanionTripId || state.activeTripId;
-  const result = await withPageLoader("Sending invite", () => state.inviteTripCompanion(tripId, {
-    name: formData.get("name") || "",
-    email: formData.get("email") || "",
-    role: formData.get("role") || "viewer",
-    inviteMethod: formData.get("inviteMethod") || "email",
-    personalMessage: formData.get("personalMessage") || "",
-  }));
-  if (button) button.disabled = false;
-  if (!result.ok && result.error === "invalid-email") {
-    showToast("Add a valid companion email.");
-    form.email?.focus();
-    return;
-  }
-  if (!result.ok && result.error === "past-trip") {
-    showToast("Choose a future trip before inviting companions.");
-    return;
-  }
-  if (result.ok) {
-    form.reset();
-    if (result.companion) await deliverCompanionInvite(result.companion);
-    showToast(result.source === "worker" ? "Travel companion invited." : "Travel companion saved locally.");
-  } else {
-    showToast("Could not add companion.");
-  }
-}
-
-function openCompanionInviteFlow(defaultMethod = "link") {
-  state.setView("profile");
-  requestAnimationFrame(() => {
-    const form = document.getElementById("profile-companion-form");
-    if (!form) return;
-    form.scrollIntoView({ behavior: "smooth", block: "center" });
-    const methodInput = form.querySelector(`input[name="inviteMethod"][value="${defaultMethod}"]`);
-    if (methodInput) methodInput.checked = true;
-    form.querySelector("input[name='email']")?.focus();
-  });
-}
-
 async function logOutAndShowExit() {
   try {
     await enrichmentService.logoutAdmin();
@@ -265,6 +169,7 @@ document.addEventListener("click", async (e) => {
   const action = target.dataset.action;
   if (action) {
     if (handleRouteAction(action, target, { requireAppSession, flashPageLoader })) return;
+    if (await handleTripManagementAction(action, target, e, { showToast, withPageLoader, flashPageLoader })) return;
 
     if (action === "set-theme-mode") {
       state.setThemeMode(target.dataset.themeMode || "system");
@@ -359,50 +264,6 @@ document.addEventListener("click", async (e) => {
     }
     else if (action === "set-auth-mode") {
       state.setAuthMode(target.dataset.authMode || "login");
-    }
-    else if (action === "invite-companions") {
-      flashPageLoader("Opening invites");
-      state.setView("profile");
-      setTimeout(() => document.getElementById("profile-companion-form")?.querySelector("input[name='email']")?.focus(), 0);
-    }
-    else if (action === "open-trip-manager") {
-      state.openTripManager();
-    }
-    else if (action === "close-trip-manager") {
-      if (target.classList.contains("trip-management-overlay") && e.target !== target) return;
-      state.closeTripManager();
-    }
-    else if (action === "select-managed-trip") {
-      const tripId = target.dataset.tripId;
-      if (tripId) {
-        state.setTrip(tripId);
-        state.closeTripManager();
-        showToast("Trip selected.");
-      }
-    }
-    else if (action === "prepare-trip-management-invite") {
-      const tripId = target.dataset.tripId;
-      if (tripId) {
-        state.setProfileCompanionTrip(tripId);
-        requestAnimationFrame(() => document.getElementById("trip-management-invite-form")?.querySelector("input[name='email']")?.focus());
-      }
-    }
-    else if (action === "delete-trip") {
-      const tripId = target.dataset.tripId;
-      const trip = state.getAllTrips().find((item) => item.id === tripId);
-      if (!tripId || !trip) return;
-      const ok = confirm(`Delete "${trip.destination || "this trip"}"? This removes its itinerary, companions, and local trip data.`);
-      if (!ok) return;
-      const result = await withPageLoader("Deleting trip", () => state.deleteTrip(tripId));
-      if (!result.ok && result.error === "demo-trip") {
-        showToast("Demo trips cannot be deleted.");
-      } else if (!result.ok && result.error === "not-owner") {
-        showToast("Only the trip owner can delete this trip.");
-      } else if (result.ok) {
-        showToast(result.source === "worker" ? "Trip deleted." : "Trip removed locally.");
-      } else {
-        showToast("Could not delete trip.");
-      }
     }
     else if (action === "toggle-filters") {
       const subFilter = state.searchSubFilter === "Top rated" ? "All" : "Top rated";
@@ -620,24 +481,6 @@ document.addEventListener("click", async (e) => {
       } else {
         showToast("Admin access is required to remove custom personas.");
       }
-    }
-    else if (action === "remove-trip-companion") {
-      const companionId = target.dataset.companionId;
-      const tripId = target.dataset.tripId || state.profileCompanionTripId || state.activeTripId;
-      if (companionId && confirm("Remove this travel companion from the trip?")) {
-        await state.removeTripCompanion(tripId, companionId);
-        showToast("Travel companion removed.");
-      }
-    }
-    else if (action === "copy-companion-invite") {
-      const companion = getCompanionById(target.dataset.companionId, target.dataset.tripId);
-      if (companion) {
-        await copyInviteToClipboard(companion);
-        showToast("Invite link copied.");
-      }
-    }
-    else if (action === "show-companion-qr") {
-      state.toggleCompanionQr(target.dataset.companionId || "");
     }
     else if (action === "accept-trip-invite") {
       state.acceptTripInvite({ mode: target.dataset.inviteMode || "guest" });
@@ -1003,11 +846,6 @@ document.addEventListener("click", async (e) => {
         state.deleteCalendarEvent(state.activeTripId, eventId);
       }
     }
-    else if (action === "share-trip") {
-      flashPageLoader("Opening invite");
-      openCompanionInviteFlow("link");
-      showToast("Choose who to invite, then send or copy the invite link.");
-    }
     else if (action === "next-onboarding-slide") {
       state.nextOnboardingSlide();
     }
@@ -1022,17 +860,6 @@ document.addEventListener("click", async (e) => {
     }
     else if (action === "finish-onboarding") {
       state.completeOnboarding({ view: "home" });
-    }
-    else if (action === "walkthrough-invite-companions") {
-      state.completeOnboarding();
-      openCompanionInviteFlow("link");
-      showToast("Invite companions for the selected trip.");
-    }
-    else if (action === "help-invite-companions") {
-      state.closeHelp();
-      flashPageLoader("Opening invite");
-      openCompanionInviteFlow("link");
-      showToast("Invite companions for the selected trip.");
     }
     else if (action === "help-open-plan") {
       state.closeHelp();
@@ -1364,9 +1191,7 @@ document.addEventListener("submit", async (e) => {
     return;
   }
 
-  if (e.target.id === "profile-companion-form" || e.target.id === "trip-management-invite-form") {
-    e.preventDefault();
-    await submitCompanionInviteForm(e.target);
+  if (await handleTripManagementSubmit(e, { showToast, withPageLoader })) {
     return;
   }
 
@@ -1446,9 +1271,7 @@ document.addEventListener("change", async (e) => {
   if (e.target.dataset.action === "select-quick-capture-trip") {
     state.setQuickCaptureTrip(e.target.value);
   }
-  if (e.target.dataset.action === "set-profile-companion-trip") {
-    state.setProfileCompanionTrip(e.target.value || state.activeTripId);
-  }
+  if (handleTripManagementChange(e.target)) return;
   if (e.target.id === "quick-capture-file-input" && e.target.files && e.target.files[0]) {
     await handleQuickCaptureFiles(e.target.files, { showToast });
     e.target.value = "";
