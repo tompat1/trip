@@ -317,6 +317,13 @@ export function writeStoredTripCompanions(tripId, companions = []) {
   } catch {}
 }
 
+export function removeStoredTripCompanions(tripId) {
+  if (typeof localStorage === "undefined") return;
+  try {
+    localStorage.removeItem(`${TRIP_COMPANIONS_STORAGE_PREFIX}${tripId}`);
+  } catch {}
+}
+
 // ─── Data normalizers ─────────────────────────────────────────────────────────
 
 export function mergeCalendarEvents(baseEvents = [], savedEvents = []) {

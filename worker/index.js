@@ -96,6 +96,7 @@ function matchRoute(method, pathname) {
     ["GET", /^\/api\/trips$/, tripsListHandler],
     ["POST", /^\/api\/trips$/, tripsCreateHandler],
     ["PATCH", /^\/api\/trips\/([^/]+)$/, tripsUpdateHandler],
+    ["DELETE", /^\/api\/trips\/([^/]+)$/, tripsDeleteHandler],
     ["GET", /^\/api\/trips\/([^/]+)\/events$/, tripEventsListHandler],
     ["POST", /^\/api\/trips\/([^/]+)\/events$/, tripEventsCreateHandler],
     ["PATCH", /^\/api\/trips\/([^/]+)\/events\/([^/]+)$/, tripEventsUpdateHandler],
@@ -4881,6 +4882,35 @@ async function tripsUpdateHandler(context) {
 
     await env.TRIP_DB.prepare(updateSql).bind(...updateArgs).run();
     return json({ ok: true, tripId, destination, flag, dates, daysCount, startDate });
+  } catch (e) {
+    return jsonError("db_error", e.message, 500);
+  }
+}
+
+async function tripsDeleteHandler(context) {
+  const { params, env, principal } = context;
+  const tripId = params[0];
+  if (!env.TRIP_DB) return jsonError("no_db", "Database not bound", 500);
+  const userId = principal?.userId || "";
+  if (!userId || principal?.role === "anonymous") {
+    return jsonError("unauthenticated", "Sign in to delete trips.", 401);
+  }
+  const isAdmin = principal?.role === ROLE.admin;
+
+  try {
+    const ownershipSql = `SELECT id FROM user_trips WHERE id = ?${isAdmin ? "" : " AND user_id = ?"} LIMIT 1`;
+    const ownershipArgs = isAdmin ? [tripId] : [tripId, userId];
+    const existing = await env.TRIP_DB.prepare(ownershipSql).bind(...ownershipArgs).first();
+    if (!existing) return jsonError("not_found", "Trip not found.", 404);
+
+    await env.TRIP_DB.prepare("DELETE FROM trip_itinerary_events WHERE trip_id = ?").bind(tripId).run();
+    await env.TRIP_DB.prepare("DELETE FROM trip_companions WHERE trip_id = ?").bind(tripId).run();
+    await env.TRIP_DB.prepare("DELETE FROM user_moments WHERE trip_id = ?").bind(tripId).run();
+    const deleteSql = `DELETE FROM user_trips WHERE id = ?${isAdmin ? "" : " AND user_id = ?"}`;
+    const deleteArgs = isAdmin ? [tripId] : [tripId, userId];
+    await env.TRIP_DB.prepare(deleteSql).bind(...deleteArgs).run();
+
+    return json({ ok: true, tripId });
   } catch (e) {
     return jsonError("db_error", e.message, 500);
   }

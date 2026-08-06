@@ -142,6 +142,96 @@ test("concierge CTAs share one submit path and one open drawer surface", () => {
   }
 });
 
+test("deleteTrip removes non-demo trips locally and calls worker before synced cleanup", async () => {
+  const originalTrips = { ...tripsData };
+  const originalSession = { ...state.userSession };
+  const originalActiveTripId = state.activeTripId;
+  const originalProfileCompanionTripId = state.profileCompanionTripId;
+  const originalQuickCaptureTripId = state.quickCaptureTripId;
+  const originalNotify = state.notify;
+  const originalDeleteTrip = enrichmentService.deleteTrip;
+  const originalWarn = console.warn;
+  const deleted = [];
+
+  try {
+    Object.keys(tripsData).forEach((id) => delete tripsData[id]);
+    tripsData.keep = { id: "keep", destination: "Paris, France", startDate: "2999-10-03", daysCount: 5 };
+    tripsData.remove = {
+      id: "remove",
+      destination: "Madrid, Spain",
+      userId: "traveler@test.local",
+      startDate: "2999-09-01",
+      daysCount: 4,
+      syncStatus: "synced",
+    };
+    tripsData.fail = {
+      id: "fail",
+      destination: "Lisbon, Portugal",
+      userId: "traveler@test.local",
+      startDate: "2999-09-08",
+      daysCount: 4,
+      syncStatus: "synced",
+    };
+    tripsData.other = {
+      id: "other",
+      destination: "Berlin, Germany",
+      userId: "other@test.local",
+      startDate: "2999-09-12",
+      daysCount: 4,
+      syncStatus: "synced",
+    };
+    tripsData.demo = { id: "demo", destination: "Demo", syncStatus: "demo", isDemoTrip: true };
+    state.userSession = { status: "ready", role: "traveler", userId: "traveler@test.local", authType: "traveler-session" };
+    state.activeTripId = "remove";
+    state.profileCompanionTripId = "remove";
+    state.quickCaptureTripId = "remove";
+    state.notify = () => {};
+    console.warn = () => {};
+    enrichmentService.deleteTrip = async (tripId) => {
+      deleted.push(tripId);
+      if (tripId === "fail") throw new Error("worker-down");
+      return { ok: true, tripId };
+    };
+
+    const notOwnerResult = await state.deleteTrip("other");
+
+    assert.deepEqual(notOwnerResult, { ok: false, error: "not-owner" });
+    assert.ok(tripsData.other);
+    assert.deepEqual(deleted, []);
+
+    const failureResult = await state.deleteTrip("fail");
+
+    assert.equal(failureResult.ok, false);
+    assert.equal(failureResult.error, "worker-delete-trip-failed");
+    assert.ok(tripsData.fail);
+    assert.equal(state.activeTripId, "remove");
+
+    const result = await state.deleteTrip("remove");
+
+    assert.equal(result.ok, true);
+    assert.equal(result.source, "worker");
+    assert.deepEqual(deleted, ["fail", "remove"]);
+    assert.equal(tripsData.remove, undefined);
+    assert.equal(state.activeTripId, "keep");
+    assert.equal(state.profileCompanionTripId, "keep");
+    assert.equal(state.quickCaptureTripId, "keep");
+
+    const demoResult = await state.deleteTrip("demo");
+    assert.deepEqual(demoResult, { ok: false, error: "demo-trip" });
+    assert.ok(tripsData.demo);
+  } finally {
+    Object.keys(tripsData).forEach((id) => delete tripsData[id]);
+    Object.assign(tripsData, originalTrips);
+    state.userSession = originalSession;
+    state.activeTripId = originalActiveTripId;
+    state.profileCompanionTripId = originalProfileCompanionTripId;
+    state.quickCaptureTripId = originalQuickCaptureTripId;
+    state.notify = originalNotify;
+    enrichmentService.deleteTrip = originalDeleteTrip;
+    console.warn = originalWarn;
+  }
+});
+
 test("trip date text parser handles fall and Sep-Oct ranges", () => {
   assert.equal(inferStartDateFromText("Spain, Fall 2026"), "2026-09-01");
   assert.equal(inferStartDateFromText("Sept-Oct 2026"), "2026-09-01");

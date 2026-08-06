@@ -157,11 +157,23 @@ export const uiStateMixin = {
 
   openTripCreate() {
     this.tripCreateOpen = true;
+    this.tripManagerOpen = false;
     this.notify();
   },
 
   closeTripCreate() {
     this.tripCreateOpen = false;
+    this.notify();
+  },
+
+  openTripManager() {
+    this.tripManagerOpen = true;
+    this.tripCreateOpen = false;
+    this.notify();
+  },
+
+  closeTripManager() {
+    this.tripManagerOpen = false;
     this.notify();
   },
 

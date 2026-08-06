@@ -146,6 +146,7 @@ export class AppState {
     this.authMode = "login"; // "login" | "signup" | "forgot"
     this.premiumOpen = false;
     this.tripCreateOpen = false;
+    this.tripManagerOpen = false;
     this.activePoiDetail = null;
     this.termsOpen = false;
     this.privacyOpen = false;

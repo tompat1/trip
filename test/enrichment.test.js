@@ -122,6 +122,38 @@ test("Worker admin trip listing includes legacy rows while travelers stay scoped
   assert.deepEqual(travelerPayload.trips.map((trip) => trip.id), ["alex-paris"]);
 });
 
+test("Worker trip delete removes owned trip data", async () => {
+  const deletes = [];
+  const db = createTripDeleteDb({ id: "alex-paris", user_id: "alex@example.com" }, deletes);
+
+  const response = await worker.fetch(new Request("https://trip.test/api/trips/alex-paris", {
+    method: "DELETE",
+    headers: { "X-Trip-User-Id": "alex@example.com" },
+  }), { TRIP_DB: db, TRIP_ADMIN_TOKEN: "secret" }, {});
+
+  assert.equal(response.status, 200);
+  const payload = await response.json();
+  assert.equal(payload.ok, true);
+  assert.equal(payload.tripId, "alex-paris");
+  assert.deepEqual(deletes.map((entry) => entry.table), [
+    "trip_itinerary_events",
+    "trip_companions",
+    "user_moments",
+    "user_trips",
+  ]);
+  assert.deepEqual(deletes.at(-1).args, ["alex-paris", "alex@example.com"]);
+
+  const blockedDeletes = [];
+  const blockedDb = createTripDeleteDb({ id: "alex-paris", user_id: "alex@example.com" }, blockedDeletes);
+  const blockedResponse = await worker.fetch(new Request("https://trip.test/api/trips/alex-paris", {
+    method: "DELETE",
+    headers: { "X-Trip-User-Id": "sam@example.com" },
+  }), { TRIP_DB: blockedDb, TRIP_ADMIN_TOKEN: "secret" }, {});
+
+  assert.equal(blockedResponse.status, 404);
+  assert.deepEqual(blockedDeletes, []);
+});
+
 function createTripsListDb(rows = []) {
   const orderedRows = () => [...rows].sort((a, b) => String(b.created_at || "").localeCompare(String(a.created_at || "")));
   return {
@@ -140,6 +172,30 @@ function createTripsListDb(rows = []) {
                 return { results: orderedRows().filter((row) => row.user_id === args[0]) };
               }
               throw new Error(`Unexpected bound all SQL: ${sql}`);
+            },
+          };
+        },
+      };
+    },
+  };
+}
+
+function createTripDeleteDb(row, deletes = []) {
+  return {
+    prepare(sql) {
+      return {
+        bind(...args) {
+          return {
+            async first() {
+              if (/SELECT id FROM user_trips WHERE id = \? AND user_id = \? LIMIT 1/.test(sql)) {
+                return row && row.id === args[0] && row.user_id === args[1] ? { id: row.id } : null;
+              }
+              throw new Error(`Unexpected first SQL: ${sql}`);
+            },
+            async run() {
+              const table = sql.match(/DELETE FROM ([a-z_]+)/)?.[1] || "unknown";
+              deletes.push({ table, args });
+              return { success: true, meta: { changes: 1 } };
             },
           };
         },

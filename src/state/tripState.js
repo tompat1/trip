@@ -18,8 +18,11 @@ import {
   mergeCalendarEvents,
   removeStoredCalendarEvents,
   removeStoredTourismDiscovery,
+  removeStoredTripCompanions,
   readStoredCalendarEvents,
+  readStoredGuestDraftTrips,
   readStoredTripCompanions,
+  writeStoredGuestDraftTrips,
   writeStoredCalendarEvents,
 } from "./helpers.js";
 
@@ -176,6 +179,7 @@ export const tripStateMixin = {
             } else {
               clearOutOfScopePlaces(this, trip.id, trip);
             }
+            trip.isDemoTrip = false;
           }
         });
 
@@ -219,6 +223,65 @@ export const tripStateMixin = {
       console.warn("D1 trips load fallback:", e);
       this.notify();
     }
+  },
+
+  // ── Trip management ────────────────────────────────────────────────────────
+
+  canDeleteTrip(tripOrId = this.activeTripId) {
+    const trip = typeof tripOrId === "string" ? tripsData[tripOrId] : tripOrId;
+    return canDeleteTripForSession(this, trip);
+  },
+
+  async deleteTrip(tripId = this.activeTripId) {
+    const trip = tripsData[tripId];
+    if (!trip) return { ok: false, error: "missing-trip" };
+    if (isProtectedDemoTrip(trip)) return { ok: false, error: "demo-trip" };
+    if (!canDeleteTripForSession(this, trip)) return { ok: false, error: "not-owner" };
+
+    const shouldDeleteRemote = this.isAuthenticated && trip.syncStatus === "synced";
+    if (shouldDeleteRemote) {
+      try {
+        await enrichmentService.deleteTrip(tripId);
+      } catch (error) {
+        console.warn("D1 trip delete failed:", error);
+        return { ok: false, error: "worker-delete-trip-failed", detail: error?.message || "worker-delete-trip-failed" };
+      }
+    }
+
+    delete tripsData[tripId];
+    delete this.checklists?.[tripId];
+    delete this.tourismDiscoveryStatus?.[tripId];
+    delete this.eventDiscoveryStatus?.[tripId];
+    delete this.tripIntelligenceStatus?.[tripId];
+    removeStoredCalendarEvents(tripId);
+    removeStoredTourismDiscovery(tripId);
+    removeStoredTripCompanions(tripId);
+
+    const guestDraftTrips = readStoredGuestDraftTrips();
+    if (guestDraftTrips[tripId]) {
+      delete guestDraftTrips[tripId];
+      writeStoredGuestDraftTrips(guestDraftTrips);
+    }
+
+    if (this.profileCompanionTripId === tripId) {
+      this.profileCompanionTripId = resolveNextTripId(tripId);
+    }
+    if (this.quickCaptureTripId === tripId) {
+      this.quickCaptureTripId = resolveNextTripId(tripId);
+    }
+    if (this.activeTripId === tripId) {
+      this.activeTripId = resolveNextTripId(tripId);
+    }
+    this.tripMode = isTripLiveByDate(this.activeTrip);
+    this.tripManagerOpen = false;
+    if (!this.activeTripId && this.isAuthenticated) this.activeView = "home";
+    this.notify();
+
+    if (!shouldDeleteRemote) {
+      return { ok: true, source: "local", tripId };
+    }
+
+    return { ok: true, source: "worker", tripId };
   },
 
   // ── Trip creation ──────────────────────────────────────────────────────────
@@ -648,6 +711,28 @@ function isTripLiveWindow(startDate = "", daysCount = 1) {
 
 function isTripLiveByDate(trip = {}) {
   return getTripDateStatus(trip).state === "active";
+}
+
+function isProtectedDemoTrip(trip = {}) {
+  return trip.syncStatus === "demo" || (trip.isDemoTrip && trip.syncStatus !== "synced");
+}
+
+function canDeleteTripForSession(stateContext = {}, trip = {}) {
+  if (!trip || isProtectedDemoTrip(trip)) return false;
+  if (stateContext.isAdmin) return true;
+
+  const ownerId = normalizeOwnerId(trip.userId || trip.user_id);
+  const currentUserId = normalizeOwnerId(stateContext.userSession?.userId);
+  if (!ownerId) return trip.syncStatus !== "synced";
+  return Boolean(currentUserId && ownerId === currentUserId);
+}
+
+function normalizeOwnerId(value = "") {
+  return String(value || "").trim().toLowerCase();
+}
+
+function resolveNextTripId(deletedTripId = "") {
+  return Object.keys(tripsData).find((id) => id !== deletedTripId) || null;
 }
 
 function mergeScopedCalendarEvents(tripId, trip, events = []) {

@@ -332,6 +332,16 @@ export function createEnrichmentService(options = {}) {
       return res.json();
     },
 
+    async deleteTrip(tripId) {
+      const url = buildApiUrl(apiBase, `/api/trips/${encodeURIComponent(tripId)}`);
+      const res = await fetchImpl(url.href, {
+        method: "DELETE",
+        headers: createApiHeaders(),
+      });
+      if (!res.ok) throw new Error(`worker-delete-trip-http-${res.status}`);
+      return res.json();
+    },
+
     async fetchTripEvents(tripId) {
       const url = buildApiUrl(apiBase, `/api/trips/${encodeURIComponent(tripId)}/events`);
       const res = await fetchImpl(url.href, { headers: { Accept: "application/json" } });

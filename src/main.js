@@ -162,6 +162,37 @@ async function deliverCompanionInvite(companion = {}) {
   }
 }
 
+async function submitCompanionInviteForm(form) {
+  const button = form.querySelector("button[type='submit']");
+  if (button) button.disabled = true;
+  const formData = new FormData(form);
+  const tripId = formData.get("tripId") || state.profileCompanionTripId || state.activeTripId;
+  const result = await withPageLoader("Sending invite", () => state.inviteTripCompanion(tripId, {
+    name: formData.get("name") || "",
+    email: formData.get("email") || "",
+    role: formData.get("role") || "viewer",
+    inviteMethod: formData.get("inviteMethod") || "email",
+    personalMessage: formData.get("personalMessage") || "",
+  }));
+  if (button) button.disabled = false;
+  if (!result.ok && result.error === "invalid-email") {
+    showToast("Add a valid companion email.");
+    form.email?.focus();
+    return;
+  }
+  if (!result.ok && result.error === "past-trip") {
+    showToast("Choose a future trip before inviting companions.");
+    return;
+  }
+  if (result.ok) {
+    form.reset();
+    if (result.companion) await deliverCompanionInvite(result.companion);
+    showToast(result.source === "worker" ? "Travel companion invited." : "Travel companion saved locally.");
+  } else {
+    showToast("Could not add companion.");
+  }
+}
+
 function openCompanionInviteFlow(defaultMethod = "link") {
   state.setView("profile");
   requestAnimationFrame(() => {
@@ -333,6 +364,45 @@ document.addEventListener("click", async (e) => {
       flashPageLoader("Opening invites");
       state.setView("profile");
       setTimeout(() => document.getElementById("profile-companion-form")?.querySelector("input[name='email']")?.focus(), 0);
+    }
+    else if (action === "open-trip-manager") {
+      state.openTripManager();
+    }
+    else if (action === "close-trip-manager") {
+      if (target.classList.contains("trip-management-overlay") && e.target !== target) return;
+      state.closeTripManager();
+    }
+    else if (action === "select-managed-trip") {
+      const tripId = target.dataset.tripId;
+      if (tripId) {
+        state.setTrip(tripId);
+        state.closeTripManager();
+        showToast("Trip selected.");
+      }
+    }
+    else if (action === "prepare-trip-management-invite") {
+      const tripId = target.dataset.tripId;
+      if (tripId) {
+        state.setProfileCompanionTrip(tripId);
+        requestAnimationFrame(() => document.getElementById("trip-management-invite-form")?.querySelector("input[name='email']")?.focus());
+      }
+    }
+    else if (action === "delete-trip") {
+      const tripId = target.dataset.tripId;
+      const trip = state.getAllTrips().find((item) => item.id === tripId);
+      if (!tripId || !trip) return;
+      const ok = confirm(`Delete "${trip.destination || "this trip"}"? This removes its itinerary, companions, and local trip data.`);
+      if (!ok) return;
+      const result = await withPageLoader("Deleting trip", () => state.deleteTrip(tripId));
+      if (!result.ok && result.error === "demo-trip") {
+        showToast("Demo trips cannot be deleted.");
+      } else if (!result.ok && result.error === "not-owner") {
+        showToast("Only the trip owner can delete this trip.");
+      } else if (result.ok) {
+        showToast(result.source === "worker" ? "Trip deleted." : "Trip removed locally.");
+      } else {
+        showToast("Could not delete trip.");
+      }
     }
     else if (action === "toggle-filters") {
       const subFilter = state.searchSubFilter === "Top rated" ? "All" : "Top rated";
@@ -1294,37 +1364,9 @@ document.addEventListener("submit", async (e) => {
     return;
   }
 
-  if (e.target.id === "profile-companion-form") {
+  if (e.target.id === "profile-companion-form" || e.target.id === "trip-management-invite-form") {
     e.preventDefault();
-    const form = e.target;
-    const button = form.querySelector("button[type='submit']");
-    if (button) button.disabled = true;
-    const formData = new FormData(form);
-    const tripId = formData.get("tripId") || state.profileCompanionTripId || state.activeTripId;
-    const result = await withPageLoader("Sending invite", () => state.inviteTripCompanion(tripId, {
-      name: formData.get("name") || "",
-      email: formData.get("email") || "",
-      role: formData.get("role") || "viewer",
-      inviteMethod: formData.get("inviteMethod") || "email",
-      personalMessage: formData.get("personalMessage") || "",
-    }));
-    if (button) button.disabled = false;
-    if (!result.ok && result.error === "invalid-email") {
-      showToast("Add a valid companion email.");
-      form.email?.focus();
-      return;
-    }
-    if (!result.ok && result.error === "past-trip") {
-      showToast("Choose a future trip before inviting companions.");
-      return;
-    }
-    if (result.ok) {
-      form.reset();
-      if (result.companion) await deliverCompanionInvite(result.companion);
-      showToast(result.source === "worker" ? "Travel companion invited." : "Travel companion saved locally.");
-    } else {
-      showToast("Could not add companion.");
-    }
+    await submitCompanionInviteForm(e.target);
     return;
   }
 

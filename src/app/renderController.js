@@ -8,6 +8,7 @@ import { renderBottomNav } from "../components/BottomNav.js";
 import { renderLightbox } from "../components/Lightbox.js";
 import { renderEventDrawer } from "../components/EventDrawer.js";
 import { renderTripCreateModal } from "../components/TripCreateModal.js";
+import { renderTripManagementModal } from "../components/TripManagementModal.js";
 import { renderQuickCaptureWidget } from "../components/QuickCaptureWidget.js";
 import { renderOnboardingWalkthrough } from "../components/OnboardingWalkthrough.js";
 import { renderHelpCenter } from "../components/HelpCenter.js";
@@ -52,6 +53,7 @@ export function renderAppShell(view = state.activeView, { isRouteChange = false 
       ${renderLightbox()}
       ${renderEventDrawer()}
       ${renderTripCreateModal()}
+      ${renderTripManagementModal()}
       ${renderInviteAcceptance()}
       ${renderOnboardingWalkthrough()}
       ${renderHelpCenter()}

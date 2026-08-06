@@ -143,6 +143,10 @@ export function renderHeader() {
                   ${renderIcon("share")}
                   <span class="share-btn-text">Share</span>
                 </button>
+                <button class="btn btn--outline btn--sm trip-manage-btn" data-action="open-trip-manager" title="Manage trips">
+                  ${renderIcon("flag")}
+                  <span>Manage</span>
+                </button>
               `}
               <button class="btn btn--primary btn--sm" data-action="create-trip" title="Create a new custom trip">
                 <span>+ New trip</span>
