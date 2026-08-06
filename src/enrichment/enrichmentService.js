@@ -158,6 +158,23 @@ export function createEnrichmentService(options = {}) {
       }
     },
 
+    async planRoute(input = {}) {
+      const url = buildApiUrl(apiBase, "/api/routes/plan");
+      const response = await fetchImpl(url.href, {
+        method: "POST",
+        headers: createApiHeaders({ "Content-Type": "application/json" }),
+        body: JSON.stringify(input),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        const error = new Error(`worker-route-plan-http-${response.status}`);
+        error.status = response.status;
+        error.payload = payload;
+        throw error;
+      }
+      return normalizeWorkerRoutePlanPayload(payload, now);
+    },
+
     async discoverTopPois(input = {}) {
       const personaContext = getPersonaDiscoveryContext(input.personas || []);
       const kinds = mergeOpenTripMapKinds(input.kinds || OPENTRIPMAP_TOURISM_KINDS, personaContext.openTripMapKinds);
@@ -474,6 +491,24 @@ function getDefaultApiBase() {
 function buildApiUrl(base, path) {
   if (!base) return new URL(path, typeof window !== "undefined" ? window.location.origin : "https://trip.rynell.org");
   return new URL(path, base.endsWith("/") ? base : `${base}/`);
+}
+
+function normalizeWorkerRoutePlanPayload(payload = {}, now = () => new Date()) {
+  const routePlan = payload.routePlan || {};
+  const itineraries = Array.isArray(routePlan.itineraries) ? routePlan.itineraries : [];
+  return {
+    ok: payload.ok !== false,
+    status: payload.status || routePlan.status || (itineraries.length ? "ready" : "empty"),
+    source: payload.source || routePlan.source || "opentripplanner",
+    routePlan: {
+      ...routePlan,
+      itineraries,
+      bestItinerary: itineraries[0] || null,
+    },
+    providerStatus: payload.providerStatus || routePlan.providerStatus || [],
+    generatedAt: payload.generatedAt || routePlan.generatedAt || now().toISOString(),
+    error: payload.error?.message || routePlan.error || "",
+  };
 }
 
 async function discoverOpenTripMapViaWorker(input = {}, options = {}) {

@@ -304,6 +304,108 @@ test("Worker OpenTripMap route reports missing key clearly", async () => {
   assert.equal(payload.error.code, "missing_opentripmap_key");
 });
 
+test("Worker OpenTripPlanner route reports missing endpoint clearly", async () => {
+  const response = await worker.fetch(new Request("https://trip.test/api/routes/plan", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      tripId: "madrid-2026",
+      origin: { lat: 40.4168, lng: -3.7038, label: "Current location" },
+      destination: { lat: 40.4154, lng: -3.6845, label: "Museo del Prado" },
+    }),
+  }), {}, {});
+
+  assert.equal(response.status, 200);
+  const payload = await response.json();
+  assert.equal(payload.status, "not-configured");
+  assert.equal(payload.routePlan.source, "opentripplanner");
+  assert.equal(payload.providerStatus[0].error, "missing-opentripplanner-api-base");
+});
+
+test("Worker OpenTripPlanner route normalizes GraphQL itineraries", async () => {
+  const originalFetch = globalThis.fetch;
+  let requestedUrl = "";
+  let requestedBody = null;
+  globalThis.fetch = async (url, options = {}) => {
+    requestedUrl = String(url);
+    requestedBody = JSON.parse(options.body || "{}");
+    return {
+      ok: true,
+      async json() {
+        return {
+          data: {
+            planConnection: {
+              routingErrors: [],
+              edges: [{
+                node: {
+                  duration: 1320,
+                  start: "2026-09-14T10:00:00+02:00",
+                  end: "2026-09-14T10:22:00+02:00",
+                  numberOfTransfers: 1,
+                  walkDistance: 420,
+                  walkTime: 360,
+                  legs: [
+                    {
+                      mode: "WALK",
+                      transitLeg: false,
+                      duration: 300,
+                      distance: 260,
+                      from: { name: "Current location", lat: 40.4168, lon: -3.7038 },
+                      to: { name: "Sol", lat: 40.4167, lon: -3.7033 },
+                      legGeometry: { points: "", length: 0 },
+                    },
+                    {
+                      mode: "SUBWAY",
+                      transitLeg: true,
+                      duration: 720,
+                      distance: 2100,
+                      headsign: "Valdecarros",
+                      agency: { name: "Metro Madrid" },
+                      route: { shortName: "1", longName: "Linea 1", mode: "SUBWAY" },
+                      from: { name: "Sol", lat: 40.4167, lon: -3.7033 },
+                      to: { name: "Estacion del Arte", lat: 40.4089, lon: -3.6926 },
+                      legGeometry: { points: "", length: 0 },
+                    },
+                  ],
+                },
+              }],
+            },
+          },
+        };
+      },
+    };
+  };
+
+  try {
+    const response = await worker.fetch(new Request("https://trip.test/api/routes/plan", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        tripId: "madrid-2026",
+        origin: { lat: 40.4168, lng: -3.7038, label: "Current location" },
+        destination: { lat: 40.4154, lng: -3.6845, label: "Museo del Prado" },
+        departureTime: "2026-09-14T10:00:00+02:00",
+      }),
+    }), { OPENTRIPPLANNER_API_BASE: "https://otp.test" }, {});
+
+    assert.equal(response.status, 200);
+    const payload = await response.json();
+    assert.equal(requestedUrl, "https://otp.test/otp/gtfs/v1");
+    assert.match(requestedBody.query, /planConnection/);
+    assert.equal(requestedBody.variables.destination.location.coordinate.latitude, 40.4154);
+    assert.equal(payload.status, "ready");
+    assert.equal(payload.routePlan.tripId, "madrid-2026");
+    assert.equal(payload.routePlan.itineraries[0].durationText, "22 min");
+    assert.equal(payload.routePlan.itineraries[0].transferCount, 1);
+    assert.equal(payload.routePlan.itineraries[0].legs[1].agencyName, "Metro Madrid");
+    assert.equal(payload.routePlan.itineraries[0].coordinates.length, 3);
+    assert.equal(payload.providerStatus[0].provider, "opentripplanner");
+    assert.equal(payload.providerStatus[0].status, "ok");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test("Worker nearby route queries OpenStreetMap open-first categories through Overpass", async () => {
   const originalFetch = globalThis.fetch;
   let overpassQuery = "";

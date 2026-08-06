@@ -8,13 +8,14 @@ import { registerCalendarDragController } from "./app/calendarDragController.js"
 import { shouldOpenConciergeDrawerForElement, submitConciergeForm, submitConciergePrompt } from "./app/conciergeController.js";
 import { buildJournalTemplateStory, getRecommendedTemplateMomentIds } from "./app/journalController.js";
 import { bootApp, flashPageLoader, isAppBooted, renderTripLoadingPage, withPageLoader } from "./app/loadingController.js";
-import { initMapsForView, resolveTripCenter, selectPoiOnOverviewMap } from "./app/mapController.js";
+import { getSelectedPoiRouteTarget, initMapsForView, previewPoiOverviewRoute, resolveTripCenter, selectPoiOnOverviewMap } from "./app/mapController.js";
 import { handleQuickCaptureFiles } from "./app/mediaCaptureController.js";
 import { handleDockNavigation, handleRouteAction } from "./app/navigationController.js";
 import { renderAppShell } from "./app/renderController.js";
 import { closeAirportAutocompleteMenus, handleTransitFlightRouteSubmit, handleTripCreateSubmit, updateAirportAutocomplete, updateTripCreateRoutePreview } from "./app/tripFormController.js";
 import { handleTripManagementAction, handleTripManagementChange, handleTripManagementSubmit } from "./app/tripManagementController.js";
 import { PhotoEditorController } from "./components/ProfilePhotoEditorModal.js";
+import { getPreferredMapsUrl } from "./services/routeService.js";
 import "./styles.css";
 
 let lastRenderedView = "";
@@ -129,6 +130,59 @@ function requireAppSession(mode = "login", message = "Sign in to continue.") {
   state.showAuthExit(mode);
   showToast(message);
   return false;
+}
+
+function normalizeDirectionCoordinates(value) {
+  if (!Array.isArray(value) || value.length !== 2) return null;
+  const [lat, lng] = value.map(Number);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return null;
+  return [lat, lng];
+}
+
+function getDirectionsDestination(target) {
+  const selectedPoi = getSelectedPoiRouteTarget();
+  const dataCoordinates = normalizeDirectionCoordinates([target.dataset.destinationLat, target.dataset.destinationLng]);
+  const selectedCoordinates = normalizeDirectionCoordinates(selectedPoi?.coordinates);
+  return {
+    label: target.dataset.spotName || selectedPoi?.label || "Destination",
+    coordinates: dataCoordinates || selectedCoordinates,
+  };
+}
+
+function getDirectionsOrigin() {
+  return normalizeDirectionCoordinates(state.userLocation) || normalizeDirectionCoordinates(state.activeTrip?.center);
+}
+
+function getPreferredDirectionsProvider() {
+  if (typeof navigator !== "undefined" && /iPad|iPhone|iPod/.test(navigator.userAgent || "")) return "apple";
+  return "google";
+}
+
+async function previewRouteForDirections(destination, origin) {
+  if (!destination?.coordinates || !origin) return null;
+  const trip = state.activeTrip || {};
+  const routeResult = await enrichmentService.planRoute({
+    tripId: state.activeTripId || trip.id || "",
+    origin: {
+      label: state.userLocation ? "Current location" : `${trip.destination || "Trip"} center`,
+      coordinates: origin,
+    },
+    destination: {
+      label: destination.label,
+      coordinates: destination.coordinates,
+    },
+    departureTime: new Date().toISOString(),
+    limit: 3,
+  });
+  const itinerary = routeResult.routePlan?.bestItinerary;
+  if (routeResult.status === "ready" && itinerary) {
+    previewPoiOverviewRoute(routeResult.routePlan, origin, destination.coordinates);
+    showToast(`Route preview: ${itinerary.summary || itinerary.durationText}.`);
+  } else if (routeResult.status === "not-configured") {
+    showToast("Maps opened. OpenTripPlanner is not configured for in-app route previews yet.");
+  }
+  return routeResult;
 }
 
 // Global Event Listeners Delegation
@@ -723,12 +777,20 @@ document.addEventListener("click", async (e) => {
       selectPoiOnOverviewMap(spotIdx, spotName);
     }
     else if (action === "open-directions") {
-      const spotName = target.dataset.spotName || "Louvre Museum";
-      const dest = state.activeTrip?.destination || "Paris";
-      const query = encodeURIComponent(`${spotName} ${dest}`);
-      const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${query}`;
-      window.open(mapsUrl, "_blank");
-      showToast(`🧭 Opening directions for "${spotName}" in Maps...`);
+      const destination = getDirectionsDestination(target);
+      const origin = getDirectionsOrigin();
+      const mapsUrl = getPreferredMapsUrl({
+        provider: getPreferredDirectionsProvider(),
+        origin: state.userLocation ? origin : null,
+        destination: destination.coordinates,
+        destinationLabel: destination.coordinates ? destination.label : `${destination.label} ${state.activeTrip?.destination || ""}`.trim(),
+        travelMode: "walking",
+      });
+      window.open(mapsUrl, "_blank", "noopener,noreferrer");
+      showToast(`Opening directions for "${destination.label}" in Maps...`);
+      void previewRouteForDirections(destination, origin).catch((error) => {
+        if (error?.status !== 503) console.warn("Route preview warning:", error);
+      });
     }
     else if (action === "locate-user" || action === "toggle-map-view" || action === "toggle-full-map") {
       flashPageLoader("Opening live");

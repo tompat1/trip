@@ -1,5 +1,7 @@
 // OpenRouteService & OpenStreetMap Directions Integration for TRIP
 
+const GOOGLE_TRAVEL_MODES = new Set(["driving", "walking", "bicycling", "transit"]);
+
 export async function fetchRouteDirections(startCoords, endCoords, profile = 'foot-walking') {
   if (!startCoords || !endCoords) return null;
   const [startLat, startLng] = startCoords;
@@ -70,4 +72,46 @@ function calculateDirectRouteFallback(startCoords, endCoords, profile) {
     distanceText: distanceMeters >= 1000 ? `${(distanceMeters/1000).toFixed(1)} km` : `${distanceMeters} m`,
     coordinates: [startCoords, endCoords]
   };
+}
+
+export function buildGoogleMapsDirectionsUrl({ origin = null, destination = null, destinationLabel = "", travelMode = "walking" } = {}) {
+  const url = new URL("https://www.google.com/maps/dir/");
+  url.searchParams.set("api", "1");
+  const destinationCoords = normalizeRouteCoordinates(destination);
+  const originCoords = normalizeRouteCoordinates(origin);
+  if (destinationCoords) {
+    url.searchParams.set("destination", destinationCoords.join(","));
+  } else if (destinationLabel) {
+    url.searchParams.set("destination", destinationLabel);
+  }
+  if (originCoords) url.searchParams.set("origin", originCoords.join(","));
+  url.searchParams.set("travelmode", GOOGLE_TRAVEL_MODES.has(travelMode) ? travelMode : "walking");
+  return url.href;
+}
+
+export function buildAppleMapsDirectionsUrl({ origin = null, destination = null, destinationLabel = "", travelMode = "walking" } = {}) {
+  const url = new URL("https://maps.apple.com/");
+  const destinationCoords = normalizeRouteCoordinates(destination);
+  const originCoords = normalizeRouteCoordinates(origin);
+  if (destinationCoords) {
+    url.searchParams.set("daddr", destinationCoords.join(","));
+  } else if (destinationLabel) {
+    url.searchParams.set("daddr", destinationLabel);
+  }
+  if (originCoords) url.searchParams.set("saddr", originCoords.join(","));
+  url.searchParams.set("dirflg", travelMode === "driving" ? "d" : travelMode === "transit" ? "r" : "w");
+  return url.href;
+}
+
+export function getPreferredMapsUrl(options = {}) {
+  if (options.provider === "apple") return buildAppleMapsDirectionsUrl(options);
+  return buildGoogleMapsDirectionsUrl(options);
+}
+
+function normalizeRouteCoordinates(value) {
+  if (!Array.isArray(value) || value.length !== 2) return null;
+  const [lat, lng] = value.map(Number);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return null;
+  return [lat, lng];
 }

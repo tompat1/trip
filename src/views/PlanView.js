@@ -854,6 +854,11 @@ function renderPoiMapCanvas(trip, topPOIs) {
     geoLabel: "1.2 km away",
     image: getDestinationFallbackImage(trip.destination, 400)
   };
+  const activeSpotLat = Number(activeSpot.lat ?? activeSpot.latitude ?? activeSpot.coordinates?.[0]);
+  const activeSpotLng = Number(activeSpot.lng ?? activeSpot.longitude ?? activeSpot.coordinates?.[1]);
+  const activeSpotDirectionData = Number.isFinite(activeSpotLat) && Number.isFinite(activeSpotLng)
+    ? `data-destination-lat="${escapeHtml(activeSpotLat)}" data-destination-lng="${escapeHtml(activeSpotLng)}"`
+    : "";
   const isLouvreAdded = isPoiAddedToCalendar(events, activeSpot.title);
 
   return `
@@ -891,7 +896,7 @@ function renderPoiMapCanvas(trip, topPOIs) {
         </div>
 
         <div style="display: flex; align-items: center; gap: 6px; flex-shrink: 0;">
-          <button class="btn btn--primary btn--xs" data-action="open-directions" data-spot-name="${escapeHtml(activeSpot.title)}" style="background: var(--orange); border: none; border-radius: var(--radius-pill); font-weight: 700; font-size: 0.72rem; padding: 5px 10px;">
+          <button class="btn btn--primary btn--xs" data-action="open-directions" data-spot-name="${escapeHtml(activeSpot.title)}" ${activeSpotDirectionData} style="background: var(--orange); border: none; border-radius: var(--radius-pill); font-weight: 700; font-size: 0.72rem; padding: 5px 10px;">
             ${renderIcon("navigation")} Directions
           </button>
           <button id="poi-floating-plan-btn" class="btn btn--outline btn--xs" data-action="add-poi-event" data-spot-name="${escapeHtml(activeSpot.title)}" style="${isLouvreAdded ? 'background: rgba(101,112,91,0.25); color: #8fa082; border: 1px solid #8fa082;' : 'background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.25); color: #fff;'} border-radius: var(--radius-pill); font-size: 0.72rem; padding: 5px 10px;">

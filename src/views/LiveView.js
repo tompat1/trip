@@ -573,6 +573,7 @@ const ADMIN_PROVIDER_GROUPS = [
     description: "Context providers for weather, signals, commute and civic/event intelligence.",
     items: [
       { name: "OpenStreetMap / Overpass", service: "overpass", noKey: true, area: "Nearby POIs and persona-biased scans" },
+      { name: "OpenTripPlanner", key: "OPENTRIPPLANNER_API_BASE", service: "opentripplanner", required: false, area: "Optional in-app transit and walking route previews" },
       { name: "Open-Meteo", service: "openmeteo", noKey: true, area: "Weather, sunrise, sunset" },
       { name: "NASA EONET", service: "nasaEonet", noKey: true, area: "Natural events and safety signals" },
       { name: "GBFS feeds", service: "gbfs", noKey: true, area: "Bike/scooter availability where city feeds exist" },

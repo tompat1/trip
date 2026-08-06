@@ -13,6 +13,7 @@ const RIJKSMUSEUM_COLLECTION_API = "https://www.rijksmuseum.nl/api/en/collection
 const SMITHSONIAN_SEARCH_API = "https://api.si.edu/openaccess/api/v1.0/search";
 const ARTIC_ARTWORK_SEARCH_API = "https://api.artic.edu/api/v1/artworks/search";
 const AMADEUS_API_BASE = "https://test.api.amadeus.com";
+const OPENTRIPPLANNER_GRAPHQL_PATH = "/otp/gtfs/v1";
 const OVERPASS_ENDPOINTS = [
   "https://overpass-api.de/api/interpreter",
   "https://overpass.kumi.systems/api/interpreter",
@@ -77,6 +78,7 @@ function matchRoute(method, pathname) {
     ["GET", /^\/api\/events\/discover$/, eventsDiscoverHandler],
     ["GET", /^\/api\/airports\/search$/, airportsSearchHandler],
     ["GET", /^\/api\/flights\/search$/, flightsSearchHandler],
+    ["POST", /^\/api\/routes\/plan$/, routesPlanHandler],
     ["GET", /^\/api\/gbfs\/([^/]+)$/, gbfsProxyHandler],
     ["POST", /^\/api\/places\/enrich-location$/, enrichLocationHandler],
     ["GET", /^\/api\/places\/enrich$/, enrichPlaceHandler],
@@ -142,6 +144,7 @@ function healthHandler({ env, hasDb, hasCache, hasMedia, hasLightMedia }) {
     OPENTRIPMAP_API_KEY: env.OPENTRIPMAP_API_KEY ? "configured" : "missing",
     AMADEUS_CLIENT_ID: env.AMADEUS_CLIENT_ID ? "configured" : "missing",
     AMADEUS_CLIENT_SECRET: env.AMADEUS_CLIENT_SECRET ? "configured" : "missing",
+    OPENTRIPPLANNER_API_BASE: env.OPENTRIPPLANNER_API_BASE ? "configured" : "missing",
     TICKETMASTER_API_KEY: env.TICKETMASTER_API_KEY ? "configured" : "missing",
     BANDSINTOWN_APP_ID: env.BANDSINTOWN_APP_ID ? "configured" : "missing",
     UNSPLASH_ACCESS_KEY: env.UNSPLASH_ACCESS_KEY ? "configured" : "missing",
@@ -165,6 +168,7 @@ function healthHandler({ env, hasDb, hasCache, hasMedia, hasLightMedia }) {
     services: {
       opentripmap: secretStatus.OPENTRIPMAP_API_KEY === "configured" ? "ready" : "missing-key",
       amadeus: secretStatus.AMADEUS_CLIENT_ID === "configured" && secretStatus.AMADEUS_CLIENT_SECRET === "configured" ? "ready" : "missing-key",
+      opentripplanner: secretStatus.OPENTRIPPLANNER_API_BASE === "configured" ? "ready" : "missing-url",
       ticketmaster: secretStatus.TICKETMASTER_API_KEY === "configured" ? "ready" : "missing-key",
       bandsintown: secretStatus.BANDSINTOWN_APP_ID === "configured" ? "ready" : "missing-key",
       unsplash: secretStatus.UNSPLASH_ACCESS_KEY === "configured" ? "ready" : "optional-missing-key",
@@ -1144,6 +1148,92 @@ async function flightsSearchHandler(context) {
       error: error?.message || "amadeus-flight-search-failed",
       providerStatus: [{ provider: "amadeus", status: "error", error: error?.message || "failed", count: 0, latencyMs: Date.now() - startedAt }],
     });
+  }
+}
+
+async function routesPlanHandler(context) {
+  const body = await readJson(context.request);
+  const origin = normalizeRouteEndpoint(body.origin);
+  const destination = normalizeRouteEndpoint(body.destination);
+  if (!origin || !destination) {
+    return jsonError("invalid_route_plan", "Provide origin and destination coordinates.", 400);
+  }
+
+  const otpEndpoint = getOpenTripPlannerEndpoint(context.env.OPENTRIPPLANNER_API_BASE || "");
+  if (!otpEndpoint) {
+    return json(partialResponse("routes.plan", {
+      status: "not-configured",
+      source: "opentripplanner",
+      routePlan: createRoutePlanEnvelope({
+        status: "not-configured",
+        source: "opentripplanner",
+        origin,
+        destination,
+        tripId: cleanRouteTripId(body.tripId),
+        error: "missing-opentripplanner-api-base",
+      }),
+      providerStatus: [createRouteProviderStatus("not-configured", "missing-opentripplanner-api-base", 0, 0)],
+    }, context));
+  }
+
+  const tripId = cleanRouteTripId(body.tripId);
+  const startedAt = Date.now();
+  const dateTime = normalizeOtpDateTime(body.departureTime || body.dateTime || body.arriveByTime);
+  const requestedLimit = Number(body.limit || body.first || 3);
+  const requestPayload = {
+    query: OTP_PLAN_CONNECTION_QUERY,
+    variables: {
+      origin: createOtpLabeledLocation(origin),
+      destination: createOtpLabeledLocation(destination),
+      dateTime,
+      first: Number.isFinite(requestedLimit) ? Math.max(1, Math.min(5, requestedLimit)) : 3,
+    },
+  };
+
+  try {
+    const response = await fetchOpenTripPlannerGraphql(otpEndpoint, requestPayload, context.request);
+    const latencyMs = Date.now() - startedAt;
+    if (!response.ok) {
+      const error = `opentripplanner-http-${response.status}`;
+      return json(partialResponse("routes.plan", {
+        status: "error",
+        source: "opentripplanner",
+        routePlan: createRoutePlanEnvelope({ status: "error", source: "opentripplanner", origin, destination, tripId, error }),
+        providerStatus: [createRouteProviderStatus("error", error, 0, latencyMs, otpEndpoint)],
+      }, context));
+    }
+
+    const payload = await response.json();
+    const graphQlErrors = Array.isArray(payload.errors) ? payload.errors : [];
+    const routePlan = normalizeOpenTripPlannerPayload(payload, {
+      origin,
+      destination,
+      tripId,
+      requestedAt: new Date().toISOString(),
+      endpoint: otpEndpoint,
+    });
+    const error = graphQlErrors.map((item) => item.message).filter(Boolean).join("; ");
+    const status = routePlan.itineraries.length ? "ready" : error ? "error" : "empty";
+
+    return json(partialResponse("routes.plan", {
+      status,
+      source: "opentripplanner",
+      routePlan: {
+        ...routePlan,
+        status,
+        error,
+      },
+      providerStatus: [createRouteProviderStatus(status === "ready" ? "ok" : status, error, routePlan.itineraries.length, latencyMs, otpEndpoint)],
+    }, context));
+  } catch (error) {
+    const latencyMs = Date.now() - startedAt;
+    const message = error?.name === "AbortError" ? "opentripplanner-timeout" : error?.message || "opentripplanner-failed";
+    return json(partialResponse("routes.plan", {
+      status: "error",
+      source: "opentripplanner",
+      routePlan: createRoutePlanEnvelope({ status: "error", source: "opentripplanner", origin, destination, tripId, error: message }),
+      providerStatus: [createRouteProviderStatus("error", message, 0, latencyMs, otpEndpoint)],
+    }, context));
   }
 }
 
@@ -4448,6 +4538,339 @@ function buildOpenTripMapReason(kinds = []) {
   if (category === "Nature") return "Natural attraction from OpenTripMap.";
   if (category === "Culture") return "Cultural attraction from OpenTripMap.";
   return "Interesting place from OpenTripMap.";
+}
+
+const OTP_PLAN_CONNECTION_QUERY = `
+query TripRoutePlan(
+  $origin: PlanLabeledLocationInput!
+  $destination: PlanLabeledLocationInput!
+  $dateTime: PlanDateTimeInput
+  $first: Int
+) {
+  planConnection(
+    origin: $origin
+    destination: $destination
+    dateTime: $dateTime
+    first: $first
+  ) {
+    routingErrors {
+      code
+      description
+      inputField
+    }
+    edges {
+      node {
+        duration
+        start
+        end
+        numberOfTransfers
+        walkDistance
+        walkTime
+        legs {
+          mode
+          transitLeg
+          duration
+          distance
+          headsign
+          realTime
+          realtimeState
+          agency {
+            name
+          }
+          route {
+            shortName
+            longName
+            mode
+          }
+          from {
+            name
+            lat
+            lon
+          }
+          to {
+            name
+            lat
+            lon
+          }
+          legGeometry {
+            points
+            length
+          }
+        }
+      }
+    }
+  }
+}
+`;
+
+function normalizeRouteEndpoint(input = {}) {
+  const coordinates = normalizeCoordinates(input.coordinates || [
+    input.lat ?? input.latitude,
+    input.lng ?? input.lon ?? input.longitude,
+  ]);
+  if (!coordinates) return null;
+  return {
+    label: truncateText(stripHtml(input.label || input.name || ""), 80) || "Route point",
+    coordinates,
+    lat: coordinates[0],
+    lng: coordinates[1],
+  };
+}
+
+function cleanRouteTripId(value = "") {
+  return String(value || "").trim().slice(0, 120);
+}
+
+function getOpenTripPlannerEndpoint(base = "") {
+  const cleanBase = sanitizeUrl(base);
+  if (!cleanBase) return "";
+  try {
+    const parsed = new URL(cleanBase);
+    const path = parsed.pathname.replace(/\/+$/, "");
+    if (/\/otp\/(gtfs|transmodel)\//.test(path)) return parsed.href;
+    parsed.pathname = `${path}${OPENTRIPPLANNER_GRAPHQL_PATH}`;
+    parsed.search = "";
+    parsed.hash = "";
+    return parsed.href;
+  } catch {
+    return "";
+  }
+}
+
+function createOtpLabeledLocation(endpoint = {}) {
+  return {
+    label: endpoint.label || "Route point",
+    location: {
+      coordinate: {
+        latitude: endpoint.coordinates[0],
+        longitude: endpoint.coordinates[1],
+      },
+    },
+  };
+}
+
+function normalizeOtpDateTime(value = "") {
+  const iso = String(value || "").trim();
+  if (!iso) return null;
+  const parsed = new Date(iso);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return { earliestDeparture: iso };
+}
+
+async function fetchOpenTripPlannerGraphql(endpoint, payload, request) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 7000);
+  try {
+    return await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        Referer: new URL(request.url).origin,
+        "User-Agent": "Trip Planner Deluxe/0.1 (https://trip.rynell.org)",
+      },
+      body: JSON.stringify(payload),
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+function normalizeOpenTripPlannerPayload(payload = {}, options = {}) {
+  const connection = payload.data?.planConnection || payload.planConnection || {};
+  const routingErrors = (connection.routingErrors || []).map((error) => ({
+    code: error.code || "",
+    description: error.description || "",
+    inputField: error.inputField || "",
+  }));
+  const edges = Array.isArray(connection.edges) ? connection.edges : [];
+  const itineraries = edges
+    .map((edge) => normalizeOtpItinerary(edge?.node || edge, options))
+    .filter(Boolean);
+
+  return createRoutePlanEnvelope({
+    status: itineraries.length ? "ready" : "empty",
+    source: "opentripplanner",
+    origin: options.origin,
+    destination: options.destination,
+    tripId: options.tripId,
+    itineraries,
+    routingErrors,
+    endpoint: options.endpoint,
+  });
+}
+
+function createRoutePlanEnvelope(input = {}) {
+  return {
+    status: input.status || "empty",
+    source: input.source || "opentripplanner",
+    tripId: input.tripId || "",
+    origin: input.origin || null,
+    destination: input.destination || null,
+    itineraries: input.itineraries || [],
+    routingErrors: input.routingErrors || [],
+    error: input.error || "",
+    provider: input.source || "opentripplanner",
+    endpoint: input.endpoint || "",
+    generatedAt: new Date().toISOString(),
+  };
+}
+
+function normalizeOtpItinerary(itinerary = {}, options = {}) {
+  const legs = (itinerary.legs || []).map(normalizeOtpLeg).filter(Boolean);
+  const geometry = dedupeRouteCoordinates(legs.flatMap((leg) => leg.coordinates || []));
+  const durationSeconds = Math.round(Number(itinerary.duration || 0));
+  return {
+    id: stableId("otp-route", [
+      options.tripId,
+      options.origin?.coordinates?.join(","),
+      options.destination?.coordinates?.join(","),
+      itinerary.start,
+      itinerary.end,
+      durationSeconds,
+    ]),
+    source: "opentripplanner",
+    start: itinerary.start || "",
+    end: itinerary.end || "",
+    durationSeconds,
+    durationText: formatRouteDuration(durationSeconds),
+    walkDistanceMeters: Math.round(Number(itinerary.walkDistance || 0)),
+    walkDistanceText: formatDistance(Number(itinerary.walkDistance || 0)),
+    walkTimeSeconds: Math.round(Number(itinerary.walkTime || 0)),
+    transferCount: Math.max(0, Number(itinerary.numberOfTransfers || 0)),
+    summary: summarizeOtpItinerary(legs, durationSeconds, itinerary.numberOfTransfers),
+    legs,
+    coordinates: geometry.length ? geometry : [
+      options.origin?.coordinates,
+      options.destination?.coordinates,
+    ].filter(Boolean),
+  };
+}
+
+function normalizeOtpLeg(leg = {}) {
+  const from = normalizeOtpPlace(leg.from);
+  const to = normalizeOtpPlace(leg.to);
+  const encodedPoints = leg.legGeometry?.points || "";
+  const decoded = encodedPoints ? decodeGooglePolyline(encodedPoints) : [];
+  const coordinates = decoded.length ? decoded : [from?.coordinates, to?.coordinates].filter(Boolean);
+  const route = leg.route || {};
+  const mode = String(leg.mode || route.mode || "WALK").toUpperCase();
+  const routeName = route.shortName || route.longName || "";
+
+  return {
+    mode,
+    transit: Boolean(leg.transitLeg),
+    routeName,
+    agencyName: leg.agency?.name || "",
+    headsign: leg.headsign || "",
+    realTime: Boolean(leg.realTime),
+    realtimeState: leg.realtimeState || "",
+    durationSeconds: Math.round(Number(leg.duration || 0)),
+    durationText: formatRouteDuration(Number(leg.duration || 0)),
+    distanceMeters: Math.round(Number(leg.distance || 0)),
+    distanceText: formatDistance(Number(leg.distance || 0)),
+    from,
+    to,
+    geometryEncoded: encodedPoints,
+    geometryLength: Number(leg.legGeometry?.length || coordinates.length || 0),
+    coordinates,
+  };
+}
+
+function normalizeOtpPlace(place = {}) {
+  const coordinates = normalizeCoordinates([place.lat, place.lon]);
+  if (!coordinates) return null;
+  return {
+    name: place.name || "",
+    coordinates,
+    lat: coordinates[0],
+    lng: coordinates[1],
+  };
+}
+
+function summarizeOtpItinerary(legs = [], durationSeconds = 0, transferCount = 0) {
+  const meaningfulLegs = legs.filter((leg) => leg.mode);
+  const transitLegs = meaningfulLegs.filter((leg) => leg.transit);
+  const modeSummary = transitLegs.length
+    ? transitLegs.map((leg) => [leg.mode, leg.routeName].filter(Boolean).join(" ")).join(" + ")
+    : meaningfulLegs.map((leg) => leg.mode).filter((mode, index, arr) => arr.indexOf(mode) === index).join(" + ");
+  const transfers = Number(transferCount || 0);
+  const transferText = transfers === 1 ? "1 transfer" : `${transfers} transfers`;
+  return [formatRouteDuration(durationSeconds), modeSummary || "Route", transitLegs.length ? transferText : ""].filter(Boolean).join(" · ");
+}
+
+function dedupeRouteCoordinates(points = []) {
+  const deduped = [];
+  points.forEach((point) => {
+    const coordinates = normalizeCoordinates(point);
+    if (!coordinates) return;
+    const previous = deduped[deduped.length - 1];
+    if (previous && Math.abs(previous[0] - coordinates[0]) < 0.000001 && Math.abs(previous[1] - coordinates[1]) < 0.000001) return;
+    deduped.push(coordinates);
+  });
+  return deduped;
+}
+
+function decodeGooglePolyline(encoded = "") {
+  const points = [];
+  let index = 0;
+  let lat = 0;
+  let lng = 0;
+
+  while (index < encoded.length) {
+    const latResult = decodePolylineValue(encoded, index);
+    if (!latResult) break;
+    index = latResult.index;
+    lat += latResult.value;
+
+    const lngResult = decodePolylineValue(encoded, index);
+    if (!lngResult) break;
+    index = lngResult.index;
+    lng += lngResult.value;
+
+    points.push([lat / 1e5, lng / 1e5]);
+  }
+
+  return points;
+}
+
+function decodePolylineValue(encoded, startIndex) {
+  let result = 0;
+  let shift = 0;
+  let index = startIndex;
+  let byte = null;
+  do {
+    if (index >= encoded.length) return null;
+    byte = encoded.charCodeAt(index) - 63;
+    index += 1;
+    result |= (byte & 0x1f) << shift;
+    shift += 5;
+  } while (byte >= 0x20);
+  return {
+    value: (result & 1) ? ~(result >> 1) : (result >> 1),
+    index,
+  };
+}
+
+function formatRouteDuration(seconds = 0) {
+  const mins = Math.max(1, Math.round(Number(seconds || 0) / 60));
+  if (mins < 60) return `${mins} min`;
+  const hours = Math.floor(mins / 60);
+  const remaining = mins % 60;
+  return remaining ? `${hours}h ${remaining}m` : `${hours}h`;
+}
+
+function createRouteProviderStatus(status = "empty", error = "", count = 0, latencyMs = 0, endpoint = "") {
+  return {
+    provider: "opentripplanner",
+    status,
+    error,
+    count,
+    latencyMs,
+    endpoint,
+    checkedAt: new Date().toISOString(),
+  };
 }
 
 function createOsmSource(place) {

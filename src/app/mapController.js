@@ -6,6 +6,8 @@ if (typeof window !== "undefined") {
 }
 
 const activeMaps = new Map();
+let currentPoiOverviewSelectionIndex = 0;
+let poiRoutePreviewLayer = null;
 
 const PLAN_EVENT_LOCATION_COORDS = {
   "cdg airport": [49.0097, 2.5479],
@@ -80,6 +82,7 @@ export function initMapsForView(view) {
     try { map.remove(); } catch {}
   });
   activeMaps.clear();
+  poiRoutePreviewLayer = null;
 
   const trip = state.activeTrip;
 
@@ -291,6 +294,7 @@ export function selectPoiOnOverviewMap(spotIdx, spotName = "") {
 
   const poi = currentPoiOverviewList[idx];
   if (!poi) return;
+  currentPoiOverviewSelectionIndex = idx;
 
   const cardTitle = document.getElementById("poi-floating-title");
   if (cardTitle) cardTitle.textContent = poi.title;
@@ -308,7 +312,7 @@ export function selectPoiOnOverviewMap(spotIdx, spotName = "") {
   if (cardTag) cardTag.textContent = poi.category || "Landmark";
 
   const directionsBtn = document.querySelector(".poi-map-floating-card [data-action='open-directions']");
-  if (directionsBtn) directionsBtn.dataset.spotName = poi.title;
+  if (directionsBtn) setPoiDirectionsButtonData(directionsBtn, poi);
 
   const planBtn = document.getElementById("poi-floating-plan-btn");
   if (planBtn) planBtn.dataset.spotName = poi.title;
@@ -324,6 +328,55 @@ export function selectPoiOnOverviewMap(spotIdx, spotName = "") {
   }
 
   map.panTo([poi.lat, poi.lng], { animate: true });
+}
+
+export function getSelectedPoiRouteTarget() {
+  const poi = currentPoiOverviewList[currentPoiOverviewSelectionIndex] || currentPoiOverviewList[0] || null;
+  if (!poi) return null;
+  const coordinates = normalizeMapCoordinates([poi.lat, poi.lng]);
+  return {
+    id: poi.id || "",
+    label: poi.title || poi.name || "Destination",
+    coordinates,
+    lat: coordinates?.[0],
+    lng: coordinates?.[1],
+  };
+}
+
+export function previewPoiOverviewRoute(routePlan = {}, fallbackOrigin = null, fallbackDestination = null) {
+  if (typeof window === "undefined" || !L) return;
+  const map = activeMaps.get("poi-overview");
+  if (!map) return;
+  if (poiRoutePreviewLayer) {
+    try { map.removeLayer(poiRoutePreviewLayer); } catch {}
+    poiRoutePreviewLayer = null;
+  }
+
+  const itinerary = routePlan.bestItinerary || routePlan.itineraries?.[0] || routePlan;
+  const coordinates = normalizeRouteCoordinateList(itinerary.coordinates || []);
+  const origin = normalizeMapCoordinates(fallbackOrigin);
+  const destination = normalizeMapCoordinates(fallbackDestination);
+  const routePoints = coordinates.length ? coordinates : [origin, destination].filter(Boolean);
+  if (routePoints.length < 2) return;
+
+  poiRoutePreviewLayer = L.layerGroup().addTo(map);
+  L.polyline(routePoints, {
+    color: "#ff6d2d",
+    weight: 5,
+    opacity: 0.92,
+    lineCap: "round",
+    lineJoin: "round",
+  }).addTo(poiRoutePreviewLayer);
+  L.polyline(routePoints, {
+    color: "#ffffff",
+    weight: 2,
+    opacity: 0.75,
+    dashArray: "2, 10",
+    lineCap: "round",
+  }).addTo(poiRoutePreviewLayer);
+
+  const bounds = L.latLngBounds(routePoints);
+  map.fitBounds(bounds.pad(0.18), { maxZoom: 15, animate: true });
 }
 
 function initPoiOverviewMap(trip) {
@@ -380,6 +433,9 @@ function initPoiOverviewMap(trip) {
   });
 
   currentPoiOverviewList = pois;
+  currentPoiOverviewSelectionIndex = 0;
+  const initialDirectionsBtn = document.querySelector(".poi-map-floating-card [data-action='open-directions']");
+  if (initialDirectionsBtn && pois[0]) setPoiDirectionsButtonData(initialDirectionsBtn, pois[0]);
 
   const userLat = center[0] - 0.006;
   const userLng = center[1] - 0.007;
@@ -452,6 +508,32 @@ function initPoiOverviewMap(trip) {
   });
 
   activeMaps.set("poi-overview", map);
+}
+
+function setPoiDirectionsButtonData(button, poi = {}) {
+  button.dataset.spotName = poi.title || poi.name || "Destination";
+  const coordinates = normalizeMapCoordinates([poi.lat, poi.lng]);
+  if (coordinates) {
+    button.dataset.destinationLat = String(coordinates[0]);
+    button.dataset.destinationLng = String(coordinates[1]);
+  } else {
+    delete button.dataset.destinationLat;
+    delete button.dataset.destinationLng;
+  }
+}
+
+function normalizeRouteCoordinateList(points = []) {
+  return points
+    .map((point) => normalizeMapCoordinates(point))
+    .filter(Boolean);
+}
+
+function normalizeMapCoordinates(value) {
+  if (!Array.isArray(value) || value.length !== 2) return null;
+  const [lat, lng] = value.map(Number);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return null;
+  return [lat, lng];
 }
 
 function getMapFallbackImage(destination = "") {
