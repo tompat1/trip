@@ -322,6 +322,109 @@ test("Worker OpenTripPlanner route reports missing endpoint clearly", async () =
   assert.equal(payload.providerStatus[0].error, "missing-opentripplanner-api-base");
 });
 
+test("Worker Wikivoyage route reports missing Wikimedia credentials clearly", async () => {
+  const response = await worker.fetch(new Request("https://trip.test/api/wikivoyage/article?title=Madrid&lang=en"), {}, {});
+
+  assert.equal(response.status, 200);
+  const payload = await response.json();
+  assert.equal(payload.status, "not-configured");
+  assert.equal(payload.source, "wikivoyage-enterprise");
+  assert.equal(payload.providerStatus[0].provider, "wikivoyage-enterprise");
+  assert.equal(payload.providerStatus[0].error, "missing-wikimedia-enterprise-credentials");
+});
+
+test("Worker Wikivoyage route authenticates server-side and normalizes article data", async () => {
+  const originalFetch = globalThis.fetch;
+  const calls = [];
+  globalThis.fetch = async (url, options = {}) => {
+    calls.push({ url: String(url), options });
+    if (String(url).includes("auth.enterprise.wikimedia.com/v1/login")) {
+      return {
+        ok: true,
+        async json() {
+          return { access_token: "test-access-token", expires_in: 86400 };
+        },
+      };
+    }
+    if (String(url).includes("api.enterprise.wikimedia.com/v2/articles/Madrid")) {
+      return {
+        ok: true,
+        async json() {
+          return [{
+            name: "Madrid",
+            identifier: 2807,
+            abstract: "Madrid is Spain's capital and largest city, with major museums, plazas, parks and food neighborhoods.",
+            image: { content_url: "https://upload.wikimedia.org/madrid.jpg" },
+            in_language: { identifier: "en" },
+            is_part_of: { identifier: "enwikivoyage", url: "https://en.wikivoyage.org" },
+            main_entity: { identifier: "Q2807" },
+            license: [{ name: "Creative Commons Attribution-ShareAlike 3.0", identifier: "CC-BY-SA-3.0", url: "https://creativecommons.org/licenses/by-sa/3.0/" }],
+            has_parts: [{ name: "See", value: "Museo del Prado and Retiro Park are core Madrid stops." }],
+          }];
+        },
+      };
+    }
+    throw new Error(`Unexpected fetch: ${url}`);
+  };
+
+  try {
+    const response = await worker.fetch(new Request("https://trip.test/api/wikivoyage/article?title=Madrid%2C%20Spain&lang=en&limit=2"), {
+      WIKIMEDIA_ENTERPRISE_USERNAME: "MixedCaseUser",
+      WIKIMEDIA_ENTERPRISE_PASSWORD: "dummy-password",
+    }, {});
+
+    assert.equal(response.status, 200);
+    const payload = await response.json();
+    const authBody = JSON.parse(calls[0].options.body);
+    const articleBody = JSON.parse(calls[1].options.body);
+    assert.equal(authBody.username, "mixedcaseuser");
+    assert.equal(authBody.password, "dummy-password");
+    assert.equal(calls[1].options.headers.Authorization, "Bearer test-access-token");
+    assert.deepEqual(articleBody.filters, [{ field: "is_part_of.identifier", value: "enwikivoyage" }]);
+    assert.equal(articleBody.limit, 2);
+    assert.equal(payload.status, "ready");
+    assert.equal(payload.article.title, "Madrid");
+    assert.equal(payload.article.sourceUrl, "https://en.wikivoyage.org/wiki/Madrid");
+    assert.equal(payload.article.sections[0].title, "See");
+    assert.equal(payload.providerStatus[0].status, "ok");
+    assert.equal(JSON.stringify(payload).includes("test-access-token"), false);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("enrichment service fetches Wikivoyage briefs through the Worker", async () => {
+  let requestedUrl = "";
+  const service = createEnrichmentService({
+    apiBase: "https://trip.test",
+    fetchImpl: async (url) => {
+      requestedUrl = String(url);
+      return {
+        ok: true,
+        async json() {
+          return {
+            ok: true,
+            status: "ready",
+            source: "wikivoyage-enterprise",
+            article: {
+              title: "Madrid",
+              abstract: "Madrid travel guide.",
+              sourceUrl: "https://en.wikivoyage.org/wiki/Madrid",
+            },
+            providerStatus: [{ provider: "wikivoyage-enterprise", status: "ok" }],
+          };
+        },
+      };
+    },
+  });
+
+  const result = await service.fetchWikivoyageBrief({ title: "Madrid", lang: "en", limit: 1 });
+  assert.equal(requestedUrl, "https://trip.test/api/wikivoyage/article?title=Madrid&lang=en&limit=1");
+  assert.equal(result.status, "ready");
+  assert.equal(result.article.title, "Madrid");
+  assert.equal(result.providerStatus[0].provider, "wikivoyage-enterprise");
+});
+
 test("Worker OpenTripPlanner route normalizes GraphQL itineraries", async () => {
   const originalFetch = globalThis.fetch;
   let requestedUrl = "";

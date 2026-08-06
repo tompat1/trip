@@ -1224,6 +1224,7 @@ function renderLocationEditorialIntroCard(trip) {
     : (cachedBrief?.quickFacts?.country || "International");
 
   const quickFacts = cachedBrief?.quickFacts || getQuickFactsForDestination(destination);
+  const sourceLabel = cachedBrief?.source || "Source";
 
   const imageUrl = cachedBrief?.heroImage || cachedBrief?.thumbnail || trip.heroImage || trip.upcomingActivity?.image || getDestinationFallbackImage(destination, 1200);
   const activeOverviewFilter = state.overviewFilter || "overview";
@@ -1254,7 +1255,7 @@ function renderLocationEditorialIntroCard(trip) {
             ${renderIcon("chevronLeft")}
           </button>
           ${cachedBrief?.sourceUrl ? `
-            <a href="${escapeHtml(cachedBrief.sourceUrl)}" target="_blank" rel="noopener noreferrer" style="font-size: 0.72rem; color: #ffffff; background: rgba(0,0,0,0.55); padding: 4px 12px; border-radius: var(--radius-pill); backdrop-filter: blur(8px); text-decoration: none; font-weight: 600; border: 1px solid rgba(255,255,255,0.25);">Wikipedia ↗</a>
+            <a href="${escapeHtml(cachedBrief.sourceUrl)}" target="_blank" rel="noopener noreferrer" style="font-size: 0.72rem; color: #ffffff; background: rgba(0,0,0,0.55); padding: 4px 12px; border-radius: var(--radius-pill); backdrop-filter: blur(8px); text-decoration: none; font-weight: 600; border: 1px solid rgba(255,255,255,0.25);">${escapeHtml(sourceLabel)} ↗</a>
           ` : ''}
         </div>
 

@@ -13,6 +13,8 @@ const RIJKSMUSEUM_COLLECTION_API = "https://www.rijksmuseum.nl/api/en/collection
 const SMITHSONIAN_SEARCH_API = "https://api.si.edu/openaccess/api/v1.0/search";
 const ARTIC_ARTWORK_SEARCH_API = "https://api.artic.edu/api/v1/artworks/search";
 const AMADEUS_API_BASE = "https://test.api.amadeus.com";
+const WIKIMEDIA_ENTERPRISE_AUTH_API = "https://auth.enterprise.wikimedia.com/v1";
+const WIKIMEDIA_ENTERPRISE_API = "https://api.enterprise.wikimedia.com/v2";
 const OPENTRIPPLANNER_GRAPHQL_PATH = "/otp/gtfs/v1";
 const OVERPASS_ENDPOINTS = [
   "https://overpass-api.de/api/interpreter",
@@ -78,6 +80,7 @@ function matchRoute(method, pathname) {
     ["GET", /^\/api\/events\/discover$/, eventsDiscoverHandler],
     ["GET", /^\/api\/airports\/search$/, airportsSearchHandler],
     ["GET", /^\/api\/flights\/search$/, flightsSearchHandler],
+    ["GET", /^\/api\/wikivoyage\/article$/, wikivoyageArticleHandler],
     ["POST", /^\/api\/routes\/plan$/, routesPlanHandler],
     ["GET", /^\/api\/gbfs\/([^/]+)$/, gbfsProxyHandler],
     ["POST", /^\/api\/places\/enrich-location$/, enrichLocationHandler],
@@ -144,6 +147,8 @@ function healthHandler({ env, hasDb, hasCache, hasMedia, hasLightMedia }) {
     OPENTRIPMAP_API_KEY: env.OPENTRIPMAP_API_KEY ? "configured" : "missing",
     AMADEUS_CLIENT_ID: env.AMADEUS_CLIENT_ID ? "configured" : "missing",
     AMADEUS_CLIENT_SECRET: env.AMADEUS_CLIENT_SECRET ? "configured" : "missing",
+    WIKIMEDIA_ENTERPRISE_USERNAME: env.WIKIMEDIA_ENTERPRISE_USERNAME ? "configured" : "missing",
+    WIKIMEDIA_ENTERPRISE_PASSWORD: env.WIKIMEDIA_ENTERPRISE_PASSWORD ? "configured" : "missing",
     OPENTRIPPLANNER_API_BASE: env.OPENTRIPPLANNER_API_BASE ? "configured" : "missing",
     TICKETMASTER_API_KEY: env.TICKETMASTER_API_KEY ? "configured" : "missing",
     BANDSINTOWN_APP_ID: env.BANDSINTOWN_APP_ID ? "configured" : "missing",
@@ -168,6 +173,7 @@ function healthHandler({ env, hasDb, hasCache, hasMedia, hasLightMedia }) {
     services: {
       opentripmap: secretStatus.OPENTRIPMAP_API_KEY === "configured" ? "ready" : "missing-key",
       amadeus: secretStatus.AMADEUS_CLIENT_ID === "configured" && secretStatus.AMADEUS_CLIENT_SECRET === "configured" ? "ready" : "missing-key",
+      wikivoyageEnterprise: secretStatus.WIKIMEDIA_ENTERPRISE_USERNAME === "configured" && secretStatus.WIKIMEDIA_ENTERPRISE_PASSWORD === "configured" ? "ready" : "missing-credentials",
       opentripplanner: secretStatus.OPENTRIPPLANNER_API_BASE === "configured" ? "ready" : "missing-url",
       ticketmaster: secretStatus.TICKETMASTER_API_KEY === "configured" ? "ready" : "missing-key",
       bandsintown: secretStatus.BANDSINTOWN_APP_ID === "configured" ? "ready" : "missing-key",
@@ -1148,6 +1154,77 @@ async function flightsSearchHandler(context) {
       error: error?.message || "amadeus-flight-search-failed",
       providerStatus: [{ provider: "amadeus", status: "error", error: error?.message || "failed", count: 0, latencyMs: Date.now() - startedAt }],
     });
+  }
+}
+
+async function wikivoyageArticleHandler(context) {
+  const url = new URL(context.request.url);
+  const title = normalizeWikivoyageTitle(url.searchParams.get("title") || url.searchParams.get("destination") || "");
+  const lang = normalizeWikimediaLanguage(url.searchParams.get("lang") || "en");
+  const limit = clampNumber(url.searchParams.get("limit"), 1, 10, 3);
+  const project = `${lang}wikivoyage`;
+
+  if (!title) return jsonError("missing_wikivoyage_title", "Provide a destination title.", 400);
+
+  const credentials = getWikimediaEnterpriseCredentials(context.env);
+  if (!credentials) {
+    return json(partialResponse("wikivoyage.article", {
+      status: "not-configured",
+      source: "wikivoyage-enterprise",
+      article: null,
+      query: { title, lang, project, limit },
+      providerStatus: [createWikivoyageProviderStatus("not-configured", "missing-wikimedia-enterprise-credentials", 0, 0)],
+    }, context));
+  }
+
+  const startedAt = Date.now();
+  try {
+    const token = await fetchWikimediaEnterpriseAccessToken(context, credentials);
+    const response = await fetchWikivoyageEnterpriseArticle(context, {
+      token,
+      title,
+      lang,
+      project,
+      limit,
+    });
+    const latencyMs = Date.now() - startedAt;
+
+    if (!response.ok) {
+      return json(partialResponse("wikivoyage.article", {
+        status: "error",
+        source: "wikivoyage-enterprise",
+        article: null,
+        query: { title, lang, project, limit },
+        error: `wikivoyage-http-${response.status}`,
+        providerStatus: [createWikivoyageProviderStatus("error", `wikivoyage-http-${response.status}`, 0, latencyMs)],
+      }, context));
+    }
+
+    const payload = await response.json();
+    const articles = extractWikimediaArticles(payload);
+    const article = articles
+      .map((item) => normalizeWikivoyageArticle(item, { requestedTitle: title, lang, project }))
+      .find((item) => item.abstract || item.standfirst || item.sections?.length) || null;
+    const status = article ? "ready" : "empty";
+
+    return json(partialResponse("wikivoyage.article", {
+      status,
+      source: "wikivoyage-enterprise",
+      article,
+      query: { title, lang, project, limit },
+      providerStatus: [createWikivoyageProviderStatus(status === "ready" ? "ok" : "empty", article ? "" : "no-wikivoyage-article", article ? 1 : 0, latencyMs)],
+    }, context));
+  } catch (error) {
+    const latencyMs = Date.now() - startedAt;
+    const message = error?.name === "AbortError" ? "wikivoyage-timeout" : error?.message || "wikivoyage-failed";
+    return json(partialResponse("wikivoyage.article", {
+      status: "error",
+      source: "wikivoyage-enterprise",
+      article: null,
+      query: { title, lang, project, limit },
+      error: message,
+      providerStatus: [createWikivoyageProviderStatus("error", message, 0, latencyMs)],
+    }, context));
   }
 }
 
@@ -4009,6 +4086,205 @@ async function fetchOpenTripMapPlaceDetails(context, xid, options = {}) {
     const message = error?.name === "AbortError" ? "opentripmap-details-timeout" : error?.message || "opentripmap-details-failed";
     return { place: null, error: message, providerStatus: createOpenTripMapStatus("error", message, 0, Date.now() - startedAt) };
   }
+}
+
+function getWikimediaEnterpriseCredentials(env = {}) {
+  const username = String(env.WIKIMEDIA_ENTERPRISE_USERNAME || "").trim().replace(/^["']|["']$/g, "").toLowerCase();
+  const password = String(env.WIKIMEDIA_ENTERPRISE_PASSWORD || "").trim().replace(/^["']|["']$/g, "");
+  if (!username || !password) return null;
+  return { username, password };
+}
+
+async function fetchWikimediaEnterpriseAccessToken(context, credentials) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 7000);
+  try {
+    const response = await fetch(`${WIKIMEDIA_ENTERPRISE_AUTH_API}/login`, {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        Referer: new URL(context.request.url).origin,
+        "User-Agent": "Trip Planner Deluxe/0.1 (https://trip.rynell.org)",
+      },
+      body: JSON.stringify({
+        username: credentials.username,
+        password: credentials.password,
+      }),
+      signal: controller.signal,
+    });
+    if (!response.ok) throw new Error(`wikimedia-auth-http-${response.status}`);
+    const payload = await response.json();
+    if (!payload.access_token) throw new Error("wikimedia-access-token-missing");
+    return payload.access_token;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function fetchWikivoyageEnterpriseArticle(context, options = {}) {
+  const articleTitle = encodeURIComponent(String(options.title || "").replace(/\s+/g, "_"));
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 7000);
+  try {
+    return await fetch(`${WIKIMEDIA_ENTERPRISE_API}/articles/${articleTitle}`, {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${options.token}`,
+        Referer: new URL(context.request.url).origin,
+        "User-Agent": "Trip Planner Deluxe/0.1 (https://trip.rynell.org)",
+      },
+      body: JSON.stringify({
+        filters: [
+          {
+            field: "is_part_of.identifier",
+            value: options.project || `${options.lang || "en"}wikivoyage`,
+          },
+        ],
+        limit: options.limit || 3,
+      }),
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+function extractWikimediaArticles(payload = {}) {
+  if (Array.isArray(payload)) return payload;
+  for (const key of ["articles", "items", "data", "results", "pages"]) {
+    if (Array.isArray(payload[key])) return payload[key];
+  }
+  if (payload.article && typeof payload.article === "object") return [payload.article];
+  if (payload.name || payload.identifier || payload.abstract) return [payload];
+  return [];
+}
+
+function normalizeWikivoyageArticle(article = {}, options = {}) {
+  const requestedTitle = options.requestedTitle || "";
+  const title = truncateText(stripWikimediaText(article.name || article.title || requestedTitle), 120) || requestedTitle;
+  const abstract = stripWikimediaText(article.abstract || article.description || "");
+  const bodyText = stripWikimediaText(article.article_body?.html || article.article_body?.wikitext || article.body?.html || article.text || "");
+  const sections = normalizeWikivoyageSections(article.has_parts || article.sections || article.article_body?.sections || []);
+  const standfirst = abstract || sections[0]?.text || bodyText;
+  const sourceUrl = createWikivoyageArticleUrl(article, title, options.lang || "en");
+  const imageUrl = getWikivoyageImageUrl(article);
+
+  return {
+    id: String(article.identifier || stableId("wikivoyage", [options.project, title])),
+    title,
+    pageId: Number(article.identifier || 0) || null,
+    abstract: truncateText(abstract || standfirst, 620),
+    standfirst: truncateText(standfirst, 1200),
+    description: truncateText(article.description || "", 180),
+    heroImage: imageUrl,
+    thumbnail: imageUrl,
+    source: "Wikivoyage Enterprise",
+    sourceUrl,
+    project: article.is_part_of?.identifier || options.project || `${options.lang || "en"}wikivoyage`,
+    language: article.in_language?.identifier || options.lang || "en",
+    wikidataId: article.main_entity?.identifier || "",
+    dateModified: article.date_modified || "",
+    license: (article.license || []).map((item) => ({
+      name: item.name || "",
+      identifier: item.identifier || "",
+      url: item.url || "",
+    })).filter((item) => item.name || item.identifier || item.url),
+    sections,
+  };
+}
+
+function normalizeWikivoyageSections(parts = [], results = [], depth = 0) {
+  if (!Array.isArray(parts) || depth > 5) return results;
+  for (const part of parts) {
+    const title = stripWikimediaText(part.name || part.title || part.heading || part.label || "");
+    const text = stripWikimediaText(part.value || part.text || part.html || part.wikitext || part.content || "");
+    if (title && text && isWikivoyageTravelSection(title) && !results.some((item) => item.title.toLowerCase() === title.toLowerCase())) {
+      results.push({ title: truncateText(title, 80), text: truncateText(text, 900) });
+    }
+    normalizeWikivoyageSections(part.has_parts || part.parts || part.sections || part.children || [], results, depth + 1);
+  }
+  return results.slice(0, 10);
+}
+
+function isWikivoyageTravelSection(title = "") {
+  return /^(understand|talk|get in|get around|fees and permits|see|do|learn|work|buy|eat|drink|sleep|stay safe|stay healthy|respect|connect|cope|nearby|go next)$/i.test(title);
+}
+
+function createWikivoyageArticleUrl(article = {}, title = "", lang = "en") {
+  const directUrl = sanitizeUrl(article.url || article.content_urls?.desktop?.page || article.web_url || "");
+  if (directUrl) return directUrl;
+  const baseUrl = sanitizeUrl(article.is_part_of?.url || `https://${lang}.wikivoyage.org`) || `https://${lang}.wikivoyage.org`;
+  return `${baseUrl.replace(/\/+$/, "")}/wiki/${encodeURIComponent(String(article.name || title).replace(/\s+/g, "_"))}`;
+}
+
+function getWikivoyageImageUrl(article = {}) {
+  const image = article.image || article.thumbnail || {};
+  if (typeof image === "string") return sanitizeUrl(image);
+  const nestedImage = Array.isArray(article.images) ? article.images.find((item) => item.content_url || item.url || item.source) : null;
+  return sanitizeUrl(
+    image.content_url ||
+    image.url ||
+    image.source ||
+    image.thumbnail_url ||
+    nestedImage?.content_url ||
+    nestedImage?.url ||
+    nestedImage?.source ||
+    ""
+  );
+}
+
+function stripWikimediaText(value = "") {
+  return decodeBasicHtmlEntities(String(value || "")
+    .replace(/<(br|hr)\s*\/?>/gi, " ")
+    .replace(/<\/(p|li|h[1-6]|div|section|tr|td|th)>/gi, " ")
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, " ")
+    .replace(/\[\s*edit\s*\]/gi, " ")
+    .replace(/\[\d+\]/g, " "))
+    .replace(/<[^>]*>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function decodeBasicHtmlEntities(value = "") {
+  return String(value || "")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&quot;/g, "\"")
+    .replace(/&#39;/g, "'")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">");
+}
+
+function normalizeWikivoyageTitle(raw = "") {
+  let title = stripWikimediaText(raw)
+    .replace(/,?\s*(?:spring|summer|fall|autumn|winter)\s+\b20\d\d\b.*$/i, "")
+    .replace(/,?\s*(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|okt|nov|dec)[a-z]*(?:\s*[-/]\s*(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|okt|nov|dec)[a-z]*)?\s+\b20\d\d\b.*$/i, "")
+    .replace(/,?\s*\b20\d\d\b.*$/i, "")
+    .replace(/,?\s*\b(?:trip|vacation|holiday|getaway|tour)\b.*$/i, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (title.includes(",")) title = title.split(",")[0].trim();
+  return truncateText(title, 120);
+}
+
+function normalizeWikimediaLanguage(value = "en") {
+  const lang = String(value || "en").trim().toLowerCase().replace(/[^a-z-]/g, "");
+  return /^[a-z]{2,12}(?:-[a-z]{2,12})?$/.test(lang) ? lang : "en";
+}
+
+function createWikivoyageProviderStatus(status, error = "", count = 0, latencyMs = 0) {
+  return {
+    provider: "wikivoyage-enterprise",
+    status,
+    error,
+    count,
+    latencyMs,
+    checkedAt: new Date().toISOString(),
+  };
 }
 
 async function fetchAmadeusToken(context) {

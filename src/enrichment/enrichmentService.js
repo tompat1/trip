@@ -175,6 +175,30 @@ export function createEnrichmentService(options = {}) {
       return normalizeWorkerRoutePlanPayload(payload, now);
     },
 
+    async fetchWikivoyageBrief(input = {}) {
+      const title = String(input.title || input.destination || "").trim();
+      if (!title) {
+        return {
+          status: "empty",
+          article: null,
+          providerStatus: [createProviderStatus({ provider: "wikivoyage-enterprise", status: PROVIDER_STATUS.error, error: "missing-title" })],
+        };
+      }
+      const url = buildApiUrl(apiBase, "/api/wikivoyage/article");
+      url.searchParams.set("title", title);
+      url.searchParams.set("lang", input.lang || "en");
+      if (input.limit) url.searchParams.set("limit", String(input.limit));
+      const response = await fetchImpl(url.href, { headers: createApiHeaders() });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        const error = new Error(`worker-wikivoyage-http-${response.status}`);
+        error.status = response.status;
+        error.payload = payload;
+        throw error;
+      }
+      return normalizeWorkerWikivoyagePayload(payload, now);
+    },
+
     async discoverTopPois(input = {}) {
       const personaContext = getPersonaDiscoveryContext(input.personas || []);
       const kinds = mergeOpenTripMapKinds(input.kinds || OPENTRIPMAP_TOURISM_KINDS, personaContext.openTripMapKinds);
@@ -508,6 +532,20 @@ function normalizeWorkerRoutePlanPayload(payload = {}, now = () => new Date()) {
     providerStatus: payload.providerStatus || routePlan.providerStatus || [],
     generatedAt: payload.generatedAt || routePlan.generatedAt || now().toISOString(),
     error: payload.error?.message || routePlan.error || "",
+  };
+}
+
+function normalizeWorkerWikivoyagePayload(payload = {}, now = () => new Date()) {
+  const article = payload.article || null;
+  return {
+    ok: payload.ok !== false,
+    status: payload.status || (article ? "ready" : "empty"),
+    source: payload.source || article?.source || "wikivoyage-enterprise",
+    article,
+    providerStatus: payload.providerStatus || article?.providerStatus || [],
+    generatedAt: payload.generatedAt || now().toISOString(),
+    refreshAfter: payload.refreshAfter || "",
+    error: payload.error?.message || (typeof payload.error === "string" ? payload.error : ""),
   };
 }
 

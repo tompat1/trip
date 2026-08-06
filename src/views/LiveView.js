@@ -573,6 +573,8 @@ const ADMIN_PROVIDER_GROUPS = [
     description: "Context providers for weather, signals, commute and civic/event intelligence.",
     items: [
       { name: "OpenStreetMap / Overpass", service: "overpass", noKey: true, area: "Nearby POIs and persona-biased scans" },
+      { name: "Wikimedia Enterprise username", key: "WIKIMEDIA_ENTERPRISE_USERNAME", service: "wikivoyageEnterprise", required: false, area: "Wikivoyage destination guides" },
+      { name: "Wikimedia Enterprise password", key: "WIKIMEDIA_ENTERPRISE_PASSWORD", service: "wikivoyageEnterprise", required: false, area: "Wikivoyage destination guides" },
       { name: "OpenTripPlanner", key: "OPENTRIPPLANNER_API_BASE", service: "opentripplanner", required: false, area: "Optional in-app transit and walking route previews" },
       { name: "Open-Meteo", service: "openmeteo", noKey: true, area: "Weather, sunrise, sunset" },
       { name: "NASA EONET", service: "nasaEonet", noKey: true, area: "Natural events and safety signals" },
@@ -648,6 +650,8 @@ function renderAdminServicesPanel() {
         <code>npx wrangler secret put OPENTRIPMAP_API_KEY</code>
         <code>npx wrangler secret put AMADEUS_CLIENT_ID</code>
         <code>npx wrangler secret put AMADEUS_CLIENT_SECRET</code>
+        <code>npx wrangler secret put WIKIMEDIA_ENTERPRISE_USERNAME</code>
+        <code>npx wrangler secret put WIKIMEDIA_ENTERPRISE_PASSWORD</code>
         <code>npx wrangler secret put TICKETMASTER_API_KEY</code>
         <code>npx wrangler secret put BANDSINTOWN_APP_ID</code>
       </div>

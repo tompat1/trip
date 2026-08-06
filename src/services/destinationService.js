@@ -1,7 +1,9 @@
 /**
- * destinationService — Dynamically fetches authentic Wikipedia summaries and Workers AI
- * destination briefs for ANY destination added by a user.
+ * destinationService — Dynamically fetches authentic Wikivoyage/Wikipedia summaries
+ * and destination briefs for any destination added by a user.
  */
+
+import { enrichmentService } from "../enrichment/enrichmentService.js";
 
 const summaryCache = new Map();
 const pendingFetches = new Set();
@@ -371,9 +373,18 @@ export async function fetchDynamicDestinationBrief(destinationName = "") {
 
   const sanitized = sanitizeLocationName(cleanName);
   const primarySearch = sanitized.split(",")[0].trim();
-  const searchCandidates = Array.from(new Set([sanitized, primarySearch])).filter(Boolean);
+  const searchCandidates = Array.from(new Set([primarySearch, sanitized])).filter(Boolean);
 
   try {
+    for (const candidate of searchCandidates) {
+      const wikivoyageBrief = await fetchWikivoyageDestinationBrief(candidate, cleanName, quickFacts).catch(() => null);
+      if (wikivoyageBrief) {
+        summaryCache.set(cleanName, wikivoyageBrief);
+        pendingFetches.delete(cleanName);
+        return wikivoyageBrief;
+      }
+    }
+
     for (const candidate of searchCandidates) {
       try {
         const url = `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(candidate)}`;
@@ -407,4 +418,33 @@ export async function fetchDynamicDestinationBrief(destinationName = "") {
   }
 
   return null;
+}
+
+async function fetchWikivoyageDestinationBrief(candidate = "", destinationName = "", quickFacts = {}) {
+  const title = sanitizeLocationName(candidate).split(",")[0].trim();
+  if (!title) return null;
+  const payload = await enrichmentService.fetchWikivoyageBrief({ title, lang: "en", limit: 3 });
+  const article = payload.article || {};
+  const standfirst = article.abstract || article.standfirst || "";
+  if (payload.status !== "ready" || !standfirst) return null;
+
+  return {
+    destination: destinationName,
+    title: article.title || title,
+    description: article.description || "",
+    standfirst,
+    whyStop: article.sections?.[0]?.text ? truncateBriefText(article.sections[0].text, 220) : "",
+    thumbnail: article.thumbnail || "",
+    heroImage: article.heroImage || article.thumbnail || "",
+    source: "Wikivoyage",
+    sourceUrl: article.sourceUrl || `https://en.wikivoyage.org/wiki/${encodeURIComponent(title.replace(/\s+/g, "_"))}`,
+    sourceProvider: article.source || payload.source || "wikivoyage-enterprise",
+    sections: article.sections || [],
+    quickFacts,
+  };
+}
+
+function truncateBriefText(value = "", maxLength = 220) {
+  const text = String(value || "").replace(/\s+/g, " ").trim();
+  return text.length > maxLength ? `${text.slice(0, maxLength - 1).trim()}…` : text;
 }
