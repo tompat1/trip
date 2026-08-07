@@ -645,7 +645,45 @@ function renderAdminServicesPanel() {
         ${ADMIN_PROVIDER_GROUPS.map((group) => renderAdminProviderGroup(group, health)).join("")}
       </div>
 
-      <div class="admin-services-note">
+      <div class="admin-concierge-console" style="margin-top: 24px; padding: 20px; background: linear-gradient(135deg, rgba(217, 74, 58, 0.08) 0%, rgba(56, 92, 115, 0.12) 100%); border: 1px solid rgba(217, 74, 58, 0.22); border-radius: 16px;">
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; flex-wrap: wrap;">
+          <div>
+            <h4 style="margin: 0; font-size: 1.05rem; font-weight: 700; color: var(--ink); display: flex; align-items: center; gap: 8px;">
+              ${renderIcon("sparkles")} AI Concierge & Live Enrichment Query
+            </h4>
+            <p style="margin: 4px 0 0 0; font-size: 0.85rem; color: var(--color-text-muted);">
+              Auto-cycles across <strong>DeepSeek R1</strong>, <strong>Llama 3.3</strong>, <strong>Gemini Flash</strong>, <strong>Groq</strong> & <strong>Workers AI</strong>. Queries live POIs, date-range concerts & facts.
+            </p>
+          </div>
+          <button class="btn btn--outline btn--xs" data-action="open-ai-concierge" type="button" style="border-color: var(--journey-red); color: var(--journey-red); font-weight: 600; font-size: 0.78rem; padding: 6px 12px; border-radius: 14px;">
+            Open Chat Drawer ${renderIcon("sparkles")}
+          </button>
+        </div>
+
+        <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px;">
+          <button class="btn btn--secondary btn--xs" data-action="concierge-prompt-pill" data-prompt="Whats the top 10 events on location during the trips date span?" style="border-radius: 16px; font-size: 0.78rem; padding: 6px 12px; background: var(--paper); border: 1px solid var(--border);">
+            🎟️ Top 10 events during trip dates
+          </button>
+          <button class="btn btn--secondary btn--xs" data-action="concierge-prompt-pill" data-prompt="What are the 10 best POIs and hidden gems in destination?" style="border-radius: 16px; font-size: 0.78rem; padding: 6px 12px; background: var(--paper); border: 1px solid var(--border);">
+            📍 10 best POIs & hidden gems
+          </button>
+          <button class="btn btn--secondary btn--xs" data-action="concierge-prompt-pill" data-prompt="Best specialty coffee & local dining spots" style="border-radius: 16px; font-size: 0.78rem; padding: 6px 12px; background: var(--paper); border: 1px solid var(--border);">
+            ☕ Specialty coffee & food
+          </button>
+          <button class="btn btn--secondary btn--xs" data-action="concierge-prompt-pill" data-prompt="Rainy day plan and indoor cultural highlights" style="border-radius: 16px; font-size: 0.78rem; padding: 6px 12px; background: var(--paper); border: 1px solid var(--border);">
+            ☔ Rainy day itinerary
+          </button>
+        </div>
+
+        <form class="home-concierge-quick-form" data-action="submit-home-concierge-form" onsubmit="return false;" style="display: flex; gap: 8px;">
+          <input type="text" placeholder="Ask Concierge: e.g. Top 10 events during trip dates, 10 best POIs..." style="flex: 1; border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; font-size: 0.88rem; background: var(--paper); color: var(--ink);" required />
+          <button class="btn btn--primary btn--sm" type="submit" style="white-space: nowrap; font-weight: 600; padding: 8px 16px; border-radius: 10px;">
+            Ask AI ${renderIcon("send")}
+          </button>
+        </form>
+      </div>
+
+      <div class="admin-services-note" style="margin-top: 20px;">
         <strong>Secret install commands</strong>
         <code>npx wrangler secret put OPENTRIPMAP_API_KEY</code>
         <code>npx wrangler secret put AMADEUS_CLIENT_ID</code>

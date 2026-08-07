@@ -5979,7 +5979,10 @@ async function aiConciergeHandler(context) {
   const destination = trip.destination || tripContext.destination || "Destination";
   const weather = trip.weather || tripContext.weather || {};
   const weatherStr = weather.condition ? `${weather.condition}, ${weather.temp || ""}` : "";
-  const pois = tripContext.pois || [];
+  const startDate = trip.startDate || tripContext.startDate || trip.dates || "";
+  const endDate = trip.endDate || tripContext.endDate || "";
+  const events = tripContext.events || trip.events || [];
+  const pois = tripContext.pois || trip.pois || [];
 
   // API Key extraction from request headers or environment variables
   const reqHeaders = context.request.headers;
@@ -5994,14 +5997,24 @@ async function aiConciergeHandler(context) {
     ? pois.map((p) => `- ${p.name} (${p.category || "spot"}${p.address ? `, ${p.address}` : ""})`).join("\n")
     : "";
 
+  const eventSummary = events.length > 0
+    ? events.map((e) => `- ${e.title || e.artist} at ${e.venue || "Venue"} (${e.dates || "Upcoming"})`).join("\n")
+    : "";
+
+  const dateSpanText = startDate ? `${startDate}${endDate ? ` to ${endDate}` : ""}` : "";
+
   const systemPrompt = `You are TRIP AI, an expert, charming, and highly localized travel concierge for ${destination}.
 Traveler preferences & personas: ${personas.join(", ")}.
+${dateSpanText ? `Trip Date Span: ${dateSpanText}.` : ""}
 ${weatherStr ? `Current destination weather: ${weatherStr}.` : ""}
 ${poiSummary ? `Verified local places & POIs in ${destination}:\n${poiSummary}` : ""}
+${eventSummary ? `Live events & concerts during trip dates in ${destination}:\n${eventSummary}` : ""}
 
 Guidelines:
 - Give specific, helpful, and contextual recommendations strictly for ${destination}.
-- Reference local POIs and places when relevant to the user request.
+- If asked for "top 10 events during trip dates", filter and rank live events happening during ${dateSpanText || "the trip"}.
+- If asked for "10 best POIs", return a curated 10 best spots list with names in bold, category, and why to visit.
+- Reference verified local POIs and events when relevant to the user request.
 - Keep response concise, friendly, elegant, structured with markdown bolding and bullet points with emojis.
 - Do NOT mention cities other than ${destination} unless explicitly asked.`;
 
@@ -6212,38 +6225,108 @@ Guidelines:
     }
   }
 
-  // 7. Cloudflare Workers AI (Default Edge Llama 3.3 Provider)
-  if (context.env.AI) {
-    try {
-      const historyMessages = Array.isArray(tripContext.history)
-        ? tripContext.history.filter(m => m.text).map(m => ({ role: m.role === "assistant" ? "assistant" : "user", content: m.text }))
-        : [];
-
-      const messages = [
-        { role: "system", content: systemPrompt },
-        ...historyMessages.slice(-4),
-        { role: "user", content: prompt }
-      ];
-
-      let aiRes = null;
+  // 7. Automatic Free Engine Cycling (DeepSeek, Llama 3.3, Gemini, Groq, Workers AI)
+  if (requestedProvider === "auto" || requestedProvider === "smart-cycle") {
+    // 7a. Try Cloudflare Workers AI (DeepSeek or Llama 3.3)
+    if (context.env.AI) {
       try {
-        aiRes = await context.env.AI.run("@cf/meta/llama-3.3-70b-instruct", { messages });
-      } catch {
-        aiRes = await context.env.AI.run("@cf/meta/llama-3.1-8b-instruct", { messages });
-      }
+        const historyMessages = Array.isArray(tripContext.history)
+          ? tripContext.history.filter(m => m.text).map(m => ({ role: m.role === "assistant" ? "assistant" : "user", content: m.text }))
+          : [];
+        const messages = [
+          { role: "system", content: systemPrompt },
+          ...historyMessages.slice(-4),
+          { role: "user", content: prompt }
+        ];
 
-      if (aiRes?.response) {
-        return json({
-          success: true,
-          answer: aiRes.response,
-          aiModel: requestedProvider === "openrouter-free" ? "llama-3.3-free" : "workers-ai-llama3.3"
-        });
+        let aiRes = await context.env.AI.run("@cf/deepseek-ai/deepseek-r1-distill-qwen-32b", { messages, max_tokens: 1500 }).catch(() => null);
+        if (aiRes?.response) {
+          let cleanAnswer = aiRes.response.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
+          if (cleanAnswer.length > 20) return json({ success: true, answer: cleanAnswer, aiModel: "deepseek-r1-free" });
+        }
+
+        aiRes = await context.env.AI.run("@cf/meta/llama-3.3-70b-instruct", { messages }).catch(() => null)
+          || await context.env.AI.run("@cf/meta/llama-3.1-8b-instruct", { messages }).catch(() => null);
+        if (aiRes?.response) {
+          return json({ success: true, answer: aiRes.response, aiModel: "llama-3.3-free" });
+        }
+      } catch (err) {
+        console.warn("Workers AI auto-cycle fallback:", err);
       }
-    } catch (err) {
-      console.warn("Workers AI concierge fallback:", err);
+    }
+
+    // 7b. Try OpenRouter Free Models if openRouterKey exists
+    if (openRouterKey && !isOpenRouterDisabled) {
+      try {
+        const openRouterRes = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "HTTP-Referer": "https://trip.rynell.org",
+            "Authorization": `Bearer ${openRouterKey}`
+          },
+          body: JSON.stringify({
+            model: "deepseek/deepseek-r1:free",
+            messages: [{ role: "system", content: systemPrompt }, { role: "user", content: prompt }]
+          })
+        });
+        if (openRouterRes.ok) {
+          const data = await openRouterRes.json();
+          let text = data.choices?.[0]?.message?.content;
+          if (text) {
+            text = text.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
+            return json({ success: true, answer: text, aiModel: "deepseek-r1-free" });
+          }
+        }
+      } catch (e) {
+        console.warn("OpenRouter auto-cycle error:", e);
+      }
+    }
+
+    // 7c. Try Gemini Flash if geminiKey exists
+    if (geminiKey) {
+      try {
+        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`;
+        const geminiRes = await fetch(geminiUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ role: "user", parts: [{ text: `${systemPrompt}\n\nUser Question: ${prompt}` }] }]
+          })
+        });
+        if (geminiRes.ok) {
+          const data = await geminiRes.json();
+          const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (text) return json({ success: true, answer: text, aiModel: "gemini-1.5-flash" });
+        }
+      } catch (e) {
+        console.warn("Gemini auto-cycle error:", e);
+      }
+    }
+
+    // 7d. Try Groq speed model if groqKey exists
+    if (groqKey) {
+      try {
+        const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${groqKey}` },
+          body: JSON.stringify({
+            model: "llama-3.3-70b-versatile",
+            messages: [{ role: "system", content: systemPrompt }, { role: "user", content: prompt }]
+          })
+        });
+        if (groqRes.ok) {
+          const data = await groqRes.json();
+          const text = data.choices?.[0]?.message?.content;
+          if (text) return json({ success: true, answer: text, aiModel: "groq-llama3.3-speed" });
+        }
+      } catch (e) {
+        console.warn("Groq auto-cycle error:", e);
+      }
     }
   }
 
+  // Fallback to TRIP Dynamic Verified Engine
   return json({
     success: true,
     answer: generateWorkerDynamicConciergeFallback({ prompt, trip: tripContext, context: tripContext }),

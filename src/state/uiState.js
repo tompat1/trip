@@ -369,11 +369,22 @@ export const uiStateMixin = {
         tags: p.tags || []
       })).filter(p => p.name).slice(0, 30);
 
+      const eventsList = (trip.events || this.discoveredConcerts || []).map(e => ({
+        title: e.title || e.artist || e.name || "",
+        artist: e.artist || "",
+        venue: e.venue || "",
+        dates: e.dates || e.date || "",
+        genre: e.genre || ""
+      })).filter(e => e.title || e.artist).slice(0, 15);
+
       const context = {
         destination: trip.destination,
         dates: trip.dates || "",
+        startDate: trip.startDate || trip.dates || "",
+        endDate: trip.endDate || "",
         weather: trip.weather || null,
         flightRoute: trip.flightRoute || null,
+        events: eventsList,
         pois: poiList,
         personas,
         history: (this.aiConciergeHistory || []).slice(-6),

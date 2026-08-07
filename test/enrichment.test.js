@@ -1641,3 +1641,37 @@ test("enrichment service discoverFoursquarePlaces queries worker endpoint", asyn
   assert.equal(res.status, "ok");
   assert.equal(res.places[0].title, "Café de Flore");
 });
+
+test("Worker AI Concierge handler auto-cycles and incorporates trip dates & events context", async () => {
+  const req = new Request("https://trip.rynell.org/api/ai/concierge", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      prompt: "Whats the top 10 events on location during the trips date span?",
+      provider: "auto",
+      trip: {
+        destination: "Paris",
+        startDate: "2026-09-10",
+        endDate: "2026-09-18",
+      },
+      context: {
+        destination: "Paris",
+        events: [
+          { title: "Coldplay Live", venue: "Stade de France", dates: "2026-09-14 • 20:00" },
+          { title: "Ludovico Einaudi", venue: "Philharmonie", dates: "2026-09-15 • 19:30" },
+        ],
+        pois: [
+          { name: "Musée d'Orsay", category: "Museum", address: "1 Rue de la Légion d'Honneur" },
+          { name: "Ten Belles", category: "Coffee", address: "10 Rue de la Grange aux Belles" },
+        ],
+      },
+    }),
+  });
+
+  const res = await worker.fetch(req, {}, {});
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.equal(body.success, true);
+  assert.ok(body.answer);
+  assert.ok(body.aiModel);
+});
