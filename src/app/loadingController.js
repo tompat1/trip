@@ -148,9 +148,13 @@ function ensurePageLoader() {
   loader.setAttribute("role", "status");
   loader.setAttribute("aria-live", "polite");
   loader.innerHTML = `
-    <div class="trip-page-busy__bg">
+    <div class="trip-page-busy__bg trip-airport-loader">
+      <div class="trip-airport-loader__badge">
+        <span class="voice-mono">✈️ DEPARTURE BOARD</span>
+      </div>
       ${renderTripFlapSpinner("trip-flap-spinner--busy")}
-      <span>Loading</span>
+      <strong class="trip-airport-loader__title">Loading</strong>
+      <small class="trip-airport-loader__subtitle">Mapping location & POIs...</small>
     </div>
   `;
   document.body.appendChild(loader);
@@ -159,8 +163,19 @@ function ensurePageLoader() {
 
 function setPageLoaderLabel(label = "Loading") {
   const loader = ensurePageLoader();
-  const labelEl = loader.querySelector(".trip-page-busy__bg > span");
-  if (labelEl) labelEl.textContent = label;
+  const titleEl = loader.querySelector(".trip-airport-loader__title");
+  const subtitleEl = loader.querySelector(".trip-airport-loader__subtitle");
+
+  if (!titleEl || !subtitleEl) return;
+
+  if (label.includes("·")) {
+    const parts = label.split("·");
+    titleEl.textContent = parts[0].trim();
+    subtitleEl.textContent = parts.slice(1).join("·").trim();
+  } else {
+    titleEl.textContent = label;
+    subtitleEl.textContent = "Fetching location data & route details...";
+  }
 }
 
 function showPageLoader(label = "Loading", options = {}) {

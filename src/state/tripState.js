@@ -7,7 +7,7 @@ import { enrichmentService } from "../enrichment/enrichmentService.js";
 import { formatAirportLabel, getAirportByIata } from "../services/airportService.js";
 import { normalizeFlightType, searchFlightsForTrip } from "../services/flightService.js";
 import { fetchDynamicDestinationBrief } from "../services/destinationService.js";
-import { resolveTripCenter } from "../app/mapController.js";
+import { fetchDestinationCoordinates, resolveTripCenter } from "../app/mapController.js";
 import { getCountryFlagEmoji } from "../utils/countryEmoji.js";
 import { formatTripDateRangeFromParts, getTripDateStatus, inferStartDateFromText } from "../utils/tripDates.js";
 import {
@@ -350,8 +350,14 @@ export const tripStateMixin = {
     this.planSubTab = "overview";
     this.notify();
 
-    // Fetch dynamic Wikipedia destination brief & hero image immediately
-    fetchDynamicDestinationBrief(destination).then((brief) => {
+    // Await dynamic Wikipedia brief and exact geocoding
+    const geoTask = fetchDestinationCoordinates(destination).then((geoCoords) => {
+      if (geoCoords && (newTrip.center[0] !== geoCoords[0] || newTrip.center[1] !== geoCoords[1])) {
+        newTrip.center = geoCoords;
+      }
+    }).catch(() => {});
+
+    const briefTask = fetchDynamicDestinationBrief(destination).then((brief) => {
       if (brief) {
         this.destinationSummaries = this.destinationSummaries || {};
         this.destinationSummaries[destination] = brief;
@@ -359,18 +365,19 @@ export const tripStateMixin = {
           newTrip.heroImage = brief.heroImage;
           if (newTrip.upcomingActivity) newTrip.upcomingActivity.image = brief.heroImage;
         }
-        this.notify();
       }
     }).catch(() => {});
 
-    // Trigger live POI discovery immediately for this trip
-    Promise.allSettled([
+    await Promise.allSettled([geoTask, briefTask]);
+
+    // Trigger live POI discovery and await completion while loading panel shows
+    await Promise.allSettled([
       this.refreshTourismDiscovery(id, { force: true }),
       this.refreshEventDiscovery(id, { force: true }),
       this.refreshTripIntelligence(id, { force: true }),
-    ]).then(() => {
-      this.notify();
-    });
+    ]);
+
+    this.notify();
 
     if (this.isAuthenticated) {
       try {

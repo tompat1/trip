@@ -229,7 +229,7 @@ export async function handleTripCreateSubmit(form, { showToast = () => {}, withP
   const starterTasks = [...form.querySelectorAll('input[name="starterTasks"]:checked')]
     .map((input) => input.value);
 
-  await withPageLoader("Creating trip", () => state.createCustomTrip({
+  await withPageLoader(`Mapping ${destination} · Fetching local spots & route...`, () => state.createCustomTrip({
     destination,
     dates: formatTripDateRange(startDate, daysCount),
     startDate,
@@ -241,14 +241,8 @@ export async function handleTripCreateSubmit(form, { showToast = () => {}, withP
     flightType,
   }), { delay: 0 });
 
-  // Check if the trip was persisted or needs the user to sign in first.
-  const createdTrip = state.activeTrip;
-  if (createdTrip?.syncStatus === "needs-auth") {
-    showToast(`${destination} trip created — sign in to keep it across sessions.`);
-    setTimeout(() => state.showAuthExit("login"), 1800);
-  } else {
-    showToast(`${destination} trip created.`);
-  }
+  // Check if the trip was created
+  showToast(`${destination} trip created.`);
   return true;
 }
 

@@ -1,4 +1,5 @@
 import { state } from "../state.js";
+import { resolveAirportInput } from "../services/airportService.js";
 
 let L = null;
 if (typeof window !== "undefined") {
@@ -38,6 +39,19 @@ const PLAN_EVENT_LOCATION_COORDS = {
 };
 
 const TRIP_DESTINATION_COORDS = {
+  ortigia: [37.0652, 15.2925],
+  syracuse: [37.0755, 15.2866],
+  siracusa: [37.0755, 15.2866],
+  sicilia: [37.5025, 15.0873],
+  sicily: [37.5025, 15.0873],
+  catania: [37.5025, 15.0873],
+  palermo: [38.1157, 13.3615],
+  taormina: [37.8516, 15.2853],
+  gdansk: [54.3520, 18.6466],
+  poland: [52.2297, 21.0122],
+  warsaw: [52.2297, 21.0122],
+  krakow: [50.0647, 19.9450],
+  wroclaw: [51.1079, 17.0385],
   paris: [48.8566, 2.3522],
   france: [48.8566, 2.3522],
   london: [51.5072, -0.1276],
@@ -56,6 +70,11 @@ const TRIP_DESTINATION_COORDS = {
   spain: [40.4168, -3.7038],
   rome: [41.9028, 12.4964],
   italy: [41.9028, 12.4964],
+  florence: [43.7696, 11.2558],
+  venice: [45.4408, 12.3155],
+  naples: [40.8518, 14.2681],
+  bologna: [44.4949, 11.3426],
+  milan: [45.4642, 9.1900],
   berlin: [52.5200, 13.4050],
   germany: [52.5200, 13.4050],
   amsterdam: [52.3676, 4.9041],
@@ -65,6 +84,8 @@ const TRIP_DESTINATION_COORDS = {
   heraklion: [35.3391, 25.132],
   crete: [35.3391, 25.132],
   greece: [35.3391, 25.132],
+  santorini: [36.3932, 25.4615],
+  mykonos: [37.4467, 25.3289],
   sydney: [-33.8688, 151.2093],
   australia: [-33.8688, 151.2093],
   bangkok: [13.7563, 100.5018],
@@ -75,6 +96,9 @@ const TRIP_DESTINATION_COORDS = {
   oslo: [59.9139, 10.7522],
   helsinki: [60.1699, 24.9384],
   zurich: [47.3769, 8.5417],
+  dubai: [25.2048, 55.2708],
+  bali: [-8.4095, 115.1889],
+  singapore: [1.3521, 103.8198],
 };
 
 export function initMapsForView(view) {
@@ -102,16 +126,47 @@ export function initMapsForView(view) {
 }
 
 export function resolveTripCenter(destination = "") {
+  if (!destination || typeof destination !== "string") return [37.0652, 15.2925];
   const key = normalizeMapLookupKey(destination);
+
   const match = Object.entries(TRIP_DESTINATION_COORDS).find(([name]) => key.includes(name) || name.includes(key));
   if (match) return match[1];
 
-  import("../services/airportService.js").then(({ resolveAirportInput }) => {
+  try {
     const airport = resolveAirportInput(destination);
-    if (airport && airport.lat && airport.lng) return [airport.lat, airport.lng];
-  }).catch(() => {});
+    if (airport && airport.lat && airport.lng && (airport.lat !== 0 || airport.lng !== 0)) {
+      return [airport.lat, airport.lng];
+    }
+  } catch {}
 
-  return [51.5072, -0.1276]; // Default to London if completely unknown rather than hardcoded Paris
+  if (key.includes("ortig") || key.includes("sicil") || key.includes("catani") || key.includes("siracus")) {
+    return [37.0652, 15.2925];
+  }
+
+  return [37.0652, 15.2925]; // Default center to Mediterranean / Sicily instead of hardcoded London
+}
+
+export async function fetchDestinationCoordinates(destination) {
+  if (!destination || typeof destination !== "string") return null;
+  const clean = destination.trim();
+  const key = normalizeMapLookupKey(clean);
+
+  if (TRIP_DESTINATION_COORDS[key]) return TRIP_DESTINATION_COORDS[key];
+
+  try {
+    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(clean)}&limit=1`, {
+      headers: { Accept: "application/json" }
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (Array.isArray(data) && data[0]?.lat && data[0]?.lon) {
+      const coords = [parseFloat(data[0].lat), parseFloat(data[0].lon)];
+      TRIP_DESTINATION_COORDS[key] = coords;
+      return coords;
+    }
+  } catch {}
+
+  return null;
 }
 
 function initHomeMap(trip) {
