@@ -92,6 +92,7 @@ export function renderTripManagementModal() {
             <div class="trip-management-section__header">
               <div>
                 <h3 id="trip-management-list-title">Trips</h3>
+                <p style="margin: 2px 0 0 0; font-size: 0.8rem; color: var(--color-text-muted);">Select active trip, invite companions, or delete trips.</p>
               </div>
               <button class="btn btn--primary btn--sm" data-action="create-trip" type="button">
                 ${renderIcon("plus")} New trip
@@ -149,8 +150,8 @@ function renderTripManagementItem(trip, selectedInviteTripId) {
           </button>
         ` : ""}
         ${canDelete ? `
-          <button class="btn btn--ghost btn--icon trip-management-delete-btn" data-action="delete-trip" data-trip-id="${escapeHtml(trip.id)}" type="button" aria-label="Delete ${escapeHtml(trip.destination || "trip")}">
-            ${renderIcon("trash")}
+          <button class="btn btn--outline btn--xs trip-management-delete-btn" data-action="delete-trip" data-trip-id="${escapeHtml(trip.id)}" type="button" style="border-color: rgba(217, 74, 58, 0.4); color: var(--journey-red); font-weight: 600;" title="Delete ${escapeHtml(trip.destination || "trip")}">
+            ${renderIcon("trash")} Delete
           </button>
         ` : `
           <span class="trip-management-locked-pill">${isDemo ? "Demo" : "Owner only"}</span>
