@@ -572,6 +572,7 @@ const ADMIN_PROVIDER_GROUPS = [
     title: "Travel Intelligence",
     description: "Context providers for weather, signals, commute and civic/event intelligence.",
     items: [
+      { name: "TRIP Concierge AI Fallback", service: "conciergeFallback", noKey: true, area: "Universal fallback for 0-result POIs, date events & editorial" },
       { name: "OpenStreetMap / Overpass", service: "overpass", noKey: true, area: "Nearby POIs and persona-biased scans" },
       { name: "Wikimedia Enterprise username", key: "WIKIMEDIA_ENTERPRISE_USERNAME", service: "wikivoyageEnterprise", required: false, area: "Wikivoyage destination guides" },
       { name: "Wikimedia Enterprise password", key: "WIKIMEDIA_ENTERPRISE_PASSWORD", service: "wikivoyageEnterprise", required: false, area: "Wikivoyage destination guides" },

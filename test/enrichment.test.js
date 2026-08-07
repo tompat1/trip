@@ -1675,3 +1675,23 @@ test("Worker AI Concierge handler auto-cycles and incorporates trip dates & even
   assert.ok(body.answer);
   assert.ok(body.aiModel);
 });
+
+test("Worker nearby route falls back to Concierge POI synthesis when live sources return 0 places", async () => {
+  const req = new Request("https://trip.rynell.org/api/places/nearby?lat=48.8566&lng=2.3522&intent=food");
+  const res = await worker.fetch(req, {}, {});
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.ok(body.places.length > 0);
+  assert.ok(body.providerStatus.some((s) => s.provider === "concierge-poi-fallback"));
+});
+
+test("Worker event discovery falls back to Concierge Event synthesis when live providers return 0 events", async () => {
+  const req = new Request("https://trip.rynell.org/api/events/discover?destination=Paris&lat=48.8566&lng=2.3522");
+  const res = await worker.fetch(req, {}, {});
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.ok(body.events.length > 0);
+  assert.equal(body.events[0].provider, "concierge-ai");
+  assert.equal(body.events[0].sourceRole, "concierge-synthesis");
+  assert.ok(body.providerStatus.some((s) => s.provider === "concierge-event-fallback"));
+});
