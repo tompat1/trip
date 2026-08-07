@@ -12,7 +12,7 @@ import { getSelectedPoiRouteTarget, initMapsForView, previewPoiOverviewRoute, re
 import { handleQuickCaptureFiles } from "./app/mediaCaptureController.js";
 import { handleDockNavigation, handleRouteAction } from "./app/navigationController.js";
 import { renderAppShell } from "./app/renderController.js";
-import { closeAirportAutocompleteMenus, handleTransitFlightRouteSubmit, handleTripCreateSubmit, updateAirportAutocomplete, updateTripCreateRoutePreview } from "./app/tripFormController.js";
+import { closeAirportAutocompleteMenus, handleTransitFlightRouteSubmit, handleTripCreateSubmit, navigateCalendarMonth, selectCalendarDate, toggleFlightOptionsPanel, toggleMiniCalendarPopover, updateAirportAutocomplete, updateTripCreateRoutePreview } from "./app/tripFormController.js";
 import { handleTripManagementAction, handleTripManagementChange, handleTripManagementSubmit } from "./app/tripManagementController.js";
 import { PhotoEditorController } from "./components/ProfilePhotoEditorModal.js";
 import { getPreferredMapsUrl } from "./services/routeService.js";
@@ -222,6 +222,22 @@ document.addEventListener("click", async (e) => {
   // Data action handlers
   const action = target.dataset.action;
   if (action) {
+    if (action === "toggle-calendar-picker") {
+      toggleMiniCalendarPopover(target);
+      return;
+    }
+    if (action === "calendar-prev-month") {
+      navigateCalendarMonth(-1);
+      return;
+    }
+    if (action === "calendar-next-month") {
+      navigateCalendarMonth(1);
+      return;
+    }
+    if (action === "select-calendar-date") {
+      selectCalendarDate(target.dataset.dateValue);
+      return;
+    }
     if (handleRouteAction(action, target, { requireAppSession, flashPageLoader })) return;
     if (await handleTripManagementAction(action, target, e, { showToast, withPageLoader, flashPageLoader })) return;
 
@@ -1324,6 +1340,9 @@ document.addEventListener("submit", async (e) => {
 
 // Trip mode & dropdown change listener
 document.addEventListener("change", async (e) => {
+  if (e.target.id === "include-flights-toggle") {
+    toggleFlightOptionsPanel(e.target);
+  }
   if (e.target.dataset.action === "select-trip-dropdown") {
     state.setTrip(e.target.value);
   }

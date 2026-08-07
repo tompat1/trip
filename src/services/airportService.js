@@ -50,6 +50,14 @@ export const AIRPORTS_DATABASE = [
   { iata: 'BGY', name: 'Milan Bergamo Airport', city: 'Milan', country: 'Italy', flag: '🇮🇹', lat: 45.6739, lng: 9.7042 },
   { iata: 'VCE', name: 'Venice Marco Polo Airport', city: 'Venice', country: 'Italy', flag: '🇮🇹', lat: 45.5053, lng: 12.3519 },
   { iata: 'NAP', name: 'Naples International Airport', city: 'Naples', country: 'Italy', flag: '🇮🇹', lat: 40.8860, lng: 14.2908 },
+  { iata: 'CTA', name: 'Catania–Fontanarossa Airport', city: 'Catania (Sicily)', country: 'Italy', flag: '🇮🇹', lat: 37.4668, lng: 15.0664 },
+  { iata: 'PMO', name: 'Falcone Borsellino Airport', city: 'Palermo (Sicily)', country: 'Italy', flag: '🇮🇹', lat: 38.1760, lng: 13.0910 },
+  { iata: 'BLQ', name: 'Bologna Guglielmo Marconi Airport', city: 'Bologna', country: 'Italy', flag: '🇮🇹', lat: 44.5354, lng: 11.2887 },
+  { iata: 'FLR', name: 'Florence Airport', city: 'Florence', country: 'Italy', flag: '🇮🇹', lat: 43.8100, lng: 11.2051 },
+  { iata: 'CAG', name: 'Cagliari Elmas Airport', city: 'Cagliari (Sardinia)', country: 'Italy', flag: '🇮🇹', lat: 39.2515, lng: 9.0543 },
+  { iata: 'OLB', name: 'Olbia Costa Smeralda Airport', city: 'Olbia (Sardinia)', country: 'Italy', flag: '🇮🇹', lat: 40.8987, lng: 9.5176 },
+  { iata: 'BRI', name: 'Bari Karol Wojtyła Airport', city: 'Bari', country: 'Italy', flag: '🇮🇹', lat: 41.1389, lng: 16.7606 },
+  { iata: 'TRN', name: 'Turin Airport', city: 'Turin', country: 'Italy', flag: '🇮🇹', lat: 45.2008, lng: 7.6496 },
   { iata: 'BER', name: 'Berlin Brandenburg Airport', city: 'Berlin', country: 'Germany', flag: '🇩🇪', lat: 52.3667, lng: 13.5033 },
   { iata: 'FRA', name: 'Frankfurt Airport', city: 'Frankfurt', country: 'Germany', flag: '🇩🇪', lat: 50.0379, lng: 8.5622 },
   { iata: 'MUC', name: 'Munich Airport', city: 'Munich', country: 'Germany', flag: '🇩🇪', lat: 48.3538, lng: 11.7861 },
@@ -169,7 +177,23 @@ export function resolveAirportInput(input = "") {
     if (airport) return airport;
   }
 
-  return searchAirports(value)[0] || searchAirports(stripAirportSearchNoise(value))[0] || null;
+  const found = searchAirports(value)[0] || searchAirports(stripAirportSearchNoise(value))[0];
+  if (found) return found;
+
+  // Non-blocking fallback: create dynamic airport object for custom entered text or code
+  const extractedIata = (iataMatches[0]?.[1] || (value.length === 3 ? value : "")).toUpperCase();
+  const fallbackIata = extractedIata || "APT";
+  const cleanCity = value.split("-")[0].replace(/\([A-Z]{3}\)/gi, "").trim() || value;
+  return {
+    iata: fallbackIata,
+    name: value,
+    city: cleanCity,
+    country: "",
+    flag: "✈️",
+    lat: 0,
+    lng: 0,
+    isCustom: true,
+  };
 }
 
 export function findPrimaryAirportForDestination(destination = "") {

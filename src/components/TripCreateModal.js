@@ -1,7 +1,7 @@
 import { state } from "../state.js";
 import { renderIcon } from "../utils/icons.js";
 import { TRIP_STAMP_SVG } from "./BrandAssets.js";
-import { getFlightRouteDisplay } from "../services/airportService.js";
+import { formatAirportLabel, getAirportByIata, getFlightRouteDisplay, resolveAirportInput } from "../services/airportService.js";
 import { FLIGHT_TYPE_OPTIONS } from "../services/flightService.js";
 
 const TRIP_LENGTH_OPTIONS = [
@@ -22,10 +22,21 @@ export function renderTripCreateModal() {
   if (!state.tripCreateOpen) return "";
 
   const today = new Date().toISOString().split("T")[0];
-  const routeDisplay = getFlightRouteDisplay();
+  const userHomeAirport =
+    getAirportByIata(state.userProfile?.homeAirport) ||
+    resolveAirportInput(state.userProfile?.homeCity || state.userProfile?.homeAirport || "GDN");
+  const defaultOriginValue = userHomeAirport
+    ? formatAirportLabel(userHomeAirport)
+    : state.userProfile?.homeCity
+    ? `${state.userProfile.homeCity} (${state.userProfile?.homeAirport || "GDN"})`
+    : "Gdańsk (GDN) - Gdańsk Lech Wałęsa Airport";
+
+  const routeDisplay = getFlightRouteDisplay({ originAirport: userHomeAirport });
   const allTrips = state.getAllTrips ? state.getAllTrips() : [];
   const hasTrip = Boolean((state.activeTrip && state.activeTrip.id) || (Array.isArray(allTrips) && allTrips.length > 0));
   const isGuestDraft = !state.isAuthenticated && !hasTrip;
+
+  const formattedToday = new Date().toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" });
 
   return `
     <div class="trip-create-overlay">
@@ -40,7 +51,7 @@ export function renderTripCreateModal() {
             <h2 class="trip-create-title" id="trip-create-title">${isGuestDraft ? "Create guest draft trip" : "Create a trip"}</h2>
             <p class="trip-create-subtitle">${isGuestDraft ? "Start with the route, dates, and flight style. Your draft trip will be created instantly without signing in." : "Start with the route, dates, and flight style. The planning board comes next."}</p>
           </div>
-          <button class="btn btn--icon btn--ghost" data-action="close-trip-create" aria-label="Close">
+          <button class="btn btn--icon btn--ghost" data-action="close-trip-create" aria-label="Close" type="button">
             ${renderIcon("x")}
           </button>
         </div>
@@ -51,33 +62,9 @@ export function renderTripCreateModal() {
               <span class="drawer-label">Destination</span>
               <div class="trip-create-input-wrap">
                 ${renderIcon("mapPin")}
-                <input class="drawer-input trip-create-input" name="destination" type="text" placeholder="Paris, France" autocomplete="off" required />
+                <input class="drawer-input trip-create-input" name="destination" type="text" placeholder="Ortigia, Sicilia or Paris, France" autocomplete="off" required />
               </div>
             </label>
-
-            <label class="trip-create-field">
-              <span class="drawer-label">From city / airport</span>
-              <div class="trip-create-input-wrap airport-autocomplete">
-                ${renderIcon("navigation")}
-                <input class="drawer-input trip-create-input airport-autocomplete-input" name="originAirport" type="text" placeholder="City or airport, e.g. Gdansk" autocomplete="off" required />
-                <div class="airport-autocomplete-menu" role="listbox"></div>
-              </div>
-            </label>
-
-            <label class="trip-create-field">
-              <span class="drawer-label">To airport</span>
-              <div class="trip-create-input-wrap airport-autocomplete">
-                ${renderIcon("flag")}
-                <input class="drawer-input trip-create-input airport-autocomplete-input" name="destinationAirport" type="text" placeholder="City or airport, e.g. Paris" autocomplete="off" required />
-                <div class="airport-autocomplete-menu" role="listbox"></div>
-              </div>
-            </label>
-
-            <label class="trip-create-field">
-              <span class="drawer-label">Start date</span>
-              <input class="drawer-input" name="startDate" type="date" value="${today}" required />
-            </label>
-
           </div>
 
           <div class="trip-create-field">
@@ -92,42 +79,100 @@ export function renderTripCreateModal() {
             <input type="hidden" name="daysCount" id="trip-create-days-count" value="7" />
           </div>
 
-          <div class="trip-create-field">
-            <span class="drawer-label">Flight type</span>
-            <div class="flight-type-segment" role="radiogroup" aria-label="Flight type">
-              ${FLIGHT_TYPE_OPTIONS.map((option, index) => `
-                <label class="flight-type-option ${index === 0 ? "is-selected" : ""}">
-                  <input type="radio" name="flightType" value="${option.id}" ${index === 0 ? "checked" : ""} />
-                  <strong>${escapeHtml(option.label)}</strong>
-                  <span>${escapeHtml(option.hint)}</span>
+          <div class="trip-create-field trip-create-field--date">
+            <div class="trip-create-date-row">
+              <span class="drawer-label">Start date</span>
+              <button type="button" class="btn-start-date-picker" id="start-date-picker-btn" data-action="toggle-calendar-picker">
+                ${renderIcon("calendar")} <span id="start-date-display-text">${formattedToday}</span>
+              </button>
+            </div>
+            <input type="hidden" name="startDate" id="trip-create-start-date" value="${today}" />
+
+            <div class="mini-calendar-popover" id="mini-calendar-popover" hidden>
+              <div class="mini-calendar-header">
+                <button type="button" class="btn btn--icon btn--ghost btn--xs" data-action="calendar-prev-month" aria-label="Previous month">${renderIcon("chevronLeft")}</button>
+                <strong id="mini-calendar-month-year">Month 2026</strong>
+                <button type="button" class="btn btn--icon btn--ghost btn--xs" data-action="calendar-next-month" aria-label="Next month">${renderIcon("chevronRight")}</button>
+              </div>
+              <div class="mini-calendar-weekdays">
+                <span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span><span>Su</span>
+              </div>
+              <div class="mini-calendar-days" id="mini-calendar-days-grid"></div>
+            </div>
+          </div>
+
+          <div class="flight-toggle-row">
+            <label class="flight-toggle-label">
+              <input type="checkbox" name="includeFlights" id="include-flights-toggle" class="flight-toggle-checkbox" checked />
+              <span class="flight-toggle-switch"></span>
+              <span class="flight-toggle-text">
+                <strong>Include flight search & details</strong>
+                <small>Skip if you already bought tickets or aren't flying</small>
+              </span>
+            </label>
+          </div>
+
+          <div class="flight-options-panel" id="flight-options-panel">
+            <div class="trip-create-grid">
+              <label class="trip-create-field">
+                <span class="drawer-label">From city / airport</span>
+                <div class="trip-create-input-wrap airport-autocomplete">
+                  ${renderIcon("navigation")}
+                  <input class="drawer-input trip-create-input airport-autocomplete-input" name="originAirport" type="text" value="${escapeHtml(defaultOriginValue)}" placeholder="City or airport, e.g. Gdansk" autocomplete="off" />
+                  <div class="airport-autocomplete-menu" role="listbox"></div>
+                </div>
+              </label>
+
+              <label class="trip-create-field">
+                <span class="drawer-label">To airport</span>
+                <div class="trip-create-input-wrap airport-autocomplete">
+                  ${renderIcon("flag")}
+                  <input class="drawer-input trip-create-input airport-autocomplete-input" name="destinationAirport" type="text" placeholder="City or airport, e.g. CTA" autocomplete="off" />
+                  <div class="airport-autocomplete-menu" role="listbox"></div>
+                </div>
+              </label>
+            </div>
+
+            <div class="trip-create-field">
+              <span class="drawer-label">Flight type</span>
+              <div class="flight-type-segment" role="radiogroup" aria-label="Flight type">
+                ${FLIGHT_TYPE_OPTIONS.map((option, index) => `
+                  <label class="flight-type-option ${index === 0 ? "is-selected" : ""}">
+                    <input type="radio" name="flightType" value="${option.id}" ${index === 0 ? "checked" : ""} />
+                    <strong>${escapeHtml(option.label)}</strong>
+                    <span>${escapeHtml(option.hint)}</span>
+                  </label>
+                `).join("")}
+              </div>
+            </div>
+
+            <div class="trip-create-preview">
+              <div class="trip-create-preview__map">
+                <span class="route-node-pin">${renderIcon("pin")}</span>
+                <span class="trip-create-preview__route"></span>
+                <span class="route-node-pin route-node-pin--end">${renderIcon("flag")}</span>
+              </div>
+              <div class="trip-create-preview__copy">
+                <strong class="trip-create-route-title" data-trip-create-route-title>Flight Route: ${escapeHtml(routeDisplay.title)}</strong>
+                <span class="trip-create-route-subtitle" data-trip-create-route-subtitle>${escapeHtml(routeDisplay.subtitle)}</span>
+                <small>Checklist, flight search, day plan, timeline, and map will be ready to fill.</small>
+              </div>
+            </div>
+          </div>
+
+          <div class="trip-create-starters-section">
+            <span class="drawer-label trip-create-starters-label">Choose starter items to your TRIP checklist</span>
+            <div class="trip-create-starters" aria-label="Starter planning tasks">
+              ${STARTER_OPTIONS.map((item) => `
+                <label class="trip-create-starter">
+                  <input type="checkbox" name="starterTasks" value="${item.id}" checked />
+                  <span>${renderIcon(item.icon)}</span>
+                  <strong>${escapeHtml(item.label)}</strong>
                 </label>
               `).join("")}
             </div>
+            <p class="trip-create-starters-note">These only add starter items to your checklist.</p>
           </div>
-
-          <div class="trip-create-preview">
-            <div class="trip-create-preview__map">
-              <span class="route-node-pin">${renderIcon("pin")}</span>
-              <span class="trip-create-preview__route"></span>
-              <span class="route-node-pin route-node-pin--end">${renderIcon("flag")}</span>
-            </div>
-            <div class="trip-create-preview__copy">
-              <strong class="trip-create-route-title" data-trip-create-route-title>Flight Route: ${escapeHtml(routeDisplay.title)}</strong>
-              <span class="trip-create-route-subtitle" data-trip-create-route-subtitle>${escapeHtml(routeDisplay.subtitle)}</span>
-              <small>Checklist, flight search, day plan, timeline, and map will be ready to fill.</small>
-            </div>
-          </div>
-
-          <div class="trip-create-starters" aria-label="Starter planning tasks">
-            ${STARTER_OPTIONS.map((item) => `
-              <label class="trip-create-starter">
-                <input type="checkbox" name="starterTasks" value="${item.id}" checked />
-                <span>${renderIcon(item.icon)}</span>
-                <strong>${escapeHtml(item.label)}</strong>
-              </label>
-            `).join("")}
-          </div>
-          <p class="trip-create-starters-note">These only add starter items to your checklist.</p>
 
           <p class="trip-create-error" id="trip-create-error" aria-live="polite"></p>
 

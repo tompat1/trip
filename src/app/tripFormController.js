@@ -94,15 +94,118 @@ export async function handleTransitFlightRouteSubmit(form, { showToast = () => {
   return true;
 }
 
+let activeCalendarDate = new Date();
+
+export function toggleMiniCalendarPopover(customBtn) {
+  const popover = document.getElementById("mini-calendar-popover");
+  if (!popover) return;
+  const isHidden = popover.hasAttribute("hidden");
+  if (isHidden) {
+    const hiddenInput = document.getElementById("trip-create-start-date");
+    const currentVal = hiddenInput?.value;
+    if (currentVal && /^\d{4}-\d{2}-\d{2}$/.test(currentVal)) {
+      activeCalendarDate = new Date(`${currentVal}T12:00:00`);
+    } else {
+      activeCalendarDate = new Date();
+    }
+    renderMiniCalendarGrid();
+    popover.removeAttribute("hidden");
+  } else {
+    popover.setAttribute("hidden", "true");
+  }
+}
+
+export function navigateCalendarMonth(delta = 0) {
+  activeCalendarDate.setMonth(activeCalendarDate.getMonth() + delta);
+  renderMiniCalendarGrid();
+}
+
+export function selectCalendarDate(dateStr) {
+  const hiddenInput = document.getElementById("trip-create-start-date");
+  const displayText = document.getElementById("start-date-display-text");
+  const popover = document.getElementById("mini-calendar-popover");
+
+  if (hiddenInput) hiddenInput.value = dateStr;
+  if (displayText) {
+    const d = new Date(`${dateStr}T12:00:00`);
+    displayText.textContent = d.toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" });
+  }
+  if (popover) popover.setAttribute("hidden", "true");
+}
+
+function renderMiniCalendarGrid() {
+  const monthYearEl = document.getElementById("mini-calendar-month-year");
+  const gridEl = document.getElementById("mini-calendar-days-grid");
+  const hiddenInput = document.getElementById("trip-create-start-date");
+  if (!monthYearEl || !gridEl) return;
+
+  const year = activeCalendarDate.getFullYear();
+  const month = activeCalendarDate.getMonth();
+  const selectedStr = hiddenInput?.value || new Date().toISOString().split("T")[0];
+
+  monthYearEl.textContent = activeCalendarDate.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+
+  const firstDayIndex = (new Date(year, month, 1).getDay() + 6) % 7; // Monday-first
+  const totalDays = new Date(year, month + 1, 0).getDate();
+  const todayStr = new Date().toISOString().split("T")[0];
+
+  let html = "";
+  // Empty padding cells for previous month
+  for (let i = 0; i < firstDayIndex; i++) {
+    html += `<span class="mini-calendar-day empty"></span>`;
+  }
+
+  for (let day = 1; day <= totalDays; day++) {
+    const monthStr = String(month + 1).padStart(2, "0");
+    const dayStr = String(day).padStart(2, "0");
+    const dateVal = `${year}-${monthStr}-${dayStr}`;
+
+    const isSelected = dateVal === selectedStr;
+    const isToday = dateVal === todayStr;
+
+    html += `
+      <button type="button" 
+        class="mini-calendar-day ${isSelected ? "is-selected" : ""} ${isToday ? "is-today" : ""}" 
+        data-action="select-calendar-date" 
+        data-date-value="${dateVal}">
+        ${day}
+      </button>
+    `;
+  }
+
+  gridEl.innerHTML = html;
+}
+
+export function toggleFlightOptionsPanel(toggleCheckbox) {
+  const panel = document.getElementById("flight-options-panel");
+  if (!panel) return;
+  if (toggleCheckbox.checked) {
+    panel.classList.remove("is-hidden");
+    panel.style.display = "block";
+  } else {
+    panel.classList.add("is-hidden");
+    panel.style.display = "none";
+  }
+}
+
 export async function handleTripCreateSubmit(form, { showToast = () => {}, withPageLoader = async (_label, task) => task() } = {}) {
   const errorEl = document.getElementById("trip-create-error");
   const submitButton = form.querySelector(".trip-create-submit");
   const destination = form.destination.value.trim();
-  const originAirport = resolveAirportInput(form.originAirport?.value || "");
-  const destinationAirport = resolveAirportInput(form.destinationAirport?.value || destination);
+  const includeFlights = form.includeFlights ? form.includeFlights.checked : true;
+  
+  let originAirport = null;
+  let destinationAirport = null;
+  let flightType = "none";
+
+  if (includeFlights) {
+    originAirport = resolveAirportInput(form.originAirport?.value || "");
+    destinationAirport = resolveAirportInput(form.destinationAirport?.value || destination);
+    flightType = normalizeFlightType(form.flightType?.value || "regular");
+  }
+
   const startDate = form.startDate.value;
   const daysCount = Number(form.daysCount.value) || 7;
-  const flightType = normalizeFlightType(form.flightType?.value || "regular");
 
   if (!destination) {
     if (errorEl) errorEl.textContent = "Add a destination to create your trip.";
@@ -110,10 +213,10 @@ export async function handleTripCreateSubmit(form, { showToast = () => {}, withP
     return false;
   }
 
-  if (!originAirport || !destinationAirport) {
+  if (includeFlights && (!originAirport || !destinationAirport)) {
     if (errorEl) errorEl.textContent = "Choose a valid origin and destination airport.";
-    if (!originAirport) form.originAirport.focus();
-    else form.destinationAirport.focus();
+    if (!originAirport) form.originAirport?.focus();
+    else form.destinationAirport?.focus();
     return false;
   }
 
@@ -131,10 +234,10 @@ export async function handleTripCreateSubmit(form, { showToast = () => {}, withP
     dates: formatTripDateRange(startDate, daysCount),
     startDate,
     daysCount,
-    center: destinationAirport ? [destinationAirport.lat, destinationAirport.lng] : resolveTripCenter(destination),
+    center: destinationAirport && destinationAirport.lat ? [destinationAirport.lat, destinationAirport.lng] : resolveTripCenter(destination),
     checklist: createStarterChecklist(starterTasks),
-    originAirport,
-    destinationAirport,
+    originAirport: includeFlights ? originAirport : null,
+    destinationAirport: includeFlights ? destinationAirport : null,
     flightType,
   }), { delay: 0 });
 
