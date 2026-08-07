@@ -139,23 +139,56 @@ export function renderHeader() {
                 <button class="btn btn--outline btn--icon" data-action="toggle-map-view" title="Toggle Map">
                   ${renderIcon("map")}
                 </button>
-                <button class="btn btn--outline btn--sm share-btn" data-action="share-trip" title="Share trip">
-                  ${renderIcon("share")}
-                  <span class="share-btn-text">Share</span>
-                </button>
-                <button class="btn btn--outline btn--sm trip-manage-btn" data-action="open-trip-manager" title="Manage trips">
-                  ${renderIcon("flag")}
-                  <span>Manage</span>
-                </button>
               `}
-              <button class="btn btn--primary btn--sm" data-action="create-trip" title="Create a new custom trip">
-                <span>+ New trip</span>
-              </button>
+              ${renderTripActionBar({ hasTrip: !noTrip })}
             </div>
           </div>
         </div>
       </div>
     </header>
+  `;
+}
+
+function renderTripActionBar({ hasTrip }) {
+  const secondarySegments = hasTrip ? `
+    <button
+      class="trip-action-bar__segment"
+      type="button"
+      data-action="share-trip"
+      title="Share trip"
+      aria-label="Share trip"
+    >
+      ${renderIcon("share")}
+      <span class="trip-action-bar__label">Share</span>
+    </button>
+    <span class="trip-action-bar__divider" aria-hidden="true"></span>
+    <button
+      class="trip-action-bar__segment"
+      type="button"
+      data-action="open-trip-manager"
+      title="Manage trips"
+      aria-label="Manage trips"
+    >
+      ${renderIcon("flag")}
+      <span class="trip-action-bar__label">Manage</span>
+    </button>
+    <span class="trip-action-bar__divider" aria-hidden="true"></span>
+  ` : "";
+
+  return `
+    <div class="trip-action-bar" role="group" aria-label="Trip actions">
+      ${secondarySegments}
+      <button
+        class="trip-action-bar__segment trip-action-bar__segment--primary"
+        type="button"
+        data-action="create-trip"
+        title="Create a new custom trip"
+        aria-label="Create a new trip"
+      >
+        ${renderIcon("plus")}
+        <span class="trip-action-bar__label">New trip</span>
+      </button>
+    </div>
   `;
 }
 

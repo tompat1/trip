@@ -2239,6 +2239,103 @@ a:active .ph-icon,
   flex-wrap: wrap;
 }
 
+.trip-action-bar {
+  display: inline-flex;
+  align-items: stretch;
+  flex-shrink: 0;
+  border: 1.5px solid var(--line);
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--paper-card) 90%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+.trip-action-bar__segment {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 0 14px;
+  min-height: 38px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--ink);
+  background: transparent;
+  border: none;
+  white-space: nowrap;
+  touch-action: manipulation;
+  transition:
+    background 0.18s var(--ease-out),
+    color 0.18s var(--ease-out),
+    transform 0.15s var(--ease-out);
+}
+
+.trip-action-bar__segment svg {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+  transition: transform 0.18s var(--ease-out);
+}
+
+.trip-action-bar__segment:hover {
+  background: var(--paper-subtle);
+}
+
+.trip-action-bar__segment:hover svg {
+  transform: scale(1.08);
+}
+
+.trip-action-bar__segment:active {
+  transform: scale(0.97);
+}
+
+.trip-action-bar__segment:focus-visible {
+  outline: 2px solid var(--orange);
+  outline-offset: -2px;
+  z-index: 1;
+}
+
+.trip-action-bar__segment--primary {
+  padding-inline: 16px;
+  background: var(--orange);
+  color: var(--white);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14);
+}
+
+.trip-action-bar__segment--primary:hover {
+  background: color-mix(in srgb, var(--orange) 90%, white);
+}
+
+.trip-action-bar__segment--primary:active {
+  background: color-mix(in srgb, var(--orange) 84%, black);
+}
+
+.trip-action-bar__divider {
+  width: 1px;
+  align-self: stretch;
+  background: color-mix(in srgb, var(--line) 88%, transparent);
+  flex-shrink: 0;
+}
+
+:root[data-theme="dark"] .trip-action-bar {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent),
+    color-mix(in srgb, var(--surface-raised) 92%, transparent);
+  border-color: color-mix(in srgb, var(--line) 78%, rgba(255, 255, 255, 0.12));
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.22);
+}
+
+:root[data-theme="dark"] .trip-action-bar__segment:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+:root[data-theme="dark"] .trip-action-bar__segment--primary:hover {
+  background: color-mix(in srgb, var(--orange) 88%, white);
+}
+
 .trip-dates {
   font-size: 0.85rem;
   color: var(--ink-muted);
@@ -9483,18 +9580,23 @@ a:active .ph-icon,
     text-overflow: ellipsis !important;
   }
 
-  .share-btn-text {
+  .trip-action-bar__segment:not(.trip-action-bar__segment--primary) {
+    padding-inline: 11px !important;
+    min-width: 38px !important;
+    min-height: 36px !important;
+  }
+
+  .trip-action-bar__segment:not(.trip-action-bar__segment--primary) .trip-action-bar__label {
     display: none !important;
   }
 
-  .share-btn {
-    padding: 0 !important;
-    width: 36px !important;
-    height: 36px !important;
-    border-radius: 50% !important;
-    justify-content: center !important;
-    flex-shrink: 0 !important;
+  .trip-action-bar__segment--primary {
+    padding-inline: 12px !important;
     min-height: 36px !important;
+  }
+
+  .trip-action-bar__segment--primary .trip-action-bar__label {
+    font-size: 0.78rem !important;
   }
 
   .avatar-badge {
