@@ -126,15 +126,18 @@ export function renderHomeView() {
           </div>
           <div class="events-grid">
             ${trip.events.map(ev => {
-              const eventId = ev.id || ev.title;
+              const eventTitle = ev.title || ev.name || ev.artist || "Local event";
+              const eventDates = ev.dates || ev.date || ev.datetime || ev.startTime || "Upcoming";
+              const eventIcon = ev.icon || "🎟️";
+              const eventId = ev.id || eventTitle;
               const isSaved = state.savedPlaceIds && state.savedPlaceIds.has(eventId);
               return `
                 <div class="event-pill-card" style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
                   <div style="display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0;">
-                    <span class="event-pill-icon">${ev.icon}</span>
+                    <span class="event-pill-icon">${escapeHtml(eventIcon)}</span>
                     <div class="event-pill-info" style="min-width: 0;">
-                      <h4 class="event-pill-title" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(ev.title)}</h4>
-                      <p class="event-pill-dates">${escapeHtml(ev.dates)}</p>
+                      <h4 class="event-pill-title" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(eventTitle)}</h4>
+                      <p class="event-pill-dates">${escapeHtml(eventDates)}</p>
                     </div>
                   </div>
                   <button class="btn-bookmark ${isSaved ? 'is-saved' : ''}" data-action="toggle-bookmark" data-place-id="${escapeHtml(eventId)}" aria-label="Bookmark event" style="padding: 4px; border: none; background: transparent; cursor: pointer; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center;" title="${isSaved ? 'Saved to planning bucket' : 'Bookmark to planning bucket'}">

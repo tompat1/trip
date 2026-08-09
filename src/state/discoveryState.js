@@ -327,8 +327,8 @@ export const discoveryStateMixin = {
 
     try {
       const events = await fetchConcertsForTrip(trip.destination, trip.center);
-      const existingTitles = new Set((trip.events || []).map((event) => event.title));
-      const liveEvents = filterTripScopedItems(events || [], trip).filter((event) => !existingTitles.has(event.title));
+      const existingTitles = new Set((trip.events || []).map((event) => event.title || event.name || event.artist).filter(Boolean));
+      const liveEvents = filterTripScopedItems(events || [], trip).filter((event) => !existingTitles.has(event.title || event.name || event.artist));
       trip.events = [...liveEvents, ...(trip.events || [])].slice(0, 24);
       this.eventDiscoveryStatus[tripId] = {
         status: liveEvents.length ? "ready" : "fallback",
@@ -377,9 +377,9 @@ export const discoveryStateMixin = {
       trip.civicEvents = result.civicEvents || [];
       trip.headsUps = result.headsUps || [];
       if (trip.civicEvents.length) {
-        const existingTitles = new Set((trip.events || []).map((event) => event.title));
+        const existingTitles = new Set((trip.events || []).map((event) => event.title || event.name || event.artist).filter(Boolean));
         trip.events = [
-          ...trip.civicEvents.filter((event) => !existingTitles.has(event.title)),
+          ...trip.civicEvents.filter((event) => !existingTitles.has(event.title || event.name || event.artist)),
           ...(trip.events || []),
         ].slice(0, 24);
       }

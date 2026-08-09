@@ -281,7 +281,7 @@ export async function fetchLiveEventsFromWorker(options = {}) {
     const res = await fetch(url.href, { headers: { Accept: "application/json" } });
     if (!res.ok) throw new Error(`worker-events-http-${res.status}`);
     const data = await res.json();
-    return data.events || [];
+    return (data.events || []).map(normalizeDiscoveredEvent).filter(Boolean);
   } catch (err) {
     console.warn("Worker events fallback:", err);
     return null;
@@ -384,6 +384,42 @@ export async function fetchConcertsForTrip(destination = "Paris", coords = [48.8
       isPopularTour: true
     }
   ];
+}
+
+export function normalizeDiscoveredEvent(event = {}) {
+  if (!event) return null;
+  const title = event.title || event.name || event.artist || event.tour || "Local live event";
+  const venue = event.venue || event.location || event.place || "";
+  const dates = event.dates || event.date || event.datetime || event.startDate || event.startTime || "Upcoming";
+  const genre = event.genre || event.category || event.type || "Live Event";
+  const provider = event.provider || event.sourceRole || "";
+
+  return {
+    ...event,
+    id: event.id || `evt-${slugify(`${title}-${venue}-${dates}`)}`,
+    artist: event.artist || title,
+    title,
+    venue,
+    city: event.city || "",
+    country: event.country || "",
+    dates,
+    genre,
+    icon: event.icon || getEventIcon(genre, provider),
+    image: event.image || event.imageUrl || "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&w=600&q=80",
+    ticketUrl: event.ticketUrl || event.url || event.sourceUrl || "",
+    provider,
+    sourceRole: event.sourceRole || provider || "event-discovery",
+  };
+}
+
+function getEventIcon(genre = "", provider = "") {
+  const key = `${genre} ${provider}`.toLowerCase();
+  if (key.includes("classical") || key.includes("orchestra") || key.includes("symphony")) return "🎻";
+  if (key.includes("electronic") || key.includes("dj") || key.includes("club")) return "🎧";
+  if (key.includes("jazz")) return "🎷";
+  if (key.includes("folk") || key.includes("world")) return "🪕";
+  if (key.includes("ticketmaster") || key.includes("bandsintown") || key.includes("music") || key.includes("concert")) return "🎵";
+  return "🎟️";
 }
 
 function normalizeBandsintownEvent(event = {}, artist = "", options = {}) {

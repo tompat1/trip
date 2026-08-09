@@ -370,11 +370,15 @@ export const uiStateMixin = {
       })).filter(p => p.name).slice(0, 30);
 
       const eventsList = (trip.events || this.discoveredConcerts || []).map(e => ({
+        id: e.id || "",
         title: e.title || e.artist || e.name || "",
         artist: e.artist || "",
         venue: e.venue || "",
-        dates: e.dates || e.date || "",
-        genre: e.genre || ""
+        dates: e.dates || e.date || e.datetime || e.startDate || "",
+        genre: e.genre || e.category || e.type || "",
+        ticketUrl: e.ticketUrl || e.url || e.sourceUrl || "",
+        provider: e.provider || e.sourceRole || e.source || "",
+        source: e.source || e.provider || "",
       })).filter(e => e.title || e.artist).slice(0, 15);
 
       const context = {
