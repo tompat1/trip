@@ -84,7 +84,10 @@ export const aiService = {
     // 2. Direct Client-side Provider Executions if user supplied API keys
     const destination = trip.destination || context.destination || "Destination";
     const poiSummary = (context.pois || []).map(p => `- ${p.name} (${p.category || "spot"})`).join("\n");
-    const systemPrompt = `You are TRIP AI, an expert, charming travel concierge for ${destination}.\n${poiSummary ? `Local POIs:\n${poiSummary}\n` : ""}Provide 3-5 specific, famous local spot recommendations with exact names in bold (e.g. **Ten Belles**) and short descriptions.`;
+    const eventSummary = (context.events || []).map(e => `- ${e.title || e.artist} at ${e.venue || "Venue TBA"} (${e.dates || "Upcoming"}${e.genre ? `, ${e.genre}` : ""})`).join("\n");
+    const systemPrompt = `You are TRIP AI, an expert, charming travel concierge for ${destination}.
+${poiSummary ? `Local POIs:\n${poiSummary}\n` : ""}${eventSummary ? `Live events:\n${eventSummary}\n` : ""}
+If the user asks for top events, concerts, gigs, shows, or festivals, rank and use the live events above. Otherwise provide 3-5 specific, famous local spot recommendations with exact names in bold (e.g. **Ten Belles**) and short descriptions.`;
 
     if (provider === "gemini" && keys.geminiKey) {
       try {
@@ -193,16 +196,30 @@ function generateRichConciergeFallback({ prompt = "", trip = {}, context = {} })
   const lowerPrompt = prompt.toLowerCase();
   const weather = trip.weather || context.weather || {};
   const weatherStr = weather.condition ? `${weather.condition}, ${weather.temp || ""}` : "";
+  const events = context.events || trip.events || [];
 
   let category = "general";
   if (lowerPrompt.includes("coffee") || lowerPrompt.includes("espresso") || lowerPrompt.includes("cafe")) category = "coffee";
   else if (lowerPrompt.includes("rain") || lowerPrompt.includes("indoor")) category = "rain";
   else if (lowerPrompt.includes("hidden") || lowerPrompt.includes("secret")) category = "hidden";
   else if (lowerPrompt.includes("food") || lowerPrompt.includes("dinner") || lowerPrompt.includes("wine")) category = "dining";
+  else if (isEventPrompt(lowerPrompt)) category = "events";
 
   let answer = `Here are Concierge recommendations for **${destination}**`;
   if (weatherStr) answer += ` (${weatherStr})`;
   answer += `:\n\n`;
+
+  if (category === "events" && events.length > 0) {
+    answer += events.slice(0, 10).map((event, index) => {
+      const title = event.title || event.artist || event.name || `Event ${index + 1}`;
+      const venue = event.venue || "Venue TBA";
+      const dates = event.dates || event.date || "Upcoming";
+      const genre = event.genre || event.category || "Live Event";
+      const source = event.provider || event.source || "";
+      return `🎟️ **${title}** — ${venue} • ${dates} • ${genre}${source ? ` (${source})` : ""}`;
+    }).join("\n\n");
+    return answer;
+  }
 
   if (lowerDest.includes("paris") && CITY_RECOMMENDATIONS.paris[category]) {
     const spots = CITY_RECOMMENDATIONS.paris[category];
@@ -220,4 +237,8 @@ function generateRichConciergeFallback({ prompt = "", trip = {}, context = {} })
   }
 
   return answer;
+}
+
+function isEventPrompt(prompt = "") {
+  return /\b(event|events|concert|concerts|gig|gigs|show|shows|festival|festivals|live music|tonight|during trip)\b/i.test(prompt);
 }

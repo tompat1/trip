@@ -4,6 +4,7 @@ import { composeEditorialProfile, createVerifiedFactBundle, validateEditorialPro
 import { createEnrichmentService } from "../src/enrichment/enrichmentService.js";
 import { calculateImageScore, dedupeImages } from "../src/enrichment/mediaAggregator.js";
 import { resolveAirportInput } from "../src/services/airportService.js";
+import { normalizeDiscoveredEvent } from "../src/services/concertService.js";
 import { normalizeOpenTripMapPlaces } from "../src/services/openTripMapService.js";
 import { areAliasesEquivalent, buildPlaceAliases, createResolvedPlaceIdentity } from "../src/enrichment/placeResolver.js";
 import { createNormalizedFact, createNormalizedImage, createPlaceProfileContract, ENRICHMENT_COVERAGE } from "../src/enrichment/schemas.js";
@@ -58,6 +59,20 @@ test("airport resolver includes major hub fallback airports", () => {
   assert.equal(resolveAirportInput("Frankfurt")?.iata, "FRA");
   assert.equal(resolveAirportInput("Dubai")?.iata, "DXB");
   assert.equal(resolveAirportInput("Singapore")?.iata, "SIN");
+});
+
+test("discovered events normalize missing display fields", () => {
+  const event = normalizeDiscoveredEvent({
+    artist: "Cretan Lyra Ensemble",
+    venue: "Koules Venetian Fortress",
+    provider: "concierge-ai",
+  });
+
+  assert.equal(event.title, "Cretan Lyra Ensemble");
+  assert.equal(event.dates, "Upcoming");
+  assert.equal(event.icon, "🎟️");
+  assert.ok(event.id);
+  assert.ok(event.image);
 });
 
 test("Worker request principal distinguishes anonymous, traveler, and admin", () => {

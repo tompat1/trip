@@ -6024,7 +6024,7 @@ async function aiConciergeHandler(context) {
     : "";
 
   const eventSummary = events.length > 0
-    ? events.map((e) => `- ${e.title || e.artist} at ${e.venue || "Venue"} (${e.dates || "Upcoming"})`).join("\n")
+    ? events.map((e) => `- ${e.title || e.artist || e.name} at ${e.venue || "Venue"} (${e.dates || e.date || "Upcoming"}${e.genre ? `, ${e.genre}` : ""}${e.provider ? `, ${e.provider}` : ""})`).join("\n")
     : "";
 
   const dateSpanText = startDate ? `${startDate}${endDate ? ` to ${endDate}` : ""}` : "";
@@ -6395,16 +6395,30 @@ function generateWorkerDynamicConciergeFallback({ prompt = "", trip = {}, contex
   const weather = trip.weather || context.weather || {};
   const weatherStr = weather.condition ? `${weather.condition}, ${weather.temp || ""}` : "";
   const lowerPrompt = prompt.toLowerCase();
+  const events = context.events || trip.events || [];
 
   let category = "general";
   if (lowerPrompt.includes("coffee") || lowerPrompt.includes("espresso") || lowerPrompt.includes("cafe")) category = "coffee";
   else if (lowerPrompt.includes("rain") || lowerPrompt.includes("indoor")) category = "rain";
   else if (lowerPrompt.includes("hidden") || lowerPrompt.includes("secret")) category = "hidden";
   else if (lowerPrompt.includes("food") || lowerPrompt.includes("dinner") || lowerPrompt.includes("wine")) category = "dining";
+  else if (isConciergeEventPrompt(lowerPrompt)) category = "events";
 
   let answer = `Here are Concierge recommendations for **${destination}**`;
   if (weatherStr) answer += ` (${weatherStr})`;
   answer += `:\n\n`;
+
+  if (category === "events" && events.length > 0) {
+    answer += events.slice(0, 10).map((event, index) => {
+      const title = event.title || event.artist || event.name || `Event ${index + 1}`;
+      const venue = event.venue || "Venue TBA";
+      const dates = event.dates || event.date || "Upcoming";
+      const genre = event.genre || event.category || "Live Event";
+      const source = event.provider || event.source || "";
+      return `🎟️ **${title}** — ${venue} • ${dates} • ${genre}${source ? ` (${source})` : ""}`;
+    }).join("\n\n");
+    return answer;
+  }
 
   if (lowerDest.includes("paris") && WORKER_CITY_RECOMMENDATIONS.paris[category]) {
     const spots = WORKER_CITY_RECOMMENDATIONS.paris[category];
@@ -6421,6 +6435,10 @@ function generateWorkerDynamicConciergeFallback({ prompt = "", trip = {}, contex
   }
 
   return answer;
+}
+
+function isConciergeEventPrompt(prompt = "") {
+  return /\b(event|events|concert|concerts|gig|gigs|show|shows|festival|festivals|live music|tonight|during trip)\b/i.test(prompt);
 }
 
 function generateConciergeFallbackPlaces(coordinates = [48.8566, 2.3522], intent = "traveler") {
