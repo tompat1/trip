@@ -127,7 +127,8 @@ export function renderAiConciergeDrawer() {
           ${history.map((msg) => `
             <div class="ai-chat-bubble ai-chat-bubble--${msg.role}">
               <div class="ai-bubble-content">
-                ${formatConciergeMessageHTML(msg.text, msg.role === "assistant")}
+                ${formatConciergeMessageHTML(msg.text, msg.role === "assistant" && !(msg.recommendations || []).length)}
+                ${msg.role === "assistant" ? renderConciergeRecommendationActions(msg.recommendations || []) : ""}
               </div>
               ${msg.role === "assistant" && msg.aiModel ? `
                 <div class="ai-bubble-model-badge voice-mono">
@@ -214,6 +215,38 @@ function formatConciergeMessageHTML(text = "", isAssistant = false) {
   }
 
   return html;
+}
+
+function renderConciergeRecommendationActions(recommendations = []) {
+  const recs = (Array.isArray(recommendations) ? recommendations : []).filter((rec) => rec?.title).slice(0, 8);
+  if (!recs.length) return "";
+
+  return `
+    <div class="ai-spot-actions-toolbar">
+      <span style="font-size: 0.68rem; font-weight: 800; color: var(--ink-muted); width: 100%; margin-bottom: 2px;">ADD TO TRIP:</span>
+      ${recs.map((rec) => {
+        const recId = rec.id || rec.title;
+        const label = rec.type === "event" ? [rec.venue, rec.dates].filter(Boolean).join(" • ") : (rec.address || rec.category || "Recommended spot");
+        return `
+          <div class="ai-spot-item-card">
+            <span class="ai-spot-item-title">${escapeHtml(rec.title)}</span>
+            ${label ? `<small style="color: var(--ink-muted); font-size: 0.68rem;">${escapeHtml(label)}</small>` : ""}
+            <div class="ai-spot-item-btns">
+              <button class="ai-spot-action-btn" data-action="add-poi-event" data-rec-id="${escapeHtml(recId)}" data-spot-name="${escapeHtml(rec.title)}" type="button">
+                ➕ Add to Day 1
+              </button>
+              <button class="ai-spot-action-btn" data-action="toggle-bookmark" data-place-id="${escapeHtml(recId)}" type="button">
+                🔖 Bookmark
+              </button>
+              <button class="ai-spot-action-btn" data-action="select-top-poi" data-rec-id="${escapeHtml(recId)}" data-spot-name="${escapeHtml(rec.title)}" type="button">
+                🗺️ Map
+              </button>
+            </div>
+          </div>
+        `;
+      }).join("")}
+    </div>
+  `;
 }
 
 function formatAiProviderName(provider = "auto") {

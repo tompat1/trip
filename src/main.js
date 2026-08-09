@@ -159,6 +159,43 @@ function getPreferredDirectionsProvider() {
   return "google";
 }
 
+function getConciergeRecommendationById(recId = "") {
+  if (!recId) return null;
+  const history = state.aiConciergeHistory || [];
+  for (let i = history.length - 1; i >= 0; i -= 1) {
+    const found = (history[i].recommendations || []).find((rec) => String(rec.id) === String(recId));
+    if (found) return found;
+  }
+  return null;
+}
+
+function getRecommendationCoordinates(rec = {}) {
+  const lat = Number(rec.lat ?? rec.latitude);
+  const lng = Number(rec.lng ?? rec.longitude);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  return [lat, lng];
+}
+
+function ensureRecommendationMapPin(rec = {}) {
+  const trip = state.activeTrip;
+  const coords = getRecommendationCoordinates(rec);
+  if (!trip || !coords) return false;
+  trip.mapPins = trip.mapPins || [];
+  const pinId = rec.id || `ai-rec-${Date.now()}`;
+  const exists = trip.mapPins.some((pin) => String(pin.id || pin.name) === String(pinId) || String(pin.name) === String(rec.title));
+  if (!exists) {
+    trip.mapPins.push({
+      id: pinId,
+      name: rec.title || rec.name || "Concierge recommendation",
+      lat: coords[0],
+      lng: coords[1],
+      category: rec.category || (rec.type === "event" ? "Event" : "Recommendation"),
+      source: rec.provider || "AI Concierge",
+    });
+  }
+  return true;
+}
+
 async function previewRouteForDirections(destination, origin) {
   if (!destination?.coordinates || !origin) return null;
   const trip = state.activeTrip || {};
@@ -768,26 +805,51 @@ document.addEventListener("click", async (e) => {
       state.setSearchQuery("");
     }
     else if (action === "add-poi-event") {
-      const spotName = target.dataset.spotName || "Attraction";
+      const rec = getConciergeRecommendationById(target.dataset.recId);
+      const spotName = rec?.title || target.dataset.spotName || "Attraction";
       const trip = state.activeTrip;
       const events = trip ? (trip.calendarEvents || []) : [];
       const isAdded = events.some(e => (e.title || "").toLowerCase().includes(spotName.toLowerCase()) || spotName.toLowerCase().includes((e.title || "").toLowerCase()));
       if (isAdded) {
         showToast(`"${spotName}" is already on your itinerary calendar!`);
       } else {
+        const coords = getRecommendationCoordinates(rec || {});
         state.addCalendarEvent(state.activeTripId, {
           title: spotName,
-          location: spotName,
+          location: rec?.venue || rec?.address || spotName,
           dayIndex: 0,
-          startTime: "10:00",
-          endTime: "12:00",
-          colorScheme: "peach"
+          startTime: rec?.startTime || "10:00",
+          endTime: rec?.endTime || "12:00",
+          colorScheme: rec?.type === "event" ? "violet" : "peach",
+          lat: coords?.[0],
+          lng: coords?.[1],
+          sourceId: rec?.id || "",
+          sourceType: rec?.type || "poi",
+          ticketUrl: rec?.ticketUrl || "",
         });
+        if (rec) ensureRecommendationMapPin(rec);
         showToast(`✓ Added "${spotName}" to Day 1 of your trip itinerary!`);
       }
     }
     else if (action === "select-top-poi") {
       if (e.target.closest("button[data-action='add-poi-event'], button[data-action='toggle-bookmark']")) return;
+      const rec = getConciergeRecommendationById(target.dataset.recId);
+      if (rec && ensureRecommendationMapPin(rec)) {
+        state.openPoiDetail({
+          id: rec.id,
+          title: rec.title,
+          category: rec.category || (rec.type === "event" ? "Event" : "Recommendation"),
+          description: rec.description || [rec.venue, rec.dates].filter(Boolean).join(" • "),
+          address: rec.address || rec.venue || "",
+          coordinates: getRecommendationCoordinates(rec),
+          lat: rec.lat,
+          lng: rec.lng,
+          sourceUrl: rec.ticketUrl || "",
+        });
+        state.notify();
+        showToast(`Added "${rec.title}" to the map.`);
+        return;
+      }
       const spotIdx = parseInt(target.dataset.spotIdx, 10);
       const spotName = target.dataset.spotName || "";
       selectPoiOnOverviewMap(spotIdx, spotName);

@@ -592,6 +592,11 @@ export const tripStateMixin = {
       endTime: eventInput.endTime || "12:00",
       location: eventInput.location || "",
       colorScheme: eventInput.colorScheme || "peach",
+      lat: eventInput.lat ?? null,
+      lng: eventInput.lng ?? null,
+      sourceId: eventInput.sourceId || "",
+      sourceType: eventInput.sourceType || "",
+      ticketUrl: eventInput.ticketUrl || "",
     };
 
     trip.calendarEvents = trip.calendarEvents || [];

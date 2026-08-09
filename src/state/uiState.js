@@ -404,11 +404,19 @@ export const uiStateMixin = {
       });
 
       const cleanText = cleanAiResponseText(result.answer || `Here are top recommendations for ${trip.destination}!`);
+      const recommendations = buildConciergeRecommendations({
+        prompt,
+        answer: cleanText,
+        resultRecommendations: result.recommendations || [],
+        events: eventsList,
+        pois: poiList,
+      });
 
       this.aiConciergeHistory.push({
         role: "assistant",
         text: cleanText,
         aiModel: result.aiModel || result.modelProvider || "trip-ai",
+        recommendations,
       });
     } catch (err) {
       console.warn("AI Concierge request error:", err);
@@ -492,3 +500,52 @@ export const uiStateMixin = {
     this.notify();
   },
 };
+
+function buildConciergeRecommendations({ prompt = "", answer = "", resultRecommendations = [], events = [], pois = [] } = {}) {
+  const explicit = normalizeConciergeRecommendations(resultRecommendations);
+  if (explicit.length) return explicit.slice(0, 8);
+
+  const promptText = String(prompt || "").toLowerCase();
+  const answerText = String(answer || "").toLowerCase();
+  const wantsEvents = /\b(event|events|concert|concerts|gig|gigs|show|shows|festival|festivals|live music|tonight|during trip)\b/.test(promptText);
+  const sourceItems = wantsEvents ? events : [...pois, ...events];
+  const matched = sourceItems.filter((item) => {
+    const name = String(item.title || item.name || item.artist || "").toLowerCase();
+    return name && answerText.includes(name);
+  });
+  const selected = matched.length ? matched : sourceItems.slice(0, wantsEvents ? 10 : 5);
+  return normalizeConciergeRecommendations(selected.map((item) => ({
+    ...item,
+    type: wantsEvents || item.venue || item.dates ? "event" : "poi",
+  }))).slice(0, 8);
+}
+
+function normalizeConciergeRecommendations(items = []) {
+  return (Array.isArray(items) ? items : []).map((item, index) => {
+    const title = item.title || item.name || item.artist || "";
+    if (!title) return null;
+    const lat = Number(item.lat ?? item.latitude);
+    const lng = Number(item.lng ?? item.longitude);
+    return {
+      id: item.id || `ai-rec-${slugify(title)}-${index}`,
+      type: item.type || (item.venue || item.dates ? "event" : "poi"),
+      title,
+      name: item.name || title,
+      category: item.category || item.genre || item.type || "Recommendation",
+      description: item.description || item.reason || item.summary || "",
+      address: item.address || item.venue || "",
+      venue: item.venue || "",
+      dates: item.dates || item.date || "",
+      startTime: item.startTime || "",
+      endTime: item.endTime || "",
+      lat: Number.isFinite(lat) ? lat : null,
+      lng: Number.isFinite(lng) ? lng : null,
+      ticketUrl: item.ticketUrl || item.url || item.sourceUrl || "",
+      provider: item.provider || item.source || "",
+    };
+  }).filter(Boolean);
+}
+
+function slugify(value = "") {
+  return String(value).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+}
