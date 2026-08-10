@@ -280,8 +280,6 @@ export function renderProfileView() {
 
   return `
     <div class="profile-page">
-      ${renderHeader()}
-
       <div class="profile-page__content">
         <div class="profile-header-card card-pattern-poly">
           <button class="profile-avatar-wrap ${isSignedIn ? "" : "profile-avatar-wrap--signed-out"}" ${isSignedIn ? `data-action="change-avatar"` : `data-action="open-profile-section" data-profile-section="profile"`} type="button" title="${isSignedIn ? "Change profile picture" : "Sign in to use a profile picture"}" aria-label="${isSignedIn ? "Change profile picture" : "Sign in to use a profile picture"}">
@@ -319,6 +317,8 @@ export function renderProfileView() {
             </div>
           </div>
         </div>
+
+        ${renderAccountAccessPanel(isAdmin)}
 
         <div class="profile-menu-card profile-personas-card mb-sm">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
@@ -382,8 +382,6 @@ export function renderProfileView() {
         </div>
 
         ${renderProfileSettingsPanel(activeSection, profile, isAdmin)}
-
-        ${renderAccountAccessPanel(isAdmin)}
 
         ${renderTravelCompanionsPanel(companionTrip, companions, futureTrips, companionTripId)}
 

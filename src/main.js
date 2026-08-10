@@ -118,7 +118,7 @@ async function logOutAndShowExit() {
   } catch {}
   // Clear any D1-owned trips from memory so next visitor can't see them.
   state.clearUserOwnedTrips();
-  await state.refreshUserSession();
+  state.clearUserSession({ notify: false });
   state.showAuthExit();
   showToast("Signed out.");
 }

@@ -61,6 +61,18 @@ export const profileStateMixin = {
     return this.userSession;
   },
 
+  clearUserSession(options = {}) {
+    this.userSession = {
+      status: "ready",
+      role: "anonymous",
+      userId: "",
+      authType: "none",
+    };
+    this.syncAdminDemoMoments();
+    if (options.notify !== false) this.notify();
+    return this.userSession;
+  },
+
   // ── User profile ───────────────────────────────────────────────────────────
 
   updateUserProfile(updates = {}, options = {}) {
