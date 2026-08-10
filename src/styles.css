@@ -11945,12 +11945,141 @@ a:active .ph-icon,
 }
 
 .manifesto-logo-wrapper {
-  display: flex;
+  position: relative;
+  display: grid;
+  place-items: center;
   justify-content: center;
   align-items: center;
-  transform: scale(1.6);
+  width: min(320px, 82vw);
+  min-height: 220px;
   margin-bottom: 8px;
   filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.12));
+}
+
+.manifesto-logo-motion-shell {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  min-height: 220px;
+  isolation: isolate;
+  will-change: transform;
+}
+
+.manifesto-logo-motion-shell .manifesto-big-logo {
+  position: relative;
+  z-index: 3;
+  transform-origin: 50% 50%;
+  filter:
+    drop-shadow(0 12px 24px rgba(15, 27, 43, 0.16))
+    drop-shadow(0 2px 0 rgba(255, 255, 255, 0.78));
+  will-change: transform, opacity;
+}
+
+.manifesto-travel-field {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.manifesto-route-shadow,
+.manifesto-route-line {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.manifesto-route-shadow {
+  stroke: color-mix(in srgb, var(--ink) 13%, transparent);
+  stroke-width: 16;
+  opacity: 0.34;
+}
+
+.manifesto-route-line {
+  stroke: var(--orange);
+  stroke-width: 5;
+  filter: drop-shadow(0 5px 10px rgba(248, 96, 8, 0.22));
+}
+
+.manifesto-route-spark {
+  fill: var(--paper);
+  stroke: var(--orange);
+  stroke-width: 4;
+  filter: drop-shadow(0 0 13px rgba(248, 96, 8, 0.72));
+}
+
+.manifesto-location-pin {
+  fill: var(--blue);
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: 50% 80%;
+  filter: drop-shadow(0 7px 10px rgba(15, 27, 43, 0.22));
+}
+
+.manifesto-location-pin circle {
+  fill: var(--paper);
+}
+
+.manifesto-location-pin--start {
+  fill: var(--green);
+}
+
+.manifesto-location-pin--mid {
+  fill: var(--orange);
+}
+
+.manifesto-location-pin--end {
+  fill: var(--blue);
+}
+
+.manifesto-logo-orbit {
+  position: absolute;
+  z-index: 2;
+  display: block;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--blue) 34%, transparent);
+  pointer-events: none;
+  opacity: 0;
+  transform: scale(0.84);
+}
+
+.manifesto-logo-orbit::after {
+  content: "";
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--orange);
+  box-shadow: 0 0 0 6px color-mix(in srgb, var(--orange) 20%, transparent);
+}
+
+.manifesto-logo-orbit--one {
+  width: 178px;
+  height: 94px;
+  transform: rotate(-12deg) scale(0.84);
+}
+
+.manifesto-logo-orbit--one::after {
+  top: 6px;
+  right: 31px;
+}
+
+.manifesto-logo-orbit--two {
+  width: 214px;
+  height: 116px;
+  transform: rotate(18deg) scale(0.84);
+  border-color: color-mix(in srgb, var(--green) 32%, transparent);
+}
+
+.manifesto-logo-orbit--two::after {
+  left: 42px;
+  bottom: 7px;
+  background: var(--green);
+  box-shadow: 0 0 0 6px color-mix(in srgb, var(--green) 20%, transparent);
 }
 
 .manifesto-card-banner {
@@ -11979,6 +12108,22 @@ a:active .ph-icon,
   color: var(--ink-muted);
   margin: 0;
   font-weight: 500;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .manifesto-logo-motion-shell,
+  .manifesto-logo-motion-shell .manifesto-big-logo,
+  .manifesto-logo-orbit,
+  .manifesto-location-pin {
+    animation: none !important;
+    transition: none !important;
+    transform: none;
+  }
+
+  .manifesto-location-pin,
+  .manifesto-logo-orbit {
+    opacity: 1;
+  }
 }
 
 .desktop-landing-footer {

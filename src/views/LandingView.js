@@ -266,8 +266,29 @@ export function renderLandingView() {
       <!-- BRAND MANIFESTO SECTION -->
       <section class="landing-brand-manifesto-section">
         <div class="manifesto-container">
-          <div class="manifesto-logo-wrapper">
-            ${TRIP_LOGO_SVG("manifesto-big-logo", 76)}
+          <div class="manifesto-logo-wrapper" data-landing-logo-animation>
+            <div class="manifesto-logo-motion-shell">
+              <svg class="manifesto-travel-field" viewBox="0 0 320 220" aria-hidden="true">
+                <path class="manifesto-route-shadow" d="M38 162 C84 104 116 190 158 123 S230 48 282 82" />
+                <path class="manifesto-route-line" d="M38 162 C84 104 116 190 158 123 S230 48 282 82" />
+                <circle class="manifesto-route-spark" cx="38" cy="162" r="5" />
+                <g class="manifesto-location-pin manifesto-location-pin--start" transform="translate(38 162)">
+                  <path d="M0 -17 C9 -17 16 -10 16 -1 C16 10 0 23 0 23 C0 23 -16 10 -16 -1 C-16 -10 -9 -17 0 -17Z" />
+                  <circle cx="0" cy="-1" r="5" />
+                </g>
+                <g class="manifesto-location-pin manifesto-location-pin--mid" transform="translate(158 123)">
+                  <path d="M0 -17 C9 -17 16 -10 16 -1 C16 10 0 23 0 23 C0 23 -16 10 -16 -1 C-16 -10 -9 -17 0 -17Z" />
+                  <circle cx="0" cy="-1" r="5" />
+                </g>
+                <g class="manifesto-location-pin manifesto-location-pin--end" transform="translate(282 82)">
+                  <path d="M0 -17 C9 -17 16 -10 16 -1 C16 10 0 23 0 23 C0 23 -16 10 -16 -1 C-16 -10 -9 -17 0 -17Z" />
+                  <circle cx="0" cy="-1" r="5" />
+                </g>
+              </svg>
+              <span class="manifesto-logo-orbit manifesto-logo-orbit--one"></span>
+              <span class="manifesto-logo-orbit manifesto-logo-orbit--two"></span>
+              ${TRIP_LOGO_SVG("manifesto-big-logo", 120)}
+            </div>
           </div>
           <div class="manifesto-card-banner">
             <span class="manifesto-kicker voice-mono">PLAN IT. LIVE IT. REMEMBER IT.</span>

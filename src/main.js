@@ -7,6 +7,7 @@ import { scheduleBackgroundEnrichmentScan } from "./app/backgroundEnrichmentCont
 import { registerCalendarDragController } from "./app/calendarDragController.js";
 import { shouldOpenConciergeDrawerForElement, submitConciergeForm, submitConciergePrompt } from "./app/conciergeController.js";
 import { buildJournalTemplateStory, getRecommendedTemplateMomentIds } from "./app/journalController.js";
+import { initLandingLogoAnimation } from "./app/landingLogoAnimationController.js";
 import { bootApp, flashPageLoader, isAppBooted, renderTripLoadingPage, withPageLoader } from "./app/loadingController.js";
 import { getSelectedPoiRouteTarget, initMapsForView, previewPoiOverviewRoute, resolveTripCenter, selectPoiOnOverviewMap } from "./app/mapController.js";
 import { handleQuickCaptureFiles } from "./app/mediaCaptureController.js";
@@ -88,6 +89,7 @@ function render() {
   // Initialize maps after DOM update
   requestAnimationFrame(() => {
     initMapsForView(view);
+    initLandingLogoAnimation();
   });
 }
 
