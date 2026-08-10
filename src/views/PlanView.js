@@ -10,6 +10,7 @@ import { FLIGHT_TYPE_OPTIONS, getFlightRouteForTrip } from "../services/flightSe
 import { CONCERTS_DATABASE } from "../services/concertService.js";
 import { composeEditorialProfile, createVerifiedFactBundle } from "../enrichment/editorialComposer.js";
 import { getOptimizedImageUrl } from "../utils/responsiveImages.js";
+import { isTripContentInScope } from "../state/helpers.js";
 
 const SUB_TABS = [
   { id: "overview", label: "Overview", icon: renderIcon("compass") },
@@ -1475,26 +1476,13 @@ function getSavedPlacesForTrip(trip) {
   });
 
   CONCERTS_DATABASE.forEach(cnc => {
-    if (savedSet.has(cnc.id) && !places.some(p => p.id === cnc.id || p.title === cnc.title)) {
+    if (savedSet.has(cnc.id) && isTripContentInScope(cnc, trip) && !places.some(p => p.id === cnc.id || p.title === cnc.title)) {
       places.push({
         id: cnc.id,
         title: cnc.title,
         category: "Concert",
         subtitle: `${cnc.venue} • ${cnc.dates}`
       });
-    }
-  });
-
-  const SEARCH_SPOTS = [
-    { id: "sp1", title: "Savannah Coffee Roasters", category: "Café", subtitle: "Specialty pourovers" },
-    { id: "sp2", title: "Saint-Germain Bistro", category: "Dining", subtitle: "Classic French cuisine" },
-    { id: "sp3", title: "Musée d'Orsay", category: "Museum", subtitle: "Impressionist masterworks" },
-    { id: "sp4", title: "Palais-Royal Garden", category: "Park", subtitle: "Tranquil courtyard" }
-  ];
-
-  SEARCH_SPOTS.forEach(spot => {
-    if (savedSet.has(spot.id) && !places.some(p => p.id === spot.id || p.title === spot.title)) {
-      places.push(spot);
     }
   });
 

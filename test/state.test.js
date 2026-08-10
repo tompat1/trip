@@ -1,13 +1,110 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { enrichmentService } from "../src/enrichment/enrichmentService.js";
+import { ADMIN_SESSION_STORAGE_KEY, createEnrichmentService, enrichmentService } from "../src/enrichment/enrichmentService.js";
 import { tripsData } from "../src/data/tripsData.js";
 import { inferStartDateFromText } from "../src/utils/tripDates.js";
 import { getHomeEmptyStateMode } from "../src/views/homeViewMode.js";
 import { state } from "../src/state.js";
 import { filterTripScopedItems } from "../src/state/helpers.js";
 import { submitConciergePrompt } from "../src/app/conciergeController.js";
+
+function getTestLocalStorage() {
+  if (globalThis.localStorage) {
+    globalThis.window = {
+      ...(globalThis.window || {}),
+      location: globalThis.window?.location || { origin: "https://trip.test", hostname: "trip.test" },
+      localStorage: globalThis.localStorage,
+    };
+    return globalThis.localStorage;
+  }
+  const values = new Map();
+  globalThis.localStorage = {
+    getItem: (key) => values.has(key) ? values.get(key) : null,
+    setItem: (key, value) => values.set(key, String(value)),
+    removeItem: (key) => values.delete(key),
+    clear: () => values.clear(),
+  };
+  globalThis.window = {
+    ...(globalThis.window || {}),
+    location: globalThis.window?.location || { origin: "https://trip.test", hostname: "trip.test" },
+    localStorage: globalThis.localStorage,
+  };
+  return globalThis.localStorage;
+}
+
+test("account login stores a session token and logout clears it", async () => {
+  const requests = [];
+  const storage = getTestLocalStorage();
+  const originalToken = storage.getItem(ADMIN_SESSION_STORAGE_KEY);
+  storage.removeItem(ADMIN_SESSION_STORAGE_KEY);
+
+  const service = createEnrichmentService({
+    apiBase: "https://trip.test",
+    fetchImpl: async (url, init = {}) => {
+      requests.push({ url: String(url), init });
+      if (String(url).endsWith("/api/auth/session") && init.method === "POST") {
+        return Response.json({
+          ok: true,
+          session: { token: "traveler-token", principal: { role: "traveler", userId: "alex@example.com" } },
+        });
+      }
+      if (String(url).endsWith("/api/auth/session") && init.method === "DELETE") {
+        assert.equal(init.headers.Authorization, "Bearer traveler-token");
+        return Response.json({ ok: true });
+      }
+      throw new Error(`unexpected request ${url}`);
+    },
+  });
+
+  try {
+    await service.loginAccount({ email: "alex@example.com", password: "secret" });
+    assert.equal(storage.getItem(ADMIN_SESSION_STORAGE_KEY), "traveler-token");
+
+    await service.logoutAdmin();
+    assert.equal(storage.getItem(ADMIN_SESSION_STORAGE_KEY), null);
+    assert.deepEqual(requests.map((request) => [new URL(request.url).pathname, request.init.method]), [
+      ["/api/auth/session", "POST"],
+      ["/api/auth/session", "DELETE"],
+    ]);
+  } finally {
+    storage.removeItem(ADMIN_SESSION_STORAGE_KEY);
+    if (originalToken) storage.setItem(ADMIN_SESSION_STORAGE_KEY, originalToken);
+  }
+});
+
+test("session refresh and local clear drive authenticated state for login/logout UI", async () => {
+  const originalGetSession = enrichmentService.getSession;
+  const originalSession = { ...state.userSession };
+  const originalNotify = state.notify;
+
+  try {
+    state.notify = () => {};
+    enrichmentService.getSession = async () => ({
+      principal: { role: "traveler", userId: "alex@example.com", authType: "traveler-session" },
+    });
+
+    await state.refreshUserSession();
+
+    assert.equal(state.isAuthenticated, true);
+    assert.equal(state.userSession.role, "traveler");
+    assert.equal(state.userSession.userId, "alex@example.com");
+
+    state.clearUserSession();
+
+    assert.equal(state.isAuthenticated, false);
+    assert.deepEqual(state.userSession, {
+      status: "ready",
+      role: "anonymous",
+      userId: "",
+      authType: "none",
+    });
+  } finally {
+    enrichmentService.getSession = originalGetSession;
+    state.userSession = originalSession;
+    state.notify = originalNotify;
+  }
+});
 
 test("custom traveler personas are admin-only", () => {
   const originalSession = { ...state.userSession };
@@ -248,6 +345,163 @@ test("trip content scope keeps specific city trips from inheriting other locatio
   );
 
   assert.deepEqual(scoped.map((item) => item.id), ["prado"]);
+});
+
+test("creating a trip makes it active, centers maps on that destination, and starts with empty scoped content", async () => {
+  const originalTrips = { ...tripsData };
+  const originalSession = { ...state.userSession };
+  const originalActiveTripId = state.activeTripId;
+  const originalActiveView = state.activeView;
+  const originalPlanSubTab = state.planSubTab;
+  const originalNotify = state.notify;
+  const originalRefreshTourismDiscovery = state.refreshTourismDiscovery;
+  const originalRefreshEventDiscovery = state.refreshEventDiscovery;
+  const originalRefreshTripIntelligence = state.refreshTripIntelligence;
+  const originalCreateTrip = enrichmentService.createTrip;
+  const originalIsAuthenticated = Object.getOwnPropertyDescriptor(state, "isAuthenticated");
+  const createdRemoteTrips = [];
+
+  try {
+    Object.keys(tripsData).forEach((id) => delete tripsData[id]);
+    tripsData.paris = {
+      id: "paris",
+      destination: "Paris, France",
+      center: [48.8566, 2.3522],
+      tourismPois: [{ id: "louvre", title: "Louvre Museum", subtitle: "Paris only", image: "" }],
+      events: [{ id: "paris-jazz", title: "Paris Jazz Night", dates: "Oct 3" }],
+      calendarEvents: [{ id: "paris-calendar", title: "Louvre Museum", location: "Paris" }],
+    };
+    state.activeTripId = "paris";
+    state.userSession = { status: "ready", role: "traveler", userId: "alex@example.com", authType: "traveler-session" };
+    Object.defineProperty(state, "isAuthenticated", { configurable: true, get: () => true });
+    state.notify = () => {};
+    state.refreshTourismDiscovery = async () => {};
+    state.refreshEventDiscovery = async () => {};
+    state.refreshTripIntelligence = async () => {};
+    enrichmentService.createTrip = async (payload) => {
+      createdRemoteTrips.push(payload);
+      return { ok: true, trip: payload };
+    };
+
+    await state.createCustomTrip({
+      id: "stockholm-test",
+      destination: "Stockholm, Sweden",
+      dates: "May 1-5, 2027",
+      startDate: "2027-05-01",
+      daysCount: 5,
+    });
+
+    const trip = tripsData["stockholm-test"];
+    assert.equal(state.activeTripId, "stockholm-test");
+    assert.equal(state.activeView, "plan");
+    assert.equal(state.planSubTab, "overview");
+    assert.equal(trip.destination, "Stockholm, Sweden");
+    assert.deepEqual(trip.center, [59.3293, 18.0686]);
+    assert.deepEqual(trip.tourismPois, []);
+    assert.deepEqual(trip.hiddenGems, []);
+    assert.deepEqual(trip.osmPlaces, []);
+    assert.deepEqual(trip.events, []);
+    assert.deepEqual(trip.calendarEvents, []);
+    assert.equal(trip.syncStatus, "synced");
+    const createdStockholmTrip = createdRemoteTrips.find((item) => item.id === "stockholm-test");
+    assert.ok(createdStockholmTrip);
+    assert.equal(createdStockholmTrip.destination, "Stockholm, Sweden");
+    assert.equal(createdStockholmTrip.latitude, 59.3293);
+    assert.equal(createdStockholmTrip.longitude, 18.0686);
+  } finally {
+    Object.keys(tripsData).forEach((id) => delete tripsData[id]);
+    Object.assign(tripsData, originalTrips);
+    state.userSession = originalSession;
+    state.activeTripId = originalActiveTripId;
+    state.activeView = originalActiveView;
+    state.planSubTab = originalPlanSubTab;
+    state.notify = originalNotify;
+    state.refreshTourismDiscovery = originalRefreshTourismDiscovery;
+    state.refreshEventDiscovery = originalRefreshEventDiscovery;
+    state.refreshTripIntelligence = originalRefreshTripIntelligence;
+    enrichmentService.createTrip = originalCreateTrip;
+    if (originalIsAuthenticated) {
+      Object.defineProperty(state, "isAuthenticated", originalIsAuthenticated);
+    } else {
+      delete state.isAuthenticated;
+    }
+  }
+});
+
+test("new trip discovery populates only the active trip and rejects out-of-scope itinerary events", async () => {
+  const originalTrips = { ...tripsData };
+  const originalActiveTripId = state.activeTripId;
+  const originalSession = { ...state.userSession };
+  const originalNotify = state.notify;
+  const originalAddTripEvent = enrichmentService.addTripEvent;
+
+  try {
+    Object.keys(tripsData).forEach((id) => delete tripsData[id]);
+    tripsData.stockholm = {
+      id: "stockholm",
+      destination: "Stockholm, Sweden",
+      center: [59.3293, 18.0686],
+      zoom: 13,
+      dates: "May 1-5, 2027",
+      startDate: "2027-05-01",
+      daysCount: 5,
+      tourismPois: [],
+      hiddenGems: [],
+      osmPlaces: [],
+      events: [],
+      calendarEvents: [],
+      ideas: [],
+    };
+    tripsData.paris = {
+      id: "paris",
+      destination: "Paris, France",
+      center: [48.8566, 2.3522],
+      tourismPois: [{ id: "louvre", title: "Louvre Museum", subtitle: "Paris", image: "" }],
+      events: [{ id: "paris-opera", title: "Paris Opera Gala", dates: "May 2" }],
+      calendarEvents: [{ id: "paris-cal", title: "Paris-only Dinner", location: "Paris" }],
+    };
+    state.activeTripId = "stockholm";
+    state.userSession = { status: "ready", role: "traveler", userId: "alex@example.com", authType: "traveler-session" };
+    state.notify = () => {};
+    enrichmentService.addTripEvent = async () => ({ ok: true });
+
+    tripsData.stockholm.tourismPois = filterTripScopedItems([
+      { id: "vasa", title: "Vasa Museum", subtitle: "Stockholm waterfront", image: "", location: "Stockholm" },
+      { id: "louvre-leak", title: "Louvre Museum", subtitle: "Paris", image: "", location: "Paris" },
+    ], tripsData.stockholm);
+    tripsData.stockholm.events = filterTripScopedItems([
+      { id: "stockholm-live", title: "Stockholm Indie Night", venue: "Södermalm", city: "Stockholm", dates: "May 2" },
+      { id: "paris-live", title: "Paris Jazz Night", venue: "Le Marais", city: "Paris", dates: "May 2" },
+    ], tripsData.stockholm);
+
+    await state.addCalendarEvent("stockholm", {
+      id: "stockholm-cal",
+      title: "Gamla Stan Walk",
+      location: "Gamla Stan, Stockholm",
+      lat: 59.325,
+      lng: 18.071,
+    });
+    await state.addCalendarEvent("stockholm", {
+      id: "bad-paris-cal",
+      title: "Louvre Museum",
+      location: "Paris",
+      lat: 48.8606,
+      lng: 2.3376,
+    });
+
+    assert.deepEqual(tripsData.stockholm.tourismPois.map((place) => place.id), ["vasa"]);
+    assert.deepEqual(tripsData.stockholm.events.map((event) => event.id), ["stockholm-live"]);
+    assert.deepEqual(tripsData.stockholm.calendarEvents.map((event) => event.id), ["stockholm-cal"]);
+    assert.deepEqual(tripsData.paris.tourismPois.map((place) => place.id), ["louvre"]);
+    assert.deepEqual(tripsData.paris.events.map((event) => event.id), ["paris-opera"]);
+  } finally {
+    Object.keys(tripsData).forEach((id) => delete tripsData[id]);
+    Object.assign(tripsData, originalTrips);
+    state.activeTripId = originalActiveTripId;
+    state.userSession = originalSession;
+    state.notify = originalNotify;
+    enrichmentService.addTripEvent = originalAddTripEvent;
+  }
 });
 
 test("future and remembered trips cannot be forced into live mode", () => {
