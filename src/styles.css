@@ -12084,7 +12084,7 @@ a:active .ph-icon,
 
 .manifesto-card-banner {
   width: 100%;
-  padding: 24px 32px;
+  padding: 24px clamp(14px, 5vw, 32px);
   background: color-mix(in srgb, var(--paper-card) 92%, #0F1B2B);
   border: 1px solid var(--line);
   border-radius: 24px;
@@ -12096,18 +12096,25 @@ a:active .ph-icon,
 }
 
 .manifesto-kicker {
-  font-size: 1.15rem;
+  font-size: clamp(0.74rem, 3.05vw, 1.15rem);
   font-weight: 800;
   color: var(--orange);
-  letter-spacing: 2px;
+  letter-spacing: clamp(0.3px, 0.55vw, 2px);
+  line-height: 1.1;
+  max-width: 100%;
+  overflow-wrap: normal;
+  text-align: center;
   text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .manifesto-subcopy {
-  font-size: 1.05rem;
+  font-size: clamp(0.68rem, 2.55vw, 0.98rem);
   color: var(--ink-muted);
+  line-height: 1.2;
   margin: 0;
   font-weight: 500;
+  text-align: center;
 }
 
 @media (prefers-reduced-motion: reduce) {
