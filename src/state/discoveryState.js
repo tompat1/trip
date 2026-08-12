@@ -502,23 +502,36 @@ export const discoveryStateMixin = {
   },
 };
 
-function isAirportOrTransportPoi(place = {}) {
-  const name = String(place.title || place.name || "").toLowerCase();
-  const category = String(place.category || place.kind || "").toLowerCase();
-  if (name.includes("airport") || name.includes("aeroporto") || name.includes("aerodrome") || name.includes("flygplats") || name.includes("lufthavn")) {
-    return true;
+function isPermanentTouristAttraction(spot) {
+  if (!spot) return false;
+  const title = String(spot.title || spot.name || "").toLowerCase().trim();
+  const category = String(spot.category || spot.tag || spot.kind || "").toLowerCase().trim();
+
+  const invalidKeywords = [
+    "airport", "aeroporto", "aerodrome", "flygplats", "lufthavn", "aeroway",
+    "autonomous port", "port of", "prefecture", "police station", "consulate", "embassy",
+    "office", "administrative", "utility", "bus stop", "tram stop",
+    "olympic", "olympics", "opening ceremony", "closing ceremony", "ceremony",
+    "paralympics", "championship", "tournament", "world cup", "expo 20", "marathon 20",
+    "festival 20", "summit 20", "conference", "press conference", "parade 20"
+  ];
+
+  if (invalidKeywords.some((kw) => title.includes(kw) || category.includes(kw))) {
+    return false;
   }
-  if (category.includes("airport") || category.includes("aeroway") || category.includes("terminal")) {
-    return true;
+
+  if (/^(19\d\d|20[0-2]\d)\b/.test(title) || /\b(202[0-9])\s+(summer|winter|games|ceremony|cup|match)\b/.test(title)) {
+    return false;
   }
-  return false;
+
+  return true;
 }
 
 function dedupePoisByTitle(places = []) {
   const seen = new Set();
   const result = [];
   for (const place of places) {
-    if (!place || isAirportOrTransportPoi(place)) continue;
+    if (!place || !isPermanentTouristAttraction(place)) continue;
     const title = String(place.title || place.name || "").toLowerCase().trim();
     if (!title || seen.has(title)) continue;
     seen.add(title);

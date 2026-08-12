@@ -4789,6 +4789,25 @@ function normalizeOverpassElement(element = {}, origin, options = {}) {
   const lat = Number(element.lat ?? element.center?.lat);
   const lng = Number(element.lon ?? element.center?.lon);
   if (!title || !Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+
+  const titleLower = String(title).toLowerCase().trim();
+  const invalidKeywords = [
+    "airport", "aeroporto", "aerodrome", "flygplats", "lufthavn", "aeroway",
+    "autonomous port", "port of", "prefecture", "police station", "consulate", "embassy",
+    "office", "administrative", "utility", "bus stop", "tram stop",
+    "olympic", "olympics", "opening ceremony", "closing ceremony", "ceremony",
+    "paralympics", "championship", "tournament", "world cup", "expo 20", "marathon 20",
+    "festival 20", "summit 20", "conference", "press conference", "parade 20"
+  ];
+
+  if (invalidKeywords.some((kw) => titleLower.includes(kw))) {
+    return null;
+  }
+
+  if (/^(19\d\d|20[0-2]\d)\b/.test(titleLower) || /\b(202[0-9])\s+(summer|winter|games|ceremony|cup|match)\b/.test(titleLower)) {
+    return null;
+  }
+
   const coordinates = [lat, lng];
   const category = classifyNearbyPlace(tags);
   const distanceMeters = Math.round(getDistanceMeters(origin, coordinates));
