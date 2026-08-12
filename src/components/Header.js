@@ -2,6 +2,7 @@ import { state } from "../state.js";
 import { renderIcon } from "../utils/icons.js";
 import { TRIP_LOGO_SVG } from "./BrandAssets.js";
 import { getTripDateStatus } from "../utils/tripDates.js";
+import { sanitizeFlagEmoji } from "../utils/countryEmoji.js";
 
 export function renderHeader() {
   const isLanding = state.activeView === "landing";
@@ -119,7 +120,7 @@ export function renderHeader() {
         <div class="trip-context-card__header">
           <div class="trip-context-card__title-row">
             <div class="editable-trip-title ${noTrip ? 'editable-trip-title--disabled' : ''}" ${noTrip ? '' : 'data-action="edit-trip-title" title="Edit destination, dates, and trip location"'}>
-              <h1 class="trip-title">${escapeHtml(trip.destination)} ${String(trip.flag || "").startsWith("<svg") ? trip.flag : escapeHtml(trip.flag)}</h1>
+              <h1 class="trip-title">${escapeHtml(trip.destination)} ${escapeHtml(sanitizeFlagEmoji(trip.flag, trip.destination))}</h1>
               <p class="trip-dates">${escapeHtml(trip.dates)}${isDoneTrip ? ` • Completed ${dateStatus.daysSinceEnd} ${dateStatus.daysSinceEnd === 1 ? "day" : "days"} ago` : ""}</p>
               ${noTrip ? "" : `
                 <button class="btn btn--icon btn--ghost edit-pencil-btn" aria-label="Edit trip details">
@@ -130,9 +131,11 @@ export function renderHeader() {
             <div class="trip-actions-row">
               ${noTrip ? "" : `
                 <div class="trip-selector-wrap">
-                  <select class="trip-select-dropdown" data-action="select-trip-dropdown" aria-label="Select trip. Current trip: ${escapeHtml(trip.destination)}" title="${escapeHtml(`${trip.flag || ""} ${trip.destination || "Trip"}`.trim())}">
+                  <select class="trip-select-dropdown" data-action="select-trip-dropdown" aria-label="Select trip. Current trip: ${escapeHtml(trip.destination)}" title="${escapeHtml(`${sanitizeFlagEmoji(trip.flag, trip.destination)} ${trip.destination || "Trip"}`.trim())}">
                     ${allTrips.map(t => {
-                      return `<option value="${t.id}" ${t.id === trip.id ? 'selected' : ''} label="${escapeHtml(t.flag || "•")}">${escapeHtml(t.flag || "•")}</option>`;
+                      const flagEmoji = sanitizeFlagEmoji(t.flag, t.destination);
+                      const optionLabel = `${flagEmoji} ${t.destination || "Trip"}`;
+                      return `<option value="${t.id}" ${t.id === trip.id ? 'selected' : ''} label="${escapeHtml(optionLabel)}">${escapeHtml(optionLabel)}</option>`;
                     }).join('')}
                   </select>
                 </div>

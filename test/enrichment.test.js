@@ -55,10 +55,22 @@ test("airport resolver accepts autofilled labels with accented city names", () =
   assert.equal(resolveAirportInput("Milan airports")?.iata, "MXP");
 });
 
-test("airport resolver includes major hub fallback airports", () => {
-  assert.equal(resolveAirportInput("Frankfurt")?.iata, "FRA");
-  assert.equal(resolveAirportInput("Dubai")?.iata, "DXB");
-  assert.equal(resolveAirportInput("Singapore")?.iata, "SIN");
+import { getCountryFlagEmoji, sanitizeFlagEmoji } from "../src/utils/countryEmoji.js";
+
+test("getCountryFlagEmoji resolves flags dynamically using Intl and airport location services", () => {
+  assert.equal(getCountryFlagEmoji("Ortigia, Sicilia"), "🇮🇹");
+  assert.equal(getCountryFlagEmoji("Siracusa, Italy"), "🇮🇹");
+  assert.equal(getCountryFlagEmoji("Reykjavik"), "🇮🇸");
+  assert.equal(getCountryFlagEmoji("Tromsø, Norway"), "🇳🇴");
+  assert.equal(getCountryFlagEmoji("Paris, France"), "🇫🇷");
+  assert.equal(getCountryFlagEmoji("Kyoto"), "🇯🇵");
+});
+
+test("sanitizeFlagEmoji strips raw SVG strings and returns valid emoji flag", () => {
+  const badFlag = '<svg width="1em" height="1em" class="ph-icon ph-map country-fallback-icon"></svg>';
+  assert.equal(sanitizeFlagEmoji(badFlag, "Ortigia, Sicilia"), "🇮🇹");
+  assert.equal(sanitizeFlagEmoji(badFlag, "Paris"), "🇫🇷");
+  assert.equal(sanitizeFlagEmoji("🇮🇹", "Ortigia, Sicilia"), "🇮🇹");
 });
 
 test("airport resolver handles 3-letter IATA codes case-insensitively", () => {

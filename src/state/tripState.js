@@ -8,7 +8,7 @@ import { formatAirportLabel, getAirportByIata } from "../services/airportService
 import { normalizeFlightType, searchFlightsForTrip } from "../services/flightService.js";
 import { fetchDynamicDestinationBrief } from "../services/destinationService.js";
 import { fetchDestinationCoordinates, resolveTripCenter } from "../app/mapController.js";
-import { getCountryFlagEmoji } from "../utils/countryEmoji.js";
+import { getCountryFlagEmoji, resolveCountryFlagAsync, sanitizeFlagEmoji } from "../utils/countryEmoji.js";
 import { formatTripDateRangeFromParts, getTripDateStatus, inferStartDateFromText } from "../utils/tripDates.js";
 import {
   buildTripFlightRoute,
@@ -110,10 +110,7 @@ export const tripStateMixin = {
           const daysCount = Number(t.days_count || t.daysCount) || existingTrip.daysCount || 7;
           const startDate = getLoadedTripStartDate(t, existingTrip);
           const dates = t.dates || existingTrip.dates || formatTripDateRangeFromParts(startDate, daysCount);
-          const resolvedFlag =
-            t.flag && t.flag.length <= 4 && !t.flag.match(/^[a-zA-Z]/)
-              ? t.flag
-              : getCountryFlagEmoji(destination);
+          const resolvedFlag = sanitizeFlagEmoji(t.flag, destination);
           if (!tripsData[t.id]) {
             tripsData[t.id] = {
               id: t.id,
@@ -289,8 +286,7 @@ export const tripStateMixin = {
   async createCustomTrip(tripInput) {
     const id = tripInput.id || `trip_${Date.now()}`;
     const destination = tripInput.destination || "Custom Trip";
-    const flag =
-      tripInput.flag && tripInput.flag !== "🗺️" ? tripInput.flag : getCountryFlagEmoji(destination);
+    const flag = sanitizeFlagEmoji(tripInput.flag, destination);
 
     const resolvedCenter = tripInput.center || resolveTripCenter(destination);
 
@@ -406,6 +402,14 @@ export const tripStateMixin = {
     } else {
       newTrip.syncStatus = "needs-auth";
     }
+
+    resolveCountryFlagAsync(destination).then((asyncFlag) => {
+      if (asyncFlag && asyncFlag !== "✈️" && newTrip.flag !== asyncFlag) {
+        newTrip.flag = asyncFlag;
+        this.notify();
+      }
+    }).catch(() => {});
+
     this.notify();
   },
 
@@ -417,7 +421,7 @@ export const tripStateMixin = {
 
     const previousDestination = trip.destination;
     const previousCenter = trip.center;
-    const flag = getCountryFlagEmoji(newDestination);
+    const flag = sanitizeFlagEmoji(null, newDestination);
     trip.destination = newDestination;
     trip.flag = flag;
     if (trip.upcomingActivity) trip.upcomingActivity.title = newDestination;
@@ -440,7 +444,7 @@ export const tripStateMixin = {
     const previousDestination = trip.destination;
     const previousCenter = trip.center;
     const destination = updates.destination || trip.destination;
-    const flag = getCountryFlagEmoji(destination);
+    const flag = sanitizeFlagEmoji(updates.flag, destination);
     const daysCount = Math.max(1, Number(updates.daysCount) || trip.daysCount || 7);
 
     trip.destination = destination;

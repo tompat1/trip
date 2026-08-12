@@ -1,6 +1,7 @@
 import { state, isFutureTrip } from "../state.js";
 import { getTripDateStatus } from "../utils/tripDates.js";
 import { renderIcon } from "../utils/icons.js";
+import { sanitizeFlagEmoji } from "../utils/countryEmoji.js";
 
 export function renderTripManagementModal() {
   if (!state.tripManagerOpen) return "";
@@ -41,7 +42,7 @@ export function renderTripManagementModal() {
                   <select name="tripId" data-action="set-profile-companion-trip" required>
                     ${futureTrips.map((trip) => `
                       <option value="${escapeHtml(trip.id)}" ${trip.id === selectedInviteTripId ? "selected" : ""}>
-                        ${escapeHtml(`${trip.flag || ""} ${trip.destination || "Trip"} · ${trip.dates || "Dates TBD"}`.trim())}
+                        ${escapeHtml(`${sanitizeFlagEmoji(trip.flag, trip.destination)} ${trip.destination || "Trip"} · ${trip.dates || "Dates TBD"}`.trim())}
                       </option>
                     `).join("")}
                   </select>
@@ -127,7 +128,7 @@ function renderTripManagementItem(trip, selectedInviteTripId) {
   return `
     <article class="trip-management-item ${isActive ? "is-active" : ""}">
       <div class="trip-management-item__main">
-        <div class="trip-management-item__icon" aria-hidden="true">${escapeHtml(trip.flag || "•")}</div>
+        <div class="trip-management-item__icon" aria-hidden="true">${escapeHtml(sanitizeFlagEmoji(trip.flag, trip.destination))}</div>
         <div class="trip-management-item__copy">
           <strong>${escapeHtml(trip.destination || "Trip")}</strong>
           <span>${escapeHtml(trip.dates || "Dates TBD")} · ${companionCount} ${companionCount === 1 ? "companion" : "companions"}</span>
