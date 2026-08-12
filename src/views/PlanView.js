@@ -1231,22 +1231,22 @@ function renderOverviewTabBody(trip, activeFilter, cachedBrief, editorial, topPO
         <h4 class="voice-mono" style="font-size: 0.82rem; font-weight: 700; color: var(--ink); text-transform: uppercase; letter-spacing: 0.6px; margin: 0; padding-bottom: 8px; border-bottom: 1px solid var(--line-light);">Quick facts</h4>
         
         <div style="display: flex; justify-content: space-between; align-items: center;">
-          <span style="font-size: 0.82rem; color: var(--ink-muted); font-weight: 500; display: flex; align-items: center; gap: 6px;">👥 Population</span>
+          <span style="font-size: 0.82rem; color: var(--ink-muted); font-weight: 500; display: flex; align-items: center; gap: 8px;">${renderIcon("users")} Population</span>
           <span class="voice-mono" style="font-size: 0.85rem; font-weight: 700; color: var(--ink);">${escapeHtml(quickFacts.population)}</span>
         </div>
 
         <div style="display: flex; justify-content: space-between; align-items: center;">
-          <span style="font-size: 0.82rem; color: var(--ink-muted); font-weight: 500; display: flex; align-items: center; gap: 6px;">🗺️ Area</span>
+          <span style="font-size: 0.82rem; color: var(--ink-muted); font-weight: 500; display: flex; align-items: center; gap: 8px;">${renderIcon("mapPin")} Area</span>
           <span class="voice-mono" style="font-size: 0.85rem; font-weight: 700; color: var(--ink);">${escapeHtml(quickFacts.area)}</span>
         </div>
 
         <div style="display: flex; justify-content: space-between; align-items: center;">
-          <span style="font-size: 0.82rem; color: var(--ink-muted); font-weight: 500; display: flex; align-items: center; gap: 6px;">🏳️ Country</span>
+          <span style="font-size: 0.82rem; color: var(--ink-muted); font-weight: 500; display: flex; align-items: center; gap: 8px;">${renderIcon("globe")} Country</span>
           <span class="voice-mono" style="font-size: 0.85rem; font-weight: 700; color: var(--ink);">${escapeHtml(quickFacts.country)}</span>
         </div>
 
         <div style="display: flex; justify-content: space-between; align-items: center;">
-          <span style="font-size: 0.82rem; color: var(--ink-muted); font-weight: 500; display: flex; align-items: center; gap: 6px;">💱 Currency</span>
+          <span style="font-size: 0.82rem; color: var(--ink-muted); font-weight: 500; display: flex; align-items: center; gap: 8px;">${renderIcon("currencyCircleDollar")} Currency</span>
           <span class="voice-mono" style="font-size: 0.85rem; font-weight: 700; color: var(--ink);">${escapeHtml(quickFacts.currency)}</span>
         </div>
       </div>
@@ -1347,7 +1347,7 @@ function renderLocationEditorialIntroCard(trip) {
 
   const filters = [
     { id: "overview", label: "Overview" },
-    { id: "nomad", label: "💻 Nomad Guide" },
+    { id: "nomad", label: `${renderIcon("monitor")} Nomad Guide` },
     { id: "poi", label: "POI" },
     { id: "events", label: "Events" },
     { id: "neighborhoods", label: "Neighborhoods" },
@@ -1385,35 +1385,35 @@ function renderLocationEditorialIntroCard(trip) {
         <div class="hero-quick-info-strip" style="position: absolute; bottom: 0; left: 0; right: 0; height: 56px; background: rgba(20, 26, 33, 0.75); backdrop-filter: blur(12px); border-top: 1px solid rgba(255,255,255,0.15); display: flex; align-items: center; justify-content: space-between; padding: 0 16px; color: #ffffff; z-index: 2; overflow-x: auto;">
           <div style="display: flex; align-items: center; gap: 16px; font-size: 0.75rem; white-space: nowrap;">
             <div style="display: flex; align-items: center; gap: 6px;">
-              <span>🗣️</span>
+              <span style="display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; color: #fff; font-size: 0.8rem;">${renderIcon("globe")}</span>
               <div>
                 <div style="font-size: 0.65rem; color: rgba(255,255,255,0.6); text-transform: uppercase; font-weight: 600;">Language</div>
                 <div style="font-weight: 700; color: #fff;">${escapeHtml(quickFacts.language)}</div>
               </div>
             </div>
             <div style="display: flex; align-items: center; gap: 6px;">
-              <span>💰</span>
+              <span style="display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; color: #E9C76B; font-size: 0.8rem;">${renderIcon("currencyCircleDollar")}</span>
               <div>
                 <div style="font-size: 0.65rem; color: rgba(255,255,255,0.6); text-transform: uppercase; font-weight: 600;">Nomad Budget</div>
                 <div style="font-weight: 700; color: #E9C76B;">${escapeHtml(quickFacts.nomadCost || "$1,950/mo")}</div>
               </div>
             </div>
             <div style="display: flex; align-items: center; gap: 6px;">
-              <span>📶</span>
+              <span style="display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; color: #fff; font-size: 0.8rem;">${renderIcon("wifiHigh")}</span>
               <div>
                 <div style="font-size: 0.65rem; color: rgba(255,255,255,0.6); text-transform: uppercase; font-weight: 600;">Wi-Fi Speed</div>
                 <div style="font-weight: 700; color: #fff;">${escapeHtml(quickFacts.wifiSpeed || "90 Mbps")}</div>
               </div>
             </div>
             <div style="display: flex; align-items: center; gap: 6px;">
-              <span>🛡️</span>
+              <span style="display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; color: #fff; font-size: 0.8rem;">${renderIcon("shieldCheck")}</span>
               <div>
                 <div style="font-size: 0.65rem; color: rgba(255,255,255,0.6); text-transform: uppercase; font-weight: 600;">Safety Score</div>
                 <div style="font-weight: 700; color: #fff;">${escapeHtml(quickFacts.safetyScore || "85/100")}</div>
               </div>
             </div>
             <div style="display: flex; align-items: center; gap: 6px;">
-              <span>🛂</span>
+              <span style="display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; color: #fff; font-size: 0.8rem;">${renderIcon("passport")}</span>
               <div>
                 <div style="font-size: 0.65rem; color: rgba(255,255,255,0.6); text-transform: uppercase; font-weight: 600;">Visa Limit</div>
                 <div style="font-weight: 700; color: #fff;">${escapeHtml(quickFacts.visaAllowance || "90 Days Free")}</div>
