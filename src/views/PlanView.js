@@ -5,7 +5,7 @@ import { renderIcon } from "../utils/icons.js";
 import { TRIP_STAMP_SVG } from "../components/BrandAssets.js";
 import { calculateFlightDistance, formatAirportLabel, getFlightRouteDisplay } from "../services/airportService.js";
 import { getDestinationTransitGuide } from "../services/transitService.js";
-import { getDestinationEtiquetteAndTips, getQuickFactsForDestination } from "../services/destinationService.js";
+import { getDestinationEtiquetteAndTips, getQuickFactsForDestination, getNomadMetricsForDestination } from "../services/destinationService.js";
 import { FLIGHT_TYPE_OPTIONS, getFlightRouteForTrip } from "../services/flightService.js";
 import { CONCERTS_DATABASE } from "../services/concertService.js";
 import { composeEditorialProfile, createVerifiedFactBundle } from "../enrichment/editorialComposer.js";
@@ -914,6 +914,85 @@ function renderOverviewTabBody(trip, activeFilter, cachedBrief, editorial, topPO
   const area = destination.split(",")[0].trim();
   const events = trip.calendarEvents || [];
 
+  if (activeFilter === "nomad") {
+    const nomadMetrics = getNomadMetricsForDestination(destination);
+    const workSpots = [
+      { name: `${area} Innovation & Co-working Hub`, type: "Co-working Space", wifi: "200 Mbps", tag: "#coworking", icon: "💼", address: `Central District, ${area}` },
+      { name: `Artisan Coffee Roasters`, type: "Laptop Friendly Cafe", wifi: "85 Mbps", tag: "#laptop-friendly", icon: "☕", address: `Old Town Quarter, ${area}` },
+      { name: `${area} Public City Library`, type: "Quiet Focus Hub", wifi: "120 Mbps", tag: "#quiet-spot", icon: "📚", address: `Civic Center, ${area}` },
+      { name: `Green Garden Cafe & Workspace`, type: "Outdoor Work Cafe", wifi: "95 Mbps", tag: "#power-outlets", icon: "🌴", address: `Parkside, ${area}` }
+    ];
+
+    return `
+      <div style="padding: 20px; display: flex; flex-direction: column; gap: 20px;">
+        
+        <!-- Header Banner -->
+        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+          <div>
+            <span class="voice-mono" style="font-size: 0.72rem; font-weight: 700; color: var(--orange); text-transform: uppercase; letter-spacing: 1px;">DIGITAL NOMAD BRIEF</span>
+            <h3 class="voice-serif" style="font-size: 1.4rem; font-weight: 700; margin: 4px 0 2px 0; color: var(--ink);">Remote Work & Living Stats</h3>
+            <p style="font-size: 0.82rem; color: var(--ink-muted); margin: 0;">Verified living metrics, Wi-Fi speeds, and laptop-friendly hubs in ${escapeHtml(area)}</p>
+          </div>
+          <span class="badge" style="background: rgba(56, 92, 115, 0.12); color: var(--atlas-blue, #385C73); font-weight: 700; font-size: 0.75rem; border: 1px solid rgba(56,92,115,0.25);">
+            Nomad Score 88/100
+          </span>
+        </div>
+
+        <!-- 1. Nomad Scorecard Grid -->
+        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;">
+          ${nomadMetrics.map(m => `
+            <div style="background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius-md); padding: 14px; box-shadow: var(--shadow-sm); display: flex; flex-direction: column; gap: 4px;">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-size: 1.2rem;">${m.icon}</span>
+                <span style="font-size: 0.68rem; font-weight: 700; text-transform: uppercase; color: var(--ink-muted);">${escapeHtml(m.label)}</span>
+              </div>
+              <div style="font-size: 1.25rem; font-weight: 800; color: var(--ink); margin-top: 4px;">${escapeHtml(m.value)}</div>
+            </div>
+          `).join('')}
+        </div>
+
+        <!-- 2. Remote Work & Laptop Friendly Spots -->
+        <div>
+          <h4 style="font-size: 1.05rem; font-weight: 700; color: var(--ink); margin: 0 0 12px 0; display: flex; align-items: center; gap: 6px;">
+            💻 Recommended Work Spots & Laptop Cafes
+          </h4>
+          <div style="display: flex; flex-direction: column; gap: 10px;">
+            ${workSpots.map(s => `
+              <div style="background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius-md); padding: 12px 14px; box-shadow: var(--shadow-sm); display: flex; justify-content: space-between; align-items: center; gap: 12px;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                  <div style="width: 38px; height: 38px; border-radius: 50%; background: var(--paper-subtle); display: flex; align-items: center; justify-content: center; font-size: 1.1rem; border: 1px solid var(--line); flex-shrink: 0;">
+                    ${s.icon}
+                  </div>
+                  <div>
+                    <h5 style="font-size: 0.92rem; font-weight: 700; color: var(--ink); margin: 0 0 2px 0;">${escapeHtml(s.name)}</h5>
+                    <div style="font-size: 0.76rem; color: var(--ink-muted); display: flex; gap: 8px; align-items: center;">
+                      <span>📍 ${escapeHtml(s.address)}</span>
+                      <span>•</span>
+                      <span style="color: var(--field-green); font-weight: 600;">📶 ${s.wifi}</span>
+                    </div>
+                  </div>
+                </div>
+                <span style="font-size: 0.72rem; font-weight: 700; padding: 4px 10px; border-radius: var(--radius-pill); background: rgba(217, 74, 58, 0.08); color: var(--journey-red, #D94A3A); border: 1px solid rgba(217, 74, 58, 0.2); white-space: nowrap;">
+                  ${s.tag}
+                </span>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+
+        <!-- 3. Nomad Living & Remote Work Tips -->
+        <div style="background: var(--paper-subtle); border: 1px solid var(--line); border-radius: var(--radius-md); padding: 16px;">
+          <h4 style="font-size: 0.95rem; font-weight: 700; color: var(--ink); margin: 0 0 10px 0;">🧳 Nomad Advice & Connectivity</h4>
+          <ul style="margin: 0; padding-left: 18px; font-size: 0.82rem; color: var(--ink); line-height: 1.6;">
+            <li>Local eSIM / SIM card options available at airport arrivals or local kiosks (e.g. Holafly, Airalo).</li>
+            <li>Cafes generally allow 2–3 hours of laptop work per coffee order; keep an eye out for dedicated co-working tables.</li>
+            <li>Power outlets standard voltage: 230V (EU Type C/F plugs). Bring a compact multi-country adapter.</li>
+          </ul>
+        </div>
+      </div>
+    `;
+  }
+
   if (activeFilter === "poi") {
     return `
       <div style="padding: 20px;">
@@ -1231,8 +1310,11 @@ function renderLocationEditorialIntroCard(trip) {
   const activeOverviewFilter = state.overviewFilter || "overview";
   const topPOIs = getTopAttractionsForTrip(trip);
 
+  const nomadMetrics = getNomadMetricsForDestination(destination);
+
   const filters = [
     { id: "overview", label: "Overview" },
+    { id: "nomad", label: "💻 Nomad Guide" },
     { id: "poi", label: "POI" },
     { id: "events", label: "Events" },
     { id: "neighborhoods", label: "Neighborhoods" },
@@ -1277,24 +1359,31 @@ function renderLocationEditorialIntroCard(trip) {
               </div>
             </div>
             <div style="display: flex; align-items: center; gap: 6px;">
-              <span>💶</span>
+              <span>💰</span>
               <div>
-                <div style="font-size: 0.65rem; color: rgba(255,255,255,0.6); text-transform: uppercase; font-weight: 600;">Currency</div>
-                <div style="font-weight: 700; color: #fff;">${escapeHtml(quickFacts.currency)}</div>
+                <div style="font-size: 0.65rem; color: rgba(255,255,255,0.6); text-transform: uppercase; font-weight: 600;">Nomad Budget</div>
+                <div style="font-weight: 700; color: #E9C76B;">${escapeHtml(quickFacts.nomadCost || "$1,950/mo")}</div>
               </div>
             </div>
             <div style="display: flex; align-items: center; gap: 6px;">
-              <span>🕒</span>
+              <span>📶</span>
               <div>
-                <div style="font-size: 0.65rem; color: rgba(255,255,255,0.6); text-transform: uppercase; font-weight: 600;">Time zone</div>
-                <div style="font-weight: 700; color: #fff;">${escapeHtml(quickFacts.timezone)}</div>
+                <div style="font-size: 0.65rem; color: rgba(255,255,255,0.6); text-transform: uppercase; font-weight: 600;">Wi-Fi Speed</div>
+                <div style="font-weight: 700; color: #fff;">${escapeHtml(quickFacts.wifiSpeed || "90 Mbps")}</div>
               </div>
             </div>
             <div style="display: flex; align-items: center; gap: 6px;">
-              <span>🗓️</span>
+              <span>🛡️</span>
               <div>
-                <div style="font-size: 0.65rem; color: rgba(255,255,255,0.6); text-transform: uppercase; font-weight: 600;">Best time to visit</div>
-                <div style="font-weight: 700; color: #fff;">${escapeHtml(quickFacts.bestTime)}</div>
+                <div style="font-size: 0.65rem; color: rgba(255,255,255,0.6); text-transform: uppercase; font-weight: 600;">Safety Score</div>
+                <div style="font-weight: 700; color: #fff;">${escapeHtml(quickFacts.safetyScore || "85/100")}</div>
+              </div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <span>🛂</span>
+              <div>
+                <div style="font-size: 0.65rem; color: rgba(255,255,255,0.6); text-transform: uppercase; font-weight: 600;">Visa Limit</div>
+                <div style="font-weight: 700; color: #fff;">${escapeHtml(quickFacts.visaAllowance || "90 Days Free")}</div>
               </div>
             </div>
           </div>

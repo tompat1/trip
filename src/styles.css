@@ -13352,3 +13352,48 @@ a:active .ph-icon,
   color: var(--ink);
   margin-bottom: 16px;
 }
+
+/* ==========================================================================
+   Nomad Style Integration & Place Tagging System
+   ========================================================================== */
+.nomad-badge-dock {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.nomad-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: var(--radius-pill, 9999px);
+  background: rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  font-size: 0.78rem;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.nomad-pill:active {
+  transform: scale(0.96);
+}
+
+.nomad-tag-pill {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: var(--radius-pill, 9999px);
+  background: rgba(56, 92, 115, 0.1);
+  color: var(--atlas-blue, #385C73);
+  border: 1px solid rgba(56, 92, 115, 0.2);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}

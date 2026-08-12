@@ -17,6 +17,10 @@ const DESTINATION_QUICK_FACTS = {
     currency: "EUR (€)",
     timezone: "GMT+2",
     bestTime: "Apr–Jun, Sep–Oct",
+    wifiSpeed: "85 Mbps",
+    nomadCost: "$2,650/mo",
+    safetyScore: "84/100",
+    visaAllowance: "90 Days Visa-Free",
   },
   london: {
     population: "8.9 million",
@@ -26,6 +30,10 @@ const DESTINATION_QUICK_FACTS = {
     currency: "GBP (£)",
     timezone: "GMT+1 (BST)",
     bestTime: "May–Sep",
+    wifiSpeed: "110 Mbps",
+    nomadCost: "$3,400/mo",
+    safetyScore: "86/100",
+    visaAllowance: "180 Days Visa-Free",
   },
   "new york": {
     population: "8.4 million",
@@ -35,6 +43,10 @@ const DESTINATION_QUICK_FACTS = {
     currency: "USD ($)",
     timezone: "GMT-4 (EDT)",
     bestTime: "May–Jun, Sep–Nov",
+    wifiSpeed: "140 Mbps",
+    nomadCost: "$4,200/mo",
+    safetyScore: "78/100",
+    visaAllowance: "90 Days ESTA",
   },
   tokyo: {
     population: "14.0 million",
@@ -44,6 +56,10 @@ const DESTINATION_QUICK_FACTS = {
     currency: "JPY (¥)",
     timezone: "GMT+9",
     bestTime: "Mar–May, Sep–Nov",
+    wifiSpeed: "165 Mbps",
+    nomadCost: "$2,350/mo",
+    safetyScore: "96/100",
+    visaAllowance: "90 Days Visa-Free",
   },
   stockholm: {
     population: "975,000",
@@ -53,6 +69,10 @@ const DESTINATION_QUICK_FACTS = {
     currency: "SEK (kr)",
     timezone: "GMT+2 (CEST)",
     bestTime: "May–Sep",
+    wifiSpeed: "135 Mbps",
+    nomadCost: "$2,800/mo",
+    safetyScore: "91/100",
+    visaAllowance: "90 Days Visa-Free",
   },
   copenhagen: {
     population: "644,000",
@@ -62,6 +82,10 @@ const DESTINATION_QUICK_FACTS = {
     currency: "DKK (kr.)",
     timezone: "GMT+2 (CEST)",
     bestTime: "May–Sep",
+    wifiSpeed: "125 Mbps",
+    nomadCost: "$3,100/mo",
+    safetyScore: "93/100",
+    visaAllowance: "90 Days Visa-Free",
   },
   rome: {
     population: "2.8 million",
@@ -71,6 +95,10 @@ const DESTINATION_QUICK_FACTS = {
     currency: "EUR (€)",
     timezone: "GMT+2",
     bestTime: "Apr–Jun, Sep–Oct",
+    wifiSpeed: "75 Mbps",
+    nomadCost: "$2,100/mo",
+    safetyScore: "81/100",
+    visaAllowance: "90 Days Visa-Free",
   },
   barcelona: {
     population: "1.6 million",
@@ -80,6 +108,10 @@ const DESTINATION_QUICK_FACTS = {
     currency: "EUR (€)",
     timezone: "GMT+2",
     bestTime: "May–Jun, Sep–Oct",
+    wifiSpeed: "115 Mbps",
+    nomadCost: "$2,200/mo",
+    safetyScore: "83/100",
+    visaAllowance: "90 Days Visa-Free",
   },
   madrid: {
     population: "3.3 million",
@@ -89,6 +121,10 @@ const DESTINATION_QUICK_FACTS = {
     currency: "EUR (€)",
     timezone: "GMT+2",
     bestTime: "Apr–Jun, Sep–Oct",
+    wifiSpeed: "120 Mbps",
+    nomadCost: "$2,150/mo",
+    safetyScore: "87/100",
+    visaAllowance: "90 Days Visa-Free",
   },
   berlin: {
     population: "3.6 million",
@@ -98,6 +134,10 @@ const DESTINATION_QUICK_FACTS = {
     currency: "EUR (€)",
     timezone: "GMT+2",
     bestTime: "May–Sep",
+    wifiSpeed: "105 Mbps",
+    nomadCost: "$2,300/mo",
+    safetyScore: "88/100",
+    visaAllowance: "90 Days Visa-Free",
   },
   amsterdam: {
     population: "920,000",
@@ -107,6 +147,10 @@ const DESTINATION_QUICK_FACTS = {
     currency: "EUR (€)",
     timezone: "GMT+2",
     bestTime: "Apr–Sep",
+    wifiSpeed: "140 Mbps",
+    nomadCost: "$3,200/mo",
+    safetyScore: "90/100",
+    visaAllowance: "90 Days Visa-Free",
   },
   lisbon: {
     population: "545,000",
@@ -116,6 +160,10 @@ const DESTINATION_QUICK_FACTS = {
     currency: "EUR (€)",
     timezone: "GMT+1 (WEST)",
     bestTime: "Apr–Oct",
+    wifiSpeed: "120 Mbps",
+    nomadCost: "$1,950/mo",
+    safetyScore: "92/100",
+    visaAllowance: "90 Days Visa-Free",
   },
   crete: {
     population: "634,000",
@@ -125,6 +173,10 @@ const DESTINATION_QUICK_FACTS = {
     currency: "EUR (€)",
     timezone: "GMT+3",
     bestTime: "May–Oct",
+    wifiSpeed: "65 Mbps",
+    nomadCost: "$1,600/mo",
+    safetyScore: "89/100",
+    visaAllowance: "90 Days Visa-Free",
   },
   sydney: {
     population: "5.3 million",
@@ -134,6 +186,10 @@ const DESTINATION_QUICK_FACTS = {
     currency: "AUD ($)",
     timezone: "GMT+10 (AEST)",
     bestTime: "Sep–Nov, Mar–May",
+    wifiSpeed: "95 Mbps",
+    nomadCost: "$3,100/mo",
+    safetyScore: "88/100",
+    visaAllowance: "90 Days eVisitor",
   },
   bangkok: {
     population: "10.5 million",
@@ -143,6 +199,36 @@ const DESTINATION_QUICK_FACTS = {
     currency: "THB (฿)",
     timezone: "GMT+7",
     bestTime: "Nov–Feb",
+    wifiSpeed: "150 Mbps",
+    nomadCost: "$1,250/mo",
+    safetyScore: "85/100",
+    visaAllowance: "60 Days Visa-Free",
+  },
+  canggu: {
+    population: "40,000",
+    area: "15 km²",
+    country: "Indonesia 🇮🇩",
+    language: "Indonesian / English",
+    currency: "IDR (Rp)",
+    timezone: "GMT+8",
+    bestTime: "Apr–Oct",
+    wifiSpeed: "75 Mbps",
+    nomadCost: "$1,350/mo",
+    safetyScore: "87/100",
+    visaAllowance: "30 Days VOA",
+  },
+  "chiang mai": {
+    population: "130,000",
+    area: "40 km²",
+    country: "Thailand 🇹🇭",
+    language: "Thai / English",
+    currency: "THB (฿)",
+    timezone: "GMT+7",
+    bestTime: "Nov–Feb",
+    wifiSpeed: "130 Mbps",
+    nomadCost: "$950/mo",
+    safetyScore: "91/100",
+    visaAllowance: "60 Days Visa-Free",
   },
 };
 
@@ -157,47 +243,88 @@ export function getQuickFactsForDestination(destinationName = "") {
   let currency = "EUR (€)";
   let language = "Local / English";
   let timezone = "GMT+2";
+  let wifiSpeed = "90 Mbps";
+  let nomadCost = "$1,950/mo";
+  let safetyScore = "85/100";
+  let visaAllowance = "90 Days Visa-Free";
 
   if (countryLower.includes("uk") || countryLower.includes("united kingdom") || countryLower.includes("england") || countryLower.includes("scotland") || countryLower.includes("wales") || lower.includes("london")) {
     currency = "GBP (£)";
     language = "English";
     timezone = "GMT+1 (BST)";
+    wifiSpeed = "110 Mbps";
+    nomadCost = "$3,200/mo";
   } else if (countryLower.includes("us") || countryLower.includes("united states") || countryLower.includes("usa") || lower.includes("york") || lower.includes("angeles") || lower.includes("chicago")) {
     currency = "USD ($)";
     language = "English";
     timezone = "GMT-4 (EDT)";
+    wifiSpeed = "140 Mbps";
+    nomadCost = "$3,800/mo";
+    visaAllowance = "90 Days ESTA";
   } else if (countryLower.includes("japan") || lower.includes("tokyo") || lower.includes("kyoto") || lower.includes("osaka")) {
     currency = "JPY (¥)";
     language = "Japanese";
     timezone = "GMT+9";
+    wifiSpeed = "160 Mbps";
+    nomadCost = "$2,200/mo";
+    safetyScore = "95/100";
   } else if (countryLower.includes("sweden") || lower.includes("stockholm") || lower.includes("gothenburg")) {
     currency = "SEK (kr)";
     language = "Swedish";
     timezone = "GMT+2 (CEST)";
+    wifiSpeed = "135 Mbps";
+    nomadCost = "$2,800/mo";
+    safetyScore = "91/100";
   } else if (countryLower.includes("denmark") || lower.includes("copenhagen")) {
     currency = "DKK (kr.)";
     language = "Danish";
     timezone = "GMT+2 (CEST)";
+    wifiSpeed = "125 Mbps";
+    nomadCost = "$3,100/mo";
+    safetyScore = "93/100";
   } else if (countryLower.includes("norway") || lower.includes("oslo")) {
     currency = "NOK (kr)";
     language = "Norwegian";
     timezone = "GMT+2 (CEST)";
+    wifiSpeed = "140 Mbps";
+    nomadCost = "$3,300/mo";
+    safetyScore = "94/100";
   } else if (countryLower.includes("switzerland") || lower.includes("zurich") || lower.includes("geneva")) {
     currency = "CHF (Fr.)";
     language = "German / French";
     timezone = "GMT+2";
+    wifiSpeed = "150 Mbps";
+    nomadCost = "$4,100/mo";
+    safetyScore = "95/100";
   } else if (countryLower.includes("australia") || lower.includes("sydney") || lower.includes("melbourne")) {
     currency = "AUD ($)";
     language = "English";
     timezone = "GMT+10";
-  } else if (countryLower.includes("thailand") || lower.includes("bangkok") || lower.includes("phuket")) {
+    wifiSpeed = "95 Mbps";
+    nomadCost = "$3,000/mo";
+    visaAllowance = "90 Days eVisitor";
+  } else if (countryLower.includes("thailand") || lower.includes("bangkok") || lower.includes("phuket") || lower.includes("chiang mai")) {
     currency = "THB (฿)";
     language = "Thai";
     timezone = "GMT+7";
-  } else if (countryLower.includes("spain") || lower.includes("spain") || lower.includes("madrid") || lower.includes("barcelona")) {
+    wifiSpeed = "140 Mbps";
+    nomadCost = "$1,100/mo";
+    safetyScore = "88/100";
+    visaAllowance = "60 Days Visa-Free";
+  } else if (countryLower.includes("indonesia") || lower.includes("bali") || lower.includes("canggu") || lower.includes("ubud")) {
+    currency = "IDR (Rp)";
+    language = "Indonesian";
+    timezone = "GMT+8";
+    wifiSpeed = "75 Mbps";
+    nomadCost = "$1,300/mo";
+    safetyScore = "86/100";
+    visaAllowance = "30 Days VOA";
+  } else if (countryLower.includes("spain") || lower.includes("madrid") || lower.includes("barcelona")) {
     currency = "EUR (€)";
     language = lower.includes("barcelona") ? "Spanish / Catalan" : "Spanish";
     timezone = "GMT+2";
+    wifiSpeed = "115 Mbps";
+    nomadCost = "$2,200/mo";
   }
 
   return {
@@ -208,7 +335,21 @@ export function getQuickFactsForDestination(destinationName = "") {
     currency,
     timezone,
     bestTime: "Apr–Oct",
+    wifiSpeed,
+    nomadCost,
+    safetyScore,
+    visaAllowance,
   };
+}
+
+export function getNomadMetricsForDestination(destinationName = "") {
+  const facts = getQuickFactsForDestination(destinationName);
+  return [
+    { label: "Nomad Living Cost", value: facts.nomadCost || "$1,950/mo", icon: "💰", type: "cost" },
+    { label: "Wi-Fi Speed", value: facts.wifiSpeed || "90 Mbps", icon: "📶", type: "wifi" },
+    { label: "Safety Rating", value: facts.safetyScore || "85/100", icon: "🛡️", type: "safety" },
+    { label: "Visa Limit", value: facts.visaAllowance || "90 Days Visa-Free", icon: "🛂", type: "visa" },
+  ];
 }
 
 export function getDestinationEtiquetteAndTips(destinationName = "") {

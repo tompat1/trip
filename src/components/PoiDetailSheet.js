@@ -46,6 +46,16 @@ export function renderPoiDetailSheet() {
             </div>
           ` : ''}
 
+          ${(poi.nomadTags || []).length > 0 ? `
+            <div class="nomad-tags-container" style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px;">
+              ${poi.nomadTags.map((tag) => `
+                <span style="font-size: 0.72rem; font-weight: 600; padding: 4px 10px; border-radius: var(--radius-pill); background: rgba(56, 92, 115, 0.1); color: var(--atlas-blue, #385C73); border: 1px solid rgba(56, 92, 115, 0.2);">
+                  ${escapeHtml(tag)}
+                </span>
+              `).join('')}
+            </div>
+          ` : ''}
+
           <div style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; font-size: 0.82rem; color: var(--ink-muted);">
             ${poi.address ? `<div>📍 <strong>Address:</strong> ${escapeHtml(poi.address)}</div>` : ''}
             ${poi.openingHours ? `<div>🕒 <strong>Hours:</strong> ${escapeHtml(poi.openingHours)}</div>` : ''}

@@ -17,6 +17,14 @@ export const OPENTRIPMAP_HIDDEN_GEMS_KINDS = [
   "urban_environment",
 ].join(",");
 
+export const OPENTRIPMAP_NOMAD_WORK_KINDS = [
+  "cafes",
+  "coworking",
+  "libraries",
+  "urban_environment",
+  "foods",
+].join(",");
+
 export async function fetchOpenTripMapPlaces(options = {}) {
   const fetchImpl = options.fetchImpl || fetch;
   const apiKey = options.apiKey || import.meta.env?.VITE_OPENTRIPMAP_API_KEY || "";
@@ -150,6 +158,7 @@ export function normalizeOpenTripMapPlace(item = {}, origin = null) {
     : origin ? Math.round(getDistanceMeters(origin, coordinates)) : null;
   const kinds = String(item.kinds || "").split(",").map((kind) => kind.trim()).filter(Boolean);
   const category = classifyOpenTripMapKinds(kinds);
+  const nomadTags = deriveNomadTags(title, kinds, category);
 
   return {
     id: item.xid ? `otm-${item.xid}` : `otm-${slugify(`${title}-${coordinates.join("-")}`)}`,
@@ -159,6 +168,7 @@ export function normalizeOpenTripMapPlace(item = {}, origin = null) {
     category,
     tag: category,
     categories: kinds,
+    nomadTags,
     coordinates,
     lat: coordinates[0],
     lng: coordinates[1],
@@ -242,4 +252,23 @@ function getDistanceMeters(from, to) {
 
 function slugify(value = "") {
   return String(value).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+}
+
+export function deriveNomadTags(title = "", kinds = [], category = "") {
+  const combined = `${title} ${kinds.join(" ")} ${category}`.toLowerCase();
+  const tags = [];
+
+  if (/cafe|coffee|espresso|roasters|starbucks|roastery|bakery/.test(combined)) {
+    tags.push("💻 Laptop Friendly", "☕ Wi-Fi Spot", "🔌 Power Outlets");
+  } else if (/coworking|work|office|space|hub|studio|library|workspace/.test(combined)) {
+    tags.push("💼 Co-working Space", "🚀 High-Speed Wi-Fi", "🤫 Quiet Zone");
+  } else if (/park|garden|beach|nature|square|plaza/.test(combined)) {
+    tags.push("🌴 Outdoor Work Spot", "☀️ Fresh Air");
+  } else if (/museum|gallery|library|historic|cultural/.test(combined)) {
+    tags.push("📚 Quiet Culture", "🏛️ Focus Friendly");
+  } else {
+    tags.push("📍 Nomad Spot");
+  }
+
+  return tags;
 }
