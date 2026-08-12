@@ -1915,6 +1915,8 @@ a:active .ph-icon,
   padding: 16px 20px;
   box-shadow: var(--shadow-sm);
   position: relative;
+  z-index: 2;
+  isolation: isolate;
   overflow: visible !important;
 }
 
@@ -3195,6 +3197,8 @@ body.has-fullscreen-map-open {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  position: relative;
+  z-index: 1;
 }
 
 .plan-map-header {
@@ -3267,6 +3271,8 @@ body.has-fullscreen-map-open {
 
 .plan-map-shell {
   position: relative;
+  z-index: 1;
+  margin-top: 4px;
 }
 
 .plan-map {
