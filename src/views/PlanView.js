@@ -783,13 +783,32 @@ function getNeighborhoodsForDestination(destinationName = "") {
   ];
 }
 
-function getTopAttractionsForTrip(trip) {
-  const isTransportPoi = (p) => {
-    const name = String(p?.title || p?.name || "").toLowerCase();
-    const category = String(p?.category || p?.kind || "").toLowerCase();
-    return name.includes("airport") || name.includes("aeroporto") || category.includes("airport") || category.includes("aeroway");
-  };
+function isPermanentTouristAttraction(spot) {
+  if (!spot) return false;
+  const title = String(spot.title || spot.name || "").toLowerCase().trim();
+  const category = String(spot.category || spot.tag || spot.kind || "").toLowerCase().trim();
 
+  const invalidKeywords = [
+    "airport", "aeroporto", "aerodrome", "flygplats", "lufthavn", "aeroway",
+    "autonomous port", "port of", "prefecture", "police station", "consulate", "embassy",
+    "office", "administrative", "utility", "bus stop", "tram stop",
+    "olympic", "olympics", "opening ceremony", "closing ceremony", "ceremony",
+    "paralympics", "championship", "tournament", "world cup", "expo 20", "marathon 20",
+    "festival 20", "summit 20", "conference", "press conference", "parade 20"
+  ];
+
+  if (invalidKeywords.some((kw) => title.includes(kw) || category.includes(kw))) {
+    return false;
+  }
+
+  if (/^(19\d\d|20[0-2]\d)\b/.test(title) || /\b(202[0-9])\s+(summer|winter|games|ceremony|cup|match)\b/.test(title)) {
+    return false;
+  }
+
+  return true;
+}
+
+function getTopAttractionsForTrip(trip) {
   const seenTitles = new Set();
   const rawPlaces = [
     ...(trip.mapPins || []),
@@ -802,7 +821,7 @@ function getTopAttractionsForTrip(trip) {
 
   const livePlaces = [];
   for (const p of rawPlaces) {
-    if (!p || isTransportPoi(p)) continue;
+    if (!p || !isPermanentTouristAttraction(p)) continue;
     const titleKey = String(p.title || p.name || "").toLowerCase().trim();
     if (!titleKey || seenTitles.has(titleKey)) continue;
     seenTitles.add(titleKey);

@@ -603,6 +603,31 @@ export function previewPoiOverviewRoute(routePlan = {}, fallbackOrigin = null, f
   map.fitBounds(bounds.pad(0.18), { maxZoom: 15, animate: true });
 }
 
+function isTravelerSight(spot) {
+  if (!spot) return false;
+  const title = String(spot.title || spot.name || "").toLowerCase().trim();
+  const category = String(spot.category || spot.tag || spot.kind || "").toLowerCase().trim();
+
+  const invalidKeywords = [
+    "airport", "aeroporto", "aerodrome", "flygplats", "lufthavn", "aeroway",
+    "autonomous port", "port of", "prefecture", "police station", "consulate", "embassy",
+    "office", "administrative", "utility", "bus stop", "tram stop",
+    "olympic", "olympics", "opening ceremony", "closing ceremony", "ceremony",
+    "paralympics", "championship", "tournament", "world cup", "expo 20", "marathon 20",
+    "festival 20", "summit 20", "conference", "press conference", "parade 20"
+  ];
+
+  if (invalidKeywords.some((kw) => title.includes(kw) || category.includes(kw))) {
+    return false;
+  }
+
+  if (/^(19\d\d|20[0-2]\d)\b/.test(title) || /\b(202[0-9])\s+(summer|winter|games|ceremony|cup|match)\b/.test(title)) {
+    return false;
+  }
+
+  return true;
+}
+
 function initPoiOverviewMap(trip) {
   if (typeof window === "undefined" || !L) return;
   const container = document.getElementById("poi-map-container");
@@ -614,7 +639,7 @@ function initPoiOverviewMap(trip) {
   }
 
   const center = trip.center || resolveTripCenter(trip.destination);
-  const map = L.map(container, { zoomControl: false, attributionControl: false }).setView(center, 14);
+  const map = L.map(container, { zoomControl: true, attributionControl: true }).setView(center, 14);
 
   L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
     maxZoom: 19,
@@ -645,9 +670,9 @@ function initPoiOverviewMap(trip) {
     ];
   }
 
-  const bounds = L.latLngBounds();
+  const travelerSpots = rawSpots.filter(isTravelerSight);
 
-  const pois = (rawSpots.length ? rawSpots.slice(0, 18) : [
+  const rawPois = (travelerSpots.length ? travelerSpots.slice(0, 18) : [
     { title: `${trip.destination || 'City'} Central Landmark`, category: "Landmark", rating: 4.9, image: "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=400&q=80" },
     { title: `${trip.destination || 'City'} Historic Quarter`, category: "Historic", rating: 4.8, image: "https://images.unsplash.com/photo-1499856871958-5b9627545d1a?auto=format&fit=crop&w=400&q=80" },
     { title: `${trip.destination || 'City'} Art & Culture Hub`, category: "Culture", rating: 4.8, image: "https://images.unsplash.com/photo-1511739001486-6bfe10ce785f?auto=format&fit=crop&w=400&q=80" },
@@ -657,8 +682,6 @@ function initPoiOverviewMap(trip) {
     const offset = defaultOffsets[idx % defaultOffsets.length];
     const spotLat = spot.lat || spot.latitude || spot.coordinates?.[0] || (center[0] + offset.dLat);
     const spotLng = spot.lng || spot.longitude || spot.coordinates?.[1] || (center[1] + offset.dLng);
-    
-    bounds.extend([spotLat, spotLng]);
 
     const title = spot.title || spot.name || `${trip.destination} Spot`;
     const catLower = String(spot.category || spot.tag || "").toLowerCase();
@@ -680,6 +703,29 @@ function initPoiOverviewMap(trip) {
       distance: spot.geoLabel || `${(0.5 + idx * 0.4).toFixed(1)} km away`,
       img: spot.image || spot.photoUrl || getMapFallbackImage(trip.destination)
     };
+  });
+
+  // Apply Radial Collision Avoidance Spacing so markers never overlap on top of each other
+  const coordBuckets = new Map();
+  const PRECISION = 800; // Grid cell ~120m
+  const bounds = L.latLngBounds();
+
+  const pois = rawPois.map((poi, idx) => {
+    let lat = poi.lat;
+    let lng = poi.lng;
+    const key = `${Math.round(lat * PRECISION)},${Math.round(lng * PRECISION)}`;
+    const count = coordBuckets.get(key) || 0;
+    coordBuckets.set(key, count + 1);
+
+    if (count > 0) {
+      const angle = (count * (2 * Math.PI / 5)) + (idx * 0.4);
+      const radius = 0.0028 * Math.ceil(count / 5);
+      lat += radius * Math.cos(angle);
+      lng += radius * Math.sin(angle);
+    }
+
+    bounds.extend([lat, lng]);
+    return { ...poi, lat, lng };
   });
 
   currentPoiOverviewList = pois;
@@ -726,11 +772,14 @@ function initPoiOverviewMap(trip) {
         gap: 6px;
         background: ${bg};
         color: #ffffff;
-        padding: 5px 12px;
+        padding: 5px 10px;
         border-radius: 20px;
-        font-size: 12px;
+        font-size: 11px;
         font-weight: 700;
         white-space: nowrap;
+        max-width: 160px;
+        overflow: hidden;
+        text-overflow: ellipsis;
         cursor: pointer;
         user-select: none;
         pointer-events: auto;
@@ -738,9 +787,9 @@ function initPoiOverviewMap(trip) {
         transition: all 0.2s ease;
         ${shadow}
       ">
-        <span style="font-size: 13px;">${poi.icon}</span>
-        <span>${escapeHtml(poi.title)}</span>
-        <span style="color: #E9C76B; font-weight: 800; font-size: 11px; background: rgba(0,0,0,0.25); padding: 1px 6px; border-radius: 10px;">★ ${poi.rating || 4.8}</span>
+        <span style="font-size: 12px; flex-shrink: 0;">${poi.icon}</span>
+        <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(poi.title)}</span>
+        <span style="color: #E9C76B; font-weight: 800; font-size: 10px; background: rgba(0,0,0,0.25); padding: 1px 5px; border-radius: 8px; flex-shrink: 0;">★ ${poi.rating || 4.8}</span>
       </div>
     `;
 
@@ -750,7 +799,7 @@ function initPoiOverviewMap(trip) {
       iconSize: null
     });
 
-    const marker = L.marker([poi.lat, poi.lng], { icon: pillIcon, zIndexOffset: isActive ? 1000 : (1000 - idx * 10) }).addTo(map);
+    const marker = L.marker([poi.lat, poi.lng], { icon: pillIcon, zIndexOffset: isActive ? 2000 : (1000 - idx * 10) }).addTo(map);
 
     marker.on("click", () => {
       selectPoiOnOverviewMap(idx, poi.title);
@@ -758,7 +807,7 @@ function initPoiOverviewMap(trip) {
   });
 
   if (pois.length > 1 && bounds.isValid()) {
-    map.fitBounds(bounds.pad(0.18));
+    map.fitBounds(bounds.pad(0.25));
   }
 
   attachMapActionOverlay(container, map, trip);

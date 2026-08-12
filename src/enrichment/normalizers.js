@@ -176,7 +176,26 @@ export function normalizeWorkerNearbyPlace(place = {}, origin = null) {
   const title = place.title || place.canonicalName || place.name || "";
   if (!title) return null;
 
+  const titleLower = title.toLowerCase().trim();
   const category = place.category || place.tag || place.categories?.[0] || "Nearby";
+  const catLower = category.toLowerCase().trim();
+
+  const invalidKeywords = [
+    "airport", "aeroporto", "aerodrome", "flygplats", "lufthavn", "aeroway",
+    "autonomous port", "port of", "prefecture", "police station", "consulate", "embassy",
+    "office", "administrative", "utility", "bus stop", "tram stop",
+    "olympic", "olympics", "opening ceremony", "closing ceremony", "ceremony",
+    "paralympics", "championship", "tournament", "world cup", "expo 20", "marathon 20",
+    "festival 20", "summit 20", "conference", "press conference", "parade 20"
+  ];
+
+  if (invalidKeywords.some((kw) => titleLower.includes(kw) || catLower.includes(kw))) {
+    return null;
+  }
+
+  if (/^(19\d\d|20[0-2]\d)\b/.test(titleLower) || /\b(202[0-9])\s+(summer|winter|games|ceremony|cup|match)\b/.test(titleLower)) {
+    return null;
+  }
   const meters = Number.isFinite(Number(place.distanceMeters))
     ? Number(place.distanceMeters)
     : origin ? Math.round(getDistanceMeters(origin, coordinates)) : null;
