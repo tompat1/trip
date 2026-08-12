@@ -49,10 +49,18 @@ export const DEMO_SAMPLE_TRIPS = {
       { id: "visa", label: "Check visa requirements", completed: true }
     ],
     mapPins: [
-      { id: "p1", name: "Montmartre", lat: 48.8867, lng: 2.3431, category: "sight" },
-      { id: "p2", name: "Le Marais", lat: 48.8575, lng: 2.3592, category: "shopping" },
-      { id: "p3", name: "Eiffel Tower", lat: 48.8584, lng: 2.2945, category: "sight" },
-      { id: "p4", name: "Latin Quarter", lat: 48.8499, lng: 2.3444, category: "cafe" }
+      { id: "p1", name: "Musée du Louvre", lat: 48.8606, lng: 2.3376, category: "museum", icon: "🏛️", rating: 4.9 },
+      { id: "p2", name: "Sacré-Cœur & Montmartre", lat: 48.8867, lng: 2.3431, category: "church", icon: "⛪", rating: 4.9 },
+      { id: "p3", name: "Pont Neuf", lat: 48.8570, lng: 2.3413, category: "bridge", icon: "🌉", rating: 4.8 },
+      { id: "p4", name: "La Seine Riverfront", lat: 48.8583, lng: 2.3470, category: "river", icon: "🌊", rating: 4.9 },
+      { id: "p5", name: "Père Lachaise (Grave of Jim Morrison)", lat: 48.8614, lng: 2.3942, category: "monument", icon: "🌹", rating: 4.8 },
+      { id: "p6", name: "Eiffel Tower", lat: 48.8584, lng: 2.2945, category: "landmark", icon: "🗼", rating: 4.9 },
+      { id: "p7", name: "Le Marais", lat: 48.8575, lng: 2.3592, category: "district", icon: "🛍️", rating: 4.8 },
+      { id: "p8", name: "Latin Quarter", lat: 48.8499, lng: 2.3444, category: "district", icon: "☕", rating: 4.8 },
+      { id: "p9", name: "Notre-Dame Cathedral", lat: 48.8530, lng: 2.3499, category: "church", icon: "⛪", rating: 4.9 },
+      { id: "p10", name: "Arc de Triomphe", lat: 48.8738, lng: 2.2950, category: "monument", icon: "🏛️", rating: 4.8 },
+      { id: "p11", name: "Musée d'Orsay", lat: 48.8600, lng: 2.3266, category: "museum", icon: "🎨", rating: 4.9 },
+      { id: "p12", name: "Centre Pompidou", lat: 48.8606, lng: 2.3522, category: "museum", icon: "🎨", rating: 4.7 }
     ],
     calendarEvents: [
       {

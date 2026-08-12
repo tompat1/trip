@@ -792,9 +792,10 @@ function getTopAttractionsForTrip(trip) {
 
   const seenTitles = new Set();
   const rawPlaces = [
+    ...(trip.mapPins || []),
+    ...(trip.tourismPois || []),
     ...(trip.ideas || []),
     ...(trip.explorePlaces || []),
-    ...(trip.tourismPois || []),
     ...(trip.hiddenGems || []),
     ...(trip.osmPlaces || []),
   ];
@@ -809,7 +810,7 @@ function getTopAttractionsForTrip(trip) {
   }
 
   if (livePlaces.length > 0) {
-    return livePlaces.slice(0, 10).map((spot, idx) => ({
+    return livePlaces.slice(0, 18).map((spot, idx) => ({
       id: spot.id || `live-poi-${idx}`,
       title: spot.title || spot.name,
       category: spot.category || spot.tag || spot.kind || "Attraction",

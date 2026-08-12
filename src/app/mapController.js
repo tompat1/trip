@@ -634,9 +634,20 @@ function initPoiOverviewMap(trip) {
   if (typeof window !== "undefined" && window.__getTopAttractionsForTrip) {
     rawSpots = window.__getTopAttractionsForTrip(trip);
   }
-  if (!rawSpots.length) rawSpots = [...(trip.ideas || []), ...(trip.explorePlaces || []), ...(trip.tourismPois || [])];
+  if (!rawSpots.length) {
+    rawSpots = [
+      ...(trip.mapPins || []),
+      ...(trip.tourismPois || []),
+      ...(trip.ideas || []),
+      ...(trip.explorePlaces || []),
+      ...(trip.osmPlaces || []),
+      ...(trip.hiddenGems || [])
+    ];
+  }
 
-  const pois = (rawSpots.length ? rawSpots.slice(0, 5) : [
+  const bounds = L.latLngBounds();
+
+  const pois = (rawSpots.length ? rawSpots.slice(0, 18) : [
     { title: `${trip.destination || 'City'} Central Landmark`, category: "Landmark", rating: 4.9, image: "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=400&q=80" },
     { title: `${trip.destination || 'City'} Historic Quarter`, category: "Historic", rating: 4.8, image: "https://images.unsplash.com/photo-1499856871958-5b9627545d1a?auto=format&fit=crop&w=400&q=80" },
     { title: `${trip.destination || 'City'} Art & Culture Hub`, category: "Culture", rating: 4.8, image: "https://images.unsplash.com/photo-1511739001486-6bfe10ce785f?auto=format&fit=crop&w=400&q=80" },
@@ -644,12 +655,26 @@ function initPoiOverviewMap(trip) {
     { title: `${trip.destination || 'City'} Harbor & Sunset View`, category: "Scenic", rating: 4.9, image: "https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?auto=format&fit=crop&w=400&q=80" }
   ]).map((spot, idx) => {
     const offset = defaultOffsets[idx % defaultOffsets.length];
+    const spotLat = spot.lat || spot.latitude || spot.coordinates?.[0] || (center[0] + offset.dLat);
+    const spotLng = spot.lng || spot.longitude || spot.coordinates?.[1] || (center[1] + offset.dLng);
+    
+    bounds.extend([spotLat, spotLng]);
+
+    const title = spot.title || spot.name || `${trip.destination} Spot`;
+    const catLower = String(spot.category || spot.tag || "").toLowerCase();
+    const icon = spot.icon || (catLower.includes("museum") || catLower.includes("art") ? "🏛️" :
+                               catLower.includes("church") || catLower.includes("basilica") ? "⛪" :
+                               catLower.includes("bridge") || catLower.includes("river") ? "🌉" :
+                               catLower.includes("monument") || catLower.includes("grave") ? "🌹" :
+                               catLower.includes("cafe") || catLower.includes("bistro") ? "☕" :
+                               catLower.includes("market") || catLower.includes("wine") ? "🍷" : offset.icon);
+
     return {
       id: spot.id || `poi-${idx}`,
-      title: spot.title || spot.name || `${trip.destination} Spot`,
-      lat: spot.lat || spot.latitude || spot.coordinates?.[0] || (center[0] + offset.dLat),
-      lng: spot.lng || spot.longitude || spot.coordinates?.[1] || (center[1] + offset.dLng),
-      icon: spot.icon || (spot.category?.includes("Cafe") ? "☕" : spot.category?.includes("Wine") ? "🍷" : offset.icon),
+      title,
+      lat: spotLat,
+      lng: spotLng,
+      icon,
       rating: spot.rating || 4.8,
       category: spot.category || spot.tag || "Attraction",
       distance: spot.geoLabel || `${(0.5 + idx * 0.4).toFixed(1)} km away`,
@@ -680,7 +705,7 @@ function initPoiOverviewMap(trip) {
   const routePoints = [
     [userLat, userLng],
     [center[0] - 0.002, center[1] - 0.003],
-    [center[0] + 0.0035, center[1] - 0.012]
+    [pois[0]?.lat || (center[0] + 0.0035), pois[0]?.lng || (center[1] - 0.012)]
   ];
   L.polyline(routePoints, {
     color: '#D94A3A',
@@ -725,12 +750,16 @@ function initPoiOverviewMap(trip) {
       iconSize: null
     });
 
-    const marker = L.marker([poi.lat, poi.lng], { icon: pillIcon, zIndexOffset: isActive ? 1000 : 100 }).addTo(map);
+    const marker = L.marker([poi.lat, poi.lng], { icon: pillIcon, zIndexOffset: isActive ? 1000 : (1000 - idx * 10) }).addTo(map);
 
     marker.on("click", () => {
       selectPoiOnOverviewMap(idx, poi.title);
     });
   });
+
+  if (pois.length > 1 && bounds.isValid()) {
+    map.fitBounds(bounds.pad(0.18));
+  }
 
   attachMapActionOverlay(container, map, trip);
   activeMaps.set("poi-overview", map);
