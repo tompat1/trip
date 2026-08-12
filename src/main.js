@@ -116,11 +116,10 @@ async function logOutAndShowExit() {
   try {
     await enrichmentService.logoutAdmin();
   } catch {}
-  // Clear any D1-owned trips from memory so next visitor can't see them.
-  state.clearUserOwnedTrips();
-  state.clearUserSession();
-  state.closeAuthExit({ view: "landing" });
-  state.setView("landing");
+  try {
+    await enrichmentService.logoutAccount?.();
+  } catch {}
+  state.logoutUser();
   showToast("Signed out.");
 }
 

@@ -96,6 +96,21 @@ export function createEnrichmentService(options = {}) {
       }
     },
 
+    async logoutAccount() {
+      const url = buildApiUrl(apiBase, "/api/auth/session");
+      try {
+        const response = await fetchImpl(url.href, {
+          method: "DELETE",
+          headers: createApiHeaders(),
+        });
+        return response.ok ? response.json() : { ok: true };
+      } catch {
+        return { ok: true };
+      } finally {
+        clearStoredAdminSessionToken();
+      }
+    },
+
     async resolveLocation(input = {}) {
       const workerLocation = await resolveWorkerLocation(input, { apiBase, fetchImpl, now }).catch(() => null);
       if (workerLocation) return workerLocation;

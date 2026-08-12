@@ -86,6 +86,16 @@ export const profileStateMixin = {
     return this.userSession;
   },
 
+  logoutUser(options = {}) {
+    this.clearUserOwnedTrips?.();
+    this.restoreDemoTrips?.();
+    this.clearUserSession({ notify: false });
+    this.authExitOpen = false;
+    this.activeView = "landing";
+    if (options.notify !== false) this.notify();
+    return this.userSession;
+  },
+
   // ── User profile ───────────────────────────────────────────────────────────
 
   updateUserProfile(updates = {}, options = {}) {

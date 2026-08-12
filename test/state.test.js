@@ -108,6 +108,27 @@ test("session refresh and local clear drive authenticated state for login/logout
   }
 });
 
+test("state.logoutUser transitions cleanly to landing view and clears session atomically", () => {
+  const originalSession = { ...state.userSession };
+  const originalView = state.activeView;
+
+  try {
+    state.userSession = { status: "ready", role: "traveler", userId: "traveler@test.local", authType: "traveler-session" };
+    state.activeView = "profile";
+
+    state.logoutUser();
+
+    assert.equal(state.isAuthenticated, false);
+    assert.equal(state.userSession.role, "anonymous");
+    assert.equal(state.activeView, "landing");
+    assert.equal(state.authExitOpen, false);
+    assert.ok(state.activeTripId, "Demo trips must be restored on logout");
+  } finally {
+    state.userSession = originalSession;
+    state.activeView = originalView;
+  }
+});
+
 test("custom traveler personas are admin-only", () => {
   const originalSession = { ...state.userSession };
   const originalProfile = structuredClone(state.userProfile);
