@@ -167,8 +167,10 @@ function initHomeMap(trip) {
   const container = document.getElementById("home-map-container");
   if (!container) return;
 
-  const map = L.map(container, { zoomControl: false, attributionControl: false }).setView(trip.center, trip.zoom);
-  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19 }).addTo(map);
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 19,
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+  }).addTo(map);
 
   (trip.mapPins || []).forEach((pin) => {
     const marker = L.marker([pin.lat, pin.lng]).addTo(map);
@@ -442,7 +444,8 @@ function initPoiOverviewMap(trip) {
 
   L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
     maxZoom: 19,
-    subdomains: 'abcd'
+    subdomains: 'abcd',
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
   }).addTo(map);
 
   const defaultOffsets = [
