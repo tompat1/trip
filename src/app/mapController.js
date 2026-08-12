@@ -173,6 +173,12 @@ function attachMapActionOverlay(container, map, trip, options = {}) {
   const overlay = document.createElement("div");
   overlay.className = "map-floating-controls";
   overlay.innerHTML = `
+    <button class="map-floating-btn map-zoom-in-btn" type="button" title="Zoom In" aria-label="Zoom in">
+      ${renderIcon("plus")}
+    </button>
+    <button class="map-floating-btn map-zoom-out-btn" type="button" title="Zoom Out" aria-label="Zoom out">
+      ${renderIcon("minus")}
+    </button>
     <button class="map-floating-btn map-recenter-btn" type="button" title="Recenter on ${escapeHtml(trip?.destination || "destination")}" aria-label="Recenter destination">
       ${renderIcon("crosshair")}
     </button>
@@ -187,6 +193,24 @@ function attachMapActionOverlay(container, map, trip, options = {}) {
   `;
 
   container.appendChild(overlay);
+
+  const zoomInBtn = overlay.querySelector(".map-zoom-in-btn");
+  if (zoomInBtn) {
+    zoomInBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      if (map) map.zoomIn();
+    });
+  }
+
+  const zoomOutBtn = overlay.querySelector(".map-zoom-out-btn");
+  if (zoomOutBtn) {
+    zoomOutBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      if (map) map.zoomOut();
+    });
+  }
 
   const recenterBtn = overlay.querySelector(".map-recenter-btn");
   if (recenterBtn) {
@@ -268,9 +292,23 @@ function initHomeMap(trip) {
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
   }).addTo(map);
 
-  const homePins = (trip.mapPins && trip.mapPins.length)
-    ? trip.mapPins
-    : (trip.tourismPois || trip.ideas || []).slice(0, 5);
+  const allHomeSpots = [
+    ...(trip.mapPins || []),
+    ...(trip.tourismPois || []),
+    ...(trip.ideas || []),
+    ...(trip.explorePlaces || []),
+    ...(trip.hiddenGems || []),
+    ...(trip.osmPlaces || [])
+  ].filter(isTravelerSight);
+
+  const seenHome = new Set();
+  const homePins = [];
+  allHomeSpots.forEach((spot) => {
+    const title = String(spot.title || spot.name || "").toLowerCase().trim();
+    if (!title || seenHome.has(title)) return;
+    seenHome.add(title);
+    homePins.push(spot);
+  });
 
   const bounds = L.latLngBounds();
 
@@ -655,24 +693,32 @@ function initPoiOverviewMap(trip) {
     { dLat: -0.005, dLng: 0.008,  icon: "🍷" }
   ];
 
+  const combinedSpots = [
+    ...(trip.mapPins || []),
+    ...(trip.tourismPois || []),
+    ...(trip.ideas || []),
+    ...(trip.explorePlaces || []),
+    ...(trip.osmPlaces || []),
+    ...(trip.hiddenGems || [])
+  ];
+
   let rawSpots = [];
   if (typeof window !== "undefined" && window.__getTopAttractionsForTrip) {
     rawSpots = window.__getTopAttractionsForTrip(trip);
   }
-  if (!rawSpots.length) {
-    rawSpots = [
-      ...(trip.mapPins || []),
-      ...(trip.tourismPois || []),
-      ...(trip.ideas || []),
-      ...(trip.explorePlaces || []),
-      ...(trip.osmPlaces || []),
-      ...(trip.hiddenGems || [])
-    ];
-  }
+  
+  // Merge any missing spots from combinedSpots into rawSpots
+  const seenMapTitles = new Set(rawSpots.map(s => String(s.title || s.name || "").toLowerCase().trim()));
+  combinedSpots.forEach(spot => {
+    const title = String(spot.title || spot.name || "").toLowerCase().trim();
+    if (!title || seenMapTitles.has(title)) return;
+    seenMapTitles.add(title);
+    rawSpots.push(spot);
+  });
 
   const travelerSpots = rawSpots.filter(isTravelerSight);
 
-  const rawPois = (travelerSpots.length ? travelerSpots.slice(0, 18) : [
+  const rawPois = (travelerSpots.length ? travelerSpots.slice(0, 36) : [
     { title: `${trip.destination || 'City'} Central Landmark`, category: "Landmark", rating: 4.9, image: "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?auto=format&fit=crop&w=400&q=80" },
     { title: `${trip.destination || 'City'} Historic Quarter`, category: "Historic", rating: 4.8, image: "https://images.unsplash.com/photo-1499856871958-5b9627545d1a?auto=format&fit=crop&w=400&q=80" },
     { title: `${trip.destination || 'City'} Art & Culture Hub`, category: "Culture", rating: 4.8, image: "https://images.unsplash.com/photo-1511739001486-6bfe10ce785f?auto=format&fit=crop&w=400&q=80" },
