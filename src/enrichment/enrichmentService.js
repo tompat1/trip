@@ -635,8 +635,8 @@ function normalizeWorkerLocationPayload(payload = {}, coordinates) {
     neighbourhood: "",
     postcode: "",
     timezone: "",
-    primaryLanguage: countryCode === "GR" ? "el" : "en",
-    localLanguages: countryCode === "GR" ? ["el", "en"] : ["en"],
+    primaryLanguage: resolveCountryLanguage(countryCode).primary,
+    localLanguages: resolveCountryLanguage(countryCode).all,
     confidence: Number(location.confidence || profilePlace.confidence || 0.65),
     matchLevel: location.matchLevel || "",
     sourceIds: (payload.placeProfile?.sources || []).map((source) => source.id).filter(Boolean),
@@ -697,8 +697,107 @@ function cleanAreaType(value = "") {
   return normalized || "OpenStreetMap area";
 }
 
+/**
+ * Map country code → primary language code + list of common local languages.
+ * Covers the 50+ most-visited travel destinations globally.
+ */
+const COUNTRY_LANGUAGE_MAP = {
+  AD: { primary: "ca", all: ["ca", "es", "fr"] },
+  AE: { primary: "ar", all: ["ar", "en"] },
+  AR: { primary: "es", all: ["es"] },
+  AT: { primary: "de", all: ["de"] },
+  AU: { primary: "en", all: ["en"] },
+  BE: { primary: "nl", all: ["nl", "fr", "de"] },
+  BG: { primary: "bg", all: ["bg"] },
+  BR: { primary: "pt", all: ["pt"] },
+  CA: { primary: "en", all: ["en", "fr"] },
+  CH: { primary: "de", all: ["de", "fr", "it", "rm"] },
+  CL: { primary: "es", all: ["es"] },
+  CN: { primary: "zh", all: ["zh"] },
+  CO: { primary: "es", all: ["es"] },
+  CR: { primary: "es", all: ["es"] },
+  CZ: { primary: "cs", all: ["cs"] },
+  DE: { primary: "de", all: ["de"] },
+  DK: { primary: "da", all: ["da"] },
+  EG: { primary: "ar", all: ["ar"] },
+  ES: { primary: "es", all: ["es", "ca", "eu", "gl"] },
+  FI: { primary: "fi", all: ["fi", "sv"] },
+  FR: { primary: "fr", all: ["fr"] },
+  GB: { primary: "en", all: ["en"] },
+  GR: { primary: "el", all: ["el", "en"] },
+  HR: { primary: "hr", all: ["hr"] },
+  HU: { primary: "hu", all: ["hu"] },
+  ID: { primary: "id", all: ["id", "en"] },
+  IE: { primary: "en", all: ["en", "ga"] },
+  IL: { primary: "he", all: ["he", "ar", "en"] },
+  IN: { primary: "hi", all: ["hi", "en"] },
+  IS: { primary: "is", all: ["is", "en"] },
+  IT: { primary: "it", all: ["it"] },
+  JP: { primary: "ja", all: ["ja"] },
+  KE: { primary: "sw", all: ["sw", "en"] },
+  KR: { primary: "ko", all: ["ko"] },
+  MA: { primary: "ar", all: ["ar", "fr", "ber"] },
+  MX: { primary: "es", all: ["es"] },
+  MY: { primary: "ms", all: ["ms", "en", "zh"] },
+  NL: { primary: "nl", all: ["nl"] },
+  NO: { primary: "no", all: ["no"] },
+  NZ: { primary: "en", all: ["en", "mi"] },
+  PE: { primary: "es", all: ["es", "qu"] },
+  PH: { primary: "fil", all: ["fil", "en"] },
+  PL: { primary: "pl", all: ["pl"] },
+  PT: { primary: "pt", all: ["pt"] },
+  RO: { primary: "ro", all: ["ro"] },
+  SE: { primary: "sv", all: ["sv"] },
+  SG: { primary: "en", all: ["en", "ms", "zh", "ta"] },
+  SK: { primary: "sk", all: ["sk"] },
+  TH: { primary: "th", all: ["th", "en"] },
+  TR: { primary: "tr", all: ["tr"] },
+  TW: { primary: "zh", all: ["zh"] },
+  TZ: { primary: "sw", all: ["sw", "en"] },
+  UA: { primary: "uk", all: ["uk"] },
+  US: { primary: "en", all: ["en", "es"] },
+  VN: { primary: "vi", all: ["vi"] },
+  ZA: { primary: "en", all: ["en", "af", "zu", "xh"] },
+};
+
+function resolveCountryLanguage(countryCode = "") {
+  return COUNTRY_LANGUAGE_MAP[String(countryCode).toUpperCase()] || { primary: "en", all: ["en"] };
+}
+
+/**
+ * Island inference — maps well-known island regions globally (not just Crete).
+ */
+const ISLAND_PATTERNS = [
+  { pattern: /crete|creta/i, name: "Crete" },
+  { pattern: /sicily|sicilia/i, name: "Sicily" },
+  { pattern: /sardinia|sardegna/i, name: "Sardinia" },
+  { pattern: /mallorca|majorca/i, name: "Mallorca" },
+  { pattern: /ibiza/i, name: "Ibiza" },
+  { pattern: /corfu|kerkyra/i, name: "Corfu" },
+  { pattern: /santorini|thira/i, name: "Santorini" },
+  { pattern: /mykonos/i, name: "Mykonos" },
+  { pattern: /rhodes|rhodos/i, name: "Rhodes" },
+  { pattern: /bali/i, name: "Bali" },
+  { pattern: /phuket/i, name: "Phuket" },
+  { pattern: /koh\s*(samui|tao|phangan)/i, name: "Thai Islands" },
+  { pattern: /maldives|maldive/i, name: "Maldives" },
+  { pattern: /siargao/i, name: "Siargao" },
+  { pattern: /cebu/i, name: "Cebu" },
+  { pattern: /jeju/i, name: "Jeju" },
+  { pattern: /hawaii|maui|oahu|kauai/i, name: "Hawaii" },
+  { pattern: /tenerife/i, name: "Tenerife" },
+  { pattern: /gran canaria/i, name: "Gran Canaria" },
+  { pattern: /malta/i, name: "Malta" },
+  { pattern: /cyprus/i, name: "Cyprus" },
+  { pattern: /iceland/i, name: "Iceland" },
+  { pattern: /new zealand/i, name: "New Zealand" },
+  { pattern: /tasmania/i, name: "Tasmania" },
+];
+
 function inferIsland(region = "") {
-  return /crete/i.test(String(region)) ? "Crete" : "";
+  const regionStr = String(region);
+  const match = ISLAND_PATTERNS.find((entry) => entry.pattern.test(regionStr));
+  return match ? match.name : "";
 }
 
 function normalizeTripEvent(event = {}) {

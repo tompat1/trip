@@ -381,24 +381,14 @@ export function isTripScopedText(text = "", trip = {}) {
 }
 
 const LOCATION_SCOPE_RULES = [
+  // ── Europe ────────────────────────────────────────────────────────────────
   {
     key: "paris",
     cityTerms: ["paris"],
     destinations: ["paris", "france", "cdg", "ory"],
     terms: [
-      "paris",
-      "seine",
-      "louvre",
-      "eiffel",
-      "montmartre",
-      "marais",
-      "versailles",
-      "saint germain",
-      "latin quarter",
-      "olympics",
-      "olympic",
-      "arrondissement",
-      "garnier",
+      "paris", "seine", "louvre", "eiffel", "montmartre", "marais",
+      "versailles", "saint germain", "latin quarter", "olympic", "arrondissement", "garnier",
     ],
   },
   {
@@ -430,6 +420,256 @@ const LOCATION_SCOPE_RULES = [
     cityTerms: ["crete", "heraklion"],
     destinations: ["crete", "heraklion", "greece", "gr", "her"],
     terms: ["crete", "heraklion", "knossos", "koules", "ammoudara", "minoan"],
+  },
+  {
+    key: "athens",
+    cityTerms: ["athens", "athen"],
+    destinations: ["athens", "greece", "gr", "ath"],
+    terms: ["athens", "acropolis", "parthenon", "plaka", "monastiraki", "syntagma"],
+  },
+  {
+    key: "santorini",
+    cityTerms: ["santorini", "thira"],
+    destinations: ["santorini", "thira", "greece", "gr"],
+    terms: ["santorini", "oia", "fira", "caldera", "akrotiri"],
+  },
+  {
+    key: "london",
+    cityTerms: ["london"],
+    destinations: ["london", "united kingdom", "uk", "gb", "lhr", "lgw"],
+    terms: ["london", "thames", "buckingham", "westminster", "soho", "shoreditch", "camden", "hyde park", "trafalgar"],
+  },
+  {
+    key: "berlin",
+    cityTerms: ["berlin"],
+    destinations: ["berlin", "germany", "de", "ber", "txl"],
+    terms: ["berlin", "brandenbur", "checkpoint charlie", "prenzlauer", "kreuzberg", "mitte"],
+  },
+  {
+    key: "amsterdam",
+    cityTerms: ["amsterdam"],
+    destinations: ["amsterdam", "netherlands", "nl", "ams"],
+    terms: ["amsterdam", "rijksmuseum", "anne frank", "vondelpark", "jordaan", "dam square"],
+  },
+  {
+    key: "rome",
+    cityTerms: ["rome", "roma"],
+    destinations: ["rome", "roma", "italy", "it", "fco"],
+    terms: ["rome", "roma", "colosseum", "coliseum", "vatican", "trastevere", "pantheon", "trevi"],
+  },
+  {
+    key: "florence",
+    cityTerms: ["florence", "firenze"],
+    destinations: ["florence", "firenze", "italy", "it", "flr"],
+    terms: ["florence", "firenze", "uffizi", "ponte vecchio", "piazzale michelangelo", "duomo"],
+  },
+  {
+    key: "venice",
+    cityTerms: ["venice", "venezia"],
+    destinations: ["venice", "venezia", "italy", "it", "vce"],
+    terms: ["venice", "venezia", "grand canal", "rialto", "gondola", "doge"],
+  },
+  {
+    key: "lisbon",
+    cityTerms: ["lisbon", "lisboa"],
+    destinations: ["lisbon", "lisboa", "portugal", "pt", "lis"],
+    terms: ["lisbon", "lisboa", "alfama", "belem", "tram 28", "fado"],
+  },
+  {
+    key: "porto",
+    cityTerms: ["porto", "oporto"],
+    destinations: ["porto", "oporto", "portugal", "pt", "opo"],
+    terms: ["porto", "ribeira", "douro", "vila nova de gaia", "port wine"],
+  },
+  {
+    key: "stockholm",
+    cityTerms: ["stockholm"],
+    destinations: ["stockholm", "sweden", "se", "arn"],
+    terms: ["stockholm", "gamla stan", "djurgarden", "vasa", "sodermalm"],
+  },
+  {
+    key: "copenhagen",
+    cityTerms: ["copenhagen", "kobenhavn"],
+    destinations: ["copenhagen", "denmark", "dk", "cph"],
+    terms: ["copenhagen", "tivoli", "nyhavn", "stroget", "christiania"],
+  },
+  // ── Americas ──────────────────────────────────────────────────────────────
+  {
+    key: "new york",
+    cityTerms: ["new york", "nyc", "manhattan"],
+    destinations: ["new york", "usa", "us", "jfk", "lga", "ewr"],
+    terms: ["new york", "manhattan", "brooklyn", "central park", "times square", "statue of liberty", "soho", "wall street"],
+  },
+  {
+    key: "los angeles",
+    cityTerms: ["los angeles", "la"],
+    destinations: ["los angeles", "usa", "us", "lax"],
+    terms: ["los angeles", "hollywood", "santa monica", "venice beach", "griffith", "beverly hills", "koreatown"],
+  },
+  {
+    key: "miami",
+    cityTerms: ["miami"],
+    destinations: ["miami", "usa", "us", "mia"],
+    terms: ["miami", "south beach", "little havana", "wynwood", "brickell", "art deco"],
+  },
+  {
+    key: "mexico city",
+    cityTerms: ["mexico city", "cdmx"],
+    destinations: ["mexico city", "mexico", "mx", "mex"],
+    terms: ["mexico city", "cdmx", "zocalo", "coyoacan", "polanco", "xochimilco", "tlatelolco"],
+  },
+  {
+    key: "cancun",
+    cityTerms: ["cancun"],
+    destinations: ["cancun", "mexico", "mx", "cun"],
+    terms: ["cancun", "riviera maya", "chichen itza", "tulum", "playa del carmen"],
+  },
+  {
+    key: "buenos aires",
+    cityTerms: ["buenos aires"],
+    destinations: ["buenos aires", "argentina", "ar", "eze"],
+    terms: ["buenos aires", "palermo", "recoleta", "boca", "tango"],
+  },
+  {
+    key: "rio de janeiro",
+    cityTerms: ["rio", "rio de janeiro"],
+    destinations: ["rio", "rio de janeiro", "brazil", "br", "gig"],
+    terms: ["rio", "copacabana", "ipanema", "corcovado", "christ the redeemer", "sugarloaf"],
+  },
+  {
+    key: "bogota",
+    cityTerms: ["bogota"],
+    destinations: ["bogota", "colombia", "co", "bog"],
+    terms: ["bogota", "candelaria", "zona rosa", "monserrate"],
+  },
+  {
+    key: "medellin",
+    cityTerms: ["medellin"],
+    destinations: ["medellin", "colombia", "co", "mde"],
+    terms: ["medellin", "poblado", "laureles", "parque berrío"],
+  },
+  // ── Asia ──────────────────────────────────────────────────────────────────
+  {
+    key: "tokyo",
+    cityTerms: ["tokyo"],
+    destinations: ["tokyo", "japan", "jp", "nrt", "hnd"],
+    terms: ["tokyo", "shinjuku", "shibuya", "akihabara", "asakusa", "harajuku", "roppongi", "ginza", "ueno"],
+  },
+  {
+    key: "kyoto",
+    cityTerms: ["kyoto"],
+    destinations: ["kyoto", "japan", "jp", "itm"],
+    terms: ["kyoto", "fushimi inari", "arashiyama", "kinkakuji", "gion", "nishiki"],
+  },
+  {
+    key: "osaka",
+    cityTerms: ["osaka"],
+    destinations: ["osaka", "japan", "jp", "kix"],
+    terms: ["osaka", "dotonbori", "namba", "shinsaibashi", "osaka castle", "universal"],
+  },
+  {
+    key: "bangkok",
+    cityTerms: ["bangkok"],
+    destinations: ["bangkok", "thailand", "th", "bkk", "dmk"],
+    terms: ["bangkok", "grand palace", "wat pho", "chatuchak", "sukhumvit", "silom", "khao san"],
+  },
+  {
+    key: "chiang mai",
+    cityTerms: ["chiang mai"],
+    destinations: ["chiang mai", "thailand", "th", "cnx"],
+    terms: ["chiang mai", "doi suthep", "night bazaar", "old city", "nimman"],
+  },
+  {
+    key: "bali",
+    cityTerms: ["bali", "ubud", "canggu", "seminyak"],
+    destinations: ["bali", "indonesia", "id", "dps"],
+    terms: ["bali", "ubud", "canggu", "seminyak", "tanah lot", "tegalalang", "kuta", "nusa dua"],
+  },
+  {
+    key: "singapore",
+    cityTerms: ["singapore"],
+    destinations: ["singapore", "sg", "sin"],
+    terms: ["singapore", "gardens by the bay", "sentosa", "marina bay", "clarke quay", "chinatown", "little india"],
+  },
+  {
+    key: "kuala lumpur",
+    cityTerms: ["kuala lumpur", "kl"],
+    destinations: ["kuala lumpur", "malaysia", "my", "kul"],
+    terms: ["kuala lumpur", "petronas", "batu caves", "bukit bintang", "chinatown"],
+  },
+  {
+    key: "seoul",
+    cityTerms: ["seoul"],
+    destinations: ["seoul", "south korea", "kr", "icn"],
+    terms: ["seoul", "gangnam", "myeongdong", "hongdae", "gyeongbokgung", "namsan"],
+  },
+  {
+    key: "dubai",
+    cityTerms: ["dubai"],
+    destinations: ["dubai", "uae", "ae", "dxb"],
+    terms: ["dubai", "burj khalifa", "dubai mall", "palm jumeirah", "marina", "deira", "creek"],
+  },
+  {
+    key: "mumbai",
+    cityTerms: ["mumbai", "bombay"],
+    destinations: ["mumbai", "india", "in", "bom"],
+    terms: ["mumbai", "bombay", "gateway of india", "dharavi", "bandra", "colaba", "marine drive"],
+  },
+  {
+    key: "delhi",
+    cityTerms: ["delhi", "new delhi"],
+    destinations: ["delhi", "india", "in", "del"],
+    terms: ["delhi", "red fort", "qutub minar", "connaught place", "chandni chowk"],
+  },
+  {
+    key: "hanoi",
+    cityTerms: ["hanoi"],
+    destinations: ["hanoi", "vietnam", "vn", "han"],
+    terms: ["hanoi", "hoan kiem", "old quarter", "ba dinh", "west lake"],
+  },
+  {
+    key: "ho chi minh",
+    cityTerms: ["ho chi minh", "saigon"],
+    destinations: ["ho chi minh", "saigon", "vietnam", "vn", "sgn"],
+    terms: ["ho chi minh", "saigon", "ben thanh", "district 1", "cu chi"],
+  },
+  // ── Africa & Middle East ──────────────────────────────────────────────────
+  {
+    key: "marrakech",
+    cityTerms: ["marrakech", "marrakesh"],
+    destinations: ["marrakech", "marrakesh", "morocco", "ma", "rak"],
+    terms: ["marrakech", "marrakesh", "djemaa el fna", "medina", "souk", "majorelle"],
+  },
+  {
+    key: "cairo",
+    cityTerms: ["cairo"],
+    destinations: ["cairo", "egypt", "eg", "cai"],
+    terms: ["cairo", "pyramids", "giza", "sphinx", "nile", "tahrir", "khan el khalili"],
+  },
+  {
+    key: "nairobi",
+    cityTerms: ["nairobi"],
+    destinations: ["nairobi", "kenya", "ke", "nbo"],
+    terms: ["nairobi", "nairobi national park", "westlands", "karen", "kibera"],
+  },
+  {
+    key: "cape town",
+    cityTerms: ["cape town"],
+    destinations: ["cape town", "south africa", "za", "cpt"],
+    terms: ["cape town", "table mountain", "waterfront", "camps bay", "robben island", "bo kaap"],
+  },
+  // ── Oceania ───────────────────────────────────────────────────────────────
+  {
+    key: "sydney",
+    cityTerms: ["sydney"],
+    destinations: ["sydney", "australia", "au", "syd"],
+    terms: ["sydney", "opera house", "bondi", "circular quay", "darling harbour", "manly"],
+  },
+  {
+    key: "melbourne",
+    cityTerms: ["melbourne"],
+    destinations: ["melbourne", "australia", "au", "mel"],
+    terms: ["melbourne", "federation square", "st kilda", "fitzroy", "yarra"],
   },
 ];
 
@@ -481,7 +721,7 @@ export function normalizeMomentRecord(moment = {}) {
 
   return {
     ...moment,
-    tripId: moment.tripId || moment.trip_id || "paris",
+    tripId: moment.tripId || moment.trip_id || "",
     media_url: mediaUrl,
     mediaUrl,
     date: moment.date || String(moment.created_at || moment.createdAt || new Date().toISOString()).slice(0, 10),
