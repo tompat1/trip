@@ -901,6 +901,25 @@ textarea {
   flex: 1 1 240px;
 }
 
+.header-ai-concierge-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 6px 12px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  border-radius: var(--radius-pill);
+  background: var(--red-gradient);
+  color: var(--white);
+  border: 1px solid transparent;
+  box-shadow: 0 6px 18px rgba(255, 85, 0, 0.2);
+}
+
+.header-ai-concierge-btn:hover {
+  box-shadow: 0 10px 24px rgba(255, 85, 0, 0.28);
+}
+
 .header-weather-badge {
   color: var(--ink);
   font-weight: 800;
