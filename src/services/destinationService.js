@@ -4,6 +4,7 @@
  */
 
 import { enrichmentService } from "../enrichment/enrichmentService.js";
+import { getCountryCode } from "../utils/countryEmoji.js";
 
 const summaryCache = new Map();
 const pendingFetches = new Set();
@@ -85,6 +86,71 @@ const DESTINATION_QUICK_FACTS = {
     wifiSpeed: "125 Mbps",
     nomadCost: "$3,100/mo",
     safetyScore: "93/100",
+    visaAllowance: "90 Days Visa-Free",
+  },
+  ortigia: {
+    population: "122,000 (Siracusa)",
+    area: "1 km² (Island)",
+    country: "Italy 🇮🇹",
+    language: "Italian / Sicilian",
+    currency: "EUR (€)",
+    timezone: "GMT+2 (CEST)",
+    bestTime: "Apr–Jun, Sep–Nov",
+    wifiSpeed: "75 Mbps",
+    nomadCost: "$1,750/mo",
+    safetyScore: "88/100",
+    visaAllowance: "90 Days Visa-Free",
+  },
+  siracusa: {
+    population: "122,000",
+    area: "204 km²",
+    country: "Italy 🇮🇹",
+    language: "Italian",
+    currency: "EUR (€)",
+    timezone: "GMT+2 (CEST)",
+    bestTime: "Apr–Jun, Sep–Nov",
+    wifiSpeed: "75 Mbps",
+    nomadCost: "$1,750/mo",
+    safetyScore: "88/100",
+    visaAllowance: "90 Days Visa-Free",
+  },
+  syracuse: {
+    population: "122,000",
+    area: "204 km²",
+    country: "Italy 🇮🇹",
+    language: "Italian",
+    currency: "EUR (€)",
+    timezone: "GMT+2 (CEST)",
+    bestTime: "Apr–Jun, Sep–Nov",
+    wifiSpeed: "75 Mbps",
+    nomadCost: "$1,750/mo",
+    safetyScore: "88/100",
+    visaAllowance: "90 Days Visa-Free",
+  },
+  sicily: {
+    population: "4.8 million",
+    area: "25,711 km²",
+    country: "Italy 🇮🇹",
+    language: "Italian / Sicilian",
+    currency: "EUR (€)",
+    timezone: "GMT+2 (CEST)",
+    bestTime: "Apr–Jun, Sep–Nov",
+    wifiSpeed: "75 Mbps",
+    nomadCost: "$1,750/mo",
+    safetyScore: "87/100",
+    visaAllowance: "90 Days Visa-Free",
+  },
+  sicilia: {
+    population: "4.8 million",
+    area: "25,711 km²",
+    country: "Italy 🇮🇹",
+    language: "Italian / Sicilian",
+    currency: "EUR (€)",
+    timezone: "GMT+2 (CEST)",
+    bestTime: "Apr–Jun, Sep–Nov",
+    wifiSpeed: "75 Mbps",
+    nomadCost: "$1,750/mo",
+    safetyScore: "87/100",
     visaAllowance: "90 Days Visa-Free",
   },
   rome: {
@@ -236,7 +302,7 @@ const GLOBAL_COUNTRY_DATABASE = [
   { match: ["spain", "madrid", "barcelona", "seville", "valencia", "malaga", "ibiza"], country: "Spain 🇪🇸", language: "Spanish", currency: "EUR (€)", timezone: "GMT+2", nomadCost: "$2,200/mo", wifiSpeed: "115 Mbps", safetyScore: "87/100", visaAllowance: "90 Days Visa-Free" },
   { match: ["france", "paris", "lyon", "nice", "marseille"], country: "France 🇫🇷", language: "French", currency: "EUR (€)", timezone: "GMT+2", nomadCost: "$2,600/mo", wifiSpeed: "95 Mbps", safetyScore: "84/100", visaAllowance: "90 Days Visa-Free" },
   { match: ["germany", "berlin", "munich", "hamburg", "frankfurt"], country: "Germany 🇩🇪", language: "German", currency: "EUR (€)", timezone: "GMT+2", nomadCost: "$2,300/mo", wifiSpeed: "110 Mbps", safetyScore: "89/100", visaAllowance: "90 Days Visa-Free" },
-  { match: ["italy", "rome", "milan", "florence", "venice"], country: "Italy 🇮🇹", language: "Italian", currency: "EUR (€)", timezone: "GMT+2", nomadCost: "$2,100/mo", wifiSpeed: "80 Mbps", safetyScore: "81/100", visaAllowance: "90 Days Visa-Free" },
+  { match: ["italy", "rome", "milan", "florence", "venice", "ortigia", "siracusa", "syracuse", "sicily", "sicilia", "catania", "palermo", "naples", "napoli", "turin", "sardinia"], country: "Italy 🇮🇹", language: "Italian", currency: "EUR (€)", timezone: "GMT+2", nomadCost: "$2,100/mo", wifiSpeed: "80 Mbps", safetyScore: "81/100", visaAllowance: "90 Days Visa-Free" },
   { match: ["uk", "united kingdom", "england", "scotland", "wales", "london", "edinburgh", "manchester"], country: "United Kingdom 🇬🇧", language: "English", currency: "GBP (£)", timezone: "GMT+1", nomadCost: "$3,400/mo", wifiSpeed: "110 Mbps", safetyScore: "86/100", visaAllowance: "180 Days Visa-Free" },
   { match: ["us", "united states", "usa", "york", "angeles", "chicago", "miami", "san francisco"], country: "United States 🇺🇸", language: "English", currency: "USD ($)", timezone: "GMT-5", nomadCost: "$4,200/mo", wifiSpeed: "140 Mbps", safetyScore: "78/100", visaAllowance: "90 Days ESTA" },
   { match: ["japan", "tokyo", "kyoto", "osaka"], country: "Japan 🇯🇵", language: "Japanese", currency: "JPY (¥)", timezone: "GMT+9", nomadCost: "$2,350/mo", wifiSpeed: "165 Mbps", safetyScore: "96/100", visaAllowance: "90 Days Visa-Free" },
@@ -272,6 +338,9 @@ const GLOBAL_COUNTRY_DATABASE = [
 
 export function getQuickFactsForDestination(destinationName = "") {
   const lower = destinationName.toLowerCase();
+  const countryPart = destinationName.includes(",") ? destinationName.split(",").slice(1).join(",").trim() : destinationName.trim();
+  const cityName = destinationName.split(",")[0].trim() || "Destination";
+
   const matchedKey = Object.keys(DESTINATION_QUICK_FACTS).find((k) => lower.includes(k));
   if (matchedKey) return DESTINATION_QUICK_FACTS[matchedKey];
 
@@ -285,22 +354,26 @@ export function getQuickFactsForDestination(destinationName = "") {
     })
   );
 
-  const countryPart = destinationName.includes(",") ? destinationName.split(",").slice(1).join(",").trim() : destinationName.trim();
-  const cityName = destinationName.split(",")[0].trim();
+  const isoCode = getCountryCode(destinationName);
+  const matchedIsoCountry = isoCode && isoCode !== "XX"
+    ? GLOBAL_COUNTRY_DATABASE.find((item) => item.match.includes(isoCode.toLowerCase()))
+    : null;
 
-  if (matchedCountry) {
+  const targetCountry = matchedCountry || matchedIsoCountry;
+
+  if (targetCountry) {
     return {
       population: `${cityName} Urban Region`,
       area: "City Region",
-      country: matchedCountry.country,
-      language: matchedCountry.language,
-      currency: matchedCountry.currency,
-      timezone: matchedCountry.timezone,
+      country: targetCountry.country,
+      language: targetCountry.language,
+      currency: targetCountry.currency,
+      timezone: targetCountry.timezone,
       bestTime: "Year Round",
-      wifiSpeed: matchedCountry.wifiSpeed,
-      nomadCost: matchedCountry.nomadCost,
-      safetyScore: matchedCountry.safetyScore,
-      visaAllowance: matchedCountry.visaAllowance,
+      wifiSpeed: targetCountry.wifiSpeed,
+      nomadCost: targetCountry.nomadCost,
+      safetyScore: targetCountry.safetyScore,
+      visaAllowance: targetCountry.visaAllowance,
     };
   }
 

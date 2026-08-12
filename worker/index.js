@@ -458,6 +458,47 @@ async function nearbyPlacesHandler(context) {
   }
   let places = overpassPlaces.length ? overpassPlaces : cachedPlaces.slice(0, 12);
   let conciergeFallbackUsed = false;
+
+  if (!places.length && context.env.AI) {
+    try {
+      const prompt = `Synthesize top 10 authentic real-world attractions and POIs near coordinates ${coordinates[0]}, ${coordinates[1]} for travel intent '${intent}'. Output ONLY a valid JSON array of objects with keys: title, category, kind, address, lat, lng, reason. Do not include markdown codeblock tags.`;
+      const aiRes = await context.env.AI.run("@cf/deepseek-ai/deepseek-r1-distill-qwen-32b", {
+        messages: [{ role: "user", content: prompt }],
+        max_tokens: 1500,
+      }).catch(() => null) || await context.env.AI.run("@cf/meta/llama-3.3-70b-instruct", {
+        messages: [{ role: "user", content: prompt }]
+      }).catch(() => null);
+
+      if (aiRes?.response) {
+        let text = aiRes.response.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
+        const match = text.match(/\[[\s\S]*\]/);
+        if (match) {
+          const parsed = JSON.parse(match[0]);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            places = parsed.map((p, idx) => ({
+              id: `ai-poi-${idx}`,
+              title: p.title || p.name || "Top Attraction",
+              canonicalName: p.title || p.name || "Top Attraction",
+              category: p.category || "Attraction",
+              kind: p.kind || "landmark",
+              address: p.address || "",
+              lat: Number(p.lat) || coordinates[0],
+              lng: Number(p.lng) || coordinates[1],
+              distanceMeters: 300,
+              source: "Workers AI Concierge (DeepSeek/Llama)",
+              sourceRole: "concierge-synthesis",
+              provider: "concierge-ai",
+              reason: p.reason || "Top synthesized attraction for this location.",
+            }));
+            conciergeFallbackUsed = true;
+          }
+        }
+      }
+    } catch (err) {
+      console.warn("Workers AI POI synthesis error:", err);
+    }
+  }
+
   if (!places.length) {
     places = generateConciergeFallbackPlaces(coordinates, intent);
     conciergeFallbackUsed = true;
@@ -1012,8 +1053,52 @@ async function eventsDiscoverHandler(context) {
   let conciergeFallbackUsed = false;
 
   if (!events.length && (destination || coordinates)) {
-    events = generateConciergeFallbackEvents(destination, coordinates);
-    conciergeFallbackUsed = true;
+    if (context.env.AI) {
+      try {
+        const prompt = `Synthesize 4 authentic real-world music events, concerts, or cultural festivals in ${destination || "the local area"}. Output ONLY a valid JSON array of objects with keys: id, artist, tour, title, venue, city, country, dates, genre, icon. Do not include markdown tags.`;
+        const aiRes = await context.env.AI.run("@cf/deepseek-ai/deepseek-r1-distill-qwen-32b", {
+          messages: [{ role: "user", content: prompt }],
+          max_tokens: 1200,
+        }).catch(() => null) || await context.env.AI.run("@cf/meta/llama-3.3-70b-instruct", {
+          messages: [{ role: "user", content: prompt }]
+        }).catch(() => null);
+
+        if (aiRes?.response) {
+          let text = aiRes.response.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
+          const match = text.match(/\[[\s\S]*\]/);
+          if (match) {
+            const parsed = JSON.parse(match[0]);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              events = parsed.map((e, idx) => ({
+                id: e.id || `ai-ev-${idx}`,
+                provider: "concierge-ai",
+                artist: e.artist || e.title || "Live Performance",
+                tour: e.tour || "Live Tour",
+                title: e.title || `${e.artist} Live`,
+                venue: e.venue || `${destination} Concert Venue`,
+                city: e.city || (destination ? destination.split(",")[0].trim() : "Local"),
+                country: e.country || "",
+                lat: coordinates ? coordinates[0] : 0,
+                lng: coordinates ? coordinates[1] : 0,
+                dates: e.dates || "Upcoming • 20:00",
+                genre: e.genre || "Live Music",
+                icon: e.icon || "🎵",
+                source: "Workers AI Concierge (DeepSeek/Llama)",
+                sourceRole: "concierge-synthesis",
+              }));
+              conciergeFallbackUsed = true;
+            }
+          }
+        }
+      } catch (err) {
+        console.warn("Workers AI event synthesis error:", err);
+      }
+    }
+
+    if (!events.length) {
+      events = generateConciergeFallbackEvents(destination, coordinates);
+      conciergeFallbackUsed = true;
+    }
   }
 
   return json(partialResponse("events.discover", {
@@ -6519,6 +6604,132 @@ function generateConciergeFallbackPlaces(coordinates = [48.8566, 2.3522], intent
   const [lat, lng] = coordinates;
   const isParis = Math.abs(lat - 48.8566) < 1.0 && Math.abs(lng - 2.3522) < 1.0;
   const isCrete = Math.abs(lat - 35.3391) < 1.5 && Math.abs(lng - 25.132) < 1.5;
+  const isOrtigia = Math.abs(lat - 37.0594) < 0.25 && Math.abs(lng - 15.2933) < 0.25;
+
+  if (isOrtigia) {
+    return [
+      {
+        id: "cncg-ortigia-1",
+        title: "Duomo di Siracusa (Cathedral of Syracuse)",
+        canonicalName: "Duomo di Siracusa",
+        category: "Historic Cathedral",
+        kind: "landmark",
+        address: "Piazza del Duomo, 96100 Siracusa SR, Italy",
+        lat: 37.0594,
+        lng: 15.2933,
+        distanceMeters: 100,
+        source: "Concierge Synthesis",
+        sourceRole: "concierge-synthesis",
+        provider: "concierge-ai",
+        reason: "Stunning 5th-century BC Greek Temple of Athena converted into a Baroque cathedral on Ortigia's central piazza.",
+      },
+      {
+        id: "cncg-ortigia-2",
+        title: "Fonte Aretusa (Fountain of Arethusa)",
+        canonicalName: "Fonte Aretusa",
+        category: "Natural Spring & Mythological Site",
+        kind: "landmark",
+        address: "Largo Aretusa, 96100 Siracusa SR, Italy",
+        lat: 37.0583,
+        lng: 15.2922,
+        distanceMeters: 220,
+        source: "Concierge Synthesis",
+        sourceRole: "concierge-synthesis",
+        provider: "concierge-ai",
+        reason: "Ancient freshwater spring overlooking the Great Harbour of Syracuse, famous for growing wild papyrus.",
+      },
+      {
+        id: "cncg-ortigia-3",
+        title: "Tempio di Apollo (Temple of Apollo)",
+        canonicalName: "Tempio di Apollo",
+        category: "Ancient Greek Temple Ruins",
+        kind: "historic",
+        address: "Largo XXV Luglio, 96100 Siracusa SR, Italy",
+        lat: 37.0635,
+        lng: 15.2938,
+        distanceMeters: 450,
+        source: "Concierge Synthesis",
+        sourceRole: "concierge-synthesis",
+        provider: "concierge-ai",
+        reason: "The oldest Doric stone temple in Sicily (6th century BC) welcoming visitors at Ortigia's entrance.",
+      },
+      {
+        id: "cncg-ortigia-4",
+        title: "Castello Maniace",
+        canonicalName: "Castello Maniace",
+        category: "13th-Century Swabian Citadel",
+        kind: "landmark",
+        address: "Piazza Castello Maniace, 96100 Siracusa SR, Italy",
+        lat: 37.0536,
+        lng: 15.2952,
+        distanceMeters: 650,
+        source: "Concierge Synthesis",
+        sourceRole: "concierge-synthesis",
+        provider: "concierge-ai",
+        reason: "Imposing medieval fortress at the southern tip of Ortigia Island with 360-degree Ionian sea views.",
+      },
+      {
+        id: "cncg-ortigia-5",
+        title: "Mercato di Ortigia (Ortigia Street Market)",
+        canonicalName: "Mercato di Ortigia",
+        category: "Food Market",
+        kind: "market",
+        address: "Via de Benedictis, 96100 Siracusa SR, Italy",
+        lat: 37.0631,
+        lng: 15.2929,
+        distanceMeters: 400,
+        source: "Concierge Synthesis",
+        sourceRole: "concierge-synthesis",
+        provider: "concierge-ai",
+        reason: "Vibrant morning market packed with fresh Sicilian seafood, sun-dried tomatoes, capers, and local cheeses.",
+      },
+      {
+        id: "cncg-ortigia-6",
+        title: "Teatro Greco di Siracusa",
+        canonicalName: "Teatro Greco di Siracusa",
+        category: "Ancient Greek Theater",
+        kind: "landmark",
+        address: "Parco Archeologico della Neapolis, 96100 Siracusa SR, Italy",
+        lat: 37.0755,
+        lng: 15.2758,
+        distanceMeters: 2200,
+        source: "Concierge Synthesis",
+        sourceRole: "concierge-synthesis",
+        provider: "concierge-ai",
+        reason: "One of the largest ancient Greek theaters in the world, carved directly into the limestone hillside.",
+      },
+      {
+        id: "cncg-ortigia-7",
+        title: "Fontana di Diana (Piazza Archimede)",
+        canonicalName: "Fontana di Diana",
+        category: "Neoclassical Fountain",
+        kind: "landmark",
+        address: "Piazza Archimede, 96100 Siracusa SR, Italy",
+        lat: 37.0608,
+        lng: 15.2936,
+        distanceMeters: 180,
+        source: "Concierge Synthesis",
+        sourceRole: "concierge-synthesis",
+        provider: "concierge-ai",
+        reason: "Grand 1907 fountain depicting the myth of Arethusa and Diana at the heart of Ortigia's central square.",
+      },
+      {
+        id: "cncg-ortigia-8",
+        title: "Antico Lavatoio & Lungomare Ortigia Promenade",
+        canonicalName: "Lungomare Ortigia Promenade",
+        category: "Seaside Promenade",
+        kind: "scenic",
+        address: "Lungomare Alfeo, 96100 Siracusa SR, Italy",
+        lat: 37.0570,
+        lng: 15.2915,
+        distanceMeters: 300,
+        source: "Concierge Synthesis",
+        sourceRole: "concierge-synthesis",
+        provider: "concierge-ai",
+        reason: "Picturesque waterfront walkway hugging the western coast of Ortigia with sunset views across the bay.",
+      }
+    ];
+  }
 
   if (isParis) {
     return [
@@ -6657,6 +6868,80 @@ function generateConciergeFallbackPlaces(coordinates = [48.8566, 2.3522], intent
 function generateConciergeFallbackEvents(destination = "Paris", coordinates = [48.8566, 2.3522]) {
   const destLower = String(destination || "").toLowerCase();
   const [lat, lng] = coordinates;
+  const isOrtigia = destLower.includes("ortig") || destLower.includes("siracus") || destLower.includes("syracus") || (Math.abs(lat - 37.0594) < 0.25 && Math.abs(lng - 15.2933) < 0.25);
+
+  if (isOrtigia) {
+    return [
+      {
+        id: "cncgev-ortigia-1",
+        provider: "concierge-ai",
+        artist: "Ortigia Philharmonic Ensemble",
+        tour: "Sicilian Baroque Classics",
+        title: "Ortigia Philharmonic Evening",
+        venue: "Piazza del Duomo, Ortigia",
+        city: "Ortigia",
+        country: "Italy",
+        lat: 37.0594,
+        lng: 15.2933,
+        dates: "Upcoming • 19:30",
+        genre: "Classical / Baroque",
+        ticketUrl: "https://www.indafondazione.org",
+        source: "Concierge Synthesis",
+        sourceRole: "concierge-synthesis",
+      },
+      {
+        id: "cncgev-ortigia-2",
+        provider: "concierge-ai",
+        artist: "Ortigia Sound System Festival",
+        tour: "Mediterranean Electronic & Jazz Festival",
+        title: "Castello Maniace Sunset Sessions",
+        venue: "Castello Maniace, Ortigia",
+        city: "Ortigia",
+        country: "Italy",
+        lat: 37.0536,
+        lng: 15.2952,
+        dates: "This Weekend • 21:00",
+        genre: "Electronic / World / Jazz",
+        ticketUrl: "https://ortigiasoundsystem.com",
+        source: "Concierge Synthesis",
+        sourceRole: "concierge-synthesis",
+      },
+      {
+        id: "cncgev-ortigia-3",
+        provider: "concierge-ai",
+        artist: "Teatro Greco Festival Ensemble",
+        tour: "Greek Theater Classical Drama & Symphonic Festival",
+        title: "Siracusa Ancient Theater Gala",
+        venue: "Teatro Greco di Siracusa",
+        city: "Siracusa",
+        country: "Italy",
+        lat: 37.0755,
+        lng: 15.2758,
+        dates: "Next Week • 20:00",
+        genre: "Classical / Opera",
+        ticketUrl: "https://www.indafondazione.org",
+        source: "Concierge Synthesis",
+        sourceRole: "concierge-synthesis",
+      },
+      {
+        id: "cncgev-ortigia-4",
+        provider: "concierge-ai",
+        artist: "Fonte Aretusa Acoustic Sessions",
+        tour: "Seaside Folk & Mediterranean Lute",
+        title: "Ortigia Promenade Sunset Live",
+        venue: "Fonte Aretusa Promenade, Ortigia",
+        city: "Ortigia",
+        country: "Italy",
+        lat: 37.0583,
+        lng: 15.2922,
+        dates: "Every Fri & Sat • 19:00",
+        genre: "Folk / Acoustic",
+        ticketUrl: "https://www.siracusaturismo.net",
+        source: "Concierge Synthesis",
+        sourceRole: "concierge-synthesis",
+      }
+    ];
+  }
 
   if (destLower.includes("paris") || destLower.includes("france")) {
     return [

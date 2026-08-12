@@ -895,7 +895,7 @@ document.addEventListener("click", async (e) => {
         startDate: startDate.trim(),
         daysCount,
         dates: formatTripDateRangeFromParts(startDate.trim(), daysCount),
-        center: destinationAirport ? [destinationAirport.lat, destinationAirport.lng] : resolveTripCenter(destination.trim()),
+        center: resolveTripCenter(destination.trim()),
         destinationAirport,
       }));
       showToast("Trip details updated. Refreshing local ideas and events.");

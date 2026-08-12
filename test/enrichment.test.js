@@ -4,7 +4,9 @@ import { composeEditorialProfile, createVerifiedFactBundle, validateEditorialPro
 import { createEnrichmentService } from "../src/enrichment/enrichmentService.js";
 import { calculateImageScore, dedupeImages } from "../src/enrichment/mediaAggregator.js";
 import { calculateFlightDistance, findClosestAirport, findPrimaryAirportForDestination, resolveAirportInput } from "../src/services/airportService.js";
-import { normalizeDiscoveredEvent } from "../src/services/concertService.js";
+import { resolveTripCenter } from "../src/app/mapController.js";
+import { getQuickFactsForDestination } from "../src/services/destinationService.js";
+import { fetchConcertsForTrip, normalizeDiscoveredEvent } from "../src/services/concertService.js";
 import { normalizeOpenTripMapPlaces } from "../src/services/openTripMapService.js";
 import { areAliasesEquivalent, buildPlaceAliases, createResolvedPlaceIdentity } from "../src/enrichment/placeResolver.js";
 import { createNormalizedFact, createNormalizedImage, createPlaceProfileContract, ENRICHMENT_COVERAGE } from "../src/enrichment/schemas.js";
@@ -71,6 +73,24 @@ test("sanitizeFlagEmoji strips raw SVG strings and returns valid emoji flag", ()
   assert.equal(sanitizeFlagEmoji(badFlag, "Ortigia, Sicilia"), "🇮🇹");
   assert.equal(sanitizeFlagEmoji(badFlag, "Paris"), "🇫🇷");
   assert.equal(sanitizeFlagEmoji("🇮🇹", "Ortigia, Sicilia"), "🇮🇹");
+});
+
+test("resolveTripCenter resolves Ortigia center to Ortigia Island instead of Catania Airport", () => {
+  const center = resolveTripCenter("Ortigia, Sicilia");
+  assert.deepEqual(center, [37.0594, 15.2933]);
+  assert.notDeepEqual(center, [37.4668, 15.0664]);
+});
+
+test("getQuickFactsForDestination returns Italian facts for Ortigia", () => {
+  const facts = getQuickFactsForDestination("Ortigia, Sicilia");
+  assert.equal(facts.country, "Italy 🇮🇹");
+  assert.equal(facts.currency, "EUR (€)");
+  assert.ok(facts.language.includes("Italian"));
+});
+
+test("fetchConcertsForTrip populates multiple authentic events for Ortigia", async () => {
+  const events = await fetchConcertsForTrip("Ortigia, Sicilia", [37.0594, 15.2933]);
+  assert.ok(events.length >= 4);
 });
 
 test("airport resolver handles 3-letter IATA codes case-insensitively", () => {

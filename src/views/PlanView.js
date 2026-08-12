@@ -784,13 +784,29 @@ function getNeighborhoodsForDestination(destinationName = "") {
 }
 
 function getTopAttractionsForTrip(trip) {
-  const livePlaces = [
+  const isTransportPoi = (p) => {
+    const name = String(p?.title || p?.name || "").toLowerCase();
+    const category = String(p?.category || p?.kind || "").toLowerCase();
+    return name.includes("airport") || name.includes("aeroporto") || category.includes("airport") || category.includes("aeroway");
+  };
+
+  const seenTitles = new Set();
+  const rawPlaces = [
     ...(trip.ideas || []),
     ...(trip.explorePlaces || []),
     ...(trip.tourismPois || []),
     ...(trip.hiddenGems || []),
     ...(trip.osmPlaces || []),
-  ].filter((p, idx, arr) => p && (p.title || p.name) && arr.findIndex(x => (x.title || x.name) === (p.title || p.name)) === idx);
+  ];
+
+  const livePlaces = [];
+  for (const p of rawPlaces) {
+    if (!p || isTransportPoi(p)) continue;
+    const titleKey = String(p.title || p.name || "").toLowerCase().trim();
+    if (!titleKey || seenTitles.has(titleKey)) continue;
+    seenTitles.add(titleKey);
+    livePlaces.push(p);
+  }
 
   if (livePlaces.length > 0) {
     return livePlaces.slice(0, 10).map((spot, idx) => ({
@@ -1226,7 +1242,7 @@ function renderOverviewTabBody(trip, activeFilter, cachedBrief, editorial, topPO
           <h4 class="voice-serif" style="font-size: 1.1rem; font-weight: 700; color: var(--ink); margin: 0;">Top Attractions & Highlights</h4>
           <p style="font-size: 0.78rem; color: var(--ink-muted); margin: 2px 0 0 0;">Top 10 recommended places to explore in ${escapeHtml(area)}</p>
         </div>
-        <span class="badge badge--info voice-mono" style="font-size: 0.72rem; font-weight: 700;">10 Spots</span>
+        <span class="badge badge--info voice-mono" style="font-size: 0.72rem; font-weight: 700;">${topPOIs.length} Spots</span>
       </div>
 
       <!-- Interactive POI Map Backdrop Canvas -->

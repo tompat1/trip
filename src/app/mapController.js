@@ -39,11 +39,11 @@ const PLAN_EVENT_LOCATION_COORDS = {
 };
 
 const TRIP_DESTINATION_COORDS = {
-  ortigia: [37.0652, 15.2925],
+  ortigia: [37.0594, 15.2933],
   syracuse: [37.0755, 15.2866],
   siracusa: [37.0755, 15.2866],
-  sicilia: [37.5025, 15.0873],
-  sicily: [37.5025, 15.0873],
+  sicilia: [37.0594, 15.2933],
+  sicily: [37.0594, 15.2933],
   catania: [37.5025, 15.0873],
   palermo: [38.1157, 13.3615],
   taormina: [37.8516, 15.2853],
@@ -126,24 +126,17 @@ export function initMapsForView(view) {
 }
 
 export function resolveTripCenter(destination = "") {
-  if (!destination || typeof destination !== "string") return [37.0652, 15.2925];
+  if (!destination || typeof destination !== "string") return [37.0594, 15.2933];
   const key = normalizeMapLookupKey(destination);
 
   const match = Object.entries(TRIP_DESTINATION_COORDS).find(([name]) => key.includes(name) || name.includes(key));
   if (match) return match[1];
 
-  try {
-    const airport = resolveAirportInput(destination);
-    if (airport && airport.lat && airport.lng && (airport.lat !== 0 || airport.lng !== 0)) {
-      return [airport.lat, airport.lng];
-    }
-  } catch {}
-
-  if (key.includes("ortig") || key.includes("sicil") || key.includes("catani") || key.includes("siracus")) {
-    return [37.0652, 15.2925];
+  if (key.includes("ortig") || key.includes("sicil") || key.includes("siracus")) {
+    return [37.0594, 15.2933];
   }
 
-  return [37.0652, 15.2925]; // Default center to Mediterranean / Sicily instead of hardcoded London
+  return [37.0594, 15.2933];
 }
 
 export async function fetchDestinationCoordinates(destination) {

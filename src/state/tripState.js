@@ -707,11 +707,30 @@ export const tripStateMixin = {
 };
 
 function getLoadedTripCenter(row = {}, existingTrip = {}) {
+  const destination = row.destination || existingTrip.destination || "";
+  const resolved = resolveTripCenter(destination);
   const lat = Number(row.latitude ?? row.lat);
   const lng = Number(row.longitude ?? row.lng);
-  if (Number.isFinite(lat) && Number.isFinite(lng) && (lat || lng)) return [lat, lng];
-  if (Array.isArray(existingTrip.center) && existingTrip.center.length === 2) return existingTrip.center;
-  return resolveTripCenter(row.destination || existingTrip.destination || "");
+
+  if (Number.isFinite(lat) && Number.isFinite(lng) && (lat || lng)) {
+    // If stored coordinates are near Catania Airport (37.4668, 15.0664) for an Ortigia/Syracuse trip, re-center to Ortigia
+    if (destination.toLowerCase().includes("ortig") || destination.toLowerCase().includes("siracus") || destination.toLowerCase().includes("sicil")) {
+      if (Math.abs(lat - 37.4668) < 0.05 && Math.abs(lng - 15.0664) < 0.05) {
+        return resolved;
+      }
+    }
+    return [lat, lng];
+  }
+  if (Array.isArray(existingTrip.center) && existingTrip.center.length === 2) {
+    const [eLat, eLng] = existingTrip.center;
+    if (destination.toLowerCase().includes("ortig") || destination.toLowerCase().includes("siracus") || destination.toLowerCase().includes("sicil")) {
+      if (Math.abs(eLat - 37.4668) < 0.05 && Math.abs(eLng - 15.0664) < 0.05) {
+        return resolved;
+      }
+    }
+    return existingTrip.center;
+  }
+  return resolved;
 }
 
 function getLoadedTripStartDate(row = {}, existingTrip = {}) {

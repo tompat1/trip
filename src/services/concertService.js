@@ -1,5 +1,13 @@
-// Concert & Live Music Discovery Service for TRIP
-// Integrates Ticketmaster / Bandsintown APIs with fallback destination concert data
+function calculateDistanceKm(lat1, lon1, lat2, lon2) {
+  const R = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
 
 export const CONCERTS_DATABASE = [
   // Paris Concerts
@@ -194,6 +202,92 @@ export const CONCERTS_DATABASE = [
     image: "https://images.unsplash.com/photo-1465847899084-d164df4dedc6?auto=format&fit=crop&w=600&q=80",
     ticketUrl: "https://www.konserthuset.se",
     isPopularTour: true
+  },
+  // Ortigia & Sicily Concerts
+  {
+    id: "cnc-ortigia-1",
+    artist: "Ortigia Philharmonic Orchestra",
+    tour: "Sicilian Classical Nights",
+    title: "Ortigia Philharmonic Evening",
+    venue: "Piazza del Duomo, Ortigia",
+    city: "Ortigia",
+    country: "Italy",
+    lat: 37.0594,
+    lng: 15.2933,
+    dates: "Upcoming • 19:30",
+    genre: "Classical / Baroque",
+    icon: "🎻",
+    image: "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=600&q=80",
+    ticketUrl: "https://www.indafondazione.org",
+    isPopularTour: true
+  },
+  {
+    id: "cnc-ortigia-2",
+    artist: "Ortigia Sound System",
+    tour: "Mediterranean Electronic & Jazz Festival",
+    title: "Castello Maniace Sunset Sessions",
+    venue: "Castello Maniace, Ortigia",
+    city: "Ortigia",
+    country: "Italy",
+    lat: 37.0536,
+    lng: 15.2952,
+    dates: "This Weekend • 21:00",
+    genre: "Electronic / World / Jazz",
+    icon: "🎧",
+    image: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=600&q=80",
+    ticketUrl: "https://ortigiasoundsystem.com",
+    isPopularTour: true
+  },
+  {
+    id: "cnc-ortigia-3",
+    artist: "Teatro Greco Festival Ensemble",
+    tour: "Greek Theater Classical Drama & Music",
+    title: "Siracusa Ancient Theater Gala",
+    venue: "Teatro Greco di Siracusa",
+    city: "Siracusa",
+    country: "Italy",
+    lat: 37.0755,
+    lng: 15.2758,
+    dates: "Next Week • 20:00",
+    genre: "Classical / Opera",
+    icon: "🎭",
+    image: "https://images.unsplash.com/photo-1465847899084-d164df4dedc6?auto=format&fit=crop&w=600&q=80",
+    ticketUrl: "https://www.indafondazione.org",
+    isPopularTour: true
+  },
+  {
+    id: "cnc-ortigia-4",
+    artist: "Fonte Aretusa Acoustic Sessions",
+    tour: "Seaside Folk & Mediterranean Lute",
+    title: "Ortigia Promenade Sunset Live",
+    venue: "Fonte Aretusa Promenade, Ortigia",
+    city: "Ortigia",
+    country: "Italy",
+    lat: 37.0583,
+    lng: 15.2922,
+    dates: "Every Fri & Sat • 19:00",
+    genre: "Folk / Acoustic",
+    icon: "🎸",
+    image: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&w=600&q=80",
+    ticketUrl: "https://www.siracusaturismo.net",
+    isPopularTour: false
+  },
+  {
+    id: "cnc-ortigia-5",
+    artist: "Teatro Massimo Bellini Ensemble",
+    tour: "Sicilian Opera Masterworks",
+    title: "Bellini Opera Special in Catania",
+    venue: "Teatro Massimo Bellini, Catania",
+    city: "Catania",
+    country: "Italy",
+    lat: 37.5052,
+    lng: 15.0906,
+    dates: "Oct 15 • 20:30",
+    genre: "Opera / Symphonic",
+    icon: "🎼",
+    image: "https://images.unsplash.com/photo-1511192336575-5a79af67a629?auto=format&fit=crop&w=600&q=80",
+    ticketUrl: "https://www.teatromassimobellini.it",
+    isPopularTour: true
   }
 ];
 
@@ -300,7 +394,7 @@ export async function fetchConcertsForTrip(destination = "Paris", coords = [48.8
     keyword: destination,
     artists,
   });
-  if (workerResults && workerResults.length > 0) {
+  if (workerResults && workerResults.length >= 3) {
     return workerResults;
   }
 
@@ -322,13 +416,20 @@ export async function fetchConcertsForTrip(destination = "Paris", coords = [48.8
 
   // 4. Fallback to rich curated destination database
   const destLower = destination.toLowerCase();
-  const matched = CONCERTS_DATABASE.filter(c => 
-    c.city.toLowerCase().includes(destLower) || 
-    c.country.toLowerCase().includes(destLower) ||
-    destLower.includes(c.city.toLowerCase())
-  );
+  const cleanCityName = destination.includes(",") ? destination.split(",")[0].trim().toLowerCase() : destination.trim().toLowerCase();
+  const matched = CONCERTS_DATABASE.filter(c => {
+    const cCity = c.city.toLowerCase();
+    const cCountry = c.country.toLowerCase();
+    if (destLower.includes(cCity) || cCity.includes(cleanCityName) || cleanCityName.includes(cCity)) return true;
+    if (c.lat && c.lng && coords && coords[0] && coords[1]) {
+      const dist = calculateDistanceKm(coords[0], coords[1], c.lat, c.lng);
+      if (dist < 120) return true;
+    }
+    return false;
+  });
 
-  if (matched.length > 0) return matched;
+  const combined = [...(workerResults || []), ...matched].filter((e, idx, arr) => e && e.title && arr.findIndex(x => x.title === e.title) === idx);
+  if (combined.length > 0) return combined;
 
   const cleanCity = destination.includes(",") ? destination.split(",")[0].trim() : destination.trim() || "Local";
   return [

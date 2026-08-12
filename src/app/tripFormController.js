@@ -273,7 +273,7 @@ export async function handleTripCreateSubmit(form, { showToast = () => {}, withP
     dates: formatTripDateRange(startDate, daysCount),
     startDate,
     daysCount,
-    center: destinationAirport && destinationAirport.lat ? [destinationAirport.lat, destinationAirport.lng] : resolveTripCenter(destination),
+    center: resolveTripCenter(destination),
     checklist: createStarterChecklist(starterTasks),
     originAirport: includeFlights ? originAirport : null,
     destinationAirport: includeFlights ? destinationAirport : null,

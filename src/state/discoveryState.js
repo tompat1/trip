@@ -221,23 +221,28 @@ export const discoveryStateMixin = {
         }
       }
 
-      // Merge: dedupe food OSM places against already-found OSM places by title
-      const osmTitles = new Set(osmPlaces.map((p) => p.title?.toLowerCase()));
-      const newFoodPlaces = foodOsmPlaces.filter((p) => !osmTitles.has(p.title?.toLowerCase()));
-      const mergedOsmPlaces = rankItemsByPersonas([...newFoodPlaces, ...osmPlaces], personas);
+      const cleanTourismPois = dedupePoisByTitle(tourismPois);
+      const cleanHiddenGems = dedupePoisByTitle(hiddenGems);
+      const cleanOsmPlaces = dedupePoisByTitle(rankItemsByPersonas([...foodOsmPlaces, ...osmPlaces], personas));
+
+      // Remove overlapping titles across lists
+      const topTitles = new Set(cleanTourismPois.map((p) => String(p.title || p.name || "").toLowerCase().trim()));
+      const finalHiddenGems = cleanHiddenGems.filter((p) => !topTitles.has(String(p.title || p.name || "").toLowerCase().trim()));
+      const topAndHiddenTitles = new Set([...topTitles, ...finalHiddenGems.map((p) => String(p.title || p.name || "").toLowerCase().trim())]);
+      const finalOsmPlaces = cleanOsmPlaces.filter((p) => !topAndHiddenTitles.has(String(p.title || p.name || "").toLowerCase().trim()));
 
       await this.enrichDiscoveryMedia(
-        [...tourismPois, ...hiddenGems, ...mergedOsmPlaces].slice(0, 8),
+        [...cleanTourismPois, ...finalHiddenGems, ...finalOsmPlaces].slice(0, 12),
         { destination: trip.destination }
       );
       const status = getOpenTripMapStatus([topResult, hiddenResult]);
       const updatedAt = new Date().toISOString();
 
-      trip.tourismPois = tourismPois;
-      trip.hiddenGems = hiddenGems;
-      trip.osmPlaces = mergedOsmPlaces;
+      trip.tourismPois = cleanTourismPois;
+      trip.hiddenGems = finalHiddenGems;
+      trip.osmPlaces = finalOsmPlaces;
       this.tourismDiscoveryStatus[tripId] = {
-        status: tourismPois.length || hiddenGems.length || osmPlaces.length ? "ready" : status,
+        status: cleanTourismPois.length || finalHiddenGems.length || finalOsmPlaces.length ? "ready" : status,
         error:
           status === "not-configured"
             ? "missing-opentripmap-api-key"
@@ -246,11 +251,11 @@ export const discoveryStateMixin = {
         personaKey,
       };
 
-      if (tourismPois.length || hiddenGems.length || osmPlaces.length) {
+      if (cleanTourismPois.length || finalHiddenGems.length || finalOsmPlaces.length) {
         writeStoredTourismDiscovery(tripId, {
-          tourismPois,
-          hiddenGems,
-          osmPlaces,
+          tourismPois: cleanTourismPois,
+          hiddenGems: finalHiddenGems,
+          osmPlaces: finalOsmPlaces,
           updatedAt,
           personaKey,
           destination: trip.destination,
@@ -457,3 +462,28 @@ export const discoveryStateMixin = {
     return [];
   },
 };
+
+function isAirportOrTransportPoi(place = {}) {
+  const name = String(place.title || place.name || "").toLowerCase();
+  const category = String(place.category || place.kind || "").toLowerCase();
+  if (name.includes("airport") || name.includes("aeroporto") || name.includes("aerodrome") || name.includes("flygplats") || name.includes("lufthavn")) {
+    return true;
+  }
+  if (category.includes("airport") || category.includes("aeroway") || category.includes("terminal")) {
+    return true;
+  }
+  return false;
+}
+
+function dedupePoisByTitle(places = []) {
+  const seen = new Set();
+  const result = [];
+  for (const place of places) {
+    if (!place || isAirportOrTransportPoi(place)) continue;
+    const title = String(place.title || place.name || "").toLowerCase().trim();
+    if (!title || seen.has(title)) continue;
+    seen.add(title);
+    result.push(place);
+  }
+  return result;
+}
