@@ -2033,6 +2033,10 @@ a:active .ph-icon,
   opacity: 0.22;
 }
 
+.map-widget::after {
+  display: none !important;
+}
+
 /* PolyLines Overlay Cards (Featured on Stories, Account, Search, and Event Cards) */
 .editorial-story-card::after,
 .search-map-card::after,

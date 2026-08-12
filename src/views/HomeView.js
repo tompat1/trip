@@ -291,8 +291,8 @@ function renderPlanningModules(trip, checklist) {
         </ul>
       </div>
 
-      <!-- Widget 2: Leaflet Interactive Map Preview Card (PolyLines Overlay) -->
-      <div class="dashboard-card map-widget card-pattern-poly">
+      <!-- Widget 2: Leaflet Interactive Map Preview Card -->
+      <div class="dashboard-card map-widget">
         <div id="home-map-container" class="home-map"></div>
         <div class="map-card-footer">
           <span class="map-location-badge">📍 Map Preview: ${escapeHtml(trip.destination)}</span>

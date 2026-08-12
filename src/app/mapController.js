@@ -169,6 +169,7 @@ function attachMapActionOverlay(container, map, trip, options = {}) {
   const existingOverlay = container.querySelector(".map-floating-controls");
   if (existingOverlay) existingOverlay.remove();
 
+  const showFullscreen = options.showFullscreen !== false;
   const overlay = document.createElement("div");
   overlay.className = "map-floating-controls";
   overlay.innerHTML = `
@@ -178,9 +179,11 @@ function attachMapActionOverlay(container, map, trip, options = {}) {
     <button class="map-floating-btn map-layer-btn" type="button" title="Switch Map Layer" aria-label="Switch map layer">
       ${renderIcon("layers")}
     </button>
-    <button class="map-floating-btn map-fullscreen-btn" type="button" title="Toggle Fullscreen Map" aria-label="Toggle fullscreen map">
-      ${renderIcon("arrowsOut")}
-    </button>
+    ${showFullscreen ? `
+      <button class="map-floating-btn map-fullscreen-btn" type="button" title="Toggle Fullscreen Map" aria-label="Toggle fullscreen map">
+        ${renderIcon("arrowsOut")}
+      </button>
+    ` : ""}
   `;
 
   container.appendChild(overlay);
@@ -259,17 +262,77 @@ function initHomeMap(trip) {
   }
 
   const map = L.map(container, { zoomControl: true, attributionControl: true }).setView(trip.center, trip.zoom || 13);
-  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+  L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
     maxZoom: 19,
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    subdomains: "abcd",
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
   }).addTo(map);
 
-  (trip.mapPins || []).forEach((pin) => {
-    const marker = L.marker([pin.lat, pin.lng]).addTo(map);
-    marker.bindPopup(`<b>${escapeHtml(pin.name)}</b>`);
+  const homePins = (trip.mapPins && trip.mapPins.length)
+    ? trip.mapPins
+    : (trip.tourismPois || trip.ideas || []).slice(0, 5);
+
+  const bounds = L.latLngBounds();
+
+  homePins.forEach((pin, index) => {
+    const lat = pin.lat || pin.latitude || pin.coordinates?.[0];
+    const lng = pin.lng || pin.longitude || pin.coordinates?.[1];
+    if (!lat || !lng) return;
+
+    bounds.extend([lat, lng]);
+
+    const name = pin.name || pin.title || "Highlight";
+    const category = pin.category || pin.tag || "Sight";
+    const iconSymbol = category.includes("shopping") || category.includes("store") ? "🛍️" :
+                       category.includes("cafe") || category.includes("food") ? "☕" :
+                       category.includes("sight") || category.includes("landmark") || category.includes("historic") ? "🗼" : "📍";
+
+    const customIcon = L.divIcon({
+      className: "home-map-custom-marker-wrapper",
+      html: `
+        <div class="home-map-poi-badge" style="
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          background: rgba(23, 24, 23, 0.92);
+          backdrop-filter: blur(8px);
+          color: #ffffff;
+          padding: 4px 10px;
+          border-radius: 16px;
+          font-size: 11px;
+          font-weight: 800;
+          white-space: nowrap;
+          border: 2px solid #d94a3a;
+          box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+          cursor: pointer;
+          user-select: none;
+          pointer-events: auto;
+          transition: transform 0.2s ease, background 0.2s ease;
+        ">
+          <span style="font-size: 12px; color: #e9c76b;">${iconSymbol}</span>
+          <span>${escapeHtml(name)}</span>
+        </div>
+      `,
+      iconSize: null,
+      iconAnchor: [45, 18]
+    });
+
+    const marker = L.marker([lat, lng], { icon: customIcon, zIndexOffset: 1000 - index * 10 }).addTo(map);
+    marker.bindPopup(`
+      <div style="font-family: system-ui, sans-serif; padding: 4px; color: #171817;">
+        <strong style="font-size: 13px; color: #171817;">${escapeHtml(name)}</strong>
+        <div style="font-size: 11px; color: #65705B; margin-top: 2px;">${escapeHtml(category)}</div>
+      </div>
+    `);
   });
 
-  attachMapActionOverlay(container, map, trip);
+  if (homePins.length > 1 && bounds.isValid()) {
+    map.fitBounds(bounds.pad(0.22));
+  } else {
+    map.setView(trip.center || resolveTripCenter(trip.destination), 13);
+  }
+
+  attachMapActionOverlay(container, map, trip, { showFullscreen: false });
   activeMaps.set("home", map);
 }
 
