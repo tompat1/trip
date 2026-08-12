@@ -116,6 +116,7 @@ function matchRoute(method, pathname) {
     ["POST", /^\/api\/ai\/caption$/, aiCaptionHandler],
     ["POST", /^\/api\/ai\/postcard$/, aiPostcardHandler],
     ["POST", /^\/api\/ai\/concierge$/, aiConciergeHandler],
+    ["POST", /^\/api\/ai\/search-suggest$/, aiSearchSuggestHandler],
   ];
 
   for (const [routeMethod, pattern, handler] of routes) {
@@ -6358,6 +6359,79 @@ Guidelines:
     success: true,
     answer: generateWorkerDynamicConciergeFallback({ prompt, trip: tripContext, context: tripContext }),
     aiModel: "trip-concierge-fallback"
+  });
+}
+
+async function aiSearchSuggestHandler(context) {
+  const body = await readJson(context.request).catch(() => ({}));
+  const query = String(body.query || "").trim();
+  const destination = String(body.destination || "Destination").trim();
+  if (!query || query.length < 2) {
+    return json({ success: true, suggestions: [] });
+  }
+
+  const reqHeaders = context.request.headers;
+  const groqKey = reqHeaders.get("X-Groq-Key") || context.env.GROQ_API_KEY || "";
+  const geminiKey = reqHeaders.get("X-Gemini-Key") || context.env.GEMINI_API_KEY || "";
+
+  const prompt = `User search query: "${query}" in ${destination}.
+Suggest 3-4 specific authentic recommendations or categories matching "${query}" in ${destination}.
+Return pure JSON array of objects with keys: "title" (place name or tag), "category" (e.g. Cafe, Coworking, Sight, Dining), "tag" (e.g. #laptop-friendly, #coworking, #coffee), "reason" (short 6-10 word summary).
+Example: [{"title":"Artisan Coffee Hub","category":"Cafe","tag":"#laptop-friendly","reason":"High-speed Wi-Fi and power outlets."}]`;
+
+  // 1. Groq Ultra-Fast Speed Engine
+  if (groqKey) {
+    try {
+      const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${groqKey}` },
+        body: JSON.stringify({
+          model: "llama-3.3-70b-versatile",
+          response_format: { type: "json_object" },
+          messages: [{ role: "user", content: prompt }]
+        })
+      });
+      if (groqRes.ok) {
+        const data = await groqRes.json();
+        const content = data.choices?.[0]?.message?.content || "";
+        const parsed = JSON.parse(content);
+        const suggestions = Array.isArray(parsed.suggestions) ? parsed.suggestions : (Array.isArray(parsed) ? parsed : Object.values(parsed)[0]);
+        if (Array.isArray(suggestions) && suggestions.length > 0) {
+          return json({ success: true, suggestions: suggestions.slice(0, 4), provider: "groq-lpu" });
+        }
+      }
+    } catch (e) {
+      console.warn("Groq search suggest error:", e);
+    }
+  }
+
+  // 2. Native Cloudflare Edge Workers AI
+  if (context.env.AI) {
+    try {
+      const aiRes = await context.env.AI.run("@cf/meta/llama-3.3-70b-instruct", {
+        messages: [{ role: "user", content: prompt }]
+      }).catch(() => null);
+      if (aiRes?.response) {
+        const match = aiRes.response.match(/\[[\s\S]*\]/);
+        if (match) {
+          const suggestions = JSON.parse(match[0]);
+          return json({ success: true, suggestions: suggestions.slice(0, 4), provider: "cloudflare-edge" });
+        }
+      }
+    } catch (e) {
+      console.warn("Workers AI search suggest error:", e);
+    }
+  }
+
+  // Fallback default suggestions
+  const area = destination.split(",")[0].trim();
+  return json({
+    success: true,
+    suggestions: [
+      { title: `${query} in ${area}`, category: "Local Spot", tag: "#explore", reason: `Discover authentic ${query} spots in ${area}.` },
+      { title: `Top Rated ${query}`, category: "Popular", tag: "#recommendation", reason: `Must-visit places matching ${query}.` }
+    ],
+    provider: "static-fallback"
   });
 }
 

@@ -4,6 +4,36 @@
  */
 
 export const aiService = {
+  async searchSuggestions({ query = "", destination = "Destination", keys = {} } = {}) {
+    if (!query || query.trim().length < 2) return { success: true, suggestions: [] };
+    try {
+      const headers = { "Content-Type": "application/json" };
+      if (keys.groqKey) headers["X-Groq-Key"] = keys.groqKey;
+      if (keys.geminiKey) headers["X-Gemini-Key"] = keys.geminiKey;
+
+      const response = await fetch("/api/ai/search-suggest", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ query, destination }),
+      });
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && Array.isArray(data.suggestions)) return data;
+      }
+    } catch (e) {
+      console.warn("AI search suggest offline, using fallback:", e);
+    }
+    const area = destination.split(",")[0].trim();
+    return {
+      success: true,
+      suggestions: [
+        { title: `${query} in ${area}`, category: "Local Spot", tag: "#explore", reason: `Discover authentic ${query} spots near ${area}.` },
+        { title: `${area} Top ${query}`, category: "Popular", tag: "#recommendation", reason: `Must-visit places matching ${query}.` }
+      ],
+      provider: "client-fallback"
+    };
+  },
+
   async autoDescribeMoment({ location = "Paris, France", type = "photo", hint = "" } = {}) {
     try {
       const response = await fetch("/api/ai/caption", {
