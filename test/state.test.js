@@ -129,6 +129,39 @@ test("state.logoutUser transitions cleanly to landing view and clears session at
   }
 });
 
+test("stale session refreshes cannot resurrect a logged-out session", async () => {
+  const originalSession = { ...state.userSession };
+  const originalNotify = state.notify;
+  const originalGetSession = enrichmentService.getSession;
+
+  try {
+    state.notify = () => {};
+    state.sessionEpoch = 0;
+    state.userSession = { status: "ready", role: "admin", userId: "admin@test.local", authType: "admin-session" };
+
+    let resolveSession;
+    enrichmentService.getSession = () => new Promise((resolve) => {
+      resolveSession = resolve;
+    });
+
+    const refreshPromise = state.refreshUserSession();
+    state.clearUserSession({ notify: false });
+
+    resolveSession({
+      principal: { role: "admin", userId: "admin@test.local", authType: "admin-session" },
+    });
+
+    await refreshPromise;
+
+    assert.equal(state.isAuthenticated, false);
+    assert.equal(state.userSession.role, "anonymous");
+  } finally {
+    enrichmentService.getSession = originalGetSession;
+    state.userSession = originalSession;
+    state.notify = originalNotify;
+  }
+});
+
 test("custom traveler personas are admin-only", () => {
   const originalSession = { ...state.userSession };
   const originalProfile = structuredClone(state.userProfile);

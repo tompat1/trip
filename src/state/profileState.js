@@ -38,8 +38,12 @@ export const profileStateMixin = {
   },
 
   async refreshUserSession() {
+    const epoch = this.sessionEpoch ?? 0;
+
     try {
       const session = await enrichmentService.getSession();
+      if ((this.sessionEpoch ?? 0) !== epoch) return this.userSession;
+
       const principal = session.principal || {};
       this.userSession = {
         status: "ready",
@@ -48,6 +52,8 @@ export const profileStateMixin = {
         authType: principal.authType || "none",
       };
     } catch (error) {
+      if ((this.sessionEpoch ?? 0) !== epoch) return this.userSession;
+
       this.userSession = {
         status: "error",
         role: "anonymous",
@@ -62,6 +68,7 @@ export const profileStateMixin = {
   },
 
   clearUserSession(options = {}) {
+    this.sessionEpoch = (this.sessionEpoch ?? 0) + 1;
     this.userSession = {
       status: "ready",
       role: "anonymous",
@@ -87,11 +94,17 @@ export const profileStateMixin = {
   },
 
   logoutUser(options = {}) {
+    this.sessionEpoch = (this.sessionEpoch ?? 0) + 1;
     this.clearUserOwnedTrips?.();
     this.restoreDemoTrips?.();
     this.clearUserSession({ notify: false });
     this.authExitOpen = false;
     this.activeView = "landing";
+    try {
+      if (typeof window !== "undefined" && window.localStorage) {
+        window.localStorage.removeItem("trip-admin-session-token-v1");
+      }
+    } catch {}
     if (options.notify !== false) this.notify();
     return this.userSession;
   },

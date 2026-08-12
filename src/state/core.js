@@ -58,6 +58,7 @@ export class AppState {
     this.userProfile = readStoredUserProfile();
     this.activeProfileSection = "profile";
     this.profileCompanionTripId = resolveFutureTripId(this.activeTripId);
+    this.sessionEpoch = 0;
     this.userSession = { status: "checking", role: "anonymous", userId: "", authType: "none" };
     this.themeMode = readStoredTheme();
     this.userAvatar = this.userProfile.avatarUrl;
