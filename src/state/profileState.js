@@ -68,6 +68,19 @@ export const profileStateMixin = {
       userId: "",
       authType: "none",
     };
+    this.userAvatar = "";
+    this.userProfile = {
+      name: "Traveler",
+      email: "",
+      location: "",
+      bio: "",
+      avatarUrl: "",
+      customPersonas: [],
+      personas: Array.from(this.userPreferences || []),
+      notifications: { email: true, push: true, tripUpdates: true },
+      privacy: { publicProfile: false, shareLocation: true },
+    };
+    writeStoredUserProfile(this.userProfile);
     this.syncAdminDemoMoments();
     if (options.notify !== false) this.notify();
     return this.userSession;

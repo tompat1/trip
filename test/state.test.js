@@ -93,6 +93,8 @@ test("session refresh and local clear drive authenticated state for login/logout
     state.clearUserSession();
 
     assert.equal(state.isAuthenticated, false);
+    assert.equal(state.userAvatar, "");
+    assert.equal(state.userProfile.email, "");
     assert.deepEqual(state.userSession, {
       status: "ready",
       role: "anonymous",

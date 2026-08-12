@@ -11,6 +11,8 @@
     "start": "vite --host 127.0.0.1",
     "test": "node --test test/*.test.js",
     "test:smoke": "playwright test",
+    "test:e2e": "playwright test",
+    "test:prod": "TARGET_URL=https://trip.rynell.org playwright test",
     "build": "vite build",
     "deploy": "vite build && npx wrangler deploy",
     "worker:check": "node --check worker/index.js",
