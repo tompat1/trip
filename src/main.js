@@ -872,6 +872,43 @@ document.addEventListener("click", async (e) => {
         if (error?.status !== 503) console.warn("Route preview warning:", error);
       });
     }
+    else if (action === "add-trip-spot") {
+      const trip = state.activeTrip;
+      const tripId = state.activeTripId;
+
+      if (!trip || !tripId) {
+        if (typeof state.openTripCreate === "function") {
+          state.openTripCreate();
+        }
+        showToast("Create or pick a trip before adding a destination.");
+        return;
+      }
+
+      const destinationTitle = String(trip.destination || "Destination").split(",")[0].trim() || "Destination";
+      const title = `Explore ${destinationTitle}`;
+      const exists = Array.isArray(trip.calendarEvents) && trip.calendarEvents.some((event) => {
+        const eventTitle = String(event.title || "").toLowerCase();
+        const eventLocation = String(event.location || "").toLowerCase();
+        const target = destinationTitle.toLowerCase();
+        return eventTitle.includes(target) || eventLocation.includes(target) || eventTitle.includes("explore "+target);
+      });
+
+      if (exists) {
+        showToast(`"${destinationTitle}" is already in your itinerary.`);
+        return;
+      }
+
+      state.addCalendarEvent(tripId, {
+        title,
+        location: destinationTitle,
+        dayIndex: 0,
+        startTime: "09:00",
+        endTime: "11:00",
+        colorScheme: "peach",
+        sourceType: "destination",
+      });
+      showToast(`✓ Added "${destinationTitle}" to your trip itinerary.`);
+    }
     else if (action === "locate-user" || action === "toggle-map-view" || action === "toggle-full-map") {
       flashPageLoader("Opening live");
       state.setView("live");
