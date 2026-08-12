@@ -59,3 +59,26 @@ test("location data integrity: emergency numbers and cultural tips match destina
   const franceEtiquette = getDestinationEtiquetteAndTips("Paris, France");
   assert.equal(franceEtiquette.emergency.includes("112"), true, "France emergency number must include 112");
 });
+
+test("location data integrity: global coverage for non-European destinations worldwide", () => {
+  const peru = getQuickFactsForDestination("Cusco, Peru");
+  assert.equal(peru.country, "Peru 🇵🇪");
+  assert.equal(peru.currency, "PEN (S/)");
+  assert.equal(peru.language.includes("Spanish"), true);
+
+  const southAfrica = getQuickFactsForDestination("Cape Town, South Africa");
+  assert.equal(southAfrica.country, "South Africa 🇿🇦");
+  assert.equal(southAfrica.currency, "ZAR (R)");
+
+  const uae = getQuickFactsForDestination("Dubai, UAE");
+  assert.equal(uae.country, "United Arab Emirates 🇦🇪");
+  assert.equal(uae.currency, "AED (DH)");
+
+  const malaysia = getQuickFactsForDestination("Kuala Lumpur, Malaysia");
+  assert.equal(malaysia.country, "Malaysia 🇲🇾");
+  assert.equal(malaysia.currency, "MYR (RM)");
+
+  const mexico = getQuickFactsForDestination("Oaxaca, Mexico");
+  assert.equal(mexico.country, "Mexico 🇲🇽");
+  assert.equal(mexico.currency, "MXN ($)");
+});
