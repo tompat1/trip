@@ -892,9 +892,6 @@ function renderPoiMapCanvas(trip, topPOIs) {
           <span class="voice-serif" style="font-size: 0.85rem; font-weight: 700; color: #fff;">${escapeHtml(destination)}</span>
           <span class="voice-mono" style="font-size: 0.7rem; color: rgba(255,255,255,0.65);">${escapeHtml(trip.dates || '3–9 Oct 2026')}</span>
         </div>
-        <button class="btn btn--primary btn--xs" data-viewmode="map" style="background: var(--orange); border: none; border-radius: var(--radius-pill); font-weight: 700; padding: 5px 12px; font-size: 0.74rem; display: flex; align-items: center; gap: 4px; box-shadow: 0 2px 8px rgba(217,74,58,0.4);">
-          ${renderIcon("navigation")} FULL MAP
-        </button>
       </div>
 
       <!-- Selected POI Detail Floating Sheet Overlay (Exact Mockup Alignment) -->
