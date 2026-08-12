@@ -3,7 +3,7 @@ import test from "node:test";
 import { composeEditorialProfile, createVerifiedFactBundle, validateEditorialProfile } from "../src/enrichment/editorialComposer.js";
 import { createEnrichmentService } from "../src/enrichment/enrichmentService.js";
 import { calculateImageScore, dedupeImages } from "../src/enrichment/mediaAggregator.js";
-import { resolveAirportInput } from "../src/services/airportService.js";
+import { calculateFlightDistance, findClosestAirport, findPrimaryAirportForDestination, resolveAirportInput } from "../src/services/airportService.js";
 import { normalizeDiscoveredEvent } from "../src/services/concertService.js";
 import { normalizeOpenTripMapPlaces } from "../src/services/openTripMapService.js";
 import { areAliasesEquivalent, buildPlaceAliases, createResolvedPlaceIdentity } from "../src/enrichment/placeResolver.js";
@@ -59,6 +59,39 @@ test("airport resolver includes major hub fallback airports", () => {
   assert.equal(resolveAirportInput("Frankfurt")?.iata, "FRA");
   assert.equal(resolveAirportInput("Dubai")?.iata, "DXB");
   assert.equal(resolveAirportInput("Singapore")?.iata, "SIN");
+});
+
+test("airport resolver handles 3-letter IATA codes case-insensitively", () => {
+  assert.equal(resolveAirportInput("cta")?.iata, "CTA");
+  assert.equal(resolveAirportInput("CTA")?.iata, "CTA");
+  assert.equal(resolveAirportInput("jfk")?.iata, "JFK");
+  assert.equal(resolveAirportInput("cdg")?.iata, "CDG");
+  assert.equal(resolveAirportInput("lhr")?.iata, "LHR");
+});
+
+test("findClosestAirport finds geographically nearest airport", () => {
+  // Ortigia / Siracusa coordinates -> Catania Fontanarossa (CTA)
+  const ortigiaAirport = findClosestAirport(37.0652, 15.2925);
+  assert.equal(ortigiaAirport?.iata, "CTA");
+
+  // Paris coordinates -> Charles de Gaulle (CDG) or Orly (ORY)
+  const parisAirport = findClosestAirport(48.8566, 2.3522);
+  assert.ok(["CDG", "ORY"].includes(parisAirport?.iata));
+
+  // Stockholm coordinates -> Arlanda (ARN)
+  const stockholmAirport = findClosestAirport(59.3293, 18.0686);
+  assert.equal(stockholmAirport?.iata, "ARN");
+});
+
+test("findPrimaryAirportForDestination resolves closest airport for trip locations", () => {
+  const ortigia = findPrimaryAirportForDestination("Ortigia, Sicilia");
+  assert.equal(ortigia?.iata, "CTA");
+
+  const paris = findPrimaryAirportForDestination("Paris, France");
+  assert.equal(paris?.iata, "CDG");
+
+  const iataCode = findPrimaryAirportForDestination("JFK");
+  assert.equal(iataCode?.iata, "JFK");
 });
 
 test("discovered events normalize missing display fields", () => {

@@ -13,7 +13,7 @@ import { getSelectedPoiRouteTarget, initMapsForView, previewPoiOverviewRoute, re
 import { handleQuickCaptureFiles } from "./app/mediaCaptureController.js";
 import { handleDockNavigation, handleRouteAction } from "./app/navigationController.js";
 import { renderAppShell } from "./app/renderController.js";
-import { closeAirportAutocompleteMenus, handleTransitFlightRouteSubmit, handleTripCreateSubmit, navigateCalendarMonth, selectCalendarDate, toggleFlightOptionsPanel, toggleMiniCalendarPopover, updateAirportAutocomplete, updateTripCreateRoutePreview } from "./app/tripFormController.js";
+import { closeAirportAutocompleteMenus, handleDestinationInputChange, handleTransitFlightRouteSubmit, handleTripCreateSubmit, navigateCalendarMonth, selectCalendarDate, toggleFlightOptionsPanel, toggleMiniCalendarPopover, updateAirportAutocomplete, updateTripCreateRoutePreview } from "./app/tripFormController.js";
 import { handleTripManagementAction, handleTripManagementChange, handleTripManagementSubmit } from "./app/tripManagementController.js";
 import { PhotoEditorController } from "./components/ProfilePhotoEditorModal.js";
 import { getPreferredMapsUrl } from "./services/routeService.js";
@@ -1173,6 +1173,9 @@ document.addEventListener("input", (e) => {
   if (e.target.matches(".search-input-field")) {
     state.setSearchQuery(e.target.value, { notify: false });
     updateSearchResultsInPlace(e.target);
+  }
+  if (e.target.matches('input[name="destination"]')) {
+    handleDestinationInputChange(e.target);
   }
   if (e.target.matches(".airport-autocomplete-input")) {
     updateAirportAutocomplete(e.target);

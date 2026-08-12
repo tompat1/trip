@@ -1,5 +1,5 @@
 import { state } from "../state.js";
-import { formatAirportLabel, getFlightRouteDisplay, resolveAirportInput, searchAirportsWorldwide } from "../services/airportService.js";
+import { findPrimaryAirportForDestination, formatAirportLabel, getFlightRouteDisplay, resolveAirportInput, searchAirportsWorldwide } from "../services/airportService.js";
 import { normalizeFlightType } from "../services/flightService.js";
 import { resolveTripCenter } from "./mapController.js";
 
@@ -50,6 +50,35 @@ export async function updateAirportAutocomplete(input) {
   }).join("");
 }
 
+export function handleDestinationInputChange(input) {
+  const form = input.form;
+  if (!form) return;
+  const destinationVal = input.value.trim();
+  const destAirportInput = form.querySelector('input[name="destinationAirport"]');
+  if (!destAirportInput) return;
+
+  if (!destinationVal) {
+    if (destAirportInput.dataset.autoPopulated === "true") {
+      destAirportInput.value = "";
+      delete destAirportInput.dataset.autoPopulated;
+      delete destAirportInput.dataset.lastAutoVal;
+      updateTripCreateRoutePreview(form);
+    }
+    return;
+  }
+
+  const primaryAirport = findPrimaryAirportForDestination(destinationVal);
+  if (primaryAirport) {
+    const label = formatAirportLabel(primaryAirport);
+    if (!destAirportInput.value.trim() || destAirportInput.dataset.autoPopulated === "true" || destAirportInput.value === destAirportInput.dataset.lastAutoVal) {
+      destAirportInput.value = label;
+      destAirportInput.dataset.autoPopulated = "true";
+      destAirportInput.dataset.lastAutoVal = label;
+      updateTripCreateRoutePreview(form);
+    }
+  }
+}
+
 export function updateTripCreateRoutePreview(form) {
   if (!form || form.id !== "trip-create-form") return;
   const titleEl = form.querySelector("[data-trip-create-route-title]");
@@ -58,8 +87,14 @@ export function updateTripCreateRoutePreview(form) {
 
   const originValue = form.originAirport?.value || "";
   const destinationValue = form.destinationAirport?.value || "";
+  const destinationText = form.destination?.value || "";
+
   const originAirport = resolveAirportInput(originValue);
-  const destinationAirport = resolveAirportInput(destinationValue);
+  const destinationAirport =
+    resolveAirportInput(destinationValue) ||
+    findPrimaryAirportForDestination(destinationValue) ||
+    findPrimaryAirportForDestination(destinationText);
+
   const routeDisplay = getFlightRouteDisplay({
     originAirport,
     destinationAirport,
@@ -199,8 +234,12 @@ export async function handleTripCreateSubmit(form, { showToast = () => {}, withP
   let flightType = "none";
 
   if (includeFlights) {
+    const destVal = form.destinationAirport?.value || "";
     originAirport = resolveAirportInput(form.originAirport?.value || "");
-    destinationAirport = resolveAirportInput(form.destinationAirport?.value || destination);
+    destinationAirport =
+      resolveAirportInput(destVal) ||
+      findPrimaryAirportForDestination(destVal) ||
+      findPrimaryAirportForDestination(destination);
     flightType = normalizeFlightType(form.flightType?.value || "regular");
   }
 

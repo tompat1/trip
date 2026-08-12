@@ -3,13 +3,13 @@ import { enrichPlaceMedia } from "./mediaAggregator.js";
 import { normalizeOsmElement, normalizeWorkerNearbyPlace } from "./normalizers.js";
 import { resolveLocationContext } from "./placeResolver.js";
 import { createPlaceProfileContract, createProviderStatus, PROVIDER_STATUS } from "./schemas.js";
-import { calculateFlightDistance, getAirportByIata, searchAirports } from "../services/airportService.js";
+import { calculateFlightDistance, findClosestAirport, findPrimaryAirportForDestination, getAirportByIata, resolveAirportInput, searchAirports, searchAirportsWorldwide } from "../services/airportService.js";
 import { fetchRouteDirections } from "../services/routeService.js";
 import { fetchConcertsForTrip, searchConcerts } from "../services/concertService.js";
 import { fetchOpenTripMapPlaceDetails, fetchOpenTripMapPlaces, OPENTRIPMAP_HIDDEN_GEMS_KINDS, OPENTRIPMAP_TOURISM_KINDS } from "../services/openTripMapService.js";
 import { getPersonaDiscoveryContext, rankItemsByPersonas } from "../utils/personaSignals.js";
 
-export { calculateFlightDistance, getAirportByIata, searchAirports, fetchRouteDirections, fetchConcertsForTrip, searchConcerts, fetchOpenTripMapPlaceDetails, fetchOpenTripMapPlaces };
+export { calculateFlightDistance, findClosestAirport, findPrimaryAirportForDestination, getAirportByIata, resolveAirportInput, searchAirports, searchAirportsWorldwide, fetchRouteDirections, fetchConcertsForTrip, searchConcerts, fetchOpenTripMapPlaceDetails, fetchOpenTripMapPlaces };
 
 const DEFAULT_WORKER_API_BASE = "https://trip.thomasrynell.workers.dev";
 export const ADMIN_SESSION_STORAGE_KEY = "trip-admin-session-token-v1";

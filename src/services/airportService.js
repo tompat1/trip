@@ -169,9 +169,16 @@ export function getFlightRouteDisplay(route = {}, flightSearch = {}) {
 }
 
 export function resolveAirportInput(input = "") {
-  const value = input.trim();
+  const value = String(input || "").trim();
   if (!value) return null;
-  const iataMatches = [...value.matchAll(/(?:^|[^\p{L}])([A-Z]{3})(?=$|[^\p{L}])/giu)];
+
+  // Direct 3-letter IATA match if whole input is 3 letters (case-insensitive)
+  if (value.length === 3) {
+    const direct = getAirportByIata(value);
+    if (direct) return direct;
+  }
+
+  const iataMatches = [...value.matchAll(/(?:^|[^\p{L}])([A-Za-z]{3})(?=$|[^\p{L}])/giu)];
   for (const [, iata] of iataMatches) {
     const airport = getAirportByIata(iata);
     if (airport) return airport;
@@ -196,9 +203,131 @@ export function resolveAirportInput(input = "") {
   };
 }
 
-export function findPrimaryAirportForDestination(destination = "") {
-  const city = String(destination).split(",")[0].trim();
-  return resolveAirportInput(city) || resolveAirportInput(destination);
+const DESTINATION_COORDS_LOOKUP = {
+  ortigia: [37.0652, 15.2925],
+  syracuse: [37.0755, 15.2866],
+  siracusa: [37.0755, 15.2866],
+  sicilia: [37.5025, 15.0873],
+  sicily: [37.5025, 15.0873],
+  catania: [37.5025, 15.0873],
+  palermo: [38.1157, 13.3615],
+  taormina: [37.8516, 15.2853],
+  gdansk: [54.3520, 18.6466],
+  poland: [52.2297, 21.0122],
+  warsaw: [52.2297, 21.0122],
+  krakow: [50.0647, 19.9450],
+  wroclaw: [51.1079, 17.0385],
+  paris: [48.8566, 2.3522],
+  france: [48.8566, 2.3522],
+  london: [51.5072, -0.1276],
+  uk: [51.5072, -0.1276],
+  "new york": [40.7128, -74.0060],
+  tokyo: [35.6762, 139.6503],
+  stockholm: [59.3293, 18.0686],
+  copenhagen: [55.6761, 12.5683],
+  madrid: [40.4168, -3.7038],
+  barcelona: [41.3874, 2.1686],
+  rome: [41.9028, 12.4964],
+  florence: [43.7696, 11.2558],
+  venice: [45.4408, 12.3155],
+  naples: [40.8518, 14.2681],
+  bologna: [44.4949, 11.3426],
+  milan: [45.4642, 9.1900],
+  berlin: [52.5200, 13.4050],
+  amsterdam: [52.3676, 4.9041],
+  lisbon: [38.7223, -9.1393],
+  heraklion: [35.3391, 25.132],
+  crete: [35.3391, 25.132],
+  greece: [35.3391, 25.132],
+  santorini: [36.3932, 25.4615],
+  mykonos: [37.4467, 25.3289],
+  sydney: [-33.8688, 151.2093],
+  bangkok: [13.7563, 100.5018],
+  vienna: [48.2082, 16.3738],
+  prague: [50.0755, 14.4378],
+  dublin: [53.3498, -6.2603],
+  oslo: [59.9139, 10.7522],
+  helsinki: [60.1699, 24.9384],
+  zurich: [47.3769, 8.5417],
+  dubai: [25.2048, 55.2708],
+  bali: [-8.4095, 115.1889],
+  singapore: [1.3521, 103.8198],
+};
+
+export function findClosestAirport(lat, lng, options = {}) {
+  const latitude = Number(lat);
+  const longitude = Number(lng);
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
+  if (latitude === 0 && longitude === 0) return null;
+
+  const airports = getAllKnownAirports().filter(
+    (a) => Number.isFinite(a.lat) && Number.isFinite(a.lng) && (a.lat !== 0 || a.lng !== 0)
+  );
+  if (!airports.length) return null;
+
+  const R = 6371; // Earth radius in km
+  let closest = null;
+  let minDistance = Infinity;
+
+  for (const airport of airports) {
+    const dLat = (airport.lat - latitude) * (Math.PI / 180);
+    const dLng = (airport.lng - longitude) * (Math.PI / 180);
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(latitude * (Math.PI / 180)) *
+        Math.cos(airport.lat * (Math.PI / 180)) *
+        Math.sin(dLng / 2) *
+        Math.sin(dLng / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    const distanceKm = R * c;
+
+    if (distanceKm < minDistance) {
+      minDistance = distanceKm;
+      closest = { ...airport, distanceKm: Math.round(distanceKm) };
+    }
+  }
+
+  if (options.maxDistanceKm && minDistance > options.maxDistanceKm) return null;
+  return closest;
+}
+
+export function findPrimaryAirportForDestination(destination = "", coords = null) {
+  const value = String(destination || "").trim();
+  if (!value && !coords) return null;
+
+  // 1. Direct 3-letter IATA code match (e.g. "CTA", "JFK", "CDG")
+  if (value.length === 3) {
+    const directIata = getAirportByIata(value);
+    if (directIata) return directIata;
+  }
+
+  // 2. Direct exact or city airport match
+  const city = value.split(",")[0].trim();
+  const directMatch = getAirportByIata(city) || resolveAirportInput(city);
+  if (directMatch && !directMatch.isCustom) return directMatch;
+
+  const fullMatch = resolveAirportInput(value);
+  if (fullMatch && !fullMatch.isCustom) return fullMatch;
+
+  // 3. Proximity lookup via lat/lng coordinates
+  let targetCoords = coords;
+  if (!targetCoords && Array.isArray(destination) && destination.length === 2) {
+    targetCoords = destination;
+  }
+  if (!targetCoords && value) {
+    const normKey = value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+    const foundEntry = Object.entries(DESTINATION_COORDS_LOOKUP).find(
+      ([key]) => normKey.includes(key) || key.includes(normKey)
+    );
+    if (foundEntry) targetCoords = foundEntry[1];
+  }
+
+  if (targetCoords && Array.isArray(targetCoords) && targetCoords.length === 2) {
+    const closest = findClosestAirport(targetCoords[0], targetCoords[1]);
+    if (closest) return closest;
+  }
+
+  return directMatch || fullMatch || null;
 }
 
 // Calculate flight distance between two airports (Haversine formula in km)

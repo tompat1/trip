@@ -607,7 +607,7 @@ const LOCATION_SCOPE_RULES = [
     key: "dubai",
     cityTerms: ["dubai"],
     destinations: ["dubai", "uae", "ae", "dxb"],
-    terms: ["dubai", "burj khalifa", "dubai mall", "palm jumeirah", "marina", "deira", "creek"],
+    terms: ["dubai", "burj khalifa", "dubai mall", "palm jumeirah", "dubai marina", "deira", "creek"],
   },
   {
     key: "mumbai",
@@ -656,7 +656,7 @@ const LOCATION_SCOPE_RULES = [
     key: "cape town",
     cityTerms: ["cape town"],
     destinations: ["cape town", "south africa", "za", "cpt"],
-    terms: ["cape town", "table mountain", "waterfront", "camps bay", "robben island", "bo kaap"],
+    terms: ["cape town", "table mountain", "v and a waterfront", "camps bay", "robben island", "bo kaap"],
   },
   // ── Oceania ───────────────────────────────────────────────────────────────
   {
