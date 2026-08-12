@@ -3066,7 +3066,7 @@ a:active .ph-icon,
 
 .home-map {
   width: 100%;
-  height: 160px;
+  height: 240px;
   background: #e5e3df;
   position: relative;
   z-index: 1;
@@ -3075,6 +3075,79 @@ a:active .ph-icon,
 
 .leaflet-container {
   z-index: 1 !important;
+}
+
+/* Floating Map Controls (Fullscreen, Recenter, Layer Switcher) */
+.map-floating-controls {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  pointer-events: auto;
+}
+
+.map-floating-btn {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  background: rgba(23, 24, 23, 0.82);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: #f4f0e7;
+  display: grid;
+  place-items: center;
+  font-size: 1.15rem;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.28);
+  transition: transform 0.2s var(--ease-out), background 0.2s ease, border-color 0.2s ease;
+}
+
+.map-floating-btn:hover {
+  transform: scale(1.08);
+  background: #171817;
+  border-color: #d94a3a;
+  color: #f4f0e7;
+}
+
+.map-floating-btn:active {
+  transform: scale(0.94);
+}
+
+.map-floating-btn.is-active {
+  background: #d94a3a;
+  color: #ffffff;
+  border-color: #d94a3a;
+}
+
+/* Fullscreen Overlay Mode for Maps */
+.is-fullscreen-map {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  z-index: 999999 !important;
+  border-radius: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  background: #171817;
+}
+
+.is-fullscreen-map .home-map,
+.is-fullscreen-map .search-map,
+.is-fullscreen-map .plan-map,
+.is-fullscreen-map .live-map,
+.is-fullscreen-map #poi-map-container {
+  height: 100vh !important;
+  min-height: 100vh !important;
+  width: 100vw !important;
+}
+
+body.has-fullscreen-map-open {
+  overflow: hidden !important;
 }
 
 .map-card-footer {
@@ -4814,7 +4887,7 @@ a:active .ph-icon,
   position: relative;
   border-radius: var(--radius-md);
   overflow: hidden;
-  height: 180px;
+  height: 260px;
   margin-bottom: 16px;
   border: 1px solid var(--line);
   box-shadow: var(--shadow-sm);

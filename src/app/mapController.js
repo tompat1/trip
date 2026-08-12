@@ -1,5 +1,6 @@
 import { state } from "../state.js";
 import { resolveAirportInput } from "../services/airportService.js";
+import { renderIcon } from "../utils/icons.js";
 
 let L = null;
 if (typeof window !== "undefined") {
@@ -162,11 +163,102 @@ export async function fetchDestinationCoordinates(destination) {
   return null;
 }
 
+function attachMapActionOverlay(container, map, trip, options = {}) {
+  if (!container || !map) return;
+
+  const existingOverlay = container.querySelector(".map-floating-controls");
+  if (existingOverlay) existingOverlay.remove();
+
+  const overlay = document.createElement("div");
+  overlay.className = "map-floating-controls";
+  overlay.innerHTML = `
+    <button class="map-floating-btn map-recenter-btn" type="button" title="Recenter on ${escapeHtml(trip?.destination || "destination")}" aria-label="Recenter destination">
+      ${renderIcon("crosshair")}
+    </button>
+    <button class="map-floating-btn map-layer-btn" type="button" title="Switch Map Layer" aria-label="Switch map layer">
+      ${renderIcon("layers")}
+    </button>
+    <button class="map-floating-btn map-fullscreen-btn" type="button" title="Toggle Fullscreen Map" aria-label="Toggle fullscreen map">
+      ${renderIcon("arrowsOut")}
+    </button>
+  `;
+
+  container.appendChild(overlay);
+
+  const recenterBtn = overlay.querySelector(".map-recenter-btn");
+  if (recenterBtn) {
+    recenterBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      const center = trip?.center || resolveTripCenter(trip?.destination);
+      if (center && map) {
+        map.flyTo(center, trip?.zoom || 14, { animate: true, duration: 0.8 });
+      }
+    });
+  }
+
+  let layerIndex = 0;
+  const tileLayers = [
+    { name: "CARTO Voyager", url: "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", subdomains: "abcd", attribution: '&copy; OpenStreetMap &copy; CARTO' },
+    { name: "OpenStreetMap", url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", attribution: '&copy; OpenStreetMap contributors' },
+    { name: "CARTO Dark", url: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", subdomains: "abcd", attribution: '&copy; OpenStreetMap &copy; CARTO' }
+  ];
+
+  const layerBtn = overlay.querySelector(".map-layer-btn");
+  if (layerBtn) {
+    layerBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      layerIndex = (layerIndex + 1) % tileLayers.length;
+      const selected = tileLayers[layerIndex];
+
+      map.eachLayer((layer) => {
+        if (layer instanceof L.TileLayer) map.removeLayer(layer);
+      });
+
+      L.tileLayer(selected.url, {
+        maxZoom: 19,
+        subdomains: selected.subdomains || "abc",
+        attribution: selected.attribution
+      }).addTo(map);
+    });
+  }
+
+  const fullscreenBtn = overlay.querySelector(".map-fullscreen-btn");
+  if (fullscreenBtn) {
+    fullscreenBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      const parentShell = container.closest(".home-map-card, .search-map-card, .plan-map-shell, .poi-map-hero-card") || container;
+      const isFs = parentShell.classList.toggle("is-fullscreen-map");
+      fullscreenBtn.innerHTML = renderIcon(isFs ? "arrowsIn" : "arrowsOut");
+      fullscreenBtn.title = isFs ? "Exit Fullscreen" : "Toggle Fullscreen Map";
+      fullscreenBtn.classList.toggle("is-active", isFs);
+
+      if (isFs) {
+        document.body.classList.add("has-fullscreen-map-open");
+      } else {
+        document.body.classList.remove("has-fullscreen-map-open");
+      }
+
+      setTimeout(() => {
+        map.invalidateSize();
+      }, 150);
+    });
+  }
+}
+
 function initHomeMap(trip) {
   if (typeof window === "undefined" || !L) return;
   const container = document.getElementById("home-map-container");
   if (!container) return;
 
+  if (activeMaps.has("home")) {
+    try { activeMaps.get("home").remove(); } catch {}
+    activeMaps.delete("home");
+  }
+
+  const map = L.map(container, { zoomControl: true, attributionControl: true }).setView(trip.center, trip.zoom || 13);
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
     maxZoom: 19,
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
@@ -177,6 +269,7 @@ function initHomeMap(trip) {
     marker.bindPopup(`<b>${escapeHtml(pin.name)}</b>`);
   });
 
+  attachMapActionOverlay(container, map, trip);
   activeMaps.set("home", map);
 }
 
@@ -185,7 +278,12 @@ function initSearchMap(trip) {
   const container = document.getElementById("search-map-container");
   if (!container) return;
 
-  const map = L.map(container, { zoomControl: false, attributionControl: false }).setView(trip.center, trip.zoom || 13);
+  if (activeMaps.has("search")) {
+    try { activeMaps.get("search").remove(); } catch {}
+    activeMaps.delete("search");
+  }
+
+  const map = L.map(container, { zoomControl: true, attributionControl: true }).setView(trip.center, trip.zoom || 13);
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19 }).addTo(map);
 
   (trip.mapPins || []).slice(0, 5).forEach((pin, index) => {
@@ -197,6 +295,7 @@ function initSearchMap(trip) {
     L.marker([pin.lat, pin.lng], { icon }).addTo(map);
   });
 
+  attachMapActionOverlay(container, map, trip);
   activeMaps.set("search", map);
 }
 
@@ -205,8 +304,14 @@ function initLiveMap(trip) {
   const container = document.getElementById("live-map-container");
   if (!container) return;
 
-  const map = L.map(container, { zoomControl: true }).setView(trip.center, 14);
+  if (activeMaps.has("live")) {
+    try { activeMaps.get("live").remove(); } catch {}
+    activeMaps.delete("live");
+  }
+
+  const map = L.map(container, { zoomControl: true, attributionControl: true }).setView(trip.center, 14);
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19 }).addTo(map);
+  attachMapActionOverlay(container, map, trip);
   activeMaps.set("live", map);
 }
 
@@ -215,8 +320,14 @@ function initPlanMap(trip) {
   const container = document.getElementById("plan-map-container");
   if (!container) return;
 
-  const map = L.map(container, { zoomControl: true }).setView(trip.center, trip.zoom);
+  if (activeMaps.has("plan")) {
+    try { activeMaps.get("plan").remove(); } catch {}
+    activeMaps.delete("plan");
+  }
+
+  const map = L.map(container, { zoomControl: true, attributionControl: true }).setView(trip.center, trip.zoom);
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19 }).addTo(map);
+  attachMapActionOverlay(container, map, trip);
   const mappedEvents = getMappedCalendarEvents(trip, state.mapDayFilter);
 
   mappedEvents.forEach(({ event, coordinates }) => {
@@ -558,6 +669,7 @@ function initPoiOverviewMap(trip) {
     });
   });
 
+  attachMapActionOverlay(container, map, trip);
   activeMaps.set("poi-overview", map);
 }
 
