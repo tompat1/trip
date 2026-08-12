@@ -241,6 +241,45 @@ export const discoveryStateMixin = {
       trip.tourismPois = cleanTourismPois;
       trip.hiddenGems = finalHiddenGems;
       trip.osmPlaces = finalOsmPlaces;
+
+      // Automatically sync map pins dynamically for all map views
+      const allDynamicPlaces = [...cleanTourismPois, ...finalHiddenGems, ...finalOsmPlaces];
+      if (allDynamicPlaces.length) {
+        if (!trip.mapPins) trip.mapPins = [];
+        const existingPinTitles = new Set(trip.mapPins.map((p) => String(p.name || p.title || "").toLowerCase().trim()));
+
+        allDynamicPlaces.forEach((spot, idx) => {
+          const title = spot.title || spot.name;
+          if (!title) return;
+          const titleLower = title.toLowerCase().trim();
+          if (existingPinTitles.has(titleLower)) return;
+          existingPinTitles.add(titleLower);
+
+          const lat = spot.lat || spot.latitude || spot.coordinates?.[0];
+          const lng = spot.lng || spot.longitude || spot.coordinates?.[1];
+          if (!lat || !lng) return;
+
+          const catLower = String(spot.category || spot.tag || "").toLowerCase();
+          const icon = spot.icon || (catLower.includes("museum") || catLower.includes("art") ? "🏛️" :
+                                     catLower.includes("church") || catLower.includes("basilica") ? "⛪" :
+                                     catLower.includes("cafe") || catLower.includes("bistro") ? "☕" :
+                                     catLower.includes("shopping") || catLower.includes("store") ? "🛍️" : "📍");
+
+          trip.mapPins.push({
+            id: spot.id || `dynamic-pin-${idx}`,
+            name: title,
+            title,
+            lat,
+            lng,
+            category: spot.category || spot.tag || "Sight",
+            icon,
+            rating: spot.rating || 4.8,
+            image: spot.image || spot.photoUrl || spot.heroImage,
+            geoLabel: spot.geoLabel || spot.subtitle || `${trip.destination}`
+          });
+        });
+      }
+
       this.tourismDiscoveryStatus[tripId] = {
         status: cleanTourismPois.length || finalHiddenGems.length || finalOsmPlaces.length ? "ready" : status,
         error:
