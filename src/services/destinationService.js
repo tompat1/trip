@@ -319,17 +319,37 @@ export function getQuickFactsForDestination(destinationName = "") {
     nomadCost = "$1,300/mo";
     safetyScore = "86/100";
     visaAllowance = "30 Days VOA";
-  } else if (countryLower.includes("spain") || lower.includes("madrid") || lower.includes("barcelona")) {
+  } else if (countryLower.includes("spain") || lower.includes("spain") || lower.includes("madrid") || lower.includes("barcelona") || lower.includes("seville") || lower.includes("valencia") || lower.includes("malaga")) {
     currency = "EUR (€)";
-    language = lower.includes("barcelona") ? "Spanish / Catalan" : "Spanish";
+    language = (lower.includes("barcelona") || lower.includes("valencia")) ? "Spanish / Catalan" : "Spanish";
     timezone = "GMT+2";
     wifiSpeed = "115 Mbps";
     nomadCost = "$2,200/mo";
+  } else if (countryLower.includes("france") || lower.includes("paris") || lower.includes("lyon") || lower.includes("nice") || lower.includes("marseille")) {
+    currency = "EUR (€)";
+    language = "French";
+    timezone = "GMT+2";
+    wifiSpeed = "95 Mbps";
+    nomadCost = "$2,600/mo";
+  } else if (countryLower.includes("italy") || lower.includes("rome") || lower.includes("milan") || lower.includes("florence") || lower.includes("venice")) {
+    currency = "EUR (€)";
+    language = "Italian";
+    timezone = "GMT+2";
+    wifiSpeed = "80 Mbps";
+    nomadCost = "$2,100/mo";
+  } else if (countryLower.includes("germany") || lower.includes("berlin") || lower.includes("munich") || lower.includes("hamburg") || lower.includes("frankfurt")) {
+    currency = "EUR (€)";
+    language = "German";
+    timezone = "GMT+2";
+    wifiSpeed = "110 Mbps";
+    nomadCost = "$2,300/mo";
   }
 
+  const cityName = destinationName.split(",")[0].trim();
+
   return {
-    population: "1.2 million",
-    area: "250 km²",
+    population: `${cityName} Urban Area`,
+    area: "City Region",
     country: lower.includes("spain") ? "Spain 🇪🇸" : (countryPart || "International"),
     language,
     currency,
