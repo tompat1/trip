@@ -12,6 +12,11 @@
     "run_worker_first": ["/api/*"],
     "not_found_handling": "single-page-application"
   },
+  "send_email": [
+    {
+      "name": "EMAIL"
+    }
+  ],
   "d1_databases": [
     {
       "binding": "TRIP_DB",
@@ -19,6 +24,9 @@
       "database_id": "f4c07711-fc0a-4323-85e3-4a1f90775040"
     }
   ],
+  "vars": {
+    "EMAIL_FROM": "noreply@trip.example.com"
+  },
   "kv_namespaces": [
     {
       "binding": "TRIP_CACHE",
