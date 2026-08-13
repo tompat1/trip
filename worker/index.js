@@ -71,6 +71,7 @@ function matchRoute(method, pathname) {
     ["GET", /^\/api\/health$/, healthHandler],
     ["GET", /^\/api\/session$/, sessionHandler],
     ["POST", /^\/api\/auth\/register$/, authRegisterHandler],
+    ["POST", /^\/api\/auth\/password-reset$/, authPasswordResetRequestHandler],
     ["POST", /^\/api\/auth\/session$/, authSessionCreateHandler],
     ["DELETE", /^\/api\/auth\/session$/, authSessionDeleteHandler],
     ["POST", /^\/api\/admin\/session$/, adminSessionCreateHandler],
@@ -301,6 +302,53 @@ async function authRegisterHandler(context) {
       token: session.token,
       expiresAt: session.expiresAt,
     },
+  }, context));
+}
+
+async function authPasswordResetRequestHandler(context) {
+  if (!context.hasDb) return jsonError("missing_d1", "TRIP_DB is required for password reset requests.", 503);
+  const body = await readJson(context.request);
+  const email = normalizeEmail(body.email || "");
+  if (!email) return jsonError("invalid_email", "A valid email is required.", 400);
+
+  const user = await findUserByEmail(context, email);
+  const requestedAt = new Date().toISOString();
+  const token = createOpaqueToken(32);
+  const tokenHash = await sha256Base64Url(token);
+  const expiresAt = new Date(Date.now() + 1000 * 60 * 60).toISOString();
+
+  await context.env.TRIP_DB.prepare(`
+    INSERT INTO password_reset_tokens (id, email, token_hash, user_id, expires_at, used_at, created_at)
+    VALUES (?, ?, ?, ?, ?, '', ?)
+    ON CONFLICT(email) DO UPDATE SET
+      token_hash = excluded.token_hash,
+      user_id = excluded.user_id,
+      expires_at = excluded.expires_at,
+      used_at = '',
+      created_at = excluded.created_at
+  `).bind(stableId("pwd-reset", [email]), email, tokenHash, user?.id || "", expiresAt, requestedAt).run();
+
+  const resetUrl = new URL(`https://trip.thomasrynell.workers.dev/reset-password`);
+  resetUrl.searchParams.set("token", token);
+
+  const sender = getConfiguredEmailSender(context.env);
+  if (sender) {
+    await sender.send({
+      from: sender.from,
+      to: email,
+      subject: "Reset your TRIP password",
+      text: `Use this secure link to reset your TRIP password: ${resetUrl.toString()}\n\nIf you did not request this, you can ignore this email.`,
+      html: `<p>Use this secure link to reset your TRIP password:</p><p><a href="${resetUrl.toString()}">${resetUrl.toString()}</a></p><p>If you did not request this, you can ignore this email.</p>`,
+    });
+  }
+
+  return json(partialResponse("auth.passwordResetRequest", {
+    ok: true,
+    email,
+    resetUrl: resetUrl.toString(),
+    delivery: sender ? "sent" : "logged-only",
+    expiresAt,
+    requestedAt,
   }, context));
 }
 
@@ -1933,6 +1981,20 @@ async function revokeUserSession(context, token) {
   await context.env.TRIP_DB.prepare(`
     UPDATE admin_sessions SET revoked_at = ? WHERE token_hash = ? AND revoked_at = ''
   `).bind(new Date().toISOString(), tokenHash).run();
+}
+
+function getConfiguredEmailSender(env = {}) {
+  const candidates = [
+    env.SEND_EMAIL,
+    env.EMAIL,
+    env.MAIL,
+  ];
+  for (const candidate of candidates) {
+    if (candidate && typeof candidate.send === "function") {
+      return { send: candidate.send.bind(candidate), from: env.EMAIL_FROM || env.EMAIL_FROM_ADDRESS || "noreply@trip.local" };
+    }
+  }
+  return null;
 }
 
 async function findUserSessionPrincipal(db, token) {

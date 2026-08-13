@@ -12,7 +12,7 @@ export function renderAuthExitPage() {
   const intro = isSignup
     ? "Create an account to sync trips, invite companions, and keep memories connected."
     : isForgot
-      ? "Enter your email and we’ll prepare the reset flow. Email delivery wiring comes next."
+      ? "Enter your email to receive a secure reset link and continue back into your account."
       : "Sign in to sync trips, companions, planning, and memories across visits.";
 
   return `

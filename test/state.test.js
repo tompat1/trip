@@ -129,6 +129,39 @@ test("state.logoutUser transitions cleanly to landing view and clears session at
   }
 });
 
+test("password reset requests store the email and return the login form", async () => {
+  const originalAuthMode = state.authMode;
+  const storage = globalThis.localStorage || getTestLocalStorage();
+  const originalValue = storage.getItem("trip_password_reset_requested_v1");
+
+  const originalRequestPasswordReset = enrichmentService.requestPasswordReset;
+  enrichmentService.requestPasswordReset = async ({ email }) => {
+    storage.setItem("trip_password_reset_requested_v1", JSON.stringify({
+      email,
+      requestedAt: new Date().toISOString(),
+    }));
+    return { ok: true, email };
+  };
+
+  try {
+    state.authMode = "forgot";
+    const success = await state.requestPasswordReset("alex@example.com");
+    const saved = JSON.parse(storage.getItem("trip_password_reset_requested_v1") || "null");
+
+    assert.equal(success, true);
+    assert.equal(state.authMode, "login");
+    assert.equal(saved.email, "alex@example.com");
+  } finally {
+    enrichmentService.requestPasswordReset = originalRequestPasswordReset;
+    state.authMode = originalAuthMode;
+    if (originalValue === null) {
+      storage.removeItem("trip_password_reset_requested_v1");
+    } else {
+      storage.setItem("trip_password_reset_requested_v1", originalValue);
+    }
+  }
+});
+
 test("stale session refreshes cannot resurrect a logged-out session", async () => {
   const originalSession = { ...state.userSession };
   const originalNotify = state.notify;

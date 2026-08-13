@@ -3,6 +3,7 @@
  */
 import { markOnboardingSeen, writeStoredTheme } from "./helpers.js";
 import { aiService } from "../services/AiService.js";
+import { enrichmentService } from "../enrichment/enrichmentService.js";
 
 export function cleanAiResponseText(text = "") {
   if (!text) return "";
@@ -54,6 +55,20 @@ export const uiStateMixin = {
     if (this.authMode !== next) {
       this.authMode = next;
       this.notify();
+    }
+  },
+
+  async requestPasswordReset(email = "") {
+    const normalized = String(email || "").trim().toLowerCase();
+    if (!normalized) return false;
+
+    try {
+      await enrichmentService.requestPasswordReset({ email: normalized });
+      this.authMode = "login";
+      this.notify();
+      return true;
+    } catch (error) {
+      return false;
     }
   },
 

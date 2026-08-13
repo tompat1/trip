@@ -82,6 +82,28 @@ export function createEnrichmentService(options = {}) {
       return data;
     },
 
+    async requestPasswordReset(input = {}) {
+      const email = String(input.email || "").trim();
+      if (!email) {
+        const error = new Error("A valid email is required.");
+        error.status = 400;
+        throw error;
+      }
+
+      const url = buildApiUrl(apiBase, "/api/auth/password-reset");
+      const response = await fetchImpl(url.href, {
+        method: "POST",
+        headers: createApiHeaders({ "Content-Type": "application/json" }),
+        body: JSON.stringify({ email }),
+      });
+      if (!response.ok) {
+        const error = new Error(`worker-password-reset-http-${response.status}`);
+        error.status = response.status;
+        throw error;
+      }
+      return response.json();
+    },
+
     async logoutAdmin() {
       const url = buildApiUrl(apiBase, "/api/auth/session");
       try {

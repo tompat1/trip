@@ -1335,11 +1335,21 @@ document.addEventListener("submit", async (e) => {
       showToast("Enter your email first.");
       return;
     }
+
+    const submitButton = form.querySelector("button[type='submit']");
+    if (submitButton) submitButton.disabled = true;
+
     try {
-      localStorage.setItem("trip_password_reset_requested_v1", JSON.stringify({ email, requestedAt: new Date().toISOString() }));
-    } catch {}
-    state.setAuthMode("login");
-    showToast("Password reset noted. Email reset delivery comes next.");
+      const ok = await state.requestPasswordReset(email);
+      if (ok) {
+        form.reset();
+        showToast("Reset email sent. Check your inbox to continue.");
+      } else {
+        showToast("We could not send a reset email right now.");
+      }
+    } finally {
+      if (submitButton) submitButton.disabled = false;
+    }
     return;
   }
 
