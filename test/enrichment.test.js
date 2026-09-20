@@ -140,6 +140,20 @@ test("discovered events normalize missing display fields", () => {
   assert.ok(event.image);
 });
 
+test("discovered events reject undefined labels and format date arrays", () => {
+  const event = normalizeDiscoveredEvent({
+    title: "undefined",
+    artist: "Coldplay",
+    dates: ["2026-10-03", "2026-10-05"],
+    genre: "Live Music",
+    provider: "concierge-ai",
+  });
+
+  assert.equal(event.title, "Coldplay");
+  assert.equal(event.dates, "2026-10-03 – 2026-10-05");
+  assert.equal(event.icon, "🎵");
+});
+
 test("Worker request principal distinguishes anonymous, traveler, and admin", () => {
   const anonymous = createRequestPrincipal(new Request("https://trip.test/api/session"), { TRIP_ADMIN_TOKEN: "secret" });
   assert.equal(anonymous.role, "anonymous");

@@ -4,7 +4,7 @@
  */
 import { tripsData } from "../data/tripsData.js";
 import { enrichmentService } from "../enrichment/enrichmentService.js";
-import { fetchConcertsForTrip } from "../services/concertService.js";
+import { fetchConcertsForTrip, normalizeDiscoveredEvent } from "../services/concertService.js";
 import { fetchTripIntelligence } from "../services/tripDataGateway.js";
 import { fetchOpenMeteoWeather } from "../services/weatherService.js";
 import { getPersonaDiscoveryContext, rankItemsByPersonas } from "../utils/personaSignals.js";
@@ -372,7 +372,10 @@ export const discoveryStateMixin = {
     try {
       const events = await fetchConcertsForTrip(trip.destination, trip.center);
       const existingTitles = new Set((trip.events || []).map((event) => event.title || event.name || event.artist).filter(Boolean));
-      const liveEvents = filterTripScopedItems(events || [], trip).filter((event) => !existingTitles.has(event.title || event.name || event.artist));
+      const liveEvents = filterTripScopedItems(events || [], trip)
+        .map((event) => normalizeDiscoveredEvent(event))
+        .filter(Boolean)
+        .filter((event) => !existingTitles.has(event.title || event.name || event.artist));
       trip.events = [...liveEvents, ...(trip.events || [])].slice(0, 24);
       this.eventDiscoveryStatus[tripId] = {
         status: liveEvents.length ? "ready" : "fallback",
@@ -423,7 +426,10 @@ export const discoveryStateMixin = {
       if (trip.civicEvents.length) {
         const existingTitles = new Set((trip.events || []).map((event) => event.title || event.name || event.artist).filter(Boolean));
         trip.events = [
-          ...trip.civicEvents.filter((event) => !existingTitles.has(event.title || event.name || event.artist)),
+          ...trip.civicEvents
+            .map((event) => normalizeDiscoveredEvent(event))
+            .filter(Boolean)
+            .filter((event) => !existingTitles.has(event.title || event.name || event.artist)),
           ...(trip.events || []),
         ].slice(0, 24);
       }

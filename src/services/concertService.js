@@ -487,25 +487,65 @@ export async function fetchConcertsForTrip(destination = "Paris", coords = [48.8
   ];
 }
 
+function isUsableEventLabel(value) {
+  const text = String(value ?? "").trim();
+  return Boolean(text) && text !== "undefined" && text !== "null";
+}
+
+function resolveEventTitle(event = {}) {
+  const candidates = [event.title, event.name, event.artist, event.tour, event.venue];
+  for (const candidate of candidates) {
+    if (isUsableEventLabel(candidate)) return String(candidate).trim();
+  }
+  return "Local event";
+}
+
+export function formatEventDates(event = {}) {
+  const raw = event.dates ?? event.date ?? event.datetime ?? event.startDate ?? event.startTime;
+  if (raw === undefined || raw === null || raw === "") return "Upcoming";
+  if (Array.isArray(raw)) {
+    const values = raw.map((entry) => String(entry ?? "").trim()).filter(Boolean);
+    if (!values.length) return "Upcoming";
+    if (values.length === 1) return values[0];
+    return `${values[0]} – ${values[values.length - 1]}`;
+  }
+  if (typeof raw === "object") {
+    const start = raw.start || raw.begin || raw.localDate;
+    const end = raw.end || raw.finish;
+    if (start && end && start !== end) return `${start} – ${end}`;
+    if (start) return String(start);
+    return "Upcoming";
+  }
+  const text = String(raw).trim();
+  return isUsableEventLabel(text) ? text : "Upcoming";
+}
+
 export function normalizeDiscoveredEvent(event = {}) {
   if (!event) return null;
-  const title = event.title || event.name || event.artist || event.tour || "Local live event";
-  const venue = event.venue || event.location || event.place || "";
-  const dates = event.dates || event.date || event.datetime || event.startDate || event.startTime || "Upcoming";
-  const genre = event.genre || event.category || event.type || "Live Event";
+  const title = resolveEventTitle(event);
+  const venue = isUsableEventLabel(event.venue) ? String(event.venue).trim()
+    : isUsableEventLabel(event.location) ? String(event.location).trim()
+    : isUsableEventLabel(event.place) ? String(event.place).trim()
+    : "";
+  const dates = formatEventDates(event);
+  const genre = isUsableEventLabel(event.genre) ? String(event.genre).trim()
+    : isUsableEventLabel(event.category) ? String(event.category).trim()
+    : isUsableEventLabel(event.type) ? String(event.type).trim()
+    : "Live Event";
   const provider = event.provider || event.sourceRole || "";
+  const artist = isUsableEventLabel(event.artist) ? String(event.artist).trim() : title;
 
   return {
     ...event,
     id: event.id || `evt-${slugify(`${title}-${venue}-${dates}`)}`,
-    artist: event.artist || title,
+    artist,
     title,
     venue,
     city: event.city || "",
     country: event.country || "",
     dates,
     genre,
-    icon: event.icon || getEventIcon(genre, provider),
+    icon: isUsableEventLabel(event.icon) ? String(event.icon).trim() : getEventIcon(genre, provider),
     image: event.image || event.imageUrl || "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&w=600&q=80",
     ticketUrl: event.ticketUrl || event.url || event.sourceUrl || "",
     provider,

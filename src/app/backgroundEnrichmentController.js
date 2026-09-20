@@ -1,6 +1,6 @@
 import { state } from "../state.js";
 import { enrichmentService } from "../enrichment/enrichmentService.js";
-import { fetchConcertsForTrip } from "../services/concertService.js";
+import { fetchConcertsForTrip, normalizeDiscoveredEvent } from "../services/concertService.js";
 import { fetchOpenMeteoWeather } from "../services/weatherService.js";
 
 const scannedTripIds = new Set();
@@ -82,11 +82,11 @@ export async function runBackgroundEnrichmentScan(force = false) {
     const concertEnrichmentData = await fetchConcertsForTrip(trip.destination, coords);
 
     if (!trip.events) trip.events = [];
-    const existingTitles = new Set(trip.events.map((event) => event.title));
+    const existingTitles = new Set(trip.events.map((event) => event.title || event.name || event.artist).filter(Boolean));
     (concertEnrichmentData || []).forEach((concert) => {
-      if (!existingTitles.has(concert.title)) {
-        trip.events.unshift(concert);
-      }
+      const normalized = normalizeDiscoveredEvent(concert);
+      if (!normalized || existingTitles.has(normalized.title)) return;
+      trip.events.unshift(normalized);
     });
 
     state.notify();

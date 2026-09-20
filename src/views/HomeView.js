@@ -5,6 +5,7 @@ import { TRIP_ROUTE_LINE_SVG } from "../components/BrandAssets.js";
 import { getTripDateStatus } from "../utils/tripDates.js";
 import { getOptimizedImageUrl } from "../utils/responsiveImages.js";
 import { getHomeEmptyStateMode } from "./homeViewMode.js";
+import { normalizeDiscoveredEvent } from "../services/concertService.js";
 
 export function renderHomeView() {
   const trip = state.activeTrip;
@@ -125,16 +126,17 @@ export function renderHomeView() {
             </div>
           </div>
           <div class="events-grid">
-            ${trip.events.map(ev => {
-              const eventTitle = ev.title || ev.name || ev.artist || "Local event";
-              const eventDates = ev.dates || ev.date || ev.datetime || ev.startTime || "Upcoming";
+            ${(trip.events || []).map((rawEvent) => {
+              const ev = normalizeDiscoveredEvent(rawEvent) || rawEvent;
+              const eventTitle = ev.title || "Local event";
+              const eventDates = ev.dates || "Upcoming";
               const eventIcon = ev.icon || "🎟️";
               const eventId = ev.id || eventTitle;
               const isSaved = state.savedPlaceIds && state.savedPlaceIds.has(eventId);
               return `
                 <div class="event-pill-card" style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
                   <div style="display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0;">
-                    <span class="event-pill-icon">${escapeHtml(eventIcon)}</span>
+                    <span class="event-pill-icon" aria-hidden="true">${escapeHtml(eventIcon)}</span>
                     <div class="event-pill-info" style="min-width: 0;">
                       <h4 class="event-pill-title" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(eventTitle)}</h4>
                       <p class="event-pill-dates">${escapeHtml(eventDates)}</p>
