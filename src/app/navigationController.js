@@ -14,10 +14,9 @@ export function handleDockNavigation(target, { requireAppSession, flashPageLoade
     return true;
   }
 
-  if (nav === "live" && getTripDateStatus(state.activeTrip).state !== "active") {
-    state.setPlanSubTab("overview");
-    flashPageLoader?.("Opening planning");
-    state.setView("plan");
+  if (nav === "map") {
+    flashPageLoader?.("Opening map");
+    state.setView("live");
     return true;
   }
 

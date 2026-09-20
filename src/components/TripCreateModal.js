@@ -82,22 +82,22 @@ export function renderTripCreateModal() {
           <div class="trip-create-field trip-create-field--date">
             <div class="trip-create-date-row">
               <span class="drawer-label">Start date</span>
-              <button type="button" class="btn-start-date-picker" id="start-date-picker-btn" data-action="toggle-calendar-picker">
-                ${renderIcon("calendar")} <span id="start-date-display-text">${formattedToday}</span>
+              <button type="button" class="btn-start-date-picker" data-action="toggle-calendar-picker">
+                ${renderIcon("calendar")} <span data-start-date-display>${formattedToday}</span>
               </button>
             </div>
-            <input type="hidden" name="startDate" id="trip-create-start-date" value="${today}" />
+            <input type="hidden" name="startDate" value="${today}" />
 
-            <div class="mini-calendar-popover" id="mini-calendar-popover" hidden>
+            <div class="mini-calendar-popover" hidden>
               <div class="mini-calendar-header">
                 <button type="button" class="btn btn--icon btn--ghost btn--xs" data-action="calendar-prev-month" aria-label="Previous month">${renderIcon("chevronLeft")}</button>
-                <strong id="mini-calendar-month-year">Month 2026</strong>
+                <strong data-mini-calendar-month-year>Month 2026</strong>
                 <button type="button" class="btn btn--icon btn--ghost btn--xs" data-action="calendar-next-month" aria-label="Next month">${renderIcon("chevronRight")}</button>
               </div>
               <div class="mini-calendar-weekdays">
                 <span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span><span>Su</span>
               </div>
-              <div class="mini-calendar-days" id="mini-calendar-days-grid"></div>
+              <div data-mini-calendar-days-grid class="mini-calendar-days"></div>
             </div>
           </div>
 

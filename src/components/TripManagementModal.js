@@ -93,7 +93,7 @@ export function renderTripManagementModal() {
             <div class="trip-management-section__header">
               <div>
                 <h3 id="trip-management-list-title">Trips</h3>
-                <p style="margin: 2px 0 0 0; font-size: 0.8rem; color: var(--color-text-muted);">Select active trip, invite companions, or delete trips.</p>
+                <p style="margin: 2px 0 0 0; font-size: 0.8rem; color: var(--color-text-muted);">Select, edit dates, invite companions, or delete trips.</p>
               </div>
               <button class="btn btn--primary btn--sm" data-action="create-trip" type="button">
                 ${renderIcon("plus")} New trip
@@ -140,6 +140,9 @@ function renderTripManagementItem(trip, selectedInviteTripId) {
         </div>
       </div>
       <div class="trip-management-item__actions">
+        <button class="btn btn--outline btn--xs" data-action="edit-trip" data-trip-id="${escapeHtml(trip.id)}" type="button">
+          ${renderIcon("pencil")} Edit
+        </button>
         ${isActive ? "" : `
           <button class="btn btn--outline btn--xs" data-action="select-managed-trip" data-trip-id="${escapeHtml(trip.id)}" type="button">
             ${renderIcon("check")} Select

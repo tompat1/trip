@@ -172,6 +172,8 @@ export const uiStateMixin = {
 
   openTripCreate() {
     this.tripCreateOpen = true;
+    this.tripEditOpen = false;
+    this.tripEditTripId = null;
     this.tripManagerOpen = false;
     this.notify();
   },
@@ -181,9 +183,26 @@ export const uiStateMixin = {
     this.notify();
   },
 
+  openTripEdit(tripId = this.activeTripId) {
+    if (!tripId) return;
+    this.tripEditTripId = tripId;
+    this.tripEditOpen = true;
+    this.tripManagerOpen = false;
+    this.tripCreateOpen = false;
+    this.notify();
+  },
+
+  closeTripEdit() {
+    this.tripEditOpen = false;
+    this.tripEditTripId = null;
+    this.notify();
+  },
+
   openTripManager() {
     this.tripManagerOpen = true;
     this.tripCreateOpen = false;
+    this.tripEditOpen = false;
+    this.tripEditTripId = null;
     this.notify();
   },
 

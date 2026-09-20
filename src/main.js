@@ -1,7 +1,5 @@
 import { state } from "./state.js";
 import { renderSearchResults } from "./views/SearchView.js";
-import { resolveAirportInput } from "./services/airportService.js";
-import { formatTripDateRangeFromParts } from "./utils/tripDates.js";
 import { enrichmentService } from "./enrichment/enrichmentService.js";
 import { scheduleBackgroundEnrichmentScan } from "./app/backgroundEnrichmentController.js";
 import { registerCalendarDragController } from "./app/calendarDragController.js";
@@ -13,7 +11,7 @@ import { dismissPoiMapFloatingCard, getSelectedPoiRouteTarget, initMapsForView, 
 import { handleQuickCaptureFiles } from "./app/mediaCaptureController.js";
 import { handleDockNavigation, handleRouteAction } from "./app/navigationController.js";
 import { renderAppShell } from "./app/renderController.js";
-import { closeAirportAutocompleteMenus, handleDestinationInputChange, handleTransitFlightRouteSubmit, handleTripCreateSubmit, navigateCalendarMonth, selectCalendarDate, toggleFlightOptionsPanel, toggleMiniCalendarPopover, updateAirportAutocomplete, updateTripCreateRoutePreview } from "./app/tripFormController.js";
+import { closeAirportAutocompleteMenus, handleDestinationInputChange, handleTransitFlightRouteSubmit, handleTripCreateSubmit, handleTripEditSubmit, navigateCalendarMonth, selectCalendarDate, toggleFlightOptionsPanel, toggleMiniCalendarPopover, updateAirportAutocomplete, updateTripCreateRoutePreview } from "./app/tripFormController.js";
 import { handleTripManagementAction, handleTripManagementChange, handleTripManagementSubmit } from "./app/tripManagementController.js";
 import { PhotoEditorController } from "./components/ProfilePhotoEditorModal.js";
 import { getPreferredMapsUrl } from "./services/routeService.js";
@@ -954,31 +952,11 @@ document.addEventListener("click", async (e) => {
       showToast(`✓ Added "${destinationTitle}" to your trip itinerary.`);
     }
     else if (action === "locate-user" || action === "toggle-map-view" || action === "toggle-full-map") {
-      flashPageLoader("Opening live");
+      flashPageLoader("Opening map");
       state.setView("live");
     }
     else if (action === "edit-trip-title") {
-      const trip = state.activeTrip;
-      const destination = prompt("Trip destination / location:", trip.destination || "Paris, France");
-      if (destination === null) return;
-      const startDate = prompt("Start date (YYYY-MM-DD):", trip.startDate || new Date().toISOString().split("T")[0]);
-      if (startDate === null) return;
-      const daysCountInput = prompt("Trip length in days:", String(trip.daysCount || 7));
-      if (daysCountInput === null) return;
-      const destinationAirportInput = prompt("Destination city / airport for sharper flight and arrival context:", trip.flightRoute?.destinationLabel || trip.flightRoute?.destinationIata || destination);
-      if (destinationAirportInput === null) return;
-
-      const daysCount = Math.max(1, Number(daysCountInput) || trip.daysCount || 7);
-      const destinationAirport = resolveAirportInput(destinationAirportInput) || resolveAirportInput(destination);
-      await withPageLoader("Updating trip", () => state.updateTripDetails(state.activeTripId, {
-        destination: destination.trim(),
-        startDate: startDate.trim(),
-        daysCount,
-        dates: formatTripDateRangeFromParts(startDate.trim(), daysCount),
-        center: resolveTripCenter(destination.trim()),
-        destinationAirport,
-      }));
-      showToast("Trip details updated. Refreshing local ideas and events.");
+      if (state.activeTripId) state.openTripEdit(state.activeTripId);
     }
     else if (action === "start-guest-draft") {
       state.setView("home");
@@ -1000,6 +978,10 @@ document.addEventListener("click", async (e) => {
     }
     else if (action === "close-trip-create") {
       state.closeTripCreate();
+    }
+    else if (action === "close-trip-edit") {
+      if (target.classList.contains("trip-create-overlay") && e.target !== target) return;
+      state.closeTripEdit();
     }
     else if (action === "open-saved-spot-modal") {
       state.openSavedSpotModal(target.dataset.mode || "manual");
@@ -1222,7 +1204,8 @@ document.addEventListener("click", async (e) => {
   }
 
   if (target.dataset.tripLength !== undefined) {
-    const daysInput = document.getElementById("trip-create-days-count");
+    const form = target.closest("form");
+    const daysInput = form?.querySelector('[name="daysCount"]');
     if (daysInput) daysInput.value = target.dataset.tripLength;
     target.parentElement?.querySelectorAll(".trip-create-pill").forEach((pill) => pill.classList.remove("is-selected"));
     target.classList.add("is-selected");
@@ -1532,6 +1515,12 @@ document.addEventListener("submit", async (e) => {
     });
     state.closeSavedSpotModal();
     showToast(`Saved "${title}" to your shortlist`, "success");
+    return;
+  }
+
+  if (e.target.id === "trip-edit-form") {
+    e.preventDefault();
+    await handleTripEditSubmit(e.target, { showToast, withPageLoader });
     return;
   }
 

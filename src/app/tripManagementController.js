@@ -49,6 +49,12 @@ export async function handleTripManagementAction(action, target, event, {
     return true;
   }
 
+  if (action === "edit-trip") {
+    const tripId = target.dataset.tripId;
+    if (tripId) state.openTripEdit(tripId);
+    return true;
+  }
+
   if (action === "select-managed-trip") {
     const tripId = target.dataset.tripId;
     if (tripId) {

@@ -154,6 +154,8 @@ export class AppState {
     this.authMode = "login"; // "login" | "signup" | "forgot"
     this.premiumOpen = false;
     this.tripCreateOpen = false;
+    this.tripEditOpen = false;
+    this.tripEditTripId = null;
     this.tripManagerOpen = false;
     this.savedSpotModalOpen = false;
     this.savedSpotModalMode = "manual";
