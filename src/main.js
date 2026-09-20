@@ -953,7 +953,7 @@ document.addEventListener("click", async (e) => {
     }
     else if (action === "locate-user" || action === "toggle-map-view" || action === "toggle-full-map") {
       flashPageLoader("Opening map");
-      state.setView("live");
+      state.setView("map");
     }
     else if (action === "edit-trip-title") {
       if (state.activeTripId) state.openTripEdit(state.activeTripId);

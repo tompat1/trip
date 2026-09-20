@@ -12681,6 +12681,40 @@ body.has-fullscreen-map-open {
   box-shadow: var(--shadow-md) !important;
 }
 
+/* Full-screen map page (dock nav) */
+.map-page {
+  height: calc(100dvh - var(--bottom-dock-clearance));
+  min-height: calc(100vh - var(--bottom-dock-clearance));
+  margin-bottom: calc(var(--bottom-dock-clearance) - var(--page-fab-clearance));
+  padding: 0;
+}
+
+.app-view--map {
+  min-height: calc(100dvh - var(--bottom-dock-clearance));
+}
+
+.poi-map-backdrop-shell--page {
+  width: 100%;
+  height: 100%;
+  min-height: 100%;
+  margin: 0;
+  border-radius: 0;
+  border: none;
+  box-shadow: none;
+}
+
+.poi-map-backdrop-shell--page .poi-map-top-bar {
+  top: calc(10px + env(safe-area-inset-top, 0px));
+}
+
+.poi-map-backdrop-shell--page .map-floating-controls {
+  top: calc(58px + env(safe-area-inset-top, 0px));
+}
+
+.poi-map-backdrop-shell--page .poi-map-floating-card {
+  bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+}
+
 /* POI overview map shell */
 .poi-map-backdrop-shell {
   position: relative;

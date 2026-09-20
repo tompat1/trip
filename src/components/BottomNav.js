@@ -16,7 +16,7 @@ export function renderBottomNav() {
           <span class="dock-label">Home</span>
         </button>
 
-        <button class="dock-nav-item ${view === 'live' ? 'is-active' : ''}" data-nav="map" title="Map">
+        <button class="dock-nav-item ${view === 'map' ? 'is-active' : ''}" data-nav="map" title="Map">
           ${renderIcon("map", "dock-icon")}
           <span class="dock-label">Map</span>
         </button>

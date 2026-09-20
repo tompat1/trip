@@ -121,7 +121,7 @@ export function initMapsForView(view) {
     initPlanMap(trip);
   }
 
-  if (document.getElementById("poi-map-container")) {
+  if (view === "map" || document.getElementById("poi-map-container")) {
     initPoiOverviewMap(trip);
   }
 }
@@ -868,6 +868,9 @@ function initPoiOverviewMap(trip) {
   attachMapActionOverlay(mapShell, map, trip);
   syncPoiMapFullscreenButtons(mapShell.classList.contains("is-fullscreen-map"));
   activeMaps.set("poi-overview", map);
+  requestAnimationFrame(() => {
+    try { map.invalidateSize(); } catch {}
+  });
 }
 
 export function dismissPoiMapFloatingCard() {

@@ -28,7 +28,7 @@ export class AppState {
     Object.assign(tripsData, guestDrafts);
 
     // ── View & navigation ────────────────────────────────────────────────────
-    this.activeView = "landing"; // "landing" | "home" | "live" | "plan" | "search"
+    this.activeView = "landing"; // "landing" | "home" | "live" | "map" | "plan" | "search"
     this.activeTripId = Object.keys(tripsData)[0] || null;
     this.tripMode = false;
 

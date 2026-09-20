@@ -16,7 +16,7 @@ export function handleDockNavigation(target, { requireAppSession, flashPageLoade
 
   if (nav === "map") {
     flashPageLoader?.("Opening map");
-    state.setView("live");
+    state.setView("map");
     return true;
   }
 

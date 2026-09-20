@@ -4,6 +4,7 @@ import { renderPlanView, renderTemplateMomentPicker } from "../views/PlanView.js
 import { renderSearchView } from "../views/SearchView.js";
 import { renderLandingView } from "../views/LandingView.js";
 import { renderLiveView, renderProfileView } from "../views/LiveView.js";
+import { renderMapView } from "../views/MapView.js";
 import { renderBottomNav } from "../components/BottomNav.js";
 import { renderLightbox } from "../components/Lightbox.js";
 import { renderEventDrawer } from "../components/EventDrawer.js";
@@ -79,6 +80,7 @@ export function renderActiveView(view = state.activeView) {
   if (view === "plan") return renderPlanView();
   if (view === "search") return renderSearchView();
   if (view === "live") return renderLiveView();
+  if (view === "map") return renderMapView();
   if (view === "profile") return renderProfileView();
   return renderHomeView();
 }
