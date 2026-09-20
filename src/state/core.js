@@ -12,6 +12,7 @@ import {
   isFutureTrip,
   removeStoredCalendarEvents,
   readStoredCalendarEvents,
+  readStoredSavedSpots,
   readStoredGuestDraftTrips,
   readStoredTheme,
   readStoredTourismDiscovery,
@@ -107,6 +108,12 @@ export class AppState {
           removeStoredCalendarEvents(tripId);
         }
       }
+      const storedSavedSpots = readStoredSavedSpots(tripId);
+      if (storedSavedSpots) {
+        tripsData[tripId].savedSpots = filterTripScopedItems(storedSavedSpots, tripsData[tripId]);
+      } else {
+        tripsData[tripId].savedSpots = tripsData[tripId].savedSpots || [];
+      }
       const storedDiscovery = readStoredTourismDiscovery(tripId, tripsData[tripId]);
       if (storedDiscovery) {
         tripsData[tripId].tourismPois = storedDiscovery.tourismPois;
@@ -148,6 +155,9 @@ export class AppState {
     this.premiumOpen = false;
     this.tripCreateOpen = false;
     this.tripManagerOpen = false;
+    this.savedSpotModalOpen = false;
+    this.savedSpotModalMode = "manual";
+    this.savedSpotDraft = {};
     this.activePoiDetail = null;
     this.termsOpen = false;
     this.privacyOpen = false;

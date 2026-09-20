@@ -7,6 +7,7 @@ import { findPrimaryAirportForDestination, formatAirportLabel, getAirportByIata 
 import { normalizeFlightType } from "../services/flightService.js";
 import {
   CALENDAR_EVENTS_STORAGE_PREFIX,
+  SAVED_SPOTS_STORAGE_PREFIX,
   DEFAULT_TRAVELER_PERSONAS,
   DEFAULT_USER_PROFILE,
   LEGACY_PERSONA_ALIASES,
@@ -226,6 +227,34 @@ export function removeStoredCalendarEvents(tripId) {
   if (typeof localStorage === "undefined") return;
   try {
     localStorage.removeItem(`${CALENDAR_EVENTS_STORAGE_PREFIX}${tripId}`);
+  } catch {}
+}
+
+// ─── Saved spots storage ──────────────────────────────────────────────────────
+
+export function readStoredSavedSpots(tripId) {
+  if (typeof localStorage === "undefined") return null;
+  try {
+    const stored = localStorage.getItem(`${SAVED_SPOTS_STORAGE_PREFIX}${tripId}`);
+    if (!stored) return null;
+    const spots = JSON.parse(stored);
+    return Array.isArray(spots) ? spots : null;
+  } catch {
+    return null;
+  }
+}
+
+export function writeStoredSavedSpots(tripId, spots) {
+  if (typeof localStorage === "undefined") return;
+  try {
+    localStorage.setItem(`${SAVED_SPOTS_STORAGE_PREFIX}${tripId}`, JSON.stringify(spots || []));
+  } catch {}
+}
+
+export function removeStoredSavedSpots(tripId) {
+  if (typeof localStorage === "undefined") return;
+  try {
+    localStorage.removeItem(`${SAVED_SPOTS_STORAGE_PREFIX}${tripId}`);
   } catch {}
 }
 

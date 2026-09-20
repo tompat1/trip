@@ -192,6 +192,32 @@ export const uiStateMixin = {
     this.notify();
   },
 
+  // ── Saved spot modal ──────────────────────────────────────────────────────
+
+  openSavedSpotModal(mode = "manual", draft = {}) {
+    this.savedSpotModalOpen = true;
+    this.savedSpotModalMode = mode === "map" ? "map" : "manual";
+    this.savedSpotDraft = { ...draft };
+    this.notify();
+  },
+
+  closeSavedSpotModal() {
+    this.savedSpotModalOpen = false;
+    this.savedSpotModalMode = "manual";
+    this.savedSpotDraft = {};
+    this.notify();
+  },
+
+  setSavedSpotDraft(updates = {}) {
+    this.savedSpotDraft = { ...(this.savedSpotDraft || {}), ...updates };
+    this.notify();
+  },
+
+  setSavedSpotModalMode(mode = "manual") {
+    this.savedSpotModalMode = mode === "map" ? "map" : "manual";
+    this.notify();
+  },
+
   // ── Profile section ───────────────────────────────────────────────────────
 
   setProfileSection(section = "profile") {

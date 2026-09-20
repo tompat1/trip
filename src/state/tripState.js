@@ -24,6 +24,7 @@ import {
   readStoredTripCompanions,
   writeStoredGuestDraftTrips,
   writeStoredCalendarEvents,
+  writeStoredSavedSpots,
 } from "./helpers.js";
 
 export const tripStateMixin = {
@@ -331,6 +332,7 @@ export const tripStateMixin = {
             ],
       mapPins: [],
       calendarEvents: [],
+      savedSpots: [],
       ideas: [],
       events: [],
       tourismPois: [],
@@ -661,6 +663,81 @@ export const tripStateMixin = {
     }
   },
 
+  addSavedSpot(input = {}, tripId = this.activeTripId) {
+    const trip = tripsData[tripId];
+    if (!trip) return null;
+
+    const title = String(input.title || "").trim();
+    if (!title) return null;
+
+    const lat = Number(input.lat);
+    const lng = Number(input.lng);
+    const hasCoords = Number.isFinite(lat) && Number.isFinite(lng);
+    const spot = {
+      id: input.id || `saved-spot-${Date.now()}`,
+      title,
+      category: String(input.category || "Sight").trim() || "Sight",
+      subtitle: String(input.subtitle || input.address || input.notes || "Added by you").trim(),
+      notes: String(input.notes || "").trim(),
+      address: String(input.address || input.subtitle || "").trim(),
+      source: input.source === "map" ? "map" : "manual",
+      lat: hasCoords ? lat : null,
+      lng: hasCoords ? lng : null,
+      createdAt: new Date().toISOString(),
+    };
+
+    if (!Array.isArray(trip.savedSpots)) trip.savedSpots = [];
+    trip.savedSpots.unshift(spot);
+    writeStoredSavedSpots(tripId, trip.savedSpots);
+
+    if (!this.savedPlaceIds.has(spot.id)) {
+      this.savedPlaceIds.add(spot.id);
+      try {
+        localStorage.setItem("trip_saved_places", JSON.stringify([...this.savedPlaceIds]));
+      } catch {}
+    }
+
+    if (hasCoords) {
+      if (!Array.isArray(trip.mapPins)) trip.mapPins = [];
+      const pinExists = trip.mapPins.some((pin) => String(pin.id) === String(spot.id));
+      if (!pinExists) {
+        trip.mapPins.push({
+          id: spot.id,
+          name: spot.title,
+          title: spot.title,
+          lat,
+          lng,
+          category: "user",
+          isUser: true,
+        });
+      }
+    }
+
+    this.notify();
+    return spot;
+  },
+
+  removeSavedSpot(spotId, tripId = this.activeTripId) {
+    const trip = tripsData[tripId];
+    if (!trip || !spotId) return;
+
+    trip.savedSpots = (trip.savedSpots || []).filter((spot) => String(spot.id) !== String(spotId));
+    writeStoredSavedSpots(tripId, trip.savedSpots);
+
+    if (this.savedPlaceIds.has(spotId)) {
+      this.savedPlaceIds.delete(spotId);
+      try {
+        localStorage.setItem("trip_saved_places", JSON.stringify([...this.savedPlaceIds]));
+      } catch {}
+    }
+
+    if (Array.isArray(trip.mapPins)) {
+      trip.mapPins = trip.mapPins.filter((pin) => String(pin.id) !== String(spotId));
+    }
+
+    this.notify();
+  },
+
   // ── Checklists ─────────────────────────────────────────────────────────────
 
   toggleCheckitem(itemId) {
@@ -849,7 +926,9 @@ function clearTripDiscoveryForScope(appState, tripId, trip) {
   trip.events = [];
   trip.calendarEvents = [];
   trip.ideas = filterTripScopedItems(trip.ideas || [], trip);
-  trip.mapPins = [];
+  trip.savedSpots = filterTripScopedItems(trip.savedSpots || [], trip);
+  writeStoredSavedSpots(tripId, trip.savedSpots);
+  trip.mapPins = (trip.mapPins || []).filter((pin) => pin.isUser || filterTripScopedItems([pin], trip).length > 0);
   trip.nearbyNow = [];
   trip.liveInfo = [];
   trip.transportOptions = [];

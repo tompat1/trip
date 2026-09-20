@@ -256,7 +256,7 @@ function attachMapActionOverlay(container, map, trip, options = {}) {
     fullscreenBtn.addEventListener("click", (e) => {
       e.stopPropagation();
       e.preventDefault();
-      const parentShell = container.closest(".home-map-card, .search-map-card, .plan-map-shell, .poi-map-hero-card") || container;
+      const parentShell = container.closest(".home-map-card, .search-map-card, .plan-map-shell, .poi-map-hero-card, .poi-map-backdrop-shell") || container;
       const isFs = parentShell.classList.toggle("is-fullscreen-map");
       fullscreenBtn.innerHTML = renderIcon(isFs ? "arrowsIn" : "arrowsOut");
       fullscreenBtn.title = isFs ? "Exit Fullscreen" : "Toggle Fullscreen Map";
@@ -266,6 +266,10 @@ function attachMapActionOverlay(container, map, trip, options = {}) {
         document.body.classList.add("has-fullscreen-map-open");
       } else {
         document.body.classList.remove("has-fullscreen-map-open");
+      }
+
+      if (parentShell.classList.contains("poi-map-backdrop-shell") || parentShell.classList.contains("poi-map-hero-card")) {
+        syncPoiMapFullscreenButtons(isFs);
       }
 
       setTimeout(() => {
@@ -558,6 +562,10 @@ export function selectPoiOnOverviewMap(spotIdx, spotName = "") {
   if (!poi) return;
   currentPoiOverviewSelectionIndex = idx;
 
+  document.querySelectorAll(".poi-map-floating-card.is-dismissed").forEach((card) => {
+    card.classList.remove("is-dismissed");
+  });
+
   const cardTitle = document.getElementById("poi-floating-title");
   if (cardTitle) cardTitle.textContent = poi.title;
   const cardDetail = document.getElementById("poi-floating-detail");
@@ -677,7 +685,7 @@ function initPoiOverviewMap(trip) {
   }
 
   const center = trip.center || resolveTripCenter(trip.destination);
-  const map = L.map(container, { zoomControl: true, attributionControl: true }).setView(center, 14);
+  const map = L.map(container, { zoomControl: false, attributionControl: true }).setView(center, 14);
 
   L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
     maxZoom: 19,
@@ -856,8 +864,47 @@ function initPoiOverviewMap(trip) {
     map.fitBounds(bounds.pad(0.25));
   }
 
-  attachMapActionOverlay(container, map, trip);
+  const mapShell = container.closest(".poi-map-backdrop-shell, .poi-map-hero-card") || container;
+  attachMapActionOverlay(mapShell, map, trip);
+  syncPoiMapFullscreenButtons(mapShell.classList.contains("is-fullscreen-map"));
   activeMaps.set("poi-overview", map);
+}
+
+export function dismissPoiMapFloatingCard() {
+  document.querySelectorAll(".poi-map-floating-card").forEach((card) => {
+    card.classList.add("is-dismissed");
+  });
+}
+
+function syncPoiMapFullscreenButtons(isFullscreen = false) {
+  document.querySelectorAll("[data-action='toggle-poi-map-fullscreen']").forEach((button) => {
+    button.innerHTML = renderIcon(isFullscreen ? "arrowsIn" : "arrowsOut");
+    button.title = isFullscreen ? "Exit full screen" : "Full screen map";
+    button.setAttribute("aria-label", button.title);
+    button.classList.toggle("is-active", isFullscreen);
+  });
+  document.querySelectorAll(".poi-map-backdrop-shell .map-fullscreen-btn").forEach((button) => {
+    button.innerHTML = renderIcon(isFullscreen ? "arrowsIn" : "arrowsOut");
+    button.title = isFullscreen ? "Exit Fullscreen" : "Toggle Fullscreen Map";
+    button.classList.toggle("is-active", isFullscreen);
+  });
+}
+
+export function togglePoiMapFullscreen(triggerEl) {
+  const shell = triggerEl?.closest?.(".poi-map-backdrop-shell, .poi-map-hero-card")
+    || document.querySelector(".poi-map-backdrop-shell, .poi-map-hero-card");
+  if (!shell) return false;
+
+  const isFs = shell.classList.toggle("is-fullscreen-map");
+  document.body.classList.toggle("has-fullscreen-map-open", isFs);
+  syncPoiMapFullscreenButtons(isFs);
+
+  const map = activeMaps.get("poi-overview");
+  setTimeout(() => {
+    map?.invalidateSize();
+  }, 150);
+
+  return isFs;
 }
 
 function setPoiDirectionsButtonData(button, poi = {}) {
@@ -884,6 +931,74 @@ function normalizeMapCoordinates(value) {
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
   if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return null;
   return [lat, lng];
+}
+
+let savedSpotPickerMarker = null;
+
+export function initSavedSpotPickerMap(trip, draft = {}, onPick) {
+  if (typeof window === "undefined" || !L) return;
+  const container = document.getElementById("saved-spot-map-container");
+  if (!container) return;
+
+  if (activeMaps.has("saved-spot-picker")) {
+    try { activeMaps.get("saved-spot-picker").remove(); } catch {}
+    activeMaps.delete("saved-spot-picker");
+  }
+  savedSpotPickerMarker = null;
+
+  const center = normalizeMapCoordinates([draft.lat, draft.lng]) || trip?.center || resolveTripCenter(trip?.destination);
+  const map = L.map(container, { zoomControl: true, attributionControl: true }).setView(center, trip?.zoom || 13);
+  L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
+    maxZoom: 19,
+    subdomains: "abcd",
+    attribution: '&copy; OpenStreetMap &copy; CARTO',
+  }).addTo(map);
+
+  const placeMarker = (coords) => {
+    if (!coords) return;
+    if (savedSpotPickerMarker) {
+      savedSpotPickerMarker.setLatLng(coords);
+    } else {
+      savedSpotPickerMarker = L.marker(coords, { draggable: true }).addTo(map);
+      savedSpotPickerMarker.on("dragend", () => {
+        const pos = savedSpotPickerMarker.getLatLng();
+        onPick?.({ lat: pos.lat, lng: pos.lng });
+      });
+    }
+  };
+
+  if (normalizeMapCoordinates([draft.lat, draft.lng])) {
+    placeMarker(normalizeMapCoordinates([draft.lat, draft.lng]));
+  }
+
+  map.on("click", (event) => {
+    const coords = [event.latlng.lat, event.latlng.lng];
+    placeMarker(coords);
+    onPick?.({ lat: coords[0], lng: coords[1] });
+  });
+
+  activeMaps.set("saved-spot-picker", map);
+  setTimeout(() => map.invalidateSize(), 120);
+}
+
+export async function reverseGeocodeCoordinates(lat, lng) {
+  const latitude = Number(lat);
+  const longitude = Number(lng);
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return "";
+  try {
+    const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${encodeURIComponent(latitude)}&lon=${encodeURIComponent(longitude)}&zoom=18&addressdetails=1`;
+    const res = await fetch(url, { headers: { Accept: "application/json" } });
+    if (!res.ok) return "";
+    const data = await res.json();
+    const address = data.address || {};
+    return [
+      address.road,
+      address.neighbourhood || address.suburb,
+      address.city || address.town || address.village,
+    ].filter(Boolean).join(", ") || data.display_name || "";
+  } catch {
+    return "";
+  }
 }
 
 function getMapFallbackImage(destination = "") {

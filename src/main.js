@@ -9,7 +9,7 @@ import { shouldOpenConciergeDrawerForElement, submitConciergeForm, submitConcier
 import { buildJournalTemplateStory, getRecommendedTemplateMomentIds } from "./app/journalController.js";
 import { initLandingLogoAnimation } from "./app/landingLogoAnimationController.js";
 import { bootApp, flashPageLoader, isAppBooted, renderTripLoadingPage, withPageLoader } from "./app/loadingController.js";
-import { getSelectedPoiRouteTarget, initMapsForView, previewPoiOverviewRoute, resolveTripCenter, selectPoiOnOverviewMap } from "./app/mapController.js";
+import { dismissPoiMapFloatingCard, getSelectedPoiRouteTarget, initMapsForView, initSavedSpotPickerMap, previewPoiOverviewRoute, resolveTripCenter, reverseGeocodeCoordinates, selectPoiOnOverviewMap, togglePoiMapFullscreen } from "./app/mapController.js";
 import { handleQuickCaptureFiles } from "./app/mediaCaptureController.js";
 import { handleDockNavigation, handleRouteAction } from "./app/navigationController.js";
 import { renderAppShell } from "./app/renderController.js";
@@ -90,6 +90,30 @@ function render() {
   requestAnimationFrame(() => {
     initMapsForView(view);
     initLandingLogoAnimation();
+    if (state.savedSpotModalOpen && state.savedSpotModalMode === "map") {
+      initSavedSpotPickerMap(state.activeTrip, state.savedSpotDraft || {}, async ({ lat, lng }) => {
+        const updates = { lat, lng };
+        const titleInput = document.querySelector('#saved-spot-form input[name="title"]');
+        const addressInput = document.querySelector('#saved-spot-form input[name="address"]');
+        const latInput = document.querySelector('#saved-spot-form input[name="lat"]');
+        const lngInput = document.querySelector('#saved-spot-form input[name="lng"]');
+        const hint = document.querySelector(".saved-spot-map-hint");
+        if (latInput) latInput.value = String(lat);
+        if (lngInput) lngInput.value = String(lng);
+        if (hint) hint.textContent = `Pinned at ${Number(lat).toFixed(4)}, ${Number(lng).toFixed(4)}`;
+        state.setSavedSpotDraft(updates);
+        if (addressInput && !addressInput.value.trim()) {
+          const address = await reverseGeocodeCoordinates(lat, lng);
+          if (address) {
+            addressInput.value = address;
+            state.setSavedSpotDraft({ ...updates, address, subtitle: address });
+          }
+        }
+        if (titleInput && !titleInput.value.trim()) {
+          titleInput.focus();
+        }
+      });
+    }
   });
 }
 
@@ -833,6 +857,12 @@ document.addEventListener("click", async (e) => {
         showToast(`✓ Added "${spotName}" to Day 1 of your trip itinerary!`);
       }
     }
+    else if (action === "close-poi-map-card") {
+      dismissPoiMapFloatingCard();
+    }
+    else if (action === "toggle-poi-map-fullscreen") {
+      togglePoiMapFullscreen(target);
+    }
     else if (action === "select-top-poi") {
       if (e.target.closest("button[data-action='add-poi-event'], button[data-action='toggle-bookmark']")) return;
       const rec = getConciergeRecommendationById(target.dataset.recId);
@@ -956,6 +986,19 @@ document.addEventListener("click", async (e) => {
     }
     else if (action === "close-trip-create") {
       state.closeTripCreate();
+    }
+    else if (action === "open-saved-spot-modal") {
+      state.openSavedSpotModal(target.dataset.mode || "manual");
+    }
+    else if (action === "close-saved-spot-modal") {
+      state.closeSavedSpotModal();
+    }
+    else if (action === "set-saved-spot-mode") {
+      state.setSavedSpotModalMode(target.dataset.mode || "manual");
+    }
+    else if (action === "remove-saved-spot") {
+      const spotId = target.dataset.spotId;
+      if (spotId) state.removeSavedSpot(spotId);
     }
     else if (action === "open-edit-drawer") {
       const eventId = target.dataset.eventId;
@@ -1238,6 +1281,10 @@ document.addEventListener("click", (e) => {
     state.closeHelp();
   }
 
+  if (e.target.dataset.savedSpotOverlay !== undefined) {
+    state.closeSavedSpotModal();
+    return;
+  }
   if (e.target.classList?.contains("trip-create-overlay")) {
     state.closeTripCreate();
   }
@@ -1444,6 +1491,33 @@ document.addEventListener("submit", async (e) => {
   if (e.target.id === "transit-flight-route-form") {
     e.preventDefault();
     await handleTransitFlightRouteSubmit(e.target, { showToast, withPageLoader });
+    return;
+  }
+
+  if (e.target.id === "saved-spot-form") {
+    e.preventDefault();
+    const form = e.target;
+    const title = form.title.value.trim();
+    if (!title) {
+      showToast("Give this spot a name", "error");
+      return;
+    }
+    const latRaw = form.lat?.value?.trim();
+    const lngRaw = form.lng?.value?.trim();
+    const lat = latRaw ? Number(latRaw) : null;
+    const lng = lngRaw ? Number(lngRaw) : null;
+    state.addSavedSpot({
+      title,
+      category: form.category?.value?.trim() || "Place",
+      address: form.address?.value?.trim() || "",
+      notes: form.notes?.value?.trim() || "",
+      subtitle: form.address?.value?.trim() || "",
+      source: state.savedSpotModalMode === "map" ? "map" : "manual",
+      lat: Number.isFinite(lat) ? lat : null,
+      lng: Number.isFinite(lng) ? lng : null,
+    });
+    state.closeSavedSpotModal();
+    showToast(`Saved "${title}" to your shortlist`, "success");
     return;
   }
 

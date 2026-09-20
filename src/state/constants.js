@@ -1,5 +1,6 @@
 // ─── Storage keys ────────────────────────────────────────────────────────────
 export const CALENDAR_EVENTS_STORAGE_PREFIX = "trip_calendar_events_";
+export const SAVED_SPOTS_STORAGE_PREFIX = "trip_saved_spots_";
 export const TOURISM_DISCOVERY_STORAGE_PREFIX = "trip_tourism_discovery_";
 export const TRIP_COMPANIONS_STORAGE_PREFIX = "trip_companions_";
 export const USER_PROFILE_STORAGE_KEY = "trip_user_profile_v1";

@@ -898,43 +898,76 @@ function renderPoiMapCanvas(trip, topPOIs) {
     : "";
   const isLouvreAdded = isPoiAddedToCalendar(events, activeSpot.title);
 
-  return `
-    <!-- Map Canvas Backdrop Container (Live Leaflet Integrated) -->
-    <div class="poi-map-backdrop-shell" style="height: 320px; width: 100%; border-radius: var(--radius-lg); overflow: hidden; position: relative; background: #0f1b2b; border: 1px solid rgba(255,255,255,0.15); box-shadow: var(--shadow-md); margin-bottom: 16px;">
-      
-      <!-- Real Leaflet Map Render Canvas Container -->
-      <div id="poi-map-container" style="width: 100%; height: 100%; position: absolute; inset: 0; z-index: 1;"></div>
+  const spotDetail = activeSpot.geoLabel || `${(0.8).toFixed(1)} km away`;
 
-      <!-- Map Header Bar Overlay -->
-      <div style="position: absolute; top: 12px; left: 14px; right: 14px; display: flex; justify-content: space-between; align-items: center; z-index: 5; pointer-events: auto;">
-        <div style="display: flex; align-items: center; gap: 8px; background: rgba(15, 23, 33, 0.85); padding: 5px 12px; border-radius: var(--radius-pill); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.18);">
-          <span style="font-size: 0.9rem;">${trip.flag || '🇫🇷'}</span>
-          <span class="voice-serif" style="font-size: 0.85rem; font-weight: 700; color: #fff;">${escapeHtml(destination)}</span>
-          <span class="voice-mono" style="font-size: 0.7rem; color: rgba(255,255,255,0.65);">${escapeHtml(trip.dates || '3–9 Oct 2026')}</span>
+  return `
+    <div class="poi-map-backdrop-shell poi-map-hero-card" aria-label="Trip attractions map">
+      <div id="poi-map-container" class="poi-map-canvas" aria-hidden="true"></div>
+
+      <div class="poi-map-top-bar">
+        <div class="poi-map-trip-pill">
+          <span class="poi-map-trip-flag">${trip.flag || "🇫🇷"}</span>
+          <span class="poi-map-trip-destination voice-serif">${escapeHtml(destination)}</span>
+          <span class="poi-map-trip-dates voice-mono">${escapeHtml(trip.dates || "3–9 Oct 2026")}</span>
         </div>
+        <button
+          class="poi-map-inline-btn"
+          type="button"
+          data-action="toggle-poi-map-fullscreen"
+          title="Full screen map"
+          aria-label="Toggle full screen map"
+        >
+          ${renderIcon("arrowsOut")}
+        </button>
       </div>
 
-      <!-- Selected POI Detail Floating Sheet Overlay (Exact Mockup Alignment) -->
-      <div class="poi-map-floating-card" style="position: absolute; bottom: 12px; left: 14px; right: 14px; background: rgba(20, 28, 38, 0.9); backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,0.18); border-radius: var(--radius-md); padding: 10px 12px; display: flex; align-items: center; justify-content: space-between; gap: 12px; z-index: 5; box-shadow: 0 8px 24px rgba(0,0,0,0.45); pointer-events: auto;">
-        <div style="display: flex; align-items: center; gap: 10px; min-width: 0;">
-          <img id="poi-floating-img" src="${escapeHtml(activeSpot.image)}" alt="${escapeHtml(activeSpot.title)}" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1499856871958-5b9627545d1a?auto=format&fit=crop&w=400&q=80';" style="width: 48px; height: 48px; border-radius: var(--radius-sm); object-fit: cover; flex-shrink: 0; border: 1px solid rgba(255,255,255,0.2);" />
-          <div style="min-width: 0;">
-            <div style="display: flex; align-items: center; gap: 6px;">
-              <h5 id="poi-floating-title" style="font-size: 0.88rem; font-weight: 700; color: #ffffff; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(activeSpot.title)}</h5>
-              <span id="poi-floating-tag" class="voice-mono" style="font-size: 0.62rem; font-weight: 700; background: rgba(217,74,58,0.25); color: var(--orange); border: 1px solid rgba(217,74,58,0.4); padding: 1px 6px; border-radius: var(--radius-pill); flex-shrink: 0;">Architect</span>
+      <div class="poi-map-floating-card" id="poi-map-floating-card">
+        <button
+          class="poi-map-card-close"
+          type="button"
+          data-action="close-poi-map-card"
+          aria-label="Close place details"
+        >
+          ${renderIcon("x")}
+        </button>
+
+        <div class="poi-map-card-body">
+          <img
+            id="poi-floating-img"
+            class="poi-map-card-thumb"
+            src="${escapeHtml(activeSpot.image)}"
+            alt="${escapeHtml(activeSpot.title)}"
+            onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1499856871958-5b9627545d1a?auto=format&fit=crop&w=400&q=80';"
+          />
+          <div class="poi-map-card-copy">
+            <div class="poi-map-card-title-row">
+              <h5 id="poi-floating-title" class="poi-map-card-title">${escapeHtml(activeSpot.title)}</h5>
+              <span id="poi-floating-tag" class="poi-map-card-tag voice-mono">${escapeHtml(activeSpot.category || "Landmark")}</span>
             </div>
-            <div id="poi-floating-detail" style="font-size: 0.72rem; color: rgba(255,255,255,0.75); margin-top: 2px;">
-              ★ ${activeSpot.rating || 4.9} · 1.2 km away · Open until 18:00
-            </div>
+            <p id="poi-floating-detail" class="poi-map-card-meta">
+              ★ ${activeSpot.rating || 4.9} · ${escapeHtml(spotDetail)} · Open until 18:00
+            </p>
           </div>
         </div>
 
-        <div style="display: flex; align-items: center; gap: 6px; flex-shrink: 0;">
-          <button class="btn btn--primary btn--xs" data-action="open-directions" data-spot-name="${escapeHtml(activeSpot.title)}" ${activeSpotDirectionData} style="background: var(--orange); border: none; border-radius: var(--radius-pill); font-weight: 700; font-size: 0.72rem; padding: 5px 10px;">
+        <div class="poi-map-card-actions">
+          <button
+            class="btn btn--primary btn--xs poi-map-card-directions-btn"
+            type="button"
+            data-action="open-directions"
+            data-spot-name="${escapeHtml(activeSpot.title)}"
+            ${activeSpotDirectionData}
+          >
             ${renderIcon("navigation")} Directions
           </button>
-          <button id="poi-floating-plan-btn" class="btn btn--outline btn--xs" data-action="add-poi-event" data-spot-name="${escapeHtml(activeSpot.title)}" style="${isLouvreAdded ? 'background: rgba(101,112,91,0.25); color: #8fa082; border: 1px solid #8fa082;' : 'background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.25); color: #fff;'} border-radius: var(--radius-pill); font-size: 0.72rem; padding: 5px 10px;">
-            ${isLouvreAdded ? '✓ Added' : '+ Plan'}
+          <button
+            id="poi-floating-plan-btn"
+            class="btn btn--outline btn--xs poi-map-card-plan-btn ${isLouvreAdded ? "is-added" : ""}"
+            type="button"
+            data-action="add-poi-event"
+            data-spot-name="${escapeHtml(activeSpot.title)}"
+          >
+            ${isLouvreAdded ? "✓ Added" : "+ Plan"}
           </button>
         </div>
       </div>
@@ -1494,34 +1527,63 @@ function renderOverviewSubTab(trip) {
 
       <!-- Saved / Bookmarked Spots Panel (Reminders to Add to Plan) -->
       <div class="dashboard-card" style="padding: 20px;">
-        <div class="saved-spots-panel-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+        <div class="saved-spots-panel-header" style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 14px;">
           <div class="saved-spots-panel-copy">
             <h3 class="dashboard-card__title" style="margin: 0; font-size: 1.1rem;">Saved & Bookmarked Spots</h3>
-            <p style="font-size: 0.8rem; color: var(--ink-muted); margin: 2px 0 0 0;">Bookmarked places ready to add to your trip itinerary</p>
+            <p style="font-size: 0.8rem; color: var(--ink-muted); margin: 2px 0 0 0;">Build your shortlist before the trip — from Explore, manual entry, or a map pin</p>
           </div>
-          <span class="badge badge--info voice-mono saved-spots-count-badge" style="font-weight: 700;">${savedPlaces.length} Saved</span>
+          <div class="saved-spots-panel-actions">
+            <span class="badge badge--info voice-mono saved-spots-count-badge" style="font-weight: 700;">${savedPlaces.length} Saved</span>
+            <div class="saved-spots-action-bar">
+              <button class="btn btn--outline btn--xs" type="button" data-action="open-saved-spot-modal" data-mode="manual" title="Add a place manually">
+                ${renderIcon("pencil")} Add manually
+              </button>
+              <button class="btn btn--primary btn--xs" type="button" data-action="open-saved-spot-modal" data-mode="map" title="Pick a place on the map">
+                ${renderIcon("mapPin")} Pick on map
+              </button>
+            </div>
+          </div>
         </div>
 
         <div class="saved-spots-reminder-list" style="display: flex; flex-direction: column; gap: 12px;">
           ${savedPlaces.length === 0 ? `
-            <div style="background: var(--paper); border: 1px dashed var(--line); border-radius: var(--radius-md); padding: 20px; text-align: center; color: var(--ink-muted); font-size: 0.88rem;">
-              No bookmarked spots yet. Tap ${renderIcon("bookmark")} on any recommendation in Explore to shortlist places here!
+            <div class="saved-spots-empty-state">
+              <p class="saved-spots-empty-copy">No saved spots yet. Bookmark recommendations in Explore, or add your own picks before you go.</p>
+              <div class="saved-spots-empty-actions">
+                <button class="btn btn--outline btn--sm" type="button" data-action="open-saved-spot-modal" data-mode="manual">
+                  ${renderIcon("pencil")} Add manually
+                </button>
+                <button class="btn btn--primary btn--sm" type="button" data-action="open-saved-spot-modal" data-mode="map">
+                  ${renderIcon("mapPin")} Pick on map
+                </button>
+              </div>
             </div>
           ` : savedPlaces.map(spot => {
             const isAdded = events.some(e => e.title === spot.title);
+            const isCustom = spot.source === "manual" || spot.source === "map";
+            const sourceLabel = spot.source === "map" ? "Map pin" : spot.source === "manual" ? "Manual" : "Explore";
+            const locationLabel = spot.address || spot.subtitle || (isCustom ? "Added by you" : "Recommended");
             return `
-              <div style="display: flex; align-items: center; justify-content: space-between; background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius-md); padding: 12px 16px; box-shadow: var(--shadow-sm);">
-                <div>
-                  <h4 style="font-size: 0.96rem; font-weight: 700; color: var(--ink); margin: 0 0 4px 0;">${escapeHtml(spot.title)}</h4>
-                  <span class="voice-mono" style="font-size: 0.75rem; color: var(--ink-muted);">${escapeHtml(spot.category || 'Sight')} • ${escapeHtml(spot.subtitle || 'Recommended')}</span>
+              <div class="saved-spot-row">
+                <div class="saved-spot-row__copy">
+                  <div class="saved-spot-row__title-line">
+                    <h4 class="saved-spot-row__title">${escapeHtml(spot.title)}</h4>
+                    <span class="badge badge--subtle saved-spot-source-badge voice-mono">${sourceLabel}</span>
+                  </div>
+                  <span class="voice-mono saved-spot-row__meta">${escapeHtml(spot.category || "Sight")} • ${escapeHtml(locationLabel)}</span>
                 </div>
-                <div>
+                <div class="saved-spot-row__actions">
+                  ${isCustom ? `
+                    <button class="btn btn--icon btn--ghost btn--xs" type="button" data-action="remove-saved-spot" data-spot-id="${escapeHtml(spot.id)}" title="Remove from shortlist">
+                      ${renderIcon("trash")}
+                    </button>
+                  ` : ""}
                   ${isAdded ? `
                     <button class="btn btn--outline btn--xs" disabled style="opacity: 0.65; cursor: default; background: var(--paper-subtle); color: var(--ink-muted);">
                       ${renderIcon("check")} Added
                     </button>
                   ` : `
-                    <button class="btn btn--primary btn--xs" data-action="add-idea-to-itinerary" data-title="${escapeHtml(spot.title)}" data-location="${escapeHtml(spot.subtitle || spot.title)}">
+                    <button class="btn btn--primary btn--xs" data-action="add-idea-to-itinerary" data-title="${escapeHtml(spot.title)}" data-location="${escapeHtml(locationLabel)}">
                       ${renderIcon("plus")} Add to Plan
                     </button>
                   `}
@@ -1572,6 +1634,12 @@ function renderOverviewSubTab(trip) {
 function getSavedPlacesForTrip(trip) {
   const savedSet = state.savedPlaceIds || new Set();
   const places = [];
+
+  (trip.savedSpots || []).forEach((spot) => {
+    if (!places.some((p) => p.id === spot.id || p.title === spot.title)) {
+      places.push(spot);
+    }
+  });
 
   (trip.ideas || []).forEach(idea => {
     if (savedSet.has(idea.id)) {
