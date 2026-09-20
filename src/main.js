@@ -89,14 +89,10 @@ function render() {
           },
           showToast
         );
-        activePhotoEditorController.init(state.photoEditorImageSrc);
         if (preservedTransform) {
-          activePhotoEditorController.zoom = preservedTransform.zoom;
-          activePhotoEditorController.offsetX = preservedTransform.offsetX;
-          activePhotoEditorController.offsetY = preservedTransform.offsetY;
-          activePhotoEditorController.rotation = preservedTransform.rotation;
-          activePhotoEditorController.render();
+          activePhotoEditorController.applyTransform(preservedTransform);
         }
+        activePhotoEditorController.init(state.photoEditorImageSrc);
       }
     });
   } else {

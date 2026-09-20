@@ -297,13 +297,21 @@ export class PhotoEditorController {
     this.ctx = null;
   }
 
-  resetTransform() {
-    this.zoom = 1.0;
-    this.offsetX = 0;
-    this.offsetY = 0;
-    this.rotation = 0;
+  syncZoomControl() {
     const slider = document.getElementById("photo-zoom-slider");
-    if (slider) slider.value = 1.0;
+    if (slider) slider.value = String(this.zoom);
+  }
+
+  applyTransform({ zoom, offsetX, offsetY, rotation } = {}) {
+    if (zoom != null) this.zoom = zoom;
+    if (offsetX != null) this.offsetX = offsetX;
+    if (offsetY != null) this.offsetY = offsetY;
+    if (rotation != null) this.rotation = rotation;
+    this.syncZoomControl();
+  }
+
+  resetTransform() {
+    this.applyTransform({ zoom: 1.0, offsetX: 0, offsetY: 0, rotation: 0 });
   }
 
   setImage(src, { reset = true } = {}) {
@@ -331,7 +339,7 @@ export class PhotoEditorController {
 
     const slider = document.getElementById("photo-zoom-slider");
     if (slider) {
-      slider.value = String(this.zoom);
+      this.syncZoomControl();
       slider.addEventListener("input", (e) => {
         this.zoom = parseFloat(e.target.value);
         this.render();
@@ -340,13 +348,13 @@ export class PhotoEditorController {
 
     document.getElementById("btn-zoom-in")?.addEventListener("click", () => {
       this.zoom = Math.min(3.0, this.zoom + 0.15);
-      if (slider) slider.value = this.zoom;
+      this.syncZoomControl();
       this.render();
     }, { signal });
 
     document.getElementById("btn-zoom-out")?.addEventListener("click", () => {
       this.zoom = Math.max(1.0, this.zoom - 0.15);
-      if (slider) slider.value = this.zoom;
+      this.syncZoomControl();
       this.render();
     }, { signal });
 
@@ -392,7 +400,7 @@ export class PhotoEditorController {
       e.preventDefault();
       const delta = e.deltaY > 0 ? -0.1 : 0.1;
       this.zoom = Math.max(1.0, Math.min(3.0, this.zoom + delta));
-      if (slider) slider.value = this.zoom;
+      this.syncZoomControl();
       this.render();
     }, { passive: false, signal });
 
