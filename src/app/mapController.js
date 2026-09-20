@@ -388,7 +388,7 @@ function initSearchMap(trip) {
     activeMaps.delete("search");
   }
 
-  const map = L.map(container, { zoomControl: true, attributionControl: true }).setView(trip.center, trip.zoom || 13);
+  const map = L.map(container, { zoomControl: false, attributionControl: true }).setView(trip.center, trip.zoom || 13);
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19 }).addTo(map);
 
   (trip.mapPins || []).slice(0, 5).forEach((pin, index) => {
@@ -414,7 +414,7 @@ function initLiveMap(trip) {
     activeMaps.delete("live");
   }
 
-  const map = L.map(container, { zoomControl: true, attributionControl: true }).setView(trip.center, 14);
+  const map = L.map(container, { zoomControl: false, attributionControl: true }).setView(trip.center, 14);
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19 }).addTo(map);
   attachMapActionOverlay(container, map, trip);
   activeMaps.set("live", map);

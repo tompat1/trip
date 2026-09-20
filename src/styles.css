@@ -62,6 +62,13 @@
   --radius-pill: 9999px;
 
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* Bottom dock + floating action clearance (mobile-safe) */
+  --bottom-dock-gutter: 8px;
+  --bottom-dock-height: 78px;
+  --bottom-dock-clearance: calc(var(--bottom-dock-gutter) + env(safe-area-inset-bottom, 0px) + var(--bottom-dock-height));
+  --page-fab-clearance: calc(var(--bottom-dock-clearance) + 16px);
+  --quick-capture-offset: calc(var(--bottom-dock-clearance) + 10px);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -190,8 +197,9 @@ textarea {
 #app {
   max-width: 480px;
   margin: 0 auto;
+  min-height: 100dvh;
   min-height: 100vh;
-  padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+  padding-bottom: var(--page-fab-clearance);
   position: relative;
   background-color: var(--paper);
   box-shadow: 0 0 40px rgba(23, 24, 23, 0.06);
@@ -2382,10 +2390,10 @@ a:active .ph-icon,
    ========================================================================== */
 .bottom-dock-nav {
   position: fixed;
-  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  bottom: calc(var(--bottom-dock-gutter) + env(safe-area-inset-bottom, 0px));
   left: 50%;
   transform: translateX(-50%);
-  width: calc(100% - 24px);
+  width: calc(100% - 20px);
   max-width: 456px;
   z-index: 9999;
 }
@@ -2394,12 +2402,14 @@ a:active .ph-icon,
   display: flex;
   align-items: center;
   justify-content: space-around;
-  background: rgba(255, 253, 248, 0.92);
-  backdrop-filter: blur(16px);
+  background: color-mix(in srgb, var(--paper-card) 96%, transparent);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
   border: 1px solid var(--line);
   border-radius: 36px;
-  padding: 6px 12px;
+  padding: 8px 10px 6px;
   box-shadow: var(--shadow-lg);
+  isolation: isolate;
 }
 
 .dock-nav-item {
@@ -2407,11 +2417,26 @@ a:active .ph-icon,
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2px;
-  padding: 6px 12px;
+  gap: 3px;
+  min-width: 52px;
+  padding: 4px 10px 2px;
   color: #05070A;
   border-radius: 20px;
   transition: all 0.2s var(--ease-out);
+}
+
+.dock-nav-item .dock-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+}
+
+.dock-nav-item .dock-icon svg {
+  width: 24px;
+  height: 24px;
 }
 
 .dock-nav-item.is-active {
@@ -2437,20 +2462,22 @@ a:active .ph-icon,
 }
 
 .dock-label {
-  font-size: 0.7rem;
+  font-size: 0.64rem;
   font-weight: 600;
+  line-height: 1.1;
 }
 
 /* Central Red Search FAB */
 .dock-nav-item--fab {
   position: relative;
-  top: -12px;
+  top: -10px;
+  min-width: 0;
   padding: 0;
 }
 
 .fab-circle {
-  width: 56px;
-  height: 56px;
+  width: 58px;
+  height: 58px;
   border-radius: 50%;
   background: var(--red-gradient);
   color: var(--white);
@@ -2458,8 +2485,22 @@ a:active .ph-icon,
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 1px;
   box-shadow: var(--shadow-fab);
   transition: transform 0.2s var(--ease-out);
+}
+
+.fab-circle .fab-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+}
+
+.fab-circle .fab-icon svg {
+  width: 22px;
+  height: 22px;
 }
 
 .fab-circle:hover {
@@ -2467,10 +2508,10 @@ a:active .ph-icon,
 }
 
 .fab-text {
-  font-size: 0.62rem;
+  font-size: 0.58rem;
   font-weight: 700;
-  letter-spacing: 0.3px;
-  margin-top: 1px;
+  letter-spacing: 0.2px;
+  line-height: 1;
 }
 
 /* ==========================================================================
@@ -4951,7 +4992,18 @@ body.has-fullscreen-map-open {
    SEARCH & PLACE DISCOVERY VIEW
    ========================================================================== */
 .search-page__content {
-  padding: 0 16px 132px;
+  padding: 0 16px var(--page-fab-clearance);
+}
+
+.live-page__content {
+  padding: 16px 16px var(--page-fab-clearance);
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+#search-results-region {
+  padding-bottom: 8px;
 }
 
 .search-input-card {
@@ -5107,20 +5159,33 @@ body.has-fullscreen-map-open {
 
 .search-area-btn {
   position: absolute;
-  top: 12px;
+  top: auto;
+  bottom: 12px;
   right: 12px;
-  z-index: 10;
+  left: auto;
+  z-index: 11;
   font-size: 0.78rem;
   box-shadow: var(--shadow-sm);
+  max-width: calc(100% - 72px);
 }
 
 .search-location-btn {
   position: absolute;
   bottom: 12px;
   left: 12px;
-  z-index: 10;
+  z-index: 11;
   background: var(--white);
   box-shadow: var(--shadow-sm);
+}
+
+.search-map-card .map-floating-controls {
+  top: 12px;
+  right: 12px;
+}
+
+.live-map-wrapper .map-floating-controls {
+  top: 12px;
+  right: 12px;
 }
 
 .results-header {
@@ -5242,9 +5307,9 @@ body.has-fullscreen-map-open {
 
 .sticky-map-fab-wrap {
   position: fixed;
-  bottom: 92px;
-  right: 92px;
-  z-index: 90;
+  bottom: var(--quick-capture-offset);
+  right: calc(16px + env(safe-area-inset-right, 0px));
+  z-index: 9990;
 }
 
 .floating-map-btn {
@@ -5353,9 +5418,31 @@ body.has-fullscreen-map-open {
 }
 
 @media (max-width: 760px) {
-  .search-page__content {
+  :root {
+    --bottom-dock-height: 84px;
+  }
+
+  .search-page__content,
+  .live-page__content {
     padding-inline: 14px;
-    padding-bottom: calc(156px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(var(--page-fab-clearance) + 12px);
+  }
+
+  .live-intel-card__header {
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .live-intel-card__header .badge {
+    flex-shrink: 0;
+    margin-left: 0;
+  }
+
+  .live-intel-list {
+    max-height: none;
+    overflow: visible;
+    padding-right: 0;
   }
 
   .search-hero-card {
@@ -5375,6 +5462,11 @@ body.has-fullscreen-map-open {
 
   .sticky-map-fab-wrap {
     display: none;
+  }
+
+  .quick-capture-fab {
+    right: auto;
+    left: calc(16px + env(safe-area-inset-left, 0px));
   }
 
   .search-place-card {
@@ -9375,9 +9467,9 @@ body.has-fullscreen-map-open {
 /* Universal Floating Quick Capture FAB & Modal */
 .quick-capture-fab {
   position: fixed;
-  bottom: 84px;
-  right: 20px;
-  z-index: 100000;
+  bottom: var(--quick-capture-offset);
+  right: calc(16px + env(safe-area-inset-right, 0px));
+  z-index: 9998;
   width: 52px;
   height: 52px;
   border-radius: 50%;

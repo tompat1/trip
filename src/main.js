@@ -45,6 +45,16 @@ function render() {
     requestAnimationFrame(() => {
       const canvasEl = document.getElementById("photo-editor-canvas");
       if (canvasEl) {
+        const previousEditor = activePhotoEditorController;
+        const preservedTransform = previousEditor
+          ? {
+              zoom: previousEditor.zoom,
+              offsetX: previousEditor.offsetX,
+              offsetY: previousEditor.offsetY,
+              rotation: previousEditor.rotation,
+            }
+          : null;
+        previousEditor?.destroy();
         activePhotoEditorController = new PhotoEditorController(
           state,
           async (croppedDataUrl) => {
@@ -80,9 +90,17 @@ function render() {
           showToast
         );
         activePhotoEditorController.init(state.photoEditorImageSrc);
+        if (preservedTransform) {
+          activePhotoEditorController.zoom = preservedTransform.zoom;
+          activePhotoEditorController.offsetX = preservedTransform.offsetX;
+          activePhotoEditorController.offsetY = preservedTransform.offsetY;
+          activePhotoEditorController.rotation = preservedTransform.rotation;
+          activePhotoEditorController.render();
+        }
       }
     });
   } else {
+    activePhotoEditorController?.destroy();
     activePhotoEditorController = null;
   }
 
@@ -1717,19 +1735,8 @@ document.addEventListener("change", (e) => {
 
   if (e.target && (e.target.id === "avatar-file-input" || e.target.id === "photo-editor-file-input") && e.target.files && e.target.files[0]) {
     const file = e.target.files[0];
-    const reader = new FileReader();
-    reader.onload = function(evt) {
-      if (evt.target && evt.target.result) {
-        const dataUrl = evt.target.result;
-        state.photoEditorImageSrc = dataUrl;
-        if (state.photoEditorOpen && activePhotoEditorController) {
-          activePhotoEditorController.setImage(dataUrl);
-        } else {
-          state.openPhotoEditor(dataUrl);
-        }
-      }
-    };
-    reader.readAsDataURL(file);
+    void applyUploadedPhotoToEditor(file);
+    e.target.value = "";
   }
 });
 
@@ -1737,6 +1744,47 @@ async function saveAvatarFile(file) {
   const dataUrl = await createCompressedAvatarDataUrl(file);
   state.updateUserAvatar(dataUrl);
   showToast("Profile photo autosaved.");
+}
+
+async function applyUploadedPhotoToEditor(file) {
+  const dataUrl = await normalizeUploadedImageDataUrl(file);
+  if (!dataUrl) {
+    showToast("Could not read that image. Try JPG or PNG.", "error");
+    return;
+  }
+
+  state.photoEditorImageSrc = dataUrl;
+  if (state.photoEditorOpen && activePhotoEditorController) {
+    activePhotoEditorController.setImage(dataUrl);
+  } else {
+    state.openPhotoEditor(dataUrl);
+  }
+}
+
+async function normalizeUploadedImageDataUrl(file) {
+  try {
+    if (typeof createImageBitmap === "function") {
+      const bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
+      const maxDim = 2048;
+      const scale = Math.min(1, maxDim / Math.max(bitmap.width, bitmap.height, 1));
+      const width = Math.max(1, Math.round(bitmap.width * scale));
+      const height = Math.max(1, Math.round(bitmap.height * scale));
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(bitmap, 0, 0, width, height);
+      bitmap.close?.();
+      return canvas.toDataURL("image/jpeg", 0.92);
+    }
+  } catch {}
+
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (evt) => resolve(evt.target?.result || null);
+    reader.onerror = () => resolve(null);
+    reader.readAsDataURL(file);
+  });
 }
 
 async function createCompressedAvatarDataUrl(file) {

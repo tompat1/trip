@@ -23,7 +23,7 @@ export function renderLiveView() {
     <div class="live-page">
       ${renderHeader()}
 
-      <div class="live-page__content" style="padding: 16px 16px 32px 16px; display: flex; flex-direction: column; gap: 20px;">
+      <div class="live-page__content">
         <!-- Live Status Banner -->
         <section class="live-status-hero card-pattern-map" style="background: linear-gradient(135deg, var(--paper-card) 0%, var(--paper-subtle) 100%); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 18px; box-shadow: var(--shadow-sm);">
           <div class="live-status-hero__badge mb-xs" style="display: flex; align-items: center; gap: 6px;">

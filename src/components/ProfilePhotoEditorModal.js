@@ -214,6 +214,21 @@ export function renderProfilePhotoEditorModal(state) {
 /**
  * Controller helper to bind interactive canvas events once modal is rendered
  */
+function isLocalImageSource(src = "") {
+  return src.startsWith("data:") || src.startsWith("blob:");
+}
+
+function applyImageSource(img, src) {
+  if (!img || !src) return;
+  if (isLocalImageSource(src)) {
+    img.removeAttribute("crossorigin");
+    img.crossOrigin = "";
+  } else {
+    img.crossOrigin = "anonymous";
+  }
+  img.src = src;
+}
+
 export class PhotoEditorController {
   constructor(state, onSaveCallback, toastCallback) {
     this.state = state;
@@ -223,6 +238,7 @@ export class PhotoEditorController {
     this.img = null;
     this.canvas = null;
     this.ctx = null;
+    this._eventAbort = null;
 
     // Transform State
     this.zoom = 1.0;
@@ -237,25 +253,48 @@ export class PhotoEditorController {
 
     // Viewport Constants
     this.viewportSize = 320;
+    this.displayScale = 1;
   }
 
   init(imageSrc) {
     this.canvas = document.getElementById("photo-editor-canvas");
     if (!this.canvas) return;
-    this.ctx = this.canvas.getContext("2d");
 
-    this.img = new Image();
-    this.img.crossOrigin = "anonymous";
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    this.viewportSize = 320;
+    this.displayScale = dpr;
+    this.canvas.width = Math.round(this.viewportSize * dpr);
+    this.canvas.height = Math.round(this.viewportSize * dpr);
+    this.ctx = this.canvas.getContext("2d");
+    this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    if (!this.img) this.img = new Image();
     this.img.onload = () => {
-      this.resetTransform();
       this.render();
     };
     this.img.onerror = () => {
       this.showToast?.("Unable to load selected image.");
     };
-    this.img.src = imageSrc || this.state.photoEditorImageSrc || this.state.userAvatar || TRAVEL_AVATAR_PRESETS[0].url;
+
+    const src = imageSrc || this.state.photoEditorImageSrc || this.state.userAvatar || TRAVEL_AVATAR_PRESETS[0].url;
+    applyImageSource(this.img, src);
+    if (this.img.complete && this.img.naturalWidth > 0) {
+      this.render();
+    }
 
     this.bindEvents();
+  }
+
+  destroy() {
+    this._eventAbort?.abort();
+    this._eventAbort = null;
+    this.isDragging = false;
+    if (this.img) {
+      this.img.onload = null;
+      this.img.onerror = null;
+    }
+    this.canvas = null;
+    this.ctx = null;
   }
 
   resetTransform() {
@@ -267,72 +306,78 @@ export class PhotoEditorController {
     if (slider) slider.value = 1.0;
   }
 
-  setImage(src) {
+  setImage(src, { reset = true } = {}) {
     if (!this.img) this.img = new Image();
-    this.img.crossOrigin = "anonymous";
     this.img.onload = () => {
-      this.resetTransform();
+      if (reset) this.resetTransform();
       this.render();
     };
-    this.img.src = src;
+    this.img.onerror = () => {
+      this.showToast?.("Unable to load selected image.");
+    };
+    applyImageSource(this.img, src);
+    if (this.img.complete && this.img.naturalWidth > 0) {
+      if (reset) this.resetTransform();
+      this.render();
+    }
   }
 
   bindEvents() {
     if (!this.canvas) return;
 
-    // Zoom Slider
+    this._eventAbort?.abort();
+    this._eventAbort = new AbortController();
+    const { signal } = this._eventAbort;
+
     const slider = document.getElementById("photo-zoom-slider");
     if (slider) {
+      slider.value = String(this.zoom);
       slider.addEventListener("input", (e) => {
         this.zoom = parseFloat(e.target.value);
         this.render();
-      });
+      }, { signal });
     }
 
-    // Zoom +/-
     document.getElementById("btn-zoom-in")?.addEventListener("click", () => {
       this.zoom = Math.min(3.0, this.zoom + 0.15);
       if (slider) slider.value = this.zoom;
       this.render();
-    });
+    }, { signal });
 
     document.getElementById("btn-zoom-out")?.addEventListener("click", () => {
       this.zoom = Math.max(1.0, this.zoom - 0.15);
       if (slider) slider.value = this.zoom;
       this.render();
-    });
+    }, { signal });
 
-    // Rotation
     document.getElementById("btn-rotate-cw")?.addEventListener("click", () => {
       this.rotation = (this.rotation + 90) % 360;
       this.render();
-    });
+    }, { signal });
 
     document.getElementById("btn-rotate-ccw")?.addEventListener("click", () => {
       this.rotation = (this.rotation - 90 + 360) % 360;
       this.render();
-    });
+    }, { signal });
 
-    // Reset
     document.getElementById("btn-reset-transform")?.addEventListener("click", () => {
       this.resetTransform();
       this.render();
-    });
+    }, { signal });
 
-    // Drag / Pan Events (Mouse & Touch via PointerEvents)
     this.canvas.addEventListener("pointerdown", (e) => {
       this.isDragging = true;
       this.startX = e.clientX - this.offsetX;
       this.startY = e.clientY - this.offsetY;
       this.canvas.setPointerCapture(e.pointerId);
-    });
+    }, { signal });
 
     this.canvas.addEventListener("pointermove", (e) => {
       if (!this.isDragging) return;
       this.offsetX = e.clientX - this.startX;
       this.offsetY = e.clientY - this.startY;
       this.render();
-    });
+    }, { signal });
 
     const stopDrag = (e) => {
       if (this.isDragging) {
@@ -340,25 +385,23 @@ export class PhotoEditorController {
         try { this.canvas.releasePointerCapture(e.pointerId); } catch {}
       }
     };
-    this.canvas.addEventListener("pointerup", stopDrag);
-    this.canvas.addEventListener("pointercancel", stopDrag);
+    this.canvas.addEventListener("pointerup", stopDrag, { signal });
+    this.canvas.addEventListener("pointercancel", stopDrag, { signal });
 
-    // Mouse wheel zoom
     this.canvas.addEventListener("wheel", (e) => {
       e.preventDefault();
       const delta = e.deltaY > 0 ? -0.1 : 0.1;
       this.zoom = Math.max(1.0, Math.min(3.0, this.zoom + delta));
       if (slider) slider.value = this.zoom;
       this.render();
-    }, { passive: false });
+    }, { passive: false, signal });
 
-    // Save Button
     document.getElementById("btn-save-photo-editor")?.addEventListener("click", () => {
       const croppedDataUrl = this.exportCroppedDataUrl();
       if (croppedDataUrl) {
         this.onSave?.(croppedDataUrl);
       }
-    });
+    }, { signal });
   }
 
   getFilterCss() {
@@ -373,11 +416,13 @@ export class PhotoEditorController {
     const h = this.viewportSize;
     const center = w / 2;
 
+    this.ctx.setTransform(this.displayScale, 0, 0, this.displayScale, 0, 0);
     this.ctx.clearRect(0, 0, w, h);
 
     // 1. Draw transformed image with active color filter
     this.ctx.save();
-    this.ctx.filter = this.getFilterCss();
+    const filterCss = this.getFilterCss();
+    this.ctx.filter = filterCss === "none" ? "none" : filterCss;
     this.ctx.translate(center + this.offsetX, center + this.offsetY);
     this.ctx.rotate((this.rotation * Math.PI) / 180);
     this.ctx.scale(this.zoom, this.zoom);
@@ -521,15 +566,13 @@ export class PhotoEditorController {
     if (isAvatarMode) {
       const center = w / 2;
       const cropRadius = 120;
+      // evenodd fill is reliable on iOS Safari; destination-out was darkening the preview
       ctx.fillStyle = "rgba(18, 20, 22, 0.72)";
-      ctx.fillRect(0, 0, w, h);
-
-      ctx.globalCompositeOperation = "destination-out";
       ctx.beginPath();
+      ctx.rect(0, 0, w, h);
       ctx.arc(center, center, cropRadius, 0, Math.PI * 2, true);
-      ctx.fill();
+      ctx.fill("evenodd");
 
-      ctx.globalCompositeOperation = "source-over";
       ctx.strokeStyle = "#F4F0E7";
       ctx.lineWidth = 2.5;
       ctx.beginPath();
