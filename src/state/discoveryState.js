@@ -60,13 +60,23 @@ export const discoveryStateMixin = {
   // ── Weather ────────────────────────────────────────────────────────────────
 
   async refreshWeather() {
-    // 1. Fetch live weather for user's current location (for Header badge)
+    const trip = this.activeTrip;
+
+    // Keep user weather available for location-aware features, while the header
+    // always displays the selected trip destination's weather.
     let userLat = 48.8566;
     let userLng = 2.3522;
     if (Array.isArray(this.userLocation) && this.userLocation.length === 2) {
       [userLat, userLng] = this.userLocation;
     }
-    const userLiveWeather = await fetchOpenMeteoWeather(userLat, userLng);
+    const tripWeatherRequest = trip && Array.isArray(trip.center)
+      ? fetchOpenMeteoWeather(trip.center[0], trip.center[1])
+      : Promise.resolve(null);
+    const [userLiveWeather, tripLiveWeather] = await Promise.all([
+      fetchOpenMeteoWeather(userLat, userLng),
+      tripWeatherRequest,
+    ]);
+
     if (userLiveWeather) {
       this.userLocationWeather = {
         ...userLiveWeather,
@@ -74,14 +84,8 @@ export const discoveryStateMixin = {
       };
     }
 
-    // 2. Fetch live weather for active trip destination (for in-page trip cards)
-    const trip = this.activeTrip;
-    if (trip && Array.isArray(trip.center)) {
-      const [tripLat, tripLng] = trip.center;
-      const tripLiveWeather = await fetchOpenMeteoWeather(tripLat, tripLng);
-      if (tripLiveWeather) {
-        trip.weather = { ...trip.weather, ...tripLiveWeather };
-      }
+    if (trip && tripLiveWeather) {
+      trip.weather = { ...trip.weather, ...tripLiveWeather };
     }
 
     this.notify();

@@ -280,6 +280,7 @@ export class AppState {
     const nextIndex = (currentIndex + 1) % keys.length;
     this.activeTripId = keys[nextIndex];
     this.tripMode = getTripDateStatus(tripsData[this.activeTripId]).state === "active";
+    this.refreshWeather();
     this.refreshTourismDiscovery(this.activeTripId);
     this.refreshEventDiscovery(this.activeTripId);
     this.refreshTripIntelligence(this.activeTripId);

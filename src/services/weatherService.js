@@ -34,6 +34,14 @@ export async function fetchOpenMeteoWeather(lat = 48.8566, lng = 2.3522) {
 
     return {
       status: "ready",
+      timezone: data.timezone || "",
+      timezoneAbbreviation: data.timezone_abbreviation || "",
+      utcOffsetSeconds: data.utc_offset_seconds !== null
+        && data.utc_offset_seconds !== undefined
+        && data.utc_offset_seconds !== ""
+        && Number.isFinite(Number(data.utc_offset_seconds))
+        ? Number(data.utc_offset_seconds)
+        : null,
       temp: `${Math.round(current.temperature_2m ?? 20)}°C`,
       feelsLike: `${Math.round(current.apparent_temperature ?? current.temperature_2m ?? 20)}°C`,
       humidity: `${current.relative_humidity_2m ?? 50}%`,

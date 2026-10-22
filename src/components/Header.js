@@ -3,6 +3,7 @@ import { renderIcon } from "../utils/icons.js";
 import { TRIP_LOGO_SVG } from "./BrandAssets.js";
 import { getTripDateStatus } from "../utils/tripDates.js";
 import { sanitizeFlagEmoji } from "../utils/countryEmoji.js";
+import { formatTripLocalDateTime } from "../utils/tripLocalTime.js";
 
 export function renderHeader() {
   const isLanding = state.activeView === "landing";
@@ -45,19 +46,18 @@ export function renderHeader() {
   const allTrips = state.getAllTrips();
   const hasTrip = Boolean((state.activeTrip && state.activeTrip.id) || (Array.isArray(allTrips) && allTrips.length > 0));
   const noTrip = !hasTrip;
-  const liveDayTime = getLiveDayTimeFormatted();
   const dateStatus = getTripDateStatus(trip);
   const isDoneTrip = dateStatus.state === "done";
   const tripStage = getTripStage(dateStatus);
   const lifecycleLabel = getTripStageLabel(tripStage);
 
-  const userWeather = state.userLocationWeather || (trip && trip.weather?.temp && trip.weather.temp !== "--°C" ? trip.weather : null) || {
+  const tripWeather = (trip && trip.weather?.temp && trip.weather.temp !== "--°C" ? trip.weather : null) || {
     temp: "--°C",
     condition: "Fair",
     icon: "☀️",
-    cityName: "",
   };
-  const weatherCity = userWeather.cityName || "";
+  const weatherCity = trip.destination || "selected trip";
+  const liveDayTime = formatTripLocalDateTime(tripWeather) || "Local time loading…";
 
   return `
     <header class="app-header">
@@ -66,8 +66,8 @@ export function renderHeader() {
           ${TRIP_LOGO_SVG("", 40)}
         </div>
         <div class="app-header__user">
-          <div class="header-live-time-pill" title="Live Open-Meteo weather ${escapeHtml(weatherCity ? `in ${weatherCity}` : 'for current location')} & time">
-            <span class="header-weather-badge">${userWeather.icon || '☀️'} ${userWeather.temp || '20°C'}</span>
+          <div class="header-live-time-pill" title="Live Open-Meteo weather and local time in ${escapeHtml(weatherCity)}">
+            <span class="header-weather-badge">${tripWeather.icon || '☀️'} ${tripWeather.temp || '--°C'}</span>
             <span class="header-time-divider">•</span>
             <span class="live-time-marquee" aria-label="${escapeHtml(liveDayTime)}">
               <span class="live-time-text">${escapeHtml(liveDayTime)}</span>
@@ -225,22 +225,6 @@ function getTripStageIcon(stage) {
   if (stage === "remember") return "heart";
   if (stage === "live") return "compassRose";
   return "mapPin";
-}
-
-function getLiveDayTimeFormatted() {
-  const now = new Date();
-  const parts = new Intl.DateTimeFormat([], {
-    weekday: "short",
-    day: "2-digit",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false
-  }).formatToParts(now).reduce((acc, part) => {
-    acc[part.type] = part.value;
-    return acc;
-  }, {});
-  return `${parts.weekday || ""} ${parts.day || ""} ${parts.month || ""} ${parts.hour || "00"}:${parts.minute || "00"}`.trim();
 }
 
 function escapeHtml(str) {
