@@ -3305,7 +3305,7 @@ a:active .ph-icon,
   z-index: 1 !important;
 }
 
-/* Floating Map Controls (Fullscreen, Recenter, Layer Switcher) */
+/* Floating Map Controls (Fullscreen, Recenter, Zoom) */
 .map-floating-controls {
   position: absolute;
   top: 12px;

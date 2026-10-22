@@ -11,6 +11,16 @@ const activeMaps = new Map();
 let currentPoiOverviewSelectionIndex = 0;
 let poiRoutePreviewLayer = null;
 
+const OPENSTREETMAP_TILE_URL = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
+const OPENSTREETMAP_TILE_OPTIONS = {
+  maxZoom: 19,
+  attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+};
+
+function addOpenStreetMapLayer(map) {
+  return L.tileLayer(OPENSTREETMAP_TILE_URL, OPENSTREETMAP_TILE_OPTIONS).addTo(map);
+}
+
 const PLAN_EVENT_LOCATION_COORDS = {
   "cdg airport": [49.0097, 2.5479],
   "1st arrondissement": [48.8606, 2.3376],
@@ -182,9 +192,6 @@ function attachMapActionOverlay(container, map, trip, options = {}) {
     <button class="map-floating-btn map-recenter-btn" type="button" title="Recenter on ${escapeHtml(trip?.destination || "destination")}" aria-label="Recenter destination">
       ${renderIcon("crosshair")}
     </button>
-    <button class="map-floating-btn map-layer-btn" type="button" title="Switch Map Layer" aria-label="Switch map layer">
-      ${renderIcon("layers")}
-    </button>
     ${showFullscreen ? `
       <button class="map-floating-btn map-fullscreen-btn" type="button" title="Toggle Fullscreen Map" aria-label="Toggle fullscreen map">
         ${renderIcon("arrowsOut")}
@@ -221,33 +228,6 @@ function attachMapActionOverlay(container, map, trip, options = {}) {
       if (center && map) {
         map.flyTo(center, trip?.zoom || 14, { animate: true, duration: 0.8 });
       }
-    });
-  }
-
-  let layerIndex = 0;
-  const tileLayers = [
-    { name: "CARTO Voyager", url: "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", subdomains: "abcd", attribution: '&copy; OpenStreetMap &copy; CARTO' },
-    { name: "OpenStreetMap", url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", attribution: '&copy; OpenStreetMap contributors' },
-    { name: "CARTO Dark", url: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", subdomains: "abcd", attribution: '&copy; OpenStreetMap &copy; CARTO' }
-  ];
-
-  const layerBtn = overlay.querySelector(".map-layer-btn");
-  if (layerBtn) {
-    layerBtn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      e.preventDefault();
-      layerIndex = (layerIndex + 1) % tileLayers.length;
-      const selected = tileLayers[layerIndex];
-
-      map.eachLayer((layer) => {
-        if (layer instanceof L.TileLayer) map.removeLayer(layer);
-      });
-
-      L.tileLayer(selected.url, {
-        maxZoom: 19,
-        subdomains: selected.subdomains || "abc",
-        attribution: selected.attribution
-      }).addTo(map);
     });
   }
 
@@ -290,11 +270,7 @@ function initHomeMap(trip) {
   }
 
   const map = L.map(container, { zoomControl: true, attributionControl: true }).setView(trip.center, trip.zoom || 13);
-  L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
-    maxZoom: 19,
-    subdomains: "abcd",
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-  }).addTo(map);
+  addOpenStreetMapLayer(map);
 
   const allHomeSpots = [
     ...(trip.mapPins || []),
@@ -389,7 +365,7 @@ function initSearchMap(trip) {
   }
 
   const map = L.map(container, { zoomControl: false, attributionControl: true }).setView(trip.center, trip.zoom || 13);
-  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19 }).addTo(map);
+  addOpenStreetMapLayer(map);
 
   (trip.mapPins || []).slice(0, 5).forEach((pin, index) => {
     const icon = L.divIcon({
@@ -415,7 +391,7 @@ function initLiveMap(trip) {
   }
 
   const map = L.map(container, { zoomControl: false, attributionControl: true }).setView(trip.center, 14);
-  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19 }).addTo(map);
+  addOpenStreetMapLayer(map);
   attachMapActionOverlay(container, map, trip);
   activeMaps.set("live", map);
 }
@@ -431,7 +407,7 @@ function initPlanMap(trip) {
   }
 
   const map = L.map(container, { zoomControl: true, attributionControl: true }).setView(trip.center, trip.zoom);
-  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19 }).addTo(map);
+  addOpenStreetMapLayer(map);
   attachMapActionOverlay(container, map, trip);
   const mappedEvents = getMappedCalendarEvents(trip, state.mapDayFilter);
 
@@ -687,11 +663,7 @@ function initPoiOverviewMap(trip) {
   const center = trip.center || resolveTripCenter(trip.destination);
   const map = L.map(container, { zoomControl: false, attributionControl: true }).setView(center, 14);
 
-  L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
-    maxZoom: 19,
-    subdomains: 'abcd',
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-  }).addTo(map);
+  addOpenStreetMapLayer(map);
 
   const defaultOffsets = [
     { dLat: 0.0035, dLng: -0.012, icon: "🏛️" },
@@ -951,11 +923,7 @@ export function initSavedSpotPickerMap(trip, draft = {}, onPick) {
 
   const center = normalizeMapCoordinates([draft.lat, draft.lng]) || trip?.center || resolveTripCenter(trip?.destination);
   const map = L.map(container, { zoomControl: true, attributionControl: true }).setView(center, trip?.zoom || 13);
-  L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
-    maxZoom: 19,
-    subdomains: "abcd",
-    attribution: '&copy; OpenStreetMap &copy; CARTO',
-  }).addTo(map);
+  addOpenStreetMapLayer(map);
 
   const placeMarker = (coords) => {
     if (!coords) return;
